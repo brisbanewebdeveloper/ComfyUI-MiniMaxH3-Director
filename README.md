@@ -543,8 +543,11 @@ What to know:
   the three. Locking and copying the same sound is not worth doing.
 * **Refs OFF (first/last frame):** the guide has no audio references for that checkpoint, so
   only `lock` is offered there.
-* **The original on top:** wire `combined_audio` into `CreateVideo` as before. With a copy or a
-  lock the generated audio is time-aligned to it, so it fits; with `reference` it does not.
+* **No need to put the original on top.** With a copy or a lock the sound that comes out of the
+  sampler already is your audio, to the ear 1:1, and time-aligned. It is re-synthesised by
+  the audio VAE rather than copied sample for sample, so wire `combined_audio` into
+  `CreateVideo` only when you need the bit-exact original. With `reference` the generated audio
+  is a different performance and the original does not fit on top of it.
 
 ### Saying what is retained
 
