@@ -178,6 +178,17 @@ def _plan_issues(requested, planned, count, continuity):
     return issues
 
 
+def _late_changes(shots, chunks):
+    issues = []
+    for chunk in chunks[1:]:
+        for shot in shots:
+            offset = shot.start_f - chunk.story_start_f
+            if 0 <= offset < limits.LATE_CHANGE_FRAMES:
+                issues.append(Issue("late_change", "begins %.1fs after a chunk boundary; the pinned picture holds the previous action for about 2.5s, so the change will come late."
+                                    % frames.frames_to_seconds(offset), "shot %d" % shot.index))
+    return issues
+
+
 def plan_chunks(project_frames, chunk_target_frames, continuity, shots=()):
     """Split `project_frames` into chunks. Returns a SequencePlan; corrections are in plan.issues."""
     if project_frames < 1:
@@ -191,4 +202,6 @@ def plan_chunks(project_frames, chunk_target_frames, continuity, shots=()):
                             shots=_shots_for_chunk(shots, cursor, cursor + delivered, this_head), is_last=index == len(lengths) - 1))
         cursor += delivered
     issues = _plan_issues(project_frames, cursor, len(chunks), continuity)
+    if continuity.mode != "none":
+        issues += _late_changes(shots, chunks)
     return SequencePlan(requested_frames=project_frames, continuity=continuity, chunks=tuple(chunks), issues=tuple(issues))

@@ -71,6 +71,16 @@ class Lengths(unittest.TestCase):
         self.assertNotIn("audio_dulling", codes(chunks.plan_chunks(480, 240, VIDEO)))
         self.assertNotIn("no_continuity", codes(chunks.plan_chunks(200, 240, NONE)))
 
+    def test_shot_change_right_after_a_join_is_flagged(self):
+        first = chunks.plan_chunks(900, 240, VIDEO)
+        boundary = first.chunks[1].story_start_f
+        near, _ = shots.parse_shots("0-%s: a\n%s-40: b" % (boundary / 24.0 - 0.5, (boundary + 24) / 24.0), 900)
+        flagged = chunks.plan_chunks(900, 240, VIDEO, near)
+        self.assertIn("late_change", codes(flagged))
+        far, _ = shots.parse_shots("0-%s: a\n%s-40: b" % (boundary / 24.0 - 0.5, (boundary + 120) / 24.0), 900)
+        self.assertNotIn("late_change", codes(chunks.plan_chunks(900, 240, VIDEO, far)))
+        self.assertNotIn("late_change", codes(chunks.plan_chunks(900, 240, NONE, near)))
+
     def test_rejects_empty_project(self):
         with self.assertRaises(ValueError):
             chunks.plan_chunks(0, 240, VIDEO)
