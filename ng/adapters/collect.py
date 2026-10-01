@@ -1,0 +1,39 @@
+"""Join the sampled chunks into one video: decode each, cut the pinned head off picture and sound together, concatenate.
+
+The decoders are passed in, so the arithmetic is testable without a VAE. The sound is always taken from the delivered part of each chunk,
+never from the pinned reconstruction at its start (E2/E6), and it is cut to exactly the picture length at every join so that Bild
+and Ton cannot drift apart over many chunks (E6: 634 frames / 26.417 s, audio 26.417 s).
+"""
+import torch
+
+from ..core.issues import Issue
+from ..core.limits import FPS
+from . import latents
+
+
+def _pad_to(wave, samples):
+    short = samples - wave.shape[-1]
+    if short <= 0:
+        return wave, 0
+    return torch.nn.functional.pad(wave, (0, short)), short
+
+
+def collect_chunks(chunk_latents, plan, decode_video, decode_audio):
+    """chunk_latents: list of AV latents in chunk order. plan: SequencePlan. Returns (frames [N,H,W,3], audio dict, issues)."""
+    if len(chunk_latents) != len(plan.chunks):
+        raise ValueError("the plan has %d chunks but %d were generated" % (len(plan.chunks), len(chunk_latents)))
+    pictures, waves, issues, rate = [], [], [], None
+    for latent, chunk in zip(chunk_latents, plan.chunks):
+        video, audio = latents.split_av(latent)
+        frames = decode_video(video)
+        decoded = decode_audio(audio)
+        wave, rate = decoded["waveform"], int(decoded["sample_rate"])
+        if frames.shape[0] != chunk.sampled_frames:
+            raise ValueError("chunk %d decoded to %d frames but the plan sampled %d" % (chunk.index + 1, frames.shape[0], chunk.sampled_frames))
+        frames, wave = latents.trim_head(frames, wave, rate, chunk.head_frames, FPS)
+        wave, padded = _pad_to(wave, int(round(frames.shape[0] / float(FPS) * rate)))
+        if padded:
+            issues.append(Issue("audio_short", "the sound of chunk %d was %d samples short and was padded with silence." % (chunk.index + 1, padded)))
+        pictures.append(frames)
+        waves.append(wave)
+    return torch.cat(pictures, 0), {"waveform": torch.cat(waves, -1), "sample_rate": rate}, tuple(issues)
