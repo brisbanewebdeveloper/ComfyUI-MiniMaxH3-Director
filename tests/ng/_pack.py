@@ -23,3 +23,18 @@ def load():
 def module(name):
     load()
     return importlib.import_module("%s.%s" % (PACK, name))
+
+
+COMFY_ROOT = os.path.dirname(os.path.dirname(REPO))
+
+
+def comfy_available():
+    """Put the ComfyUI root on sys.path and report whether its tensor and layout modules import (they need torch)."""
+    if COMFY_ROOT not in sys.path:
+        sys.path.insert(0, COMFY_ROOT)
+    try:
+        importlib.import_module("comfy.nested_tensor")
+        importlib.import_module("comfy.ldm.minimax.model")
+    except Exception:
+        return False
+    return True

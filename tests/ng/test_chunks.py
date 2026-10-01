@@ -10,7 +10,6 @@ issues = module("ng.core.issues")
 
 VIDEO = chunks.ContinuityPlan("video_audio", 22, 24)
 NONE = chunks.ContinuityPlan("none")
-LAST = chunks.ContinuityPlan("last_frame")
 
 
 def codes(plan):
@@ -53,7 +52,7 @@ class Lengths(unittest.TestCase):
         self.assertIn("length_snapped", codes(plan))
 
     def test_continuity_modes_change_the_grid(self):
-        for mode, head in ((NONE, 0), (LAST, 1), (chunks.ContinuityPlan("video", 39, 24), 39)):
+        for mode, head in ((NONE, 0), (chunks.ContinuityPlan("video", 5, 24), 5), (chunks.ContinuityPlan("video", 39, 24), 39)):
             plan = chunks.plan_chunks(900, 200, mode)
             self.assertEqual(plan.chunks[1].head_frames, head)
             for c in plan.chunks:

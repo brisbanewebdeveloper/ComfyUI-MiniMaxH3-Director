@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from . import fields, frames, limits
 from .issues import Issue, SchemaError
 
-CONTINUITY_MODES = ("none", "last_frame", "video", "video_audio")
+CONTINUITY_MODES = ("none", "video", "video_audio")
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ class ContinuityPlan:
     @property
     def head(self):
         """Frames in front of every continued chunk that are sampled but not delivered."""
-        return {"none": 0, "last_frame": 1}.get(self.mode, self.video_frames)
+        return 0 if self.mode == "none" else self.video_frames
 
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "mode": self.mode, "video_frames": self.video_frames,
