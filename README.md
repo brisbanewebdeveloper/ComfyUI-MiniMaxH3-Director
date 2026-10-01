@@ -7,7 +7,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-0.2.4-brightgreen)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.2.5-brightgreen)](CHANGELOG.md)
 
 ![The MiniMax H3 Director node](docs/images/director-node.png)
 
@@ -45,6 +45,10 @@ see the exact prompt the model will receive while you are still editing it.
 ---
 
 ## News
+
+**0.2.5** · 2026-10-01 — the Director **warns when an audio clip on the timeline is not sent
+to the model** (References off, or the audio track switched off), and says how to get the clip
+into the video: wire `combined_audio` into CreateVideo.
 
 **0.2.4** · 2026-10-01 — a new **`prepend_text` input** on the Director: wire LoRA trigger
 words (or any text) in and they go in front of the global prompt, and out again through the

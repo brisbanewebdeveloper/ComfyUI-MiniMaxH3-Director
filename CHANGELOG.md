@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.5
+
+- **The node now says when a timeline audio clip is not being sent to the model.** With
+  References off (fl2va) the model has no audio input at all, and with the audio track
+  switched off in ref2va nothing is sent either; in both cases the clip is carried only by the
+  `combined_audio` output. That is how it was designed, but it looked exactly like a clip
+  that was ignored: the voice in the result was the model's own, spoken from the text, and
+  nothing said why. The warning names which case it is and what to do — wire `combined_audio`
+  into CreateVideo to hear the clip itself, or use Refs ON with the audio track enabled so
+  the model gets it as an `<Audio>` reference. Even then it is a reference the voice follows,
+  not a copy of the waveform.
+
 ## 0.2.4
 
 - **`prepend_text` on the Director** ([#29]). A connection-only text input; whatever is wired
