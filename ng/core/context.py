@@ -33,13 +33,14 @@ class ContextItem:
     preserve: str = "high"
     description: str = ""       # what the item is, in one sentence (the compiler writes it into the definition line)
     speaker: str = ""           # audio: id of the item whose voice this is
+    length_s: float = 0.0       # audio/video: duration in seconds when known (0 = unknown)
     color: str = ""             # "" = assigned automatically
     SCHEMA_VERSION = 1
 
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "id": self.id, "name": self.name, "media": self.media,
                 "source": self.source, "content": list(self.content), "usage": list(self.usage), "preserve": self.preserve,
-                "description": self.description, "speaker": self.speaker, "color": self.color}
+                "description": self.description, "speaker": self.speaker, "length_s": self.length_s, "color": self.color}
 
     @classmethod
     def from_dict(cls, data, path="context"):
@@ -51,7 +52,8 @@ class ContextItem:
                    usage=fields.read_texts(data, "usage", path),
                    preserve=fields.read_choice(data, "preserve", path, PRESERVE, "high"),
                    description=fields.read_str(data, "description", path, ""),
-                   speaker=fields.read_str(data, "speaker", path, ""), color=fields.read_str(data, "color", path, ""))
+                   speaker=fields.read_str(data, "speaker", path, ""), length_s=float(fields.read_number(data, "length_s", path, 0.0, minimum=0)),
+                   color=fields.read_str(data, "color", path, ""))
 
     @property
     def effective_usage(self):
