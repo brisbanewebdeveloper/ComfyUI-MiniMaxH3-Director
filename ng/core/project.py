@@ -55,6 +55,25 @@ class ProjectPlan:
         return tuple(i for i in self.issues if i.ref.startswith("chunk %d" % (index + 1)))
 
 
+@dataclass(frozen=True)
+class ChunkJob:
+    """One chunk of a planned project: what travels through the loop, one per iteration."""
+    project: ProjectPlan
+    index: int
+
+    @property
+    def chunk(self):
+        return self.project.plan.chunks[self.index]
+
+    @property
+    def compiled(self):
+        return self.project.compiled[self.index]
+
+
+def jobs(project: ProjectPlan):
+    return [ChunkJob(project, n) for n in range(len(project.plan.chunks))]
+
+
 def _dedupe(issues):
     seen, out = set(), []
     for issue in issues:

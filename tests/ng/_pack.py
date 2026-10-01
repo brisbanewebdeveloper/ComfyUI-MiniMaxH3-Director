@@ -28,6 +28,23 @@ def module(name):
 COMFY_ROOT = os.path.dirname(os.path.dirname(REPO))
 
 
+def stub_prompt_server():
+    """minimax_media registers aiohttp routes when imported, so a PromptServer must exist first (same trick as test_node.py)."""
+    import server
+
+    if getattr(server.PromptServer, "instance", None) is not None:
+        return
+
+    class _Routes:
+        def post(self, *_a, **_k):
+            return lambda fn: fn
+
+        def get(self, *_a, **_k):
+            return lambda fn: fn
+
+    server.PromptServer.instance = types.SimpleNamespace(routes=_Routes())
+
+
 def comfy_available():
     """Put the ComfyUI root on sys.path and report whether its tensor and layout modules import (they need torch)."""
     if COMFY_ROOT not in sys.path:
