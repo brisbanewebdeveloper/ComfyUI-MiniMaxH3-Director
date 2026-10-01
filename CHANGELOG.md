@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.3.1
+
+[@Brioch](https://github.com/Brioch)'s pull request [#18], carried over by hand: it had stopped
+merging after 0.2.3–0.3.0 touched the same planner and docs, so its behaviour was re-implemented
+on the current code and its tests re-written against it. Every idea below is theirs.
+
+- **A reference no longer spends output time.** A reference is an input to the model, not content
+  in the video — `<Video k>` and `<Audio j>` are never composited — but a clip had to overlap the
+  render window to be sent at all, and adding one stretched the window to cover it. The model card
+  wants each reference audio clip 10–15 s long, so three of them grew the output to 45 s: three
+  times the longest video H3 can make. Neither reference track touches the output length now,
+  and a clip is sent from wherever it sits; it lands after the last one, which for anything
+  longer than the window is out in the shaded area, where a reference belongs. A 5 s render
+  sends all three. Position still decides one thing, for audio only: whether the clip is *also*
+  part of the muxed soundtrack — inside the window it is both, past it a reference only, which
+  the clip's info panel says. A parked reference video is sent whole on its own trim instead of
+  losing its head to a window start it has nothing to do with. A **retake** keeps the old rule.
+  (`lock` clips are not references and still have to be in the window: a lock is a position in time.)
+- **Every audio clip on the track plays its own file again.** With two clips loaded both showed
+  up in the prompt and both drew their waveform, but only one could be heard: the editor stamped
+  the decoded buffer onto every clip that matched it, and a standalone clip has no blob URL to
+  match on, so the test was `undefined === undefined` for the whole track. Only the preview was
+  affected; what was sent to the model was always right.
+- **A reference clip that cannot be read says which one.** A missing file or a trim past the end of
+  the audio was dropped in silence — and because `<Audio N>` is numbered before any file is opened,
+  that label and every one after it then named a reference the model never got. The log now names
+  the clip and its label.
+- **Both per-type caps (3 audio, 3 video) name the clip they drop**, like every other limit.
+- **Override Audio wins over the audio track outside the editor too**: sent together, every
+  `<Audio N>` label would be one off (a reference video's soundtrack is numbered first). The clips
+  set aside are named, and Override Audio warns when the video it wants the soundtrack from is
+  parked past the window.
+
+[#18]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/pull/18
+
 ## 0.3.0
 
 Your own audio in the video, with a way to choose how — and the lines the model needs to believe it.

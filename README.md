@@ -7,7 +7,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-0.3.0-brightgreen)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.3.1-brightgreen)](CHANGELOG.md)
 
 ![The MiniMax H3 Director node](docs/images/director-node.png)
 
@@ -45,6 +45,12 @@ see the exact prompt the model will receive while you are still editing it.
 ---
 
 ## News
+
+**0.3.1** · 2026-10-01 — a **reference clip no longer has to fit inside the render window**
+(thanks to [@Brioch](https://github.com/Brioch)): three 10–15 s audio references park past the end
+of the timeline and a 5 s render still sends all three, without stretching the video. Also fixed:
+with several audio clips the play button played the same file for all of them, and unreadable or
+surplus reference clips are now named instead of dropped in silence.
 
 **0.3.0** · 2026-10-01 — **your own audio in the video, your choice how**. Right-click an audio
 clip → **Audio use**: `reference` follows a voice or style (the default, as before), `fully_copy`
@@ -326,6 +332,21 @@ prompt**, joined with a comma. It is not put ahead of the whole compiled prompt,
 opens with the task statement and the labelled sections the guides expect. The text is part of
 the `prompt` output, so a second pass wired to it sees the triggers too. The panel's live
 COMPILED PROMPT preview cannot show it, since the text only exists once the graph runs.
+
+### References do not spend output time
+
+A reference is an **input** to the model, not content in the video: `<Video k>` and `<Audio j>`
+are never composited. So neither has to fit inside the render window, and adding one never
+stretches the output — only the main track decides how long the video is. A clip dropped on one
+of those tracks lands after the last one, which for anything longer than the window means out in
+the **shaded area past it**, and it is sent from there. The model card wants each reference audio
+clip 10–15 s long, so three of them need 45 s of track; parked, a 5 s render still sends all three.
+
+What the window decides is whether an audio clip is **also** part of the muxed soundtrack: inside
+it a clip is both a reference and sound in the video, past it a reference only (the clip's info
+panel says so). **Override Audio** warns when the reference video it takes the soundtrack from is
+parked, because there is nothing in the window to take. A **retake** keeps the old rule, where
+outside the marked range means another part of the same video.
 
 ### Reference limits
 
