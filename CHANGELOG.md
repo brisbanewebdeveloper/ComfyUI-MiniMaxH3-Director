@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.2
+
+**A voice on the subject, not on the timeline** (issue #10). Every subject slot has an
+**Add voice** button (Refs ON), or drop an audio file on the slot. That clip is sent to the model
+as an `<Audio N>` reference tied to *that* subject:
+
+```
+<Audio 1> is the voice-timbre reference for <Subject 1> (S1).
+<Audio 2> is the voice-timbre reference for <Subject 2> (S2).
+```
+
+It is not on the timeline, so it is not bounded by the render window and takes no output time —
+two voice references and a background track no longer compete for one lane, and the render stays
+as short as you made it. It does not depend on the audio-track switch either: a voice on a subject
+is as deliberate as the subject's image. Voices go first in `<Audio N>` order (slot order), then
+whatever sits on the timeline, inside H3's cap of three audio clips; a clip that does not fit is
+named. The timeline's audio clips and their **Voice of** menu work as before. A slot with no
+reference image cannot be a `<Subject N>`, so its voice goes out as a plain voice reference, which
+the tooltip says. Override Audio together with a reference video still wins (a reference video's
+soundtrack is numbered first), and it names the voice it set aside. The log warns when a voice file
+is under the 2 s the model card asks for.
+
 ## 0.3.1
 
 [@Brioch](https://github.com/Brioch)'s pull request [#18], carried over by hand: it had stopped

@@ -7,7 +7,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-0.3.1-brightgreen)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.3.2-brightgreen)](CHANGELOG.md)
 
 ![The MiniMax H3 Director node](docs/images/director-node.png)
 
@@ -45,6 +45,9 @@ see the exact prompt the model will receive while you are still editing it.
 ---
 
 ## News
+
+**0.3.2** · 2026-10-02 — a **voice clip on each subject** (issue #10): a button on the
+subject slot, no timeline lane, no render time. Two characters, two voices, one background track.
 
 **0.3.1** · 2026-10-01 — a **reference clip no longer has to fit inside the render window**
 (thanks to [@Brioch](https://github.com/Brioch)): three 10–15 s audio references park past the end
@@ -715,6 +718,14 @@ assigns a new one independently", so a subject who never speaks has no ID to reu
 sentence ends on the label alone — which still says whose voice the clip is. The preview says
 when that happens, since a voice reference for someone with no line is usually a missing line
 rather than a deliberate choice.
+
+A **voice clip can also sit on the subject itself**: **Add voice** at the bottom of a slot (Refs ON),
+or drop an audio file on it. It is sent as an `<Audio N>` voice reference for that subject, with the
+same sentence as above, but it is not on the timeline — so it is not limited by the render length
+and adds no output time. That is the way to give two or three characters their own voices and still
+put a background track on the timeline. Voices come first in `<Audio N>` order, then the
+timeline's clips, inside H3's limit of three audio clips (2–15 s each). A slot without a reference
+image cannot be a `<Subject N>`, so its voice is sent as a plain voice reference.
 
 **Analyze** is optional and off the critical path. It sends the slot image to a vision
 model and pastes back a one-line description, so `@ref1` still means something in
