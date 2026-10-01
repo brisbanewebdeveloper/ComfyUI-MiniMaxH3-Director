@@ -7,7 +7,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-0.2.5-brightgreen)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.3.0-brightgreen)](CHANGELOG.md)
 
 ![The MiniMax H3 Director node](docs/images/director-node.png)
 
@@ -45,6 +45,13 @@ see the exact prompt the model will receive while you are still editing it.
 ---
 
 ## News
+
+**0.3.0** · 2026-10-01 — **your own audio in the video, your choice how**. Right-click an audio
+clip → **Audio use**: `reference` follows a voice or style (the default, as before), `fully_copy`
+/ `partially_copy` now really copy the clip — the Director writes the two sound lines the model
+needs for that — and the new **`lock (exact audio)`** holds the clip in the model's audio
+stream and generates the video around it, with Refs OFF as well. The README has a table of what
+each does.
 
 **0.2.5** · 2026-10-01 — the Director **warns when an audio clip on the timeline is not sent
 to the model** (References off, or the audio track switched off), and says how to get the clip
@@ -509,6 +516,35 @@ Audio has its own set, because copying a signal and imitating one are different 
 
 Right-click any reference — a timeline image, a reference video, an audio clip — to set
 its marker. Subject slots have theirs in the panel.
+
+### Your own audio in the video
+
+An audio clip on the timeline can be used four ways. Right-click it and pick **Audio use**:
+
+| Setting | What the model does | The sound in the result |
+|---|---|---|
+| `reference` (default) | Follows the clip's **voice or style** and makes up the rest. The prompt says "without copying the original signal", and the model believes it. | New. Lips match what it sings, but it is not your audio — so laying yours on top drifts out of step. |
+| `fully_copy` | The clip is reused 1:1 as the video's complete soundtrack. | Usually your audio, re-synthesised by the audio VAE (envelope correlation 0.96–0.98), time-aligned, so laying the original on top lines up. **Not every seed:** in testing four runs of six copied it and two sang something else. |
+| `partially_copy` | Copies the clip into its place on the timeline and generates the rest. | As above, for the part it covers. |
+| `lock (exact audio)` | Not a prompt wording: the clip is encoded into the model's audio stream and held there, the video is generated around it. Works with Refs OFF as well. Needs the audio VAE. | Your audio, kept in the latent (0.99 in every run); `combined_audio` carries the bit-exact original. **The reliable way.** |
+
+What to know:
+
+* **The Director writes the declaration the model needs.** A copy marker in
+  `retention_analysis` alone did nothing in testing (the generated audio was unrelated to the
+  clip); what makes the model copy is that `overall_soundscape` and `non_diegetic_music` say
+  the clip is reused. Those two lines are now written for you when a clip is set to a copy
+  marker — leave the boxes empty. Text you write there wins.
+* **Several clips:** up to three, each 2–15 s and 15 s in all, 12 reference files in total. Copy
+  clips land in the video in the order they are numbered, which is their order on the track;
+  asking the prompt for another order is ignored. Only one clip can be `fully_copy` ("the
+  complete final audio track"); a second is written as `partially_copy` and the panel says so.
+* **Locked clips are not references** — they get no `<Audio N>` label and do not count against
+  the three. Locking and copying the same sound is not worth doing.
+* **Refs OFF (first/last frame):** the guide has no audio references for that checkpoint, so
+  only `lock` is offered there.
+* **The original on top:** wire `combined_audio` into `CreateVideo` as before. With a copy or a
+  lock the generated audio is time-aligned to it, so it fits; with `reference` it does not.
 
 ### Saying what is retained
 

@@ -292,6 +292,32 @@ check("the saved .json carries every key the stored timeline does",
 check("...and the sound sections are among them",
       {"overall_soundscape", "non_diegetic_music"} <= _save_keys, True)
 
+# ----------------------------------------------------- locking audio into the latent (0.3.0)
+import torch
+import comfy.nested_tensor as _nt
+
+_video = torch.zeros((1, 24, 5, 4, 4))
+_audio = torch.ones((1, 32, 2, 40))
+_latent = {"samples": _nt.NestedTensor((_video, _audio))}
+_enc = torch.full((1, 32, 2, 30), 0.5)
+_out = director.lock_audio_latent(_latent, _enc, [(0.25, 0.5)], 40)
+_v, _a = _out["samples"].unbind()
+_mv, _ma = _out["noise_mask"].unbind()
+check("the locked latent keeps the video stream as it was", bool(torch.equal(_v, _video)), True)
+check("the audio stream carries the encoded clip", bool(torch.equal(_a[..., :30], _enc)), True)
+check("...zero-padded to the stream's length", (tuple(_a.shape), float(_a[..., 30:].abs().sum())), ((1, 32, 2, 40), 0.0))
+check("the mask is 0 exactly over the locked span (frames 10-19)",
+      (float(_ma[..., 10:20].max()), float(_ma[..., :10].min()), float(_ma[..., 20:].min())), (0.0, 1.0, 1.0))
+check("the mask has the audio stream's own shape", tuple(_ma.shape), tuple(_a.shape))
+check("the video is free: its mask is all ones, same shape as the video",
+      (bool((_mv == 1).all()), tuple(_mv.shape)), (True, tuple(_video.shape)))
+_long = director.lock_audio_latent(_latent, torch.zeros((1, 32, 2, 90)), [(0.0, 5.0)], 40)
+check("encoded audio longer than the stream is cut, not an error",
+      tuple(_long["samples"].unbind()[1].shape), (1, 32, 2, 40))
+check("a span past the end is clamped",
+      float(_long["noise_mask"].unbind()[1].max()), 0.0)
+check("other latent keys survive", director.lock_audio_latent(dict(_latent, batch_index=[0]), _enc, [], 40).get("batch_index"), [0])
+
 # -------------------------------------------------------- Save Last Frame node
 # It sits mid-chain after VAEDecode, so the two things that must hold are that the batch
 # comes out untouched and that exactly one file is written — the last frame, whatever the

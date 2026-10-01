@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.3.0
+
+Your own audio in the video, with a way to choose how — and the lines the model needs to believe it.
+
+- **A clip set to `fully_copy` / `partially_copy` now has a real chance of being copied.** Setting
+  the marker was always possible (right-click a clip) and it wrote the guide's
+  `retention_analysis` line — but with `non_diegetic_music: N/A` and no soundscape line the
+  model sang something of its own. Measured on an 8 s singing clip, 20 steps: without the two
+  sound lines the audio was unrelated to the clip in all three runs (envelope correlation
+  0.08–0.17); with them the clip itself came back in four runs of six (0.96–0.98) and not in
+  the other two (0.10, 0.21), the same prompt on a different seed. So it is the guide's
+  behaviour and the model follows it most of the time, not always. The Director now writes
+  those two lines whenever a clip is set to a copy marker and the boxes are empty, in the
+  guide's own wording ("`<Audio 1>` is directly reused as the complete audience-only score");
+  text you write there still wins. The default stays `reference`, which follows a voice or
+  style and never copies. **For audio that must come out as given, use `lock`.**
+- **New: `lock (exact audio)` on an audio clip.** Not a prompt wording but a different
+  mechanism, the one the LTX Director used: the clip is encoded with the audio VAE into the
+  model's audio stream and held there with a zero noise mask, and the video is generated around
+  it. The gaps between locked clips, and anything after the last, stay the model's. It works with
+  Refs OFF too, where the guide offers no audio references at all. Measured at 0.99 in every
+  run (five of five, both checkpoints), against four of six for the copy markers. A
+  locked clip is not an `<Audio N>` reference, gets no label and does not count against the
+  limit of three. It needs the audio VAE and says so if it is missing.
+- **Only one `fully_copy`.** The marker means "the complete final audio track"; a second clip
+  with it is written as `partially_copy` and the warnings area says so.
+- The right-click menu now calls the audio setting **Audio use** and lists `lock` beside the
+  guide's four markers; with Refs OFF it offers `mixdown only` / `lock`.
+- README: a table of what each setting does to the sound, and what was measured.
+
 ## 0.2.5
 
 - **The node now says when a timeline audio clip is not being sent to the model.** With
