@@ -1,0 +1,194 @@
+"""Chunk planning: split a story of any length into H3 runs that are each on the model's frame grid.
+
+Story time and render time are different things. A shot can run across several chunks and a chunk can hold several shots.
+A continued chunk is sampled with the previous clip's tail pinned in front of it (the "head"), then the head is cut off again:
+
+    sampled = head + delivered, sampled on the 17k+5 grid   ->   delivered = 17m for the pin windows 5/22/39/56
+
+Everything here is plain arithmetic over frames, so it can be tested without a GPU.
+"""
+from dataclasses import dataclass
+
+from . import fields, frames, limits
+from .issues import Issue, SchemaError
+
+CONTINUITY_MODES = ("none", "last_frame", "video", "video_audio")
+
+
+@dataclass(frozen=True)
+class ContinuityPlan:
+    mode: str = "video_audio"
+    video_frames: int = limits.PIN_VIDEO_DEFAULT
+    audio_frames: int = limits.PIN_AUDIO_DEFAULT
+    SCHEMA_VERSION = 1
+
+    @property
+    def head(self):
+        """Frames in front of every continued chunk that are sampled but not delivered."""
+        return {"none": 0, "last_frame": 1}.get(self.mode, self.video_frames)
+
+    def to_dict(self):
+        return {"schema_version": self.SCHEMA_VERSION, "mode": self.mode, "video_frames": self.video_frames,
+                "audio_frames": self.audio_frames}
+
+    @classmethod
+    def from_dict(cls, data, path="continuity"):
+        data = fields.need_dict(data, path)
+        fields.check_version(data, path, cls.SCHEMA_VERSION)
+        window = int(fields.read_number(data, "video_frames", path, limits.PIN_VIDEO_DEFAULT))
+        if window not in limits.PIN_VIDEO_WINDOWS:
+            raise SchemaError("%s.video_frames" % path, "must be one of %s" % (limits.PIN_VIDEO_WINDOWS,))
+        return cls(mode=fields.read_choice(data, "mode", path, CONTINUITY_MODES, "video_audio"), video_frames=window,
+                   audio_frames=int(fields.read_number(data, "audio_frames", path, limits.PIN_AUDIO_DEFAULT, minimum=3)))
+
+
+@dataclass(frozen=True)
+class ChunkShot:
+    shot_index: int
+    local_start_f: int      # inside the sampled clip, head included
+    local_end_f: int
+    text: str
+    carried: bool           # began before this chunk's delivered part
+    continues: bool         # goes on into the next chunk
+    SCHEMA_VERSION = 1
+
+    def to_dict(self):
+        return {"schema_version": self.SCHEMA_VERSION, "shot_index": self.shot_index, "local_start_f": self.local_start_f,
+                "local_end_f": self.local_end_f, "text": self.text, "carried": self.carried, "continues": self.continues}
+
+    @classmethod
+    def from_dict(cls, data, path="chunk_shot"):
+        data = fields.need_dict(data, path)
+        fields.check_version(data, path, cls.SCHEMA_VERSION)
+        return cls(shot_index=int(fields.read_number(data, "shot_index", path)), local_start_f=int(fields.read_number(data, "local_start_f", path)),
+                   local_end_f=int(fields.read_number(data, "local_end_f", path)), text=fields.read_str(data, "text", path, ""),
+                   carried=bool(data.get("carried", False)), continues=bool(data.get("continues", False)))
+
+
+@dataclass(frozen=True)
+class Chunk:
+    index: int
+    story_start_f: int
+    delivered_frames: int
+    head_frames: int
+    shots: tuple = ()
+    is_last: bool = False
+    SCHEMA_VERSION = 1
+
+    @property
+    def sampled_frames(self):
+        return self.delivered_frames + self.head_frames
+
+    @property
+    def story_end_f(self):
+        return self.story_start_f + self.delivered_frames
+
+    @property
+    def is_first(self):
+        return self.index == 0
+
+    def to_dict(self):
+        return {"schema_version": self.SCHEMA_VERSION, "index": self.index, "story_start_f": self.story_start_f,
+                "delivered_frames": self.delivered_frames, "head_frames": self.head_frames, "is_last": self.is_last,
+                "shots": [s.to_dict() for s in self.shots]}
+
+    @classmethod
+    def from_dict(cls, data, path="chunk"):
+        data = fields.need_dict(data, path)
+        fields.check_version(data, path, cls.SCHEMA_VERSION)
+        shots = tuple(ChunkShot.from_dict(d, "%s.shots[%d]" % (path, n)) for n, d in enumerate(fields.read_list(data, "shots", path)))
+        return cls(index=int(fields.read_number(data, "index", path, minimum=0)), story_start_f=int(fields.read_number(data, "story_start_f", path)),
+                   delivered_frames=int(fields.read_number(data, "delivered_frames", path, minimum=1)),
+                   head_frames=int(fields.read_number(data, "head_frames", path, minimum=0)), shots=shots, is_last=bool(data.get("is_last", False)))
+
+
+@dataclass(frozen=True)
+class SequencePlan:
+    requested_frames: int
+    continuity: ContinuityPlan
+    chunks: tuple
+    issues: tuple = ()
+    SCHEMA_VERSION = 1
+
+    @property
+    def total_frames(self):
+        return sum(c.delivered_frames for c in self.chunks)
+
+    def to_dict(self):
+        return {"schema_version": self.SCHEMA_VERSION, "requested_frames": self.requested_frames,
+                "continuity": self.continuity.to_dict(), "chunks": [c.to_dict() for c in self.chunks],
+                "issues": [i.to_dict() for i in self.issues]}
+
+    @classmethod
+    def from_dict(cls, data, path="plan"):
+        data = fields.need_dict(data, path)
+        fields.check_version(data, path, cls.SCHEMA_VERSION)
+        return cls(requested_frames=int(fields.read_number(data, "requested_frames", path, minimum=1)),
+                   continuity=ContinuityPlan.from_dict(data.get("continuity", {"schema_version": 1}), path + ".continuity"),
+                   chunks=tuple(Chunk.from_dict(d, "%s.chunks[%d]" % (path, n)) for n, d in enumerate(fields.read_list(data, "chunks", path))),
+                   issues=tuple(Issue.from_dict(d) for d in fields.read_list(data, "issues", path)))
+
+
+def _delivered_options(head):
+    """Every delivered length whose sampled clip is inside H3's trained range, for a chunk with this head."""
+    lo = max(limits.SAMPLED_MIN_FRAMES - head, 1)
+    hi = limits.SAMPLED_MAX_FRAMES - head
+    return frames.delivered_candidates(0, head, lo, hi)
+
+
+def _pick(options, ideal):
+    return min(options, key=lambda v: (abs(v - ideal), v))
+
+
+def plan_lengths(total_frames, chunk_target_frames, head):
+    """Delivered frames per chunk. Error diffusion: each chunk takes the grid length nearest to what is still needed per chunk."""
+    first_options, next_options = _delivered_options(0), _delivered_options(head)
+    longest = max(next_options)
+    count = max(1, -(-total_frames // max(min(chunk_target_frames, longest), 1)))
+    lengths, remaining = [], total_frames
+    for position in range(count):
+        options = first_options if position == 0 else next_options
+        ideal = remaining / float(count - position)
+        lengths.append(_pick(options, ideal))
+        remaining -= lengths[-1]
+    return lengths
+
+
+def _shots_for_chunk(shots, story_start, story_end, head):
+    window_start = story_start - head
+    out = []
+    for shot in shots:
+        if shot.end_f <= window_start or shot.start_f >= story_end:
+            continue
+        out.append(ChunkShot(shot_index=shot.index, local_start_f=max(shot.start_f, window_start) - window_start,
+                             local_end_f=min(shot.end_f, story_end) - window_start, text=shot.text,
+                             carried=shot.start_f < story_start, continues=shot.end_f > story_end))
+    return tuple(out)
+
+
+def _plan_issues(requested, planned, count, continuity):
+    issues = []
+    if planned != requested:
+        issues.append(Issue("length_snapped", "The video will be %.2fs (%d frames), not %.2fs: chunks sit on H3's frame grid."
+                            % (frames.frames_to_seconds(planned), planned, frames.frames_to_seconds(requested))))
+    if count > 1 and continuity.mode == "none":
+        issues.append(Issue("no_continuity", "%d chunks without continuity are independent clips; expect visible cuts between them." % count))
+    if count - 1 > limits.AUDIO_DULLING_JOINS and continuity.mode in ("video", "video_audio"):
+        issues.append(Issue("audio_dulling", "%d joins: the sound loses its highs along a long chain; measured at 5 joins." % (count - 1)))
+    return issues
+
+
+def plan_chunks(project_frames, chunk_target_frames, continuity, shots=()):
+    """Split `project_frames` into chunks. Returns a SequencePlan; corrections are in plan.issues."""
+    if project_frames < 1:
+        raise ValueError("the project needs at least one frame")
+    head = continuity.head
+    lengths = plan_lengths(project_frames, max(chunk_target_frames, 1), head)
+    chunks, cursor = [], 0
+    for index, delivered in enumerate(lengths):
+        this_head = head if index else 0
+        chunks.append(Chunk(index=index, story_start_f=cursor, delivered_frames=delivered, head_frames=this_head,
+                            shots=_shots_for_chunk(shots, cursor, cursor + delivered, this_head), is_last=index == len(lengths) - 1))
+        cursor += delivered
+    issues = _plan_issues(project_frames, cursor, len(chunks), continuity)
+    return SequencePlan(requested_frames=project_frames, continuity=continuity, chunks=tuple(chunks), issues=tuple(issues))
