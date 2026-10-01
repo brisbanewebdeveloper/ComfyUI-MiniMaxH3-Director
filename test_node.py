@@ -184,6 +184,114 @@ for var in ("MMXD_TEST_KEY", "OPENAI_API_KEY", "MINIMAX_DIRECTOR_VLM_API_KEY"):
 # values are serialised into the workflow. Guard the shape it passes in.
 check("an empty widget resolves to no key", key({"api_key_env": ""}), "")
 
+# ----------------------------------------------- the OpenAI-compatible request (#31)
+# A local server stands in for the cloud endpoint, so what the node actually puts on the
+# wire is what gets checked: the path it asks for, and the header it sends.
+import asyncio
+import re
+import shutil
+import tempfile
+
+import folder_paths
+from aiohttp import web as _web
+
+curl = media.chat_completions_url
+check("a bare host gets /v1/chat/completions", curl("https://api.anthropic.com"),
+      "https://api.anthropic.com/v1/chat/completions")
+check("a base ending in /v1 is not doubled", curl("https://api.anthropic.com/v1"),
+      "https://api.anthropic.com/v1/chat/completions")
+check("a /v1 inside a longer path is left alone", curl("http://host/proxy/v1/openai"),
+      "http://host/proxy/v1/openai/v1/chat/completions")
+check("the trailing slash a user types is dropped before the check",
+      curl(media.normalize_base_url("http://127.0.0.1:1234/v1/")),
+      "http://127.0.0.1:1234/v1/chat/completions")
+
+
+async def _round_trip(status, api_key, base_suffix=""):
+    seen = {}
+
+    async def handler(request):
+        seen["path"] = request.path
+        seen["auth"] = request.headers.get("Authorization")
+        if status == 200:
+            return _web.json_response({"choices": [{"message": {"content": "ok"}}]})
+        return _web.json_response({"error": {"message": "Invalid API Key"}}, status=status)
+
+    app = _web.Application()
+    app.router.add_post("/{tail:.*}", handler)
+    runner = _web.AppRunner(app)
+    await runner.setup()
+    site = _web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    try:
+        result = await media.vlm_generate(
+            [], "hi", "custom", "http://127.0.0.1:%d%s" % (port, base_suffix), "m",
+            api_key=api_key, timeout=10)
+    except media.VLMError as e:
+        result = "VLMError: %s" % e
+    finally:
+        await runner.cleanup()
+    return result, seen
+
+
+answer, wire = asyncio.run(_round_trip(200, "sk-test", "/v1"))
+check("a /v1 base reaches /v1/chat/completions", wire["path"], "/v1/chat/completions")
+check("the key goes out as a bearer token", wire["auth"], "Bearer sk-test")
+check("the answer comes back", answer, "ok")
+
+answer, wire = asyncio.run(_round_trip(200, ""))
+check("no key sends no Authorization header at all", wire["auth"], None)
+
+answer, wire = asyncio.run(_round_trip(401, "sk-test"))
+check("a 401 gets the pack's own explanation, not the endpoint's body",
+      "refused the request (HTTP 401)" in answer and "Invalid API Key" not in answer, True)
+check("...which does not claim a key was missing when one was sent",
+      "no API key was sent" in answer, False)
+answer, wire = asyncio.run(_round_trip(401, ""))
+check("...and does say so when none was", "no API key was sent" in answer, True)
+
+# ------------------------------------------- retake audio resolves like the video (#30)
+# The base video is named relative to the input folder. The video side resolves it; the
+# audio side used to hand the bare reference to PyAV, which looks in the working directory.
+import wave
+
+retake = sys.modules[package.__name__ + ".minimax_retake"]
+_input = tempfile.mkdtemp(prefix="mmxd_retake_input_")
+_real_input = folder_paths.get_input_directory()
+folder_paths.set_input_directory(_input)
+try:
+    os.makedirs(os.path.join(_input, "whatdreamscost"))
+    tone = os.path.join(_input, "whatdreamscost", "base.wav")
+    with wave.open(tone, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(media.AUDIO_SR)
+        wf.writeframes((b"\xff\x3f" * media.AUDIO_SR))         # 1 s of constant, non-zero PCM
+    got = retake._audio_slice("whatdreamscost/base.wav", 0.0, 0.5)
+    check("a reference relative to the input folder is read", float(got.abs().max()) > 0.1, True)
+    check("...and the slice has the length asked for", got.shape[1], media.AUDIO_SR // 2)
+    gone = retake._audio_slice("whatdreamscost/missing.wav", 0.0, 0.5)
+    check("a file that is not there is silence of the right length",
+          (float(gone.abs().max()), gone.shape[1]), (0.0, media.AUDIO_SR // 2))
+finally:
+    folder_paths.set_input_directory(_real_input)
+    shutil.rmtree(_input, ignore_errors=True)
+
+# ----------------------------------------------- Save/Save As keeps what Commit keeps (#23)
+# commitChanges() builds the stored timeline from an allowlist, and Save writes its own copy
+# of that list: a key added to one and not the other is lost on the round trip through a
+# .json file, with no error anywhere. Compare the two lists by their key names.
+_js = open(os.path.join(HERE, "js", "minimax_director.js"), encoding="utf8").read()
+_commit = _js[_js.index("const toSave = {"):_js.index("const jsonStr = JSON.stringify(toSave)")]
+_save = _js[_js.index("_getTimelineSavePayload() {"):_js.index("async handleSaveTimeline()")]
+_commit_keys = set(re.findall(r"^ {6}(\w+):", _commit, re.M))
+_save_keys = set(re.findall(r"^ {8}(\w+):", _save, re.M))
+check("the saved .json carries every key the stored timeline does",
+      sorted(_commit_keys - _save_keys), [])
+check("...and the sound sections are among them",
+      {"overall_soundscape", "non_diegetic_music"} <= _save_keys, True)
+
 # -------------------------------------------------------- Save Last Frame node
 # It sits mid-chain after VAEDecode, so the two things that must hold are that the batch
 # comes out untouched and that exactly one file is written — the last frame, whatever the

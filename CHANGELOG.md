@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.3
+
+Three bugs reported by users, and one control that never did anything.
+
+- **Save / Save As kept only part of the timeline** ([#23], reported and diagnosed by
+  [@SveSop](https://github.com/SveSop)). The Director stores its timeline from an allowlist,
+  and the `.json` written by Save carried its own, shorter copy of it. `overall_soundscape`,
+  `non_diegetic_music` and the hand-written prompt override (`prompt_override`,
+  `prompt_override_on`) were on the first list and not the second, so they came back empty
+  after a Load — no error anywhere. The two lists now match, and `test_node.py` compares them
+  by key name so the next field added to one cannot drift from the other.
+- **Retake Stitch could not find the base video's audio** when the input folder is not the
+  default one ([#30], reported with the fix by [@Jaminblack](https://github.com/Jaminblack)).
+  The frames were fetched through the media library, which resolves the timeline's relative
+  filename against the input folder; the soundtrack was handed to PyAV as-is and looked for
+  `whatdreamscost/…` in the working directory. The head and tail of the result came back
+  silent and the log said `could not read audio`. The audio slice resolves the name the same
+  way now, and says plainly when the file is not in the input folder.
+- **A base URL ending in `/v1` no longer produces a 404** ([#31]). The Analyze request
+  appended `/v1/chat/completions` to whatever was typed, so the address Anthropic's and LM
+  Studio's docs give — `https://api.anthropic.com/v1/` — asked for `/v1/v1/chat/completions`.
+  Both spellings work now, and the tooltip and README no longer say "no path".
+- **Video Strength and Video Attn are gone from reference-video segments** ([#26]). They are
+  LTX conditioning weights inherited from the editor this one was forked from; nothing in the
+  H3 planner reads them, so moving them changed no output at all. The stored values stay in
+  old timelines and are ignored, as before.
+
+[#23]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/23
+[#26]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/26
+[#30]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/30
+[#31]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/31
+
 ## 0.2.2
 
 Two contributions from [@Brioch](https://github.com/Brioch) — [#16] and [#17], closing

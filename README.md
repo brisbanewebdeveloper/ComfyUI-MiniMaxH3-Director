@@ -7,7 +7,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-0.2.2-brightgreen)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.2.3-brightgreen)](CHANGELOG.md)
 
 ![The MiniMax H3 Director node](docs/images/director-node.png)
 
@@ -45,6 +45,12 @@ see the exact prompt the model will receive while you are still editing it.
 ---
 
 ## News
+
+**0.2.3** · 2026-10-01 — **Save / Save As now keeps the sound sections** (`overall_soundscape`,
+`non_diegetic_music`) and the hand-written prompt override; they used to come back empty on
+Load. **Retake Stitch finds the base video's audio** when ComfyUI's input folder is not the
+default one. The Analyze **base URL may end in `/v1`**, the way hosted providers write it.
+The dead *Video Strength* / *Video Attn* controls on reference-video segments are gone.
 
 **0.2.2** · 2026-08-16 — a **spoken line stays where it was written** instead of being
 appended to the end of its shot, so first appearance and `(Sx)` follow one order, and a
@@ -847,7 +853,7 @@ Sockets grow as you connect, up to nine, and close the gap again when you discon
 | `idea` | What you want, in plain words. |
 | `preset` | `global` writes scene, style, subjects and lighting and leaves the shots to your timeline. `storyboard` writes the whole shot sequence with timestamps — only for timelines whose segments carry no prompt text, or the two shot numberings collide. |
 | `system_prompt` | Overrides the built-in instructions, which follow MiniMax's own prompt-writing guide. |
-| `provider` / `base_url` / `model` | Ollama, LM Studio, or any OpenAI-compatible endpoint. `http://` is added if you leave it off; host and port only, no path. |
+| `provider` / `base_url` / `model` | Ollama, LM Studio, or any OpenAI-compatible endpoint. `http://` is added if you leave it off; give host and port — a trailing `/v1`, as hosted providers document it, is fine. |
 | `seed` | ComfyUI caches node outputs, so an unchanged input never re-asks the model. Change this to force a fresh answer. |
 | `max_words` | Caps the description. MiniMax's guide puts it at 350–500 words. |
 | `unload_after` | Frees the vision model's VRAM when done. Leave it on unless you are iterating. |
