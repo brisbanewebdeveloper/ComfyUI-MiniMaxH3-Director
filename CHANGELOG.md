@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.4
+
+- **`prepend_text` on the Director** ([#29]). A connection-only text input; whatever is wired
+  into it goes in front of the global prompt, joined by a comma. It was asked for so LoRA
+  trigger words can come straight from a LoRA loader. It is deliberately **not** put ahead of
+  the whole compiled prompt: the minimax format opens with the task statement and labelled
+  sections, and text in front of them would break the shape both guides ask for. The
+  Director's existing `prompt` output carries it, so a second pass can reuse the composed
+  text (the other half of the request, which already worked). The panel's live preview cannot
+  show it, because the text does not exist until the graph runs. The new socket is declared
+  last, so workflows saved before it keep every value where it was.
+
 ## 0.2.3
 
 Three bugs reported by users, and one control that never did anything.
@@ -27,6 +39,7 @@ Three bugs reported by users, and one control that never did anything.
   H3 planner reads them, so moving them changed no output at all. The stored values stay in
   old timelines and are ignored, as before.
 
+[#29]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/29
 [#23]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/23
 [#26]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/26
 [#30]: https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/30

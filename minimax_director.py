@@ -391,6 +391,10 @@ class MiniMaxH3Director(io.ComfyNode):
                                      "node here; leave it unconnected to use the panel."),
                 io.Int.Input("height", force_input=True, optional=True, default=0,
                              tooltip="Automation (connection-only). Output height. See width."),
+                io.String.Input("prepend_text", force_input=True, optional=True, default="",
+                                tooltip="Connection-only. Text put in front of the global prompt — LoRA "
+                                        "trigger words from a loader node, say. It is part of the "
+                                        "`prompt` output, but the panel's live preview cannot see it."),
             ],
             outputs=[
                 io.Model.Output(display_name="model"),
@@ -448,7 +452,7 @@ class MiniMaxH3Director(io.ComfyNode):
                 override_audio=False, ref_image_size="match",
                 shift_video=12.0, shift_audio=3.0, ref_images=None, ref_image_notes="",
                 start=None, end=None, duration=None,
-                width=None, height=None) -> io.NodeOutput:
+                width=None, height=None, prepend_text="") -> io.NodeOutput:
 
         mm = core()
         tdata = plan.parse_timeline(timeline_data)
@@ -473,7 +477,8 @@ class MiniMaxH3Director(io.ComfyNode):
                                use_custom_audio=use_custom_audio,
                                override_audio=override_audio,
                                extra_ref_image_count=extra_refs,
-                               ref_image_notes=ref_image_notes)
+                               ref_image_notes=ref_image_notes,
+                               prepend_text=prepend_text)
 
         length = p["length"]
         if length > plan.TRAINED_MAX_FRAMES:

@@ -7,7 +7,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-0.2.3-brightgreen)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.2.4-brightgreen)](CHANGELOG.md)
 
 ![The MiniMax H3 Director node](docs/images/director-node.png)
 
@@ -45,6 +45,10 @@ see the exact prompt the model will receive while you are still editing it.
 ---
 
 ## News
+
+**0.2.4** · 2026-10-01 — a new **`prepend_text` input** on the Director: wire LoRA trigger
+words (or any text) in and they go in front of the global prompt, and out again through the
+`prompt` output for a second pass.
 
 **0.2.3** · 2026-10-01 — **Save / Save As now keeps the sound sections** (`overall_soundscape`,
 `non_diegetic_music`) and the hand-written prompt override; they used to come back empty on
@@ -302,6 +306,15 @@ A wire carries no minimum, and a node whose value was never set hands over **0**
 pixels and zero seconds are refused by name rather than passed on, because what they break
 breaks a long way from the wire that caused it. If you want the canvas derived from the
 first image, leave the sockets alone — that is what the panel's `0` already means.
+
+### Text in: LoRA trigger words
+
+`prepend_text` is a sixth connection-only socket, and the one text input: wire a string into it
+— the `trigger_words` output of a LoRA loader, say — and it goes **in front of the global
+prompt**, joined with a comma. It is not put ahead of the whole compiled prompt, because that
+opens with the task statement and the labelled sections the guides expect. The text is part of
+the `prompt` output, so a second pass wired to it sees the triggers too. The panel's live
+COMPILED PROMPT preview cannot show it, since the text only exists once the graph runs.
 
 ### Reference limits
 
