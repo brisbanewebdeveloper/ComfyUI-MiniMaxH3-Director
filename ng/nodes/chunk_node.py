@@ -1,0 +1,104 @@
+"""NG Chunk Conditioning and NG Collect: the two nodes inside and after the loop."""
+import logging
+
+from comfy_api.latest import io
+
+from ...minimax_core import audio_nodes, core
+from ..adapters import chunk_builder, collect
+from ..adapters.media import MediaError
+from .context_nodes import CATEGORY
+from .director_node import NGChunk
+
+
+log = logging.getLogger(__name__)
+
+
+def _job(chunk):
+    """The loop hands the list item over as is, or wrapped in a one-element list; take either."""
+    return chunk[0] if isinstance(chunk, list) else chunk
+
+
+class _Unconnected:
+    """Tells an empty optional socket from a lazy one that has not been evaluated yet (None)."""
+
+
+UNCONNECTED = _Unconnected()
+
+
+class NGChunkConditioning(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="NGChunkConditioning", display_name="NG Chunk Conditioning", category=CATEGORY,
+            description="Inside the loop: prompt, references and the pinned tail of the previous chunk for one chunk. Wire the sampler after it.",
+            inputs=[
+                NGChunk.Input("chunk", tooltip="The loop's list_item."),
+                io.Clip.Input("clip"), io.Vae.Input("vae"),
+                io.Vae.Input("audio_vae", optional=True, tooltip="Needed for voices, copied or locked audio."),
+                io.Model.Input("model_fl2va", optional=True, lazy=True, tooltip="minimax_h3_fl2va_*; loaded only when the project is text/frames."),
+                io.Model.Input("model_ref2va", optional=True, lazy=True, tooltip="minimax_h3_ref2va_*; loaded only when references are used."),
+                io.Latent.Input("previous", optional=True, tooltip="The loop's current_iteration_value: the previous chunk's latent."),
+                io.Float.Input("shift_video", default=12.0, min=0.01, max=100.0, step=0.01, advanced=True),
+                io.Float.Input("shift_audio", default=3.0, min=0.01, max=100.0, step=0.01, advanced=True),
+                io.Combo.Input("ref_image_size", options=["match", "max"], default="match", advanced=True),
+            ],
+            outputs=[io.Model.Output(display_name="model"), io.Conditioning.Output(display_name="positive"), io.Latent.Output(display_name="latent"),
+                     io.String.Output(display_name="prompt")],
+        )
+
+    @classmethod
+    def check_lazy_status(cls, chunk=None, model_fl2va=UNCONNECTED, model_ref2va=UNCONNECTED, **_):
+        job = _job(chunk)
+        if job is None:
+            return []
+        wanted = ("model_ref2va", "model_fl2va") if job.compiled.mode == "ref2va" else ("model_fl2va", "model_ref2va")
+        have = {"model_fl2va": model_fl2va, "model_ref2va": model_ref2va}
+        for name in wanted:
+            if have[name] is not UNCONNECTED:
+                return [name] if have[name] is None else []
+        return []
+
+    @classmethod
+    def execute(cls, chunk, clip, vae, audio_vae=None, model_fl2va=None, model_ref2va=None, previous=None,
+                shift_video=12.0, shift_audio=3.0, ref_image_size="match"):
+        job, mm = _job(chunk), core()
+        wanted, other = (model_ref2va, model_fl2va) if job.compiled.mode == "ref2va" else (model_fl2va, model_ref2va)
+        model = wanted if wanted is not None else other
+        if model is None:
+            raise ValueError("no model connected: wire a UNETLoader into model_fl2va (text/frames) and/or model_ref2va (references)")
+        if wanted is None:
+            log.warning("[NG] this project needs the %s model but only the other one is connected; using it.", job.compiled.mode)
+        try:
+            built = chunk_builder.build_chunk(job, clip, vae, audio_vae=audio_vae, previous=previous, ref_image_size=ref_image_size, mm=mm)
+        except MediaError as error:
+            raise ValueError("NG chunk %d: %s" % (job.index + 1, error)) from error
+        shifted = mm.MiniMaxH3SigmaShift.execute(model=model, shift_video=float(shift_video), shift_audio=float(shift_audio))
+        return io.NodeOutput(getattr(shifted, "args", shifted)[0], built.positive, built.latent, job.compiled.prompt)
+
+
+class NGCollect(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="NGCollect", display_name="NG Collect", category=CATEGORY, is_input_list=True,
+            description="After the loop: decode every chunk, cut off the pinned heads and join picture and sound into one video.",
+            inputs=[io.Latent.Input("latents", tooltip="End Loop output (accumulate on)."), NGChunk.Input("chunks", tooltip="The Director's chunks."),
+                    io.Vae.Input("vae"), io.Vae.Input("audio_vae")],
+            outputs=[io.Image.Output(display_name="images"), io.Audio.Output(display_name="audio"), io.String.Output(display_name="warnings")],
+        )
+
+    @classmethod
+    def execute(cls, latents, chunks, vae, audio_vae):
+        project = chunks[0].project
+        decode_audio = audio_nodes().vae_decode_audio
+        frames, sound, issues = collect.collect_chunks(
+            latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}))
+        return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues))
+
+
+def _decode_video(vae, video):
+    frames = vae.decode(video)
+    return frames.reshape(-1, *frames.shape[-3:]) if frames.ndim == 5 else frames
+
+
+NODES = [NGChunkConditioning, NGCollect]

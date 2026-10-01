@@ -1,3 +1,6 @@
 """Thin V3 nodes. They read inputs, call core and adapters, and return; no domain logic lives here."""
+from .chunk_node import NODES as _CHUNK
+from .context_nodes import NODES as _CONTEXT
+from .director_node import NODES as _DIRECTOR
 
-NODES = []
+NODES = _CONTEXT + _DIRECTOR + _CHUNK

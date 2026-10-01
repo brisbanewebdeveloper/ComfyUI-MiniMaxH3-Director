@@ -4,6 +4,7 @@ The folder name has a hyphen, so the pack is registered under a synthetic name. 
 (for example `from ... import minimax_plan`) then resolve against the repo root exactly as they do inside ComfyUI.
 """
 import importlib
+import importlib.util
 import os
 import sys
 import types
@@ -26,6 +27,19 @@ def module(name):
 
 
 COMFY_ROOT = os.path.dirname(os.path.dirname(REPO))
+
+
+def load_full_pack():
+    """Execute the pack's real __init__ (all nodes registered) under a synthetic name, as test_node.py does."""
+    comfy_available()
+    stub_prompt_server()
+    name = "mmxd_full_pack"
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, os.path.join(REPO, "__init__.py"), submodule_search_locations=[REPO])
+        pack = importlib.util.module_from_spec(spec)
+        sys.modules[name] = pack
+        spec.loader.exec_module(pack)
+    return sys.modules[name]
 
 
 def stub_prompt_server():

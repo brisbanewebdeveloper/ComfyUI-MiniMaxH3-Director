@@ -9,14 +9,19 @@ class MediaError(RuntimeError):
     """A file the plan needs could not be read. The message names the context item."""
 
 
+def _require_file(ref: MediaRef, what):
+    """The legacy loaders turn a missing file into a blank picture or silence; NG stops and names the item instead."""
+    if not legacy.resolve_input_path(ref.source):
+        raise MediaError("the %s '%s' (%s) is not in ComfyUI's input folder" % (what, ref.ctx_id, ref.source))
+
+
 def load_picture(ref: MediaRef):
-    tensor = legacy.load_image_source("", ref.source)
-    if tensor is None or tensor.shape[0] < 1:
-        raise MediaError("the image '%s' (%s) could not be loaded" % (ref.ctx_id, ref.source))
-    return tensor
+    _require_file(ref, "image")
+    return legacy.load_image_source("", ref.source)
 
 
 def load_video(ref: MediaRef):
+    _require_file(ref, "video")
     seconds = min(plan.REF_VIDEO_MAX_SEC, (ref.length_f or FPS * plan.REF_VIDEO_MAX_SEC) / float(FPS))
     edge = plan.REF_VIDEO_SHORT_EDGE
     frames = legacy.load_video_tensor(ref.source, ref.trim_start_f / float(FPS), seconds, max_short_edge=edge,
@@ -27,6 +32,7 @@ def load_video(ref: MediaRef):
 
 
 def load_audio(ref: MediaRef):
+    _require_file(ref, "audio")
     clip = legacy.load_audio_segment({"audioFile": ref.source, "trimStart": ref.trim_start_f, "length": ref.length_f or FPS * 15}, float(FPS))
     if clip is None:
         raise MediaError("the audio '%s' (%s) could not be loaded" % (ref.ctx_id, ref.source))
