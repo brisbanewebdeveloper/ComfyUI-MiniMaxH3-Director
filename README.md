@@ -21,6 +21,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 ## Contents
 
+- [NG: videos of any length](#ng-videos-of-any-length)
 - [News](#news)
 - [Why](#why)
 - [What you get](#what-you-get)
@@ -44,7 +45,24 @@ see the exact prompt the model will receive while you are still editing it.
 
 ---
 
+## NG: videos of any length
+
+**1.0 adds a second generation of the Director.** The timeline Director below is now **Legacy**: it stays, works as before and is still
+maintained. For anything longer than one H3 run, or for a simpler way to work, use the **NG nodes** (category *MiniMax H3 / NG*):
+
+- **NG Director** plans a whole video of any length as chunks of H3 runs and shows the plan, the notes and every prompt *before* you render.
+- **NG Context Image / Video / Audio / Text** are small nodes for a picture, a clip, a voice or a note: what it *is* and what the model should *do* with it.
+- Each chunk **continues the one before** (its last frames and last second of sound are pinned in front), inside ComfyUI's own **Start Loop / End Loop**.
+- **NG Collect** joins everything into one video with sound.
+
+Start with **example_workflows → `NG Director - text project.json`** and read [docs/NG.md](docs/NG.md).
+
+---
+
 ## News
+
+**1.0.0** · unreleased — **NG**, the second generation: videos of any length, context nodes, a live plan panel. The original Director is now marked **Legacy**.
+See [docs/NG.md](docs/NG.md) and the [changelog](CHANGELOG.md).
 
 **0.3.2** · 2026-10-02 — a **voice clip on each subject** (issue #10): a button on the
 subject slot, no timeline lane, no render time. Two characters, two voices, one background track.
@@ -996,7 +1014,9 @@ across the whole thing instead of the generated one.
 
 ## Longer than 15 seconds
 
-Not solved yet. There was a **Director Chain** node that rendered a long timeline as a
+**Solved in 1.0 by the NG nodes** (see above and [docs/NG.md](docs/NG.md)). The rest of this section describes the Legacy Director.
+
+Not solved yet in the Legacy Director. There was a **Director Chain** node that rendered a long timeline as a
 chain of anchored windows, and its sampling worked — but there was no usable way to hand
 it a timeline, so it has been withdrawn rather than shipped as a feature nobody can
 operate. The code stays in the repository; the reasoning is written down at the top of
