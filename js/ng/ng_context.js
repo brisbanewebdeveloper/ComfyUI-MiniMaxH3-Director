@@ -23,7 +23,7 @@ app.registerExtension({
 });
 
 // One colour family per medium, as the design asks: pictures blue, clips orange, sounds violet, notes teal.
-const FAMILY = {
+export const FAMILY = {
   NGContextImage: { color: "#2f5d8c", bgcolor: "#223f5e" },
   NGContextVideo: { color: "#9a6a2e", bgcolor: "#6b4a21" },
   NGContextAudio: { color: "#6f4a99", bgcolor: "#4b3366" },

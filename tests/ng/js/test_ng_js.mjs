@@ -8,14 +8,16 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace
 const load = (name) => import(pathToFileURL(path.join(root, name)).href);
 
 class FakeElement {
-  constructor(tag) { this.tag = tag; this.children = []; this.className = ""; this.textContent = ""; this.style = {}; this.title = ""; }
+  constructor(tag) { this.tag = tag; this.children = []; this.className = ""; this.textContent = ""; this.style = {}; this.title = ""; this.dataset = {}; this.attributes = {}; }
+  setAttribute(key, value) { this.attributes[key] = value; }
   append(...nodes) { this.children.push(...nodes); }
   replaceChildren(...nodes) { this.children = [...nodes]; }
   text() { return [this.textContent, ...this.children.map((c) => c.text())].join(" ").trim(); }
   find(className) { return [this, ...this.children.flatMap((c) => c.all?.() ?? [])].filter((n) => n.className.split(" ").includes(className)); }
   all() { return [this, ...this.children.flatMap((c) => c.all())]; }
 }
-globalThis.document = { createElement: (tag) => new FakeElement(tag) };
+globalThis.document = { createElement: (tag) => new FakeElement(tag), dispatchEvent: () => {} };
+globalThis.CustomEvent = class { constructor(type) { this.type = type; } };
 
 const { readContexts, readPayload, isContextNode } = await load("ng_read.js");
 const { renderPlan } = await load("ng_view.js");
@@ -73,6 +75,29 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   renderPlan(root, { ...data, chunks: [chunk(0, 0, 8, 0)], issues: [] });
   assert.match(root.text(), /1 chunk\b/);
   assert.doesNotMatch(root.text(), /Notes/);
+}
+
+// Edits from presets notify callbacks, and presentation mode survives a workflow reload without editing render inputs.
+{
+  const { applyValues } = await load("ng_widgets.js");
+  let calls = 0;
+  const card = { widgets: [{ name: "description", value: "old", callback: () => calls++ }, { name: "usage", value: "lock" }] };
+  applyValues(card, { description: "new", provider_key: "ignored" });
+  assert.equal(card.widgets[0].value, "new");
+  assert.equal(card.widgets[1].value, "lock");
+  assert.equal(calls, 1);
+  const { attachModes } = await load("ng_modes.js");
+  const node = { properties: { ng_view_mode: "expert" } };
+  const container = new FakeElement("div"), plan = new FakeElement("div");
+  attachModes(node, container, plan);
+  assert.equal(plan.dataset.mode, "expert");
+  const buttons = container.children[0].children;
+  buttons[0].onclick();
+  assert.equal(plan.dataset.mode, "simple");
+  assert.equal(buttons[0].attributes["aria-pressed"], "true");
+  node.properties.ng_view_mode = "guided";
+  node.onConfigure();
+  assert.equal(plan.dataset.mode, "guided");
 }
 
 console.log("ng js: all checks passed");

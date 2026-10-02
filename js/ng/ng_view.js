@@ -55,7 +55,7 @@ function chunkRow(chunk) {
   const detail = chunk.head_frames ? `  (sampled ${chunk.sampled_frames}, head ${chunk.head_frames})` : "";
   row.append(el("summary", "", head), el("div", "ng-dim", `${chunk.delivered_frames} frames${detail}, ${chunk.mode}, ${chunk.refs.length} reference(s)`));
   if (chunk.refs.length) row.append(el("div", "ng-dim", refList(chunk.refs)));
-  row.append(el("pre", "", chunk.prompt));
+  row.append(el("pre", "ng-expert", chunk.prompt));
   return row;
 }
 
@@ -72,6 +72,8 @@ export function renderPlan(root, data) {
   root.append(summary(data), timeline(data));
   const problems = issues(data.issues);
   if (problems) root.append(problems);
-  root.append(el("h4", "", "Chunks"));
-  data.chunks.forEach((chunk) => root.append(chunkRow(chunk)));
+  const chunks = el("div", "ng-chunks");
+  chunks.append(el("h4", "", "Chunks"));
+  data.chunks.forEach((chunk) => chunks.append(chunkRow(chunk)));
+  root.append(chunks);
 }

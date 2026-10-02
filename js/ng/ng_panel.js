@@ -2,13 +2,14 @@
 import { ensureStyle } from "./ng_style.js";
 import { isContextNode, readPayload } from "./ng_read.js";
 import { renderPlan } from "./ng_view.js";
+import { attachModes } from "./ng_modes.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
 
 const DIRECTOR = "NGDirector";
 const DEBOUNCE_MS = 350;
-const panels = new Map();   // director node id -> { node, root, timer, serial }
+const panels = new Map();   // node -> panel (new nodes have no unique id yet)
 
 async function fetchPlan(payload) {
   const response = await api.fetchApi("/ng/plan", { method: "POST", body: JSON.stringify(payload) });
@@ -28,6 +29,7 @@ async function refresh(panel) {
 
 function schedule(panel) {
   clearTimeout(panel.timer);
+  panel.serial++;
   panel.timer = setTimeout(() => refresh(panel), DEBOUNCE_MS);
 }
 
@@ -57,16 +59,21 @@ function attach(node) {
   ensureStyle();
   const root = document.createElement("div");
   root.className = "ng-plan";
-  const widget = node.addDOMWidget("ng_plan", "ng_plan", root, { serialize: false, hideOnZoom: false });
+  const container = document.createElement("div");
+  attachModes(node, container, root);
+  container.append(root);
+  const widget = node.addDOMWidget("ng_plan", "ng_plan", container, { serialize: false, hideOnZoom: false });
   widget.computeSize = (width) => [width, 260];
   const panel = { node, root, timer: null, serial: 0 };
-  panels.set(node.id, panel);
+  panels.set(node, panel);
   watchWidgets(node);
   renderPlan(root, null);
   schedule(panel);
   const removed = node.onRemoved;
   node.onRemoved = function (...args) {
-    panels.delete(node.id);
+    clearTimeout(panel.timer);
+    panel.serial++;
+    panels.delete(node);
     return removed ? removed.apply(this, args) : undefined;
   };
 }
@@ -81,3 +88,5 @@ app.registerExtension({
     scheduleAll();
   },
 });
+
+document.addEventListener("ng-context-changed", scheduleAll);
