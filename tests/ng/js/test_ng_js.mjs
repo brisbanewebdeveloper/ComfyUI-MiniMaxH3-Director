@@ -79,7 +79,12 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
 
 // Edits from presets notify callbacks, and presentation mode survives a workflow reload without editing render inputs.
 {
-  const { applyValues } = await load("ng_widgets.js");
+  const { applyValues, newContextId } = await load("ng_widgets.js");
+  const withoutCrypto = Array.from({ length: 20 }, () => newContextId(null));
+  assert.equal(new Set(withoutCrypto).size, 20, "IDs work even when a browser lacks crypto APIs");
+  assert.ok(withoutCrypto.every((id) => /^ctx_[0-9a-f]{32}$/.test(id)));
+  assert.match(newContextId({ getRandomValues: (bytes) => bytes.fill(12) }), /^ctx_[0-9a-f]{32}$/,
+    "getRandomValues without randomUUID supports ordinary HTTP pages");
   let calls = 0;
   const card = { widgets: [{ name: "description", value: "old", callback: () => calls++ }, { name: "usage", value: "lock" }] };
   applyValues(card, { description: "new", provider_key: "ignored" });

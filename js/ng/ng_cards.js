@@ -1,6 +1,6 @@
 // Context previews and local preset controls. File bytes and provider keys never become widget values.
 import { ensureStyle } from "./ng_style.js";
-import { values, applyValues, element, request } from "./ng_widgets.js";
+import { values, applyValues, element, request, newContextId } from "./ng_widgets.js";
 import { attachAnalysis } from "./ng_analysis.js";
 import { FAMILY } from "./ng_context.js";
 
@@ -31,7 +31,7 @@ function attach(node, media) {
   ensureStyle();
   node.properties ||= {};
   const identity = node.widgets?.find((w) => w.name === "context_id");
-  if (identity && !identity.value) identity.value = "ctx_" + crypto.randomUUID();
+  if (identity && !identity.value) identity.value = newContextId();
   const root = element("div", "ng-card");
   const preview = element("div", "ng-media-preview");
   const tools = element("div", "ng-tools");
@@ -98,7 +98,7 @@ function attach(node, media) {
   const configured = node.onConfigure;
   node.onConfigure = function (...args) {
     const result = configured?.apply(this, args);
-    if (identity && !identity.value) identity.value = "ctx_" + crypto.randomUUID();
+    if (identity && !identity.value) identity.value = newContextId();
     name.value = node.properties.ng_preset_name || "";
     schedule(); return result;
   };

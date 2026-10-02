@@ -14,7 +14,7 @@ Nothing existing was removed or renamed (node ids are unchanged); the timeline D
   own H3 layout in the tests.
 - **A locked song stays locked across chunks** (envelope correlation 0.97 to the song, constant 4 ms offset before and after the join).
 - **A live plan panel on the Director** shows chunks, timing, references, notes and the compiled prompt of every chunk while you edit, before anything renders. It is
-  served by `/ng/plan`, which runs the same compiler the render uses and loads no media.
+  served by `/ng/plan`, which runs the same compiler the render uses and decodes no media.
 - **Context items say what a medium means** (content) and what the model should do with it (usage): character, voice, motion, style, first frame, lock, copy.
   A voice names its speaker; `@Name` in a shot points at a picture by its name.
 - **Reusable context cards:** persistent identity and colour, local versioned presets, image/video thumbnails and bounded audio waveforms. Input subfolders are supported;
