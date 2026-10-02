@@ -10,6 +10,8 @@ Development remains incomplete after the specification/reference audit. Native C
 - E18: 194 NG tests (193 pass/one Windows skip), core line trace 98.03%, existing Legacy 371/371 + 74/74; limits and old tests preserved.
 - Controllable AI flow: Manual/Assist/Auto modes, a checkbox per suggested field so Apply writes only what you tick, an optional reason for each suggestion, Analyze all contexts with per-card results and skip reasons, and scene proposals that keep dialogue you typed.
 - E19: 216 NG tests (215 pass/one Windows skip), core line trace 98.23%, Legacy 371/371 + 74/74. The new AI controls have no browser run and no real-model answer on the batch endpoint yet, so they are not a product acceptance.
+- One figure can own several voice cards: the first fills the subject's voice slot, every further take is still sent and named as a warning on each chunk. The Speaker menu offers only figures, stores context IDs and keeps an unconnected speaker visible.
+- E20: 221 NG tests (220 pass/one Windows skip), core line trace 98.25%, Legacy 371/371 + 74/74. First run-time check against a live ComfyUI: 27 NG nodes registered and the `/ng/analyze_all` route answering for real. The panels themselves are still unseen and no render run was done, so R4 is not accepted.
 
 **H3 Director NG: a connected Director interface with reusable media contexts.** Local development; no push, tag or publication.
 The original timeline Director remains Legacy with its existing node ID and behavior.

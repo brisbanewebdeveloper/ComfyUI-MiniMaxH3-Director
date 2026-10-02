@@ -26,3 +26,9 @@ Every suggestion shows one checkbox per offered field. Apply writes only the tic
 Auto Direct replaces the suggested shots, soundscape and music. Dialogue you typed yourself is kept and named in the panel, so a proposal cannot silently delete a line a character says. Editing the context, project or AI source invalidates a pending Apply.
 
 The native path is verified with one installed model (Qwen3VL 4B). Nothing here is a guarantee about other encoders or output quality.
+
+## Several voices for one figure
+
+A figure can own more than one voice card. H3 has one voice slot per subject, so the first card fills that slot and every further card is still sent as an additional reference. Each further card is named in the plan's warnings, so a second take is never silently demoted to "some audio".
+
+The **Speaker / Voice** menu only offers figures – image cards holding a file with the content role character, face or animal. It stores the context ID, not the name, because that is what the compiler resolves. A speaker that is no longer connected stays visible in the menu instead of disappearing from the workflow. When more than one voice card names the same figure, the card says which one fills the slot.
