@@ -1,170 +1,164 @@
-# NG: videos of any length
+# H3 Director NG
 
-NG is the second generation of this pack. The original Director (now **Legacy**) is a timeline editor for one H3 run of
-4–15 seconds. NG plans a whole video, however long, as a chain of H3 runs that continue each other, and takes its pictures,
-voices, clips and notes as small reusable nodes instead of one big editor.
+NG is the new Director interface in this pack. It separates reusable media contexts, model connections, story editing and rendering.
+The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
+The local 1.0.0 development version is unreleased; the published version remains 0.3.2.
 
-The legacy nodes are untouched and keep working. NG nodes have their own names, so both can sit in the same workflow.
+## Start with a connected workflow
 
-## Quick start
+Use **example_workflows / H3 Director NG - text studio.json** for a complete text-to-video graph.
+Choose your installed H3 FL2VA model, CLIP of type `minimax`, video VAE and audio VAE. The examples use development filenames;
+replace model selections if your installation differs. No models or reference media are bundled.
 
-NG requires native **Start Loop / End Loop** with List mode and accumulation. The live checks used ComfyUI 0.37.0 and frontend 1.53.6.
+```text
+MODEL / CLIP / video VAE / audio VAE ─┐
+Image / Video / Audio / Text contexts ├→ H3 Context Connector
+H3 AI Loader (optional) ─────────────┘          ↓
+                                         H3 Director
+                                              ↓
+                                      H3 Director Output
+                                              ↓ sequence
+                                      H3 Render Sequence
+                                              ↓ VIDEO
+                                          SaveVideo
+```
 
-1. Open **example_workflows → `NG Director - text project.json`**.
-2. Pick your models (the example uses the fl2va checkpoint, the CLIP and the two VAEs).
-3. Write what the video is about in **idea**, set **project_seconds**, queue.
+Write an idea and set the project duration. The Director displays the planned chunks, actual duration and warnings before rendering.
+**Generate video** queues the connected ComfyUI workflow. Sampling uses native ComfyUI loops and samplers, with normal previews and Stop.
+Look at SaveVideo for the finished result. The Director itself plans and prepares the project; it does not run a private sampler loop.
 
-For a character and voice, open **`NG Director - image and voice.json`**, upload your own picture and voice in the two Context nodes,
-and choose your installed models. The example filenames are placeholders; media is not bundled.
+For a character and voice, open **H3 Director NG - image and voice.json**, select your own picture and voice in their Context nodes,
+and connect the H3 Ref2VA model. Set distinct context names; `@Mage` refers to the image named Mage, and the voice's Speaker field names Mage.
 
-The node on the left of the plan shows what will happen *before* you render: how many chunks, how long each is, what the prompt of
-every chunk looks like, and notes about anything that was adjusted.
+For an existing sampler graph, open **H3 Director NG - native sampler.json**. Director Output supplies native `MODEL`, positive/negative
+`CONDITIONING`, `LATENT`, `FLOAT` fps, `INT` width/height and `STRING` prompt. The example uses H3's usual BasicGuider without CFG;
+negative is ZeroOut of positive, not a recommendation to change H3's sampling guidance.
+**Chunk index** selects one prepared chunk. A continuation requires the previous chunk's raw latent on `previous`.
+These outputs describe one chunk; **sequence** carries the whole project to Render Sequence.
 
-## The nodes
+## The nine product nodes
 
-| Node | What it does |
+| Node | Responsibility |
 |---|---|
-| **NG Director** | The idea, the length, optional shots, and the context items go in. A list of chunks comes out (one per H3 run), plus a plan and the notes as text. It renders nothing. |
-| **NG Context Image / Video / Audio / Text** | A picture, a clip, a sound or a note, each saying what it *means* (content) and what the model should *do* with it (usage). |
-| **NG Chunk Conditioning** | Inside the loop: builds the prompt, loads the references and pins the end of the previous chunk, for one chunk. |
-| **NG Collect** | After the loop: decodes every chunk, cuts off the pinned heads and joins picture and sound into one video. |
+| H3 AI Loader | Optional local/API provider configuration; a separate `NG_AI_PROVIDER`, not a diffusion MODEL |
+| H3 Context Connector | Native model/CLIP/VAE ports, optional AI and four dynamically growing Context groups |
+| H3 Director | Idea, settings, contexts, scene cards, story/chunk timelines, generation summary and prompt inspector |
+| H3 Director Output | Native single-chunk sampler outputs plus complete sequence packet |
+| H3 Context Image | Image source, content roles, usages, property preservation, preview and presets |
+| H3 Context Video | Video player, source range, motion/camera/continuation usages and optional paired audio |
+| H3 Context Audio | Player/waveform, source selection, speaker, voice/copy/lock usages and presets |
+| H3 Context Text | Text editor, quick insertion, editable templates, context meaning and presets |
+| H3 Render Sequence | Expanded native List loop, sampler and collector; outputs VIDEO, IMAGE, AUDIO and notes |
 
-The loop itself is ComfyUI's own **Start Loop / End Loop** (List mode, *accumulate* on). The sampler inside is the normal
-`SamplerCustomAdvanced`, so progress, preview and interrupt work as for any other render.
+Native port types, names and colors come from ComfyUI. Context identity colors affect the cards and references.
+The existing technical nodes remain available under **MiniMax H3 / NG / Expert**, including NG Chunk Planner,
+NG Chunk Conditioning, NG Collect, NG Chunk Sequence and NG Studio Laboratory. Saved IDs remain valid.
 
-## How a long video is made
+## Editing the project
 
-```
-idea + shots + context items
-        │
-   NG Director ─── a list of chunks (each on H3's 17k+5 frame grid)
-        │
-   Start Loop (List) ─ one chunk per iteration ───────────────┐
-        │                                                      │
-   NG Chunk Conditioning ← the previous chunk's latent          │
-        │   prompt + references + pinned tail                   │
-   sampler                                                      │
-        │                                                      │
-   End Loop (accumulate) ──────────────────────────────────────┘
-        │
-   NG Collect → one video with sound
-```
+**Simple** presents the essential idea, settings and generation controls. **Guided** adds the scene editor, contexts and timelines.
+**Expert** exposes additional generation settings. The compiled prompts and manual override are expandable in Guided/Expert.
+Switching modes changes presentation, not render settings.
 
-**Continuing a chunk.** The last 22 frames and the last second of sound of the previous chunk are pinned in front of the new chunk
-as never-denoised conditioning, cut straight out of its latent (no decode, no re-encode). The model then continues rather than starts
-over. The pinned head is cut off again when the chunks are joined, which costs 0.9 s per join. The idea comes from
-[NikoDemon80's H3 Motion Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context); NG re-implements it independently
-and checks it against ComfyUI's own layout in its tests.
+Leave scenes empty to describe the whole project with the idea. Use **+ Shot** to add a timed scene, edit its action/dialogue and times,
+then shorten its end before adding another. Drag the story bar or its edges to change timing. The separate generation track shows render chunks.
+**Use idea as one scene** clears timed scene overrides and returns to automatic scene planning.
 
-**Frame grid.** H3 renders `17k + 5` frames. The planner chooses chunk lengths so that every sampled clip is on that grid; the finished
-video can therefore differ from `project_seconds` by a fraction of a second, and the notes say by how much.
+The original shot text remains editable and uses the existing contract:
 
-## Shots
-
-Leave **shots** empty and the **idea** carries the whole video. Or write one shot per line:
-
-```
-0-12: @Alice walks through the market.
-@Alice says: Hello there.
-12-30: @Alice sits down by the fountain.
+```text
+0-4: @Mage looks up in the sanctuary.
+@Mage says: Welcome back.
+4-8: @Mage turns toward the window.
 ```
 
-Times are seconds, `m:ss` or `m:ss.s`. Lines below a time belong to that shot. `@Name` points at a context item by its name;
-`@Alice says: …` writes dialogue. A shot that began in an earlier chunk keeps its action but not its spoken lines, which belong to
-where the shot starts. With **shots** empty, each continued chunk also receives an explicit instruction to continue the same scene,
-subject and action. This is a prompt instruction, not a guarantee of stable identity.
+Times can be seconds or `m:ss.s`. Spoken lines belong where their shot starts; continued chunks carry the action without repeating its dialogue.
+Renaming a connected context with the same persistent ID updates its recognized `@Name` references in the idea and shots.
+Unknown mentions are highlighted for review. Shot thumbnails are labeled reference previews, not generated frames.
 
-## Context items
+H3 renders at **24 fps** on its `17k + 5` frame grid. The preview reports the real finished length and warns about rounding.
+Aspect presets set width/height; Custom preserves explicit dimensions. One resolution applies to the whole project.
+`chunk_seconds = 0` selects the planner's 10-second target. H3's trained chunk range is 4–15 seconds.
+The style choice adds prompt instructions; it does not load a different model or style adapter.
 
-Each item has a **name**, a **description** (one sentence, written into the prompt), **content** (what is in it), **usage** (what to do
-with it) and **preserve** (how closely to stay true to it).
+## Context workspaces
 
-| Medium | Usage | Meaning |
-|---|---|---|
-| Image | `reference` | A character, outfit, place… the model keeps it recognisable. Needs the ref2va model. |
-| | `first_frame` / `last_frame` | Opens or closes the video. |
-| Audio | `voice` | A voice. Set **speaker** to the name of the character who talks with it. |
-| | `lock` | Holds the source audio latent across chunks and makes the video around it. Needs the audio VAE; reconstruction can alter the waveform. |
-| | `copy` | The model reuses the sound (works most of the time, not always). |
-| Video | `motion` | A 2–15 s clip whose motion and camera work the model follows. |
-| Text | `style` / `rule` | A note that applies to the whole video. |
+New contexts start compact. **Details** opens their media workspace, and **Compact** closes it.
+Select an input file or use **Browse / Upload**. Files are resolved within ComfyUI's input directory; input subfolders are supported.
+Missing files stop rendering by name. Absolute paths, traversal and escaping symlinks are rejected.
 
-Pictures, voices and clips switch the project to **ref2va** automatically; with none of them it is fl2va (text and frames). Connect both
-models to *NG Chunk Conditioning* and only the one that is needed is loaded.
+**Detected Content** describes the medium, independently of **Use As**, which determines its role in generation.
+Multiple image content/usage choices are supported. Image Preserve controls for Identity, Outfit, Pose and Background are compiled into
+retention instructions; they guide H3 rather than enforce exact pixel preservation.
+First/Last Frame anchor the project; Keyframe/Storyboard require a scene time and condition only the chunk containing that time.
+Guide time is sampled on H3's latent grid, so subframe precision and a smooth transition are not guaranteed.
 
-Files must be inside ComfyUI's `input` folder; subfolders are supported. NG rejects absolute paths, traversal and symlinks that
-lead outside it. A moved or deleted reference stops rendering with a message naming the item.
+Video uses native playback and source start/end fields. Motion/Camera/Whole Structure send references and prompt guidance;
+they do not promise exact motion copying. **Continue From Video** uses the final frame of the selected source interval as a starting guide.
+**Audio Track** can ignore the video sound or send it as the correspondingly numbered paired audio reference.
 
-New context cards receive a persistent **context_id**. Renaming a card does not change its identity. Use distinct names for
-`@mentions` and speakers. Loading the same preset twice restores the same ID: assign a different advanced **context_id** if those
-cards should represent different items. **color** accepts `#rrggbb`; leaving it empty restores the medium's colour family.
+Audio shows full-source waveform metadata, draggable selection and zoom. Start/End select the source used for generation;
+zero End means file end. Speaker can be a character name or persistent context ID.
+Voice guides timbre, Copy asks H3 to reuse sound, and Lock pins encoded source audio while video is generated.
+The audio VAE and output codec can change the waveform even with Lock. Preview Volume/Fades affect playback only, as labeled.
 
-## Presets and analysis
+Text provides an editable large field, character count, quick bracket placeholders, role choices and templates/examples.
+Replace placeholders with real descriptions; `@Name` refers to a connected context. Templates remain ordinary editable text.
 
-**Save preset** writes one versioned JSON file under the current ComfyUI user's `minimax_h3_ng/contexts` folder. Saving the same
-name replaces that preset atomically. **Load preset** restores source, name, description, role, preservation, colour and identity.
-Presets reference input files; they do not bundle them. Provider settings and media bytes are excluded.
+## Presets
 
-**Analyze context** is optional and runs only when clicked. Expand **Analysis provider** to choose Ollama, LM Studio or a compatible
-custom endpoint, model and capabilities. An empty address/model uses the legacy transport's defaults where available. Put credentials
-in the ComfyUI server environment and enter only their variable name in **api key env**. Restart ComfyUI after changing its environment.
-Use a base URL without embedded credentials or query parameters; a trailing `/v1` is supported.
+Save/Save As writes a versioned JSON preset under the current ComfyUI user's `minimax_h3_ng/contexts` folder.
+Load restores source, roles, description, property preservation, timing, identity and color. Media bytes and AI credentials are not included.
+Saving an existing name replaces it atomically. Loading the same preset twice restores its ID twice; give one copy a new advanced Context ID
+if they should be separate items. Duplicate IDs are rejected, and ambiguous names are reported.
 
-Image analysis sends a bounded thumbnail; video analysis sends three ordered stills from the first 15 seconds. It cannot establish
-unseen motion. Audio analysis sends at most the first 15 seconds as mono WAV and requires a provider/model that supports `input_audio`;
-the Ollama transport has no audio input. Text needs no vision capability. Declaring a capability does not make an incompatible model support it.
+## Optional AI
 
-The result is a suggestion. **Apply suggestion** updates the description and a supported content choice; **usage**, **preserve** and
-source stay as set. A context changed during analysis must be analyzed again before applying. Rendering never contacts an analysis provider.
+Connect **H3 AI Loader** to the Connector for Director assistance, or directly to a Context for analysis.
+Contexts can also inherit the single provider from their downstream Connector. Without an AI connection the manual workflow remains usable.
+Local selects a running Ollama or LM Studio server; API/Custom use a compatible endpoint. The node does not load an LLM into ComfyUI.
+CLIP is the H3 text encoder and cannot substitute for a generative assistant.
 
-## Plan views
+The panel follows the user reference: three source cards, then the sections that source actually needs.
+**Local** offers the servers that really run on the machine (`ollama`, `lmstudio`) and both have a default
+address. **API** offers only an OpenAI-compatible endpoint, so it has no local example and no default
+address. **CLIP / Encoder** hides Provider/Model and Settings entirely, because a CLIP encodes text for
+H3 and cannot answer AI actions; the badge then reads *Encoder declared*. Picking it also disables the
+Analyze button on the connected context, so no request is offered for an encoder that cannot answer one.
+Load the encoder itself with a standard CLIP Loader. There is no separate "Custom"
+card: an extra adapter is either a local server or a compatible endpoint, and both are already covered.
+The badge says *address needed* for a remote endpoint rather than promising an address that does not exist.
+Advanced holds the address, keep-alive and the key variable. The address and model fields show the defaults of
+the existing Director node as placeholders (`http://127.0.0.1:11434` with `qwen2.5vl:7b` for Ollama,
+`http://127.0.0.1:1234` for LM Studio), so a fresh node shows the server that actually answers. The key row
+is hidden for both local servers, which need no key, and only offered to a remote endpoint.
 
-**Simple** shows the project summary and warnings. **Guided** adds per-chunk length and reference details. **Expert** also exposes
-the exact compiled H3 prompt. The choice is saved in the workflow and changes the inspector presentation only. Render settings
-remain available in each view; switching views does not change prompts, chunks or sampling.
+The panel sizes itself through `computeLayoutSize` rather than `computeSize`, because LiteGraph hands the
+space a node gained only to widgets that declare a layout size. Dragging the node downwards therefore grows
+the panel with it, and the last panel takes the slack instead of leaving a dead gap.
 
-## Settings worth knowing
+Enter provider, base URL, model and declared Vision/Audio capabilities. Timeout, Max tokens and Keep model loaded
+change the outgoing request itself and are range-checked in the core. Credentials come from the named server
+environment variable; workflow files store the variable name rather than the secret. Use a URL without embedded
+credentials/query parameters; `/v1` is supported.
+**Configured · not tested** describes configuration, not a successful request. Declaring capability does not add it to an incompatible model.
 
-| Setting | Default | Notes |
-|---|---|---|
-| continuity | `video_audio` | `video` pins only the picture; `none` renders independent clips. |
-| pin_frames | 22 | 5, 22, 39 or 56. 22 is the default; 5 saves most of the 0.9 s per join and still continues the sound. |
-| chunk_seconds | 0 (= 10 s) | Target length of one run. H3 is trained for 4–15 s. |
-| soundscape | "ambience that fits the scene" | H3's prompt format asks for it. Write `N/A` for silence. |
+**Analyze** makes one explicit request. Images send bounded thumbnails; videos send three ordered stills from at most the first 15 seconds,
+which cannot establish unseen motion. Audio sends at most 15 seconds of mono WAV to a provider supporting `input_audio`; Ollama has no audio transport.
+**Apply suggestion** changes description/supported content choices, preserving source, usage and preservation settings.
 
-## What was measured, and what was not
+**Auto Direct** asks the connected provider for a timed scene proposal using the idea and context descriptions.
+It displays the proposal for review; **Apply scene suggestion** updates editable shots and any proposed soundscape/music.
+Changed input invalidates a pending suggestion. Loading, connecting and rendering do not trigger provider requests.
+Tests use a local mock; the quality of real LLM answers depends on your provider/model.
 
-All of it is in `_notes/NG/03-experiments.md` of the development folder; the short version:
+## Continuity and verification
 
-- A pinned picture and sound make the next chunk continue: the sound over the pinned stretch matches the previous chunk's end with a
-  correlation of 0.92, against 0.13 without the pin.
-- Across five joins nothing got worse from join to join, but **the sound loses its highs along a long chain** (the share above 4 kHz
-  fell to a ninth after five joins). NG warns from the fifth join on.
-- A new action asked for right after a join comes **about 2.4 s late**, because the pinned picture holds the old action. So the planner
-  **moves a chunk boundary** (in whole 17-frame steps, keeping the total) so that no shot starts less than 2.5 s after it, and only warns when it cannot
-  (one seed). Fresh NG runs exercised the moved 9.42 s and 19.33 s boundaries; a controlled delay comparison remains unverified.
-- A locked song stayed locked across a join (envelope correlation 0.97, constant 4 ms offset before and after).
-- A voice reference works without any picture (it changed the timbre toward the reference, 0.97 against 0.69 without).
+`video_audio` pins a previous latent's video tail and about a second of audio before the next chunk; `video` pins only picture,
+and `none` renders independent clips. The collector removes pinned heads. The planner tries to place boundaries away from new story actions
+and warns when it cannot. Tail continuity reuses the tested PackedLayout adapter, inspired by H3 Motion Context, without changing core ComfyUI.
 
-Tested so far at 384×576 with 8 steps for the function checks and one run at 768×1152 with 20 steps. Everything was measured
-with numbers, not listened to. Fresh E13 contact sheets were also inspected. One seed per case. Treat the figures as evidence, not as guarantees.
-See [NG-validation.md](NG-validation.md) for the current software checks, live runs and release limits.
-
-## Known limits
-
-- One resolution for the whole project (a latent cannot be resized between chunks).
-- Scene cards, an editable timeline, AI Auto Direct and adaptive continuity remain later work; shots are text.
-- Scene `keyframe` and `storyboard` roles are reserved for that editor and are not offered by the current cards. Imported roles receive a warning.
-- A long chain can drift in appearance and audio timbre. Listening and broad multi-seed quality validation are still outstanding.
-- Preview/progress is provided by the standard sampler in the native loop; accumulated latents consume memory until collection.
-
-## Troubleshooting
-
-| Message | Meaning |
-|---|---|
-| *The video will be 29.96 s, not 30.00 s* | Chunks sit on H3's frame grid. |
-| *begins 1.9 s after a chunk boundary* | The change will come late; shift the shot, or the boundary. |
-| *N joins: the sound loses its highs* | Normal for long chains; consider fewer, longer chunks. |
-| *the previous chunk was WxH but this one is …* | The resolution changed in the middle of a project. |
-| *audio references need the audio VAE* | Connect `minimax_h3_audio_vae` to NG Chunk Conditioning. |
-| *the image 'x' is not in ComfyUI's input folder* | The file was moved or deleted after the node was set. |
+Read [NG-validation.md](NG-validation.md) for automated checks, native sampler/sequence runs, interruption recovery and quality limits.
+Single-seed functional runs show feasibility. Long chains may drift in identity or sound, and pinned audio may lose high frequencies.
+Adaptive continuity/crossfades, a full multi-asset relationship editor and broad perceptual quality validation remain further work.
+An imperceptible seam and a human listening assessment have not been established.

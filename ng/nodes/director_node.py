@@ -21,7 +21,7 @@ class NGDirector(io.ComfyNode):
     def define_schema(cls):
         contexts = io.Autogrow.TemplatePrefix(input=NGContext.Input("context"), prefix="context_", min=0, max=15)
         return io.Schema(
-            node_id="NGDirector", display_name="NG Director", category=CATEGORY,
+            node_id="NGDirector", display_name="NG Chunk Planner", category=CATEGORY + "/Expert",
             description="Plans a video of any length as chunks of H3 runs. Describe it, add context items, wire the chunks into a loop.",
             inputs=[
                 io.String.Input("idea", multiline=True, default="", tooltip="What the video is about. Without shots below, this carries the whole project."),

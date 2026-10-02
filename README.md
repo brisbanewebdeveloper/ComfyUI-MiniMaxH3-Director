@@ -47,18 +47,21 @@ see the exact prompt the model will receive while you are still editing it.
 
 ## NG: videos of any length
 
-**1.0 adds a second generation of the Director.** The timeline Director below is now **Legacy**: it stays, works as before and is still
-maintained. For anything longer than one H3 run, or for a simpler way to work, use the **NG nodes** (category *MiniMax H3 / NG*):
+**H3 Director NG** now has its own connected product workflow: **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
+Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text contexts describe your references;
+the Director provides Simple/Guided/Expert views, editable scene cards, separate story/chunk timelines and a generation summary.
+An optional **H3 AI Loader** enables explicit Analyze/Apply and Auto Direct/Apply through your running local or compatible API provider.
 
-- **NG Director** plans a whole video of any length as chunks of H3 runs and shows the plan, the notes and every prompt *before* you render.
-- **NG Context Image / Video / Audio / Text** are small nodes for a picture, a clip, a voice or a note: what it *is* and what the model should *do* with it.
-- Context cards add local presets, bounded media previews and optional provider analysis with an explicit Apply step.
-- Each chunk **continues the one before** (its last frames and last second of sound are pinned in front), inside ComfyUI's own **Start Loop / End Loop**.
-- **NG Collect** joins everything into one video with sound.
+Open **`example_workflows/H3 Director NG - text studio.json`** for the complete render path, **`H3 Director NG - image and voice.json`**
+for references, or **`H3 Director NG - native sampler.json`** to use native Output ports with your sampler.
+Select your own installed model files and reference media as needed. Native port colors come from ComfyUI.
 
-Start with **example_workflows → `NG Director - text project.json`** or **`NG Director - image and voice.json`** and read [docs/NG.md](docs/NG.md).
-NG uses native loop support (tested on ComfyUI 0.37.0). Read the [validation record and known quality limits](docs/NG-validation.md)
-before relying on long-chain continuity. Version 1.0.0 is an unreleased local draft.
+The four Context nodes have compact cards and detailed media workspaces: previews, roles, preservation, source ranges, presets and text templates.
+Rendering expands native ComfyUI loops/samplers, preserving preview, progress and Stop. The original timeline Director below remains **Legacy**.
+Technical chunk/laboratory nodes are available under NG/Expert and keep their saved IDs.
+
+Read [the NG guide](docs/NG.md) and [validation/quality limits](docs/NG-validation.md).
+The local 1.0.0 version is unreleased; published 0.3.2 is unchanged. Functional tests do not guarantee invisible seams or unchanged audio.
 
 ---
 

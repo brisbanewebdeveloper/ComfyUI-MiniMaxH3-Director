@@ -11,6 +11,10 @@ export function values(node) {
   return Object.fromEntries((node.widgets || []).filter((w) => w.name).map((w) => [w.name, w.value]));
 }
 
+export function analysisFingerprint(media,widgets) {
+  return JSON.stringify([widgets[media],widgets.description,widgets.content_roles||widgets.content]);
+}
+
 export function applyValues(node, changes) {
   for (const widget of node.widgets || []) {
     if (!(widget.name in changes)) continue;

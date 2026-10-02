@@ -23,6 +23,20 @@ class Suggestions(unittest.TestCase):
             with self.subTest(address=address), self.assertRaises(ValueError):
                 core.ProviderConfig.from_dict({**config.to_dict(), "base_url": address})
 
+    def test_panel_settings_are_range_checked_and_defaulted(self):
+        # The panel offers timeout, max_tokens and keep_alive, so the core has to hold their bounds.
+        defaults = core.ProviderConfig.from_dict({"schema_version": 1})
+        self.assertEqual((defaults.timeout_seconds, defaults.max_tokens, defaults.keep_alive), (120, 512, 0))
+        self.assertEqual(core.ProviderConfig.from_dict({"schema_version": 1, "timeout_seconds": 30}).timeout_seconds, 30)
+        for change in ({"timeout_seconds": 0}, {"timeout_seconds": 5000}, {"max_tokens": 12}, {"max_tokens": 99999},
+                       {"keep_alive": -1}, {"timeout_seconds": 12.5}, {"timeout_seconds": "120"}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                core.ProviderConfig.from_dict({"schema_version": 1, **change})
+
+    def test_panel_only_field_is_not_part_of_the_saved_provider(self):
+        # `source` steers the cards; a saved workflow must not carry it into the config.
+        self.assertNotIn("source", core.ProviderConfig().to_dict())
+
     def test_json_fences_and_bad_suggestions(self):
         answer = '{"description":"A woman in a red coat.","content":"character"}'
         self.assertEqual(core.parse_suggestion("```json\n" + answer + "\n```"), core.parse_suggestion(answer))
@@ -77,25 +91,26 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         self.key_patch.stop(); self.path_patch.stop(); self.directory.cleanup()
 
     def payload(self, media="image", **provider):
-        config = core.ProviderConfig(provider="custom", base_url=self.url + "/v1", model="mock", **provider)
+        config = core.ProviderConfig(**{"provider": "custom", "base_url": self.url + "/v1", "model": "mock", **provider})
         return {"media": media, "widgets": {"image": "image.png", "audio": "sound.wav", "text": "Keep a slow camera.", "content": "style"},
                 "provider": config.to_dict()}
 
     async def test_vision_reuses_auth_and_normalizes_v1(self):
-        result = await self.adapter.analyze(self.payload())
+        result = await self.adapter.analyze(self.payload(max_tokens=1024, timeout_seconds=45))
         self.assertEqual(result["description"], "red object")
         path, auth, body = self.requests[0]
         self.assertEqual((path, auth), ("/v1/chat/completions", "Bearer test-key"))
         self.assertEqual(body["messages"][0]["content"][1]["type"], "image_url")
+        self.assertEqual(body["max_tokens"], 1024)
         self.assertNotIn("test-key", json.dumps(body))
 
     async def test_ollama_and_text_without_vision(self):
-        data = self.payload("text", vision=False)
+        data = self.payload("text", vision=False, keep_alive=60)
         data["provider"]["provider"] = "ollama"
         data["provider"]["base_url"] = self.url
         await self.adapter.analyze(data)
         body = self.requests[0][2]
-        self.assertEqual((body["images"], body["keep_alive"]), ([], 0))
+        self.assertEqual((body["images"], body["keep_alive"]), ([], 60))
         self.assertIn("Keep a slow camera", body["prompt"])
 
     async def test_audio_is_bounded_and_uses_wav_content(self):
@@ -110,6 +125,15 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(ValueError, "Enable"):
                 await self.adapter.analyze(payload)
         self.assertEqual(self.requests, [])
+
+    async def test_missing_address_and_model_stop_before_network(self):
+        # A remote endpoint has no default and no model list, so both are named as a missing
+        # setting rather than surfacing as a connection error against an empty address.
+        with self.assertRaisesRegex(ValueError, "not a usable address"):
+            await self.adapter.analyze(self.payload(base_url=""))
+        with self.assertRaisesRegex(ValueError, "No model name set"):
+            await self.adapter.analyze(self.payload(model=""))
+        self.assertEqual(self.requests, [], "an unconfigured provider must not reach the network")
 
     async def test_http_failures_and_malformed_answer(self):
         for status in (401, 403, 500):
@@ -127,3 +151,24 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((len(audio["peaks"]), audio["sampled_seconds"]), (80, 15.0))
         with self.assertRaisesRegex(ValueError, "missing"):
             self.preview.preview("image", "missing.png")
+
+    async def test_full_waveform_has_duration_metadata_and_streamed_peaks(self):
+        waveform = module("ng.adapters.waveform")
+        data = waveform.envelope("sound.wav")
+        self.assertEqual(data["duration_s"], 20.0)
+        self.assertEqual((data["sample_rate"], data["channels"], len(data["peaks"])), (16000, 1, 320))
+        self.assertGreater(data["peaks"][-1], 0)
+
+    async def test_auto_direct_uses_existing_transport_and_returns_a_proposal(self):
+        adapter = module("ng.adapters.auto_direct")
+        self.answer = json.dumps({"shots": [{"start_s": 0, "end_s": 8, "action": "Alice walks.", "camera": "Static", "dialogue": ""}],
+                                 "soundscape": "wind", "music": "N/A"})
+        payload = {"provider": self.payload("text", max_tokens=1024)["provider"], "director": {"idea": "Alice walks.", "project_seconds": 8}, "contexts": []}
+        result = await adapter.direct(payload)
+        self.assertIn("0.000-8.000: Alice walks.", result["shots"])
+        self.assertEqual(self.requests[0][1], "Bearer test-key")
+        self.assertEqual(self.requests[0][2]["max_tokens"], 1024)
+        self.assertEqual(payload["director"], {"idea": "Alice walks.", "project_seconds": 8})
+        self.answer = "malformed"
+        with self.assertRaises(ValueError):
+            await adapter.direct(payload)

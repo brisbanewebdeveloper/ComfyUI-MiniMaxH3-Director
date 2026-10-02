@@ -9,13 +9,15 @@ import re
 from ... import minimax_plan as plan
 from .chunks import Chunk
 from .context import DirectorContext
+from .context_options import retention_note
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
          "environment": "environment", "location": "environment", "style": "style", "lighting": "style", "composition": "style",
          "pose": "pose", "action": "action", "expression": "expression", "effect": "effect"}
 _RETENTION = {"high": "fully_preserved", "medium": "partially_preserved", "low": "weak_reference"}
-_AUDIO_RETENTION = {"voice": "reference", "music_style": "weak_reference", "copy": "fully_copy", "lock": "lock"}
+_AUDIO_RETENTION = {"voice": "reference", "music_style": "weak_reference", "copy": "fully_copy", "lock": "lock",
+                    "rhythm": "weak_reference", "sound_reference": "reference"}
 
 
 class Mapping:
@@ -31,7 +33,7 @@ def has_references(context):
         usage = item.effective_usage
         if item.media == "image" and "reference" in usage:
             return True
-        if (item.media == "video" and set(usage) & {"motion", "camera"}) or (item.media == "audio" and set(usage) & {"voice", "copy", "music_style"}):
+        if (item.media == "video" and set(usage) & {"motion", "camera", "structure"}) or (item.media == "audio" and set(usage) & set(_AUDIO_RETENTION) - {"lock"}):
             return True
     return False
 
@@ -56,7 +58,7 @@ def _subject_items(context):
 def _slot(item, voices):
     voice = voices.get(item.id)
     return {"images": [{"name": item.source}], "description": item.description, "shortName": item.name, "kind": _kind(item),
-            "retention": _RETENTION[item.preserve], "retentionNote": "",
+            "retention": _RETENTION[item.preserve], "retentionNote": retention_note(item.options),
             "voice": {"audioFile": voice.source, "fileName": voice.name} if voice else None}
 
 
@@ -95,7 +97,14 @@ def _audio_segments(context, chunk, voices):
         if usage is None:
             continue
         timed = usage in ("copy", "lock")
-        start, length, trim = _window_frames(chunk) if timed else (FAR_AWAY, int(max(item.length_s, 2.0) * 24), 0)
+        source_start = int(round(item.options.start_s * 24))
+        source_end = item.options.end_s or item.length_s
+        available = max(0, int(round((source_end - item.options.start_s) * 24))) if source_end else 0
+        start, length, trim = _window_frames(chunk, source_start) if timed else (FAR_AWAY, available or int(max(item.length_s, 2.0) * 24), source_start)
+        if timed and available:
+            length = min(length, max(0, source_start + available - trim))
+            if not length:
+                continue
         segments.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": start, "length": length,
                          "trimStart": trim, "retention": _AUDIO_RETENTION[usage]})
     return segments
@@ -104,10 +113,10 @@ def _audio_segments(context, chunk, voices):
 def _motion_segments(context):
     out = []
     for item in context.by_media("video"):
-        if item.source and set(item.effective_usage) & {"motion", "camera"}:
-            length = int(round((item.length_s or 5.0) * 24))
+        if item.source and set(item.effective_usage) & {"motion", "camera", "structure"}:
+            length = int(round(((item.options.end_s or item.length_s or 5.0) - item.options.start_s) * 24))
             out.append({"type": "video", "videoFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,
-                        "trimStart": 0, "retention": _RETENTION[item.preserve]})
+                        "trimStart": int(round(item.options.start_s * 24)), "retention": _RETENTION[item.preserve]})
     return out
 
 
@@ -138,9 +147,20 @@ def _anchor_segments(context, chunk, is_last):
 
 def _global_prompt(context):
     parts = [context.idea.strip()] if context.shots_text.strip() else []
+    if context.style and context.style != "None":
+        parts.append("Visual style: %s." % context.style)
     for item in context.by_media("text"):
-        if item.source.strip() and set(item.effective_usage) & {"style", "rule"}:
+        if item.source.strip() and set(item.effective_usage) & {"style", "rule", "character", "world", "scene", "camera", "dialogue", "constraint", "instruction"}:
             parts.append(item.source.strip())
+    for item in context.by_media("video"):
+        roles = set(item.effective_usage)
+        if "camera" in roles:
+            parts.append("Use %s as the camera movement reference. %s" % (item.name, item.description))
+        if "structure" in roles:
+            parts.append("Follow the overall scene structure and rhythm of %s. %s" % (item.name, item.description))
+    for item in context.by_media("audio"):
+        if "rhythm" in item.effective_usage:
+            parts.append("Follow the rhythm of %s. %s" % (item.name, item.description))
     return " ".join(p for p in parts if p)
 
 

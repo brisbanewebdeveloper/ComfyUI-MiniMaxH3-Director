@@ -1,41 +1,20 @@
-# NG completion and validation
+# H3 Director NG validation
 
-Local branch: `ng`. Baseline: `cb9b62b` (2026-10-02). No push, tag or publication.
+Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
+No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
-The handover's RESUME file is stale: M7 and part of M8/M11 already exist. Baseline checks pass: 133 NG tests, 371 legacy compiler checks and 74 legacy node checks.
+## Automated checks
 
-## Delivered implementation
+- 186 NG checks: 185 passed, one Windows symlink-permission skip. Ordinary path containment checks pass.
+- 98.01% executable core-line coverage from the standard-library trace runner; line coverage does not establish render quality.
+- Legacy compiler 371/371 and nodes 74/74 rerun successfully. No Legacy behavior tests removed.
+- Existing registration tests now assert the exact requested H3 Context display names and NG/Expert categories; all functional checks remain.
+- Native output types, raw+lazy model links, closed expanded graphs, roles/Preserve/preset round trips, source ranges,
+  timed guide placement, paired-video audio numbering and provider/Auto-Direct validation have new checks.
+- Frontend logic checks include Connector traversal/provider-field whitelist, stable-ID rename, references, story editing and downstream progress.
+- Structural guards, Python compilation, JS syntax and diff whitespace checks run before local completion. No new pip dependencies.
 
-1. Close the NG input-path containment gap; allow references in input subfolders.
-2. M8: local, versioned context presets; stable context IDs and colours; bounded media previews.
-3. M9/E10: explicit context analysis with provider settings, declared vision/audio capabilities, environment-variable keys, editable suggestions and mock-server tests. Reuse the legacy transport for text/vision.
-4. M10: Simple/Guided/Expert presentation; keep manual shots and automatic continuation using the existing compiler. No invented AI shot generation.
-5. M11: text and image/voice examples, updated guide, README, changelog and milestone records. Package metadata is now 1.0.0 as an unreleased local candidate,
-   following the user's requested version jump after implementation. The published release remains 0.3.2. No push or tag.
-
-## Acceptance
-
-- Existing IDs and legacy workflows remain valid; no core ComfyUI changes.
-- Structure guard, NG tests, legacy checks, Python compilation and JS syntax checks pass.
-- Preset round trips, workflow reload, preview/render parity and provider failure paths are exercised.
-- Run the real nodes through native loops; record history, fixed seeds, frame/audio lengths, joins, preview/progress and interruption.
-- Inspect output frames and report audio measurements honestly. Listening is verified only if a listening-capable tool is available.
-
-## Limits carried forward
-
-Single-seed experiments establish feasibility, not a guarantee of imperceptible joins. Pinned audio can lose high frequencies across long chains.
-Fresh NG runs exercised relocated boundaries, but a controlled comparison of action delay remains unverified. The supplied design spec is the long-term concept;
-the agreed M0-M11 plan is the current delivery scope (scene cards, full timeline, AI Auto Direct and adaptive continuity remain later work).
-
-## Automated checks (2026-10-02)
-
-- NG: 158 tests, 157 passed, one skipped because Windows symlink creation needs privileges unavailable to that test. The ordinary path checks pass.
-- Core executable-line coverage: 97.90%, measured with the included standard-library trace runner. This is line coverage, not proof of render quality.
-- Legacy compiler: 371/371. Legacy nodes: 74/74. Existing node IDs remain unchanged.
-- Python compilation, every NG JS module's syntax, frontend logic and architecture guard pass. No new pip dependencies.
-- Preset atomic replacement, identity/colour/source round trips, malformed requests, missing files, declared capabilities, authentication errors and malformed provider output are tested.
-
-Run with ComfyUI's Python environment from the pack root:
+Run from the pack root with ComfyUI's Python:
 
 ```powershell
 python tests/ng/run_tests.py
@@ -45,7 +24,60 @@ python test_node.py
 python -m compileall -q ng
 ```
 
-Node.js must be available for the frontend checks; the runner explicitly reports a skip if it is absent.
+## Native product runs: E15
+
+ComfyUI 0.37.0/frontend 1.53.6, Python 3.12.10, Torch 2.9.1+cu130, RTX 5060 Ti 16 GB, 384×576, 8 steps, fixed seed 321
+(recovery 322). Native loop/sampler/collector. Functional low-resolution checks; no claim of production image quality.
+
+| Variant | Chunks | Frames | Video/audio seconds | Runtime | Progress/previews |
+|---|---:|---:|---|---:|---:|
+| text |2|192|8.000/8.000|99.5s|16/19|
+| image + voice |2|192|8.000/8.000|127.7s|16/19|
+| timed image guide |2|192|8.000/8.000|99.8s|16/19|
+| music lock |2|192|8.000/8.000|97.1s|16/19|
+| native sampler outputs |1|107|4.458/4.459|40.0s|8/8|
+| video + paired audio |1|107|4.458/4.459|131.6s|8/10|
+| last-video-frame continuation |1|107|4.458/4.459|50.5s|8/10|
+| recovery after interruption |2|192|8.000/8.000|95.3s|16/19|
+
+4 seconds rasterize to 107 frames on H3's grid, as the planning warning says. AAC container rounding can differ by about 1 ms.
+An initial missing expanded chunk-graph edge was fixed; its failure history is retained. Invalid Video test usage was corrected before queueing.
+Interrupt after two progress events ends without a final MP4. Recovery runs in the same process without restart.
+
+Lock/source envelope correlation is 0.974 overall, 0.974/0.968 before/after the join; chroma similarity 0.994 overall, 0.994/0.992 per chunk.
+These are sample metrics, not unchanged-waveform or perceptual listening results.
+Sparse contact sheets were inspected: bakery hands/dough persist over this sample's join, and the reference figure remains recognizable.
+The timed image guide changes the character/scene at the requested part of the video; smoothness is not established by those sparse frames.
+
+## Product UI checks
+
+Real browser checks cover compact/detail cards, native model/context/output connections, Source upload, image content/Preserve presets,
+explicit mock-provider Analyze/Apply and Auto Direct/Apply, audio range drag/playback, video player/paired-audio choice,
+Text quick insertion/template use and Director modes/scene editing. Requests use a local deterministic fixture, not an external paid service.
+Asynchronous native upload previews are hidden per Context node because its workspace already has a media preview.
+Scene time fields commit on input. Save/reload preserves the edited timing and Context IDs. Generate from the restored product workflow succeeds: 192 frames, video/audio 8.000 seconds, native iteration 2/2 and live preview.
+
+Exact histories, scripts, MP4 paths, test logs, browser screenshots and product Save/Reload evidence are in the supplied local
+`_notes/NG/experiments/e15_*` folder. New examples are editable normal ComfyUI workflows.
+
+
+The Connector accepts a second Video Context through a real dragged cable, grows its next empty input and retains both video links after save/reload.
+Extra empty restored tails are removed only on the NG Connector; connected slots and gaps before them remain intact.
+Waveform Zoom reaches 400% without altering the source range. Compact labels and the separate AI source cards are readable.
+The current AI Loader's timeout, token limit and keep-alive reach the transport for Analyze/Auto Direct; an older six-widget provider configuration is migrated on restore.
+Configured providers are labeled *not tested*. CLIP/Encoder selection disables assistant actions; no provider request runs during load or rendering.
+Final layout uses ComfyUI DOM widget sizing so the panels follow the available node height.
+
+## Practical limits
+
+No human listening assessment or calibrated imperceptible-seam criterion. Single-seed runs and sparse frame inspection cannot establish
+identity/audio quality across arbitrary long videos. Existing multi-chunk experiments show possible audio high-frequency loss and action delay.
+Preserve, structure and camera instructions guide H3; Video Continue uses a last-source-frame guide.
+Adaptive continuity/crossfades, broad multi-seed quality and the full multi-asset relationship graph remain further research.
+
+## Historical foundation evidence
+
+The earlier M0–M11/E13 checks below remain valid for their original technical scope. They did not establish the later product interface.
 
 ## Fresh live evidence: E13
 
@@ -81,8 +113,3 @@ mode, identity and colour after workflow reload. Reload does not call the provid
 
 Full histories, event traces, scripts, contact sheets and exact local output paths are kept in the supplied development folder
 `_notes/NG/experiments/e13_*`. The local mock fixture is reproducible with `e13_mock_provider.py`; it is not an installed provider.
-
-## Release state
-
-The planned software scope is implemented locally. The 1.0.0 candidate carries the documented continuity limits; it must not be
-advertised as perceptually seamless or broadly quality validated. Publishing remains explicitly unauthorized until the user asks for it.

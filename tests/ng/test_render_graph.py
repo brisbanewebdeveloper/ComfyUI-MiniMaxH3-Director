@@ -1,0 +1,76 @@
+import types
+import unittest
+
+from _pack import comfy_available, load_full_pack
+
+
+@unittest.skipUnless(comfy_available(), "ComfyUI is not importable")
+class RenderGraph(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.pack = load_full_pack()
+        cls.render = cls.pack.NODE_CLASS_MAPPINGS["NGRenderSequence"]
+        cls.studio = cls.pack.NODE_CLASS_MAPPINGS["NGDirectorStudio"]
+
+    def values(self):
+        return dict(chunks=["plan", 0], clip=["clip", 0], vae=["video_vae", 0], audio_vae=["audio_vae", 0],
+                    model_fl2va=["fl2va", 0], model_ref2va=["ref2va", 0], seed=123, steps=8,
+                    sampler_name="res_multistep", scheduler="simple", shift_video=12.0, shift_audio=3.0)
+
+    def by_type(self, output, kind):
+        return [(key, value) for key, value in output.expand.items() if value["class_type"] == kind]
+
+    def test_models_are_raw_links_so_only_the_selected_model_is_loaded(self):
+        for node in (self.render, self.studio):
+            inputs = {item.id: item for item in node.GET_SCHEMA().inputs}
+            for name in ("clip", "vae", "audio_vae", "model_fl2va", "model_ref2va"):
+                self.assertTrue(inputs[name].rawLink, name)
+            self.assertTrue(node.GET_SCHEMA().enable_expand)
+            self.assertEqual([item.display_name for item in node.GET_SCHEMA().outputs[:3]], ["video", "images", "audio"])
+
+    def test_render_wraps_the_native_loop_and_keeps_previous_latent(self):
+        out = self.render.execute(**self.values())
+        start_id, start = self.by_type(out, "StartLoop")[0]
+        end_id, end = self.by_type(out, "EndLoop")[0]
+        conditioning_id, conditioning = self.by_type(out, "NGChunkConditioning")[0]
+        sample_id, _ = self.by_type(out, "SamplerCustomAdvanced")[0]
+        self.assertEqual(start["_loop_end"], end_id)
+        self.assertIn(sample_id, start["_loop_body"])
+        self.assertIn(conditioning_id, start["_loop_body"])
+        self.assertEqual(conditioning["inputs"]["previous"], [start_id, 4])
+        self.assertEqual(end["inputs"]["next_iteration_value"], [sample_id, 0])
+        self.assertTrue(end["inputs"]["accumulate"])
+        self.assertEqual(start["inputs"]["mode.list"], ["plan", 0])
+        self.assertEqual(len(out.args), 4)
+
+    def test_missing_optional_model_is_not_added_as_an_invalid_null_link(self):
+        values = self.values()
+        del values["model_ref2va"]
+        out = self.render.execute(**values)
+        conditioning = self.by_type(out, "NGChunkConditioning")[0][1]["inputs"]
+        self.assertNotIn("model_ref2va", conditioning)
+        del values["model_fl2va"]
+        with self.assertRaisesRegex(ValueError, "Connect an H3 model"):
+            self.render.execute(**values)
+
+    def test_studio_wires_contexts_into_the_same_planner_as_preview(self):
+        values = self.values()
+        del values["chunks"]
+        values.update(idea="@Alice walks.", project_seconds=20.0, shots="", chunk_seconds=10.0,
+                      width=384, height=576, mode="auto", continuity="video_audio", pin_frames="22",
+                      soundscape="wind", music="N/A", contexts={"context_1": ["alice", 0]})
+        out = self.studio.execute(**values)
+        plan_id, plan = self.by_type(out, "NGDirector")[0]
+        start = self.by_type(out, "StartLoop")[0][1]
+        self.assertEqual(plan["inputs"]["contexts.context_1"], ["alice", 0])
+        self.assertEqual(plan["inputs"]["idea"], "@Alice walks.")
+        self.assertEqual(start["inputs"]["mode.list"], [plan_id, 0])
+        self.assertEqual(out.args[4:], ([plan_id, 2], [plan_id, 1]))
+        self.assertEqual(len(out.args), 6)
+
+    def test_noise_seed_varies_by_chunk_and_wraps_at_uint64(self):
+        noise = self.pack.NODE_CLASS_MAPPINGS["NGChunkNoise"]
+        first = noise.execute(chunk=types.SimpleNamespace(index=0), seed=123).args[0]
+        second = noise.execute(chunk=[types.SimpleNamespace(index=1)], seed=123).args[0]
+        wrap = noise.execute(chunk=types.SimpleNamespace(index=1), seed=(1 << 64) - 1).args[0]
+        self.assertEqual((first.seed, second.seed, wrap.seed), (123, 124, 0))

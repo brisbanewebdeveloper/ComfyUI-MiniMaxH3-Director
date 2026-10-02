@@ -1,0 +1,1146 @@
+{
+  "last_node_id": 20,
+  "last_link_id": 25,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UNETLoader",
+      "pos": [
+        0,
+        0
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "MiniMax-H3\\minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "MiniMax-H3\\minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    {
+      "id": 2,
+      "type": "CLIPLoader",
+      "pos": [
+        0,
+        340
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "type": "minimax",
+        "device": "default"
+      }
+    },
+    {
+      "id": 3,
+      "type": "VAELoader",
+      "pos": [
+        0,
+        500
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            3,
+            20
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_video_vae_fp16.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+      }
+    },
+    {
+      "id": 4,
+      "type": "VAELoader",
+      "pos": [
+        0,
+        640
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            4,
+            21
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+      }
+    },
+    {
+      "id": 17,
+      "type": "UNETLoader",
+      "pos": [
+        0,
+        170
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "MiniMax-H3\\minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "MiniMax-H3\\minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    {
+      "id": 20,
+      "type": "NGContextText",
+      "pos": [
+        0,
+        800
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "ai_provider",
+          "type": "NG_AI_PROVIDER",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "context",
+          "type": "NG_CONTEXT",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGContextText"
+      },
+      "widgets_values": [
+        "Keep the camera movement slow and physical.",
+        "Camera",
+        "",
+        "rules",
+        "rule",
+        "high",
+        "ctx_e15_text",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "text": "Keep the camera movement slow and physical.",
+        "name": "Camera",
+        "description": "",
+        "content": "rules",
+        "usage": "rule",
+        "preserve": "high",
+        "context_id": "ctx_e15_text",
+        "color": "",
+        "content_roles": "",
+        "usage_roles": "",
+        "context_options": ""
+      }
+    },
+    {
+      "id": 5,
+      "type": "NGContextConnector",
+      "pos": [
+        620,
+        0
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 2
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 3
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 4
+        },
+        {
+          "name": "model_fl2va",
+          "type": "MODEL",
+          "link": 1
+        },
+        {
+          "name": "model_ref2va",
+          "type": "MODEL",
+          "link": 5
+        },
+        {
+          "name": "ai_provider",
+          "type": "NG_AI_PROVIDER",
+          "link": null
+        },
+        {
+          "name": "context_text.text_0",
+          "type": "NG_CONTEXT",
+          "link": 6
+        },
+        {
+          "name": "context_text.text_1",
+          "type": "NG_CONTEXT",
+          "link": null
+        },
+        {
+          "name": "context_image.image_0",
+          "type": "NG_CONTEXT",
+          "link": null
+        },
+        {
+          "name": "context_video.video_0",
+          "type": "NG_CONTEXT",
+          "link": null
+        },
+        {
+          "name": "context_audio.audio_0",
+          "type": "NG_CONTEXT",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "H3 context",
+          "type": "NG_DIRECTOR_INPUT",
+          "links": [
+            7
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGContextConnector"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 6,
+      "type": "NGH3Director",
+      "pos": [
+        1260,
+        0
+      ],
+      "size": [
+        1100,
+        1110
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "context",
+          "type": "NG_DIRECTOR_INPUT",
+          "link": 7
+        },
+        {
+          "name": "prepend_text",
+          "type": "STRING",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "NG_DIRECTOR_RESULT",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGH3Director",
+        "ng_view_mode": "guided"
+      },
+      "widgets_values": [
+        "A baker kneads dough in a warm bakery.",
+        "",
+        4.0,
+        5.0,
+        384,
+        576,
+        "auto",
+        "none",
+        "22",
+        "Quiet bakery",
+        "N/A",
+        "Cinematic",
+        321,
+        "fixed",
+        8,
+        "res_multistep",
+        "simple",
+        12.0,
+        3.0,
+        ""
+      ],
+      "widgets_values_named": {
+        "idea": "A baker kneads dough in a warm bakery.",
+        "shots": "",
+        "project_seconds": 4.0,
+        "chunk_seconds": 5.0,
+        "width": 384,
+        "height": 576,
+        "mode": "auto",
+        "continuity": "none",
+        "pin_frames": "22",
+        "soundscape": "Quiet bakery",
+        "music": "N/A",
+        "style": "Cinematic",
+        "seed": 321,
+        "control_after_generate": "fixed",
+        "steps": 8,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "shift_video": 12.0,
+        "shift_audio": 3.0,
+        "prompt_override": ""
+      }
+    },
+    {
+      "id": 7,
+      "type": "NGDirectorOutput",
+      "pos": [
+        2440,
+        0
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "result",
+          "type": "NG_DIRECTOR_RESULT",
+          "link": 8
+        },
+        {
+          "name": "previous",
+          "type": "LATENT",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            9,
+            10
+          ]
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "links": null
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "links": [
+            16
+          ]
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": [
+            24
+          ]
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "sequence",
+          "type": "NG_DIRECTOR_RESULT",
+          "links": [
+            17
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGDirectorOutput"
+      },
+      "widgets_values": [
+        0
+      ],
+      "widgets_values_named": {
+        "chunk_index": 0
+      }
+    },
+    {
+      "id": 9,
+      "type": "KSamplerSelect",
+      "pos": [
+        2980,
+        1600
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            14
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "res_multistep"
+      ],
+      "widgets_values_named": {
+        "sampler_name": "res_multistep"
+      }
+    },
+    {
+      "id": 10,
+      "type": "BasicScheduler",
+      "pos": [
+        2980,
+        1700
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            15
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BasicScheduler"
+      },
+      "widgets_values": [
+        "simple",
+        8,
+        1
+      ],
+      "widgets_values_named": {
+        "scheduler": "simple",
+        "steps": 8,
+        "denoise": 1
+      }
+    },
+    {
+      "id": 11,
+      "type": "BasicGuider",
+      "pos": [
+        2980,
+        1800
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 10
+        },
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GUIDER",
+          "type": "GUIDER",
+          "links": [
+            13
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BasicGuider"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 12,
+      "type": "SamplerCustomAdvanced",
+      "pos": [
+        2980,
+        1900
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "noise",
+          "type": "NOISE",
+          "link": 12
+        },
+        {
+          "name": "guider",
+          "type": "GUIDER",
+          "link": 13
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 14
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 15
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 16
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "LATENT",
+          "links": [
+            18
+          ]
+        },
+        {
+          "name": "denoised_output",
+          "type": "LATENT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SamplerCustomAdvanced"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 13,
+      "type": "RandomNoise",
+      "pos": [
+        2980,
+        2000
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RandomNoise"
+      },
+      "widgets_values": [
+        321,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "noise_seed": 321,
+        "control_after_generate": "fixed"
+      }
+    },
+    {
+      "id": 19,
+      "type": "NGProjectChunks",
+      "pos": [
+        2980,
+        2600
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "sequence",
+          "type": "NG_DIRECTOR_RESULT",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "name": "NG_CHUNK",
+          "type": "NG_CHUNK",
+          "links": [
+            19
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGProjectChunks"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 14,
+      "type": "NGCollect",
+      "pos": [
+        2980,
+        2100
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "latents",
+          "type": "LATENT",
+          "link": 18
+        },
+        {
+          "name": "chunks",
+          "type": "NG_CHUNK",
+          "link": 19
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 20
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 21
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            22
+          ]
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            23
+          ]
+        },
+        {
+          "name": "warnings",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGCollect"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 15,
+      "type": "CreateVideo",
+      "pos": [
+        2980,
+        2200
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 22
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "link": 24,
+          "widget": {
+            "name": "fps"
+          }
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 23
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            25
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        30.0,
+        "auto",
+        "sRGB",
+        "none"
+      ],
+      "widgets_values_named": {
+        "fps": 30.0,
+        "bit_depth": "auto",
+        "color_space": "sRGB",
+        "codec": "none"
+      }
+    },
+    {
+      "id": 16,
+      "type": "SaveVideo",
+      "pos": [
+        3530,
+        0
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 25
+        },
+        {
+          "name": "format",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null
+        },
+        {
+          "name": "codec",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "ng_lab/e15_expert"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "ng_lab/e15_expert"
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      5,
+      3,
+      "MODEL"
+    ],
+    [
+      2,
+      2,
+      0,
+      5,
+      0,
+      "CLIP"
+    ],
+    [
+      3,
+      3,
+      0,
+      5,
+      1,
+      "VAE"
+    ],
+    [
+      4,
+      4,
+      0,
+      5,
+      2,
+      "VAE"
+    ],
+    [
+      5,
+      17,
+      0,
+      5,
+      4,
+      "MODEL"
+    ],
+    [
+      6,
+      20,
+      0,
+      5,
+      6,
+      "NG_CONTEXT"
+    ],
+    [
+      7,
+      5,
+      0,
+      6,
+      0,
+      "NG_DIRECTOR_INPUT"
+    ],
+    [
+      8,
+      6,
+      0,
+      7,
+      0,
+      "NG_DIRECTOR_RESULT"
+    ],
+    [
+      9,
+      7,
+      0,
+      10,
+      0,
+      "MODEL"
+    ],
+    [
+      10,
+      7,
+      0,
+      11,
+      0,
+      "MODEL"
+    ],
+    [
+      11,
+      7,
+      1,
+      11,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      12,
+      13,
+      0,
+      12,
+      0,
+      "NOISE"
+    ],
+    [
+      13,
+      11,
+      0,
+      12,
+      1,
+      "GUIDER"
+    ],
+    [
+      14,
+      9,
+      0,
+      12,
+      2,
+      "SAMPLER"
+    ],
+    [
+      15,
+      10,
+      0,
+      12,
+      3,
+      "SIGMAS"
+    ],
+    [
+      16,
+      7,
+      3,
+      12,
+      4,
+      "LATENT"
+    ],
+    [
+      17,
+      7,
+      8,
+      19,
+      0,
+      "NG_DIRECTOR_RESULT"
+    ],
+    [
+      18,
+      12,
+      0,
+      14,
+      0,
+      "LATENT"
+    ],
+    [
+      19,
+      19,
+      0,
+      14,
+      1,
+      "NG_CHUNK"
+    ],
+    [
+      20,
+      3,
+      0,
+      14,
+      2,
+      "VAE"
+    ],
+    [
+      21,
+      4,
+      0,
+      14,
+      3,
+      "VAE"
+    ],
+    [
+      22,
+      14,
+      0,
+      15,
+      0,
+      "IMAGE"
+    ],
+    [
+      23,
+      14,
+      1,
+      15,
+      2,
+      "AUDIO"
+    ],
+    [
+      24,
+      7,
+      4,
+      15,
+      1,
+      "FLOAT"
+    ],
+    [
+      25,
+      15,
+      0,
+      16,
+      0,
+      "VIDEO"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.4,
+      "offset": [
+        150,
+        200
+      ]
+    }
+  },
+  "version": 0.4
+}

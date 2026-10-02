@@ -43,7 +43,8 @@ def plan_preview(payload, probe=None):
         fields.read_list(payload, "contexts", "request")
         context = DirectorContext(idea=values["idea"], project_seconds=float(values["project_seconds"]), width=int(values["width"]),
                                   height=int(values["height"]), mode=values["mode"], shots_text=values["shots"], soundscape=values["soundscape"],
-                                  music=values["music"], prepend_text=values["prepend_text"], items=_items(payload.get("contexts"), probe))
+                                  music=values["music"], prepend_text=values["prepend_text"], items=_items(payload.get("contexts"), probe),
+                                  style=values.get("style", ""), prompt_override=values.get("prompt_override", ""))
         continuity = ContinuityPlan(mode=values["continuity"], video_frames=int(values["pin_frames"]), audio_frames=PIN_AUDIO_DEFAULT)
         project = plan_project(context, float(values["chunk_seconds"]), continuity)
     except (SchemaError, KeyError, ValueError, TypeError, OverflowError) as error:

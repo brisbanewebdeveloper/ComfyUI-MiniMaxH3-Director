@@ -24,10 +24,10 @@ app.registerExtension({
 
 // One colour family per medium, as the design asks: pictures blue, clips orange, sounds violet, notes teal.
 export const FAMILY = {
-  NGContextImage: { color: "#2f5d8c", bgcolor: "#223f5e" },
-  NGContextVideo: { color: "#9a6a2e", bgcolor: "#6b4a21" },
-  NGContextAudio: { color: "#6f4a99", bgcolor: "#4b3366" },
-  NGContextText: { color: "#2f7d78", bgcolor: "#21564f" },
+  NGContextImage: { color: "#28baff", bgcolor: "#101a2c" },
+  NGContextVideo: { color: "#51acff", bgcolor: "#101a2c" },
+  NGContextAudio: { color: "#aa7cff", bgcolor: "#101a2c" },
+  NGContextText: { color: "#52aaff", bgcolor: "#101a2c" },
 };
 
 app.registerExtension({

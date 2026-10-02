@@ -20,7 +20,31 @@ globalThis.document = { createElement: (tag) => new FakeElement(tag), dispatchEv
 globalThis.CustomEvent = class { constructor(type) { this.type = type; } };
 
 const { readContexts, readPayload, isContextNode } = await load("ng_read.js");
+const { connectedProvider, contextProvider, restoredProviderValues } = await load("ng_read.js");
 const { renderPlan } = await load("ng_view.js");
+const { extraContextInputs,compactContextInputs } = await load("ng_connector_slots.js");
+
+assert.deepEqual(restoredProviderValues(["custom","http://localhost:1234","old-model","MY_KEY",true,false]),
+  {source:"api",provider:"custom",base_url:"http://localhost:1234",model:"old-model",api_key_env:"MY_KEY",vision:true,audio:false,
+    timeout_seconds:120,max_tokens:512,keep_alive:0},"The original six provider widgets must survive the added Source field");
+assert.equal(restoredProviderValues(["api","custom","http://localhost:1234","new-model","",true,false,120,512,0]),null);
+
+{
+  const inputs=[{name:"clip",link:7},{name:"context_image.image_0",link:1},{name:"context_image.image_1",link:null},
+    {name:"context_image.image_2",link:null},{name:"context_video.video_0",link:null},
+    {name:"context_text.text_0",link:null},{name:"context_text.text_1",link:2},{name:"context_text.text_2",link:null},
+    {name:"context_text.text_3",link:null}];
+  const connected=inputs.filter((input)=>input.link!=null);
+  assert.deepEqual(extraContextInputs(inputs),[8,3],"one empty tail per group; keep a gap before a connected slot");
+  const node={inputs,removeInput:(index)=>inputs.splice(index,1),addInput:(name,type)=>inputs.push({name,type,link:null})};compactContextInputs(node);
+  assert.deepEqual(inputs.filter((input)=>input.link!=null),connected,"compaction must preserve every native/model/context connection");
+  assert.deepEqual(extraContextInputs(inputs),[],"repeated configure/connection notifications are idempotent");
+  assert.ok(inputs.some((input)=>input.name==="context_audio.audio_0"),"a missing optional group must still have one accessible port");
+  inputs.push({name:"context_video.video_1",link:3});compactContextInputs(node);
+  assert.ok(inputs.some((input)=>input.name==="context_video.video_2"),"a connected final slot must leave a next input within the schema limit");
+  inputs.find((input)=>input.name==="context_video.video_2").link=4;compactContextInputs(node);
+  assert.equal(inputs.some((input)=>input.name==="context_video.video_3"),false,"video group cannot exceed three slots");
+}
 
 function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   return { comfyClass, widgets: Object.entries(widgets).map(([name, value]) => ({ name, value })), inputs, graph };
@@ -44,6 +68,28 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   assert.deepEqual(contexts.map((c) => c.media), ["image", "audio"], "only NG context nodes count, in socket order");
   assert.equal(contexts[0].widgets.name, "Alice");
   assert.deepEqual(readPayload(director).director, { idea: "x", project_seconds: 30 });
+}
+
+// --- rendering ---------------------------------------------------------------
+{
+  const image=node("NGContextImage",{name:"Alice"});image.outputs=[{links:[3]}];
+  const provider=node("NGAIProvider",{provider:"custom",base_url:"http://localhost:1234",model:"local",vision:true,audio:false,api_key_env:"",timeout_seconds:45,max_tokens:1024,keep_alive:60});
+  provider.widgets.push({name:"ng_product",value:"presentation only"});
+  const connector=node("NGContextConnector",{},[{name:"context_image.image_0",link:3},{name:"ai_provider",link:4}]);
+  const director=node("NGH3Director",{idea:"Alice walks."},[{name:"context",link:5}]);
+  const graph={links:{3:{origin_id:1,target_id:2},4:{origin_id:3,target_id:2},5:{origin_id:2,target_id:4}},getNodeById:(id)=>({1:image,2:connector,3:provider,4:director}[id])};
+  [image,provider,connector,director].forEach((entry)=>entry.graph=graph);
+  assert.equal(isContextNode(connector),false,"the connector is not a media ContextItem");
+  assert.equal(readContexts(director)[0].widgets.name,"Alice","Director reads contexts through Connector");
+  assert.equal(connectedProvider(director).model,"local");
+  assert.equal("ng_product" in connectedProvider(director),false,"DOM widgets must never enter provider configuration");
+  assert.equal(connectedProvider(director).timeout_seconds,45,"Request tuning must reach the provider transport");
+  assert.equal(connectedProvider(director).max_tokens,1024);
+  assert.equal(connectedProvider(director).keep_alive,60);
+  assert.equal(contextProvider(image).model,"local","Context AI can inherit the connected Connector provider");
+  connector.inputs[1].link=null;
+  assert.equal(connectedProvider(director),null,"disconnect disables AI");
+  assert.equal(contextProvider(image),null);
 }
 
 // --- rendering ---------------------------------------------------------------
@@ -106,3 +152,58 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
 }
 
 console.log("ng js: all checks passed");
+
+{
+  const {renameReferences,referenceParts}=await load("ng_references.js");
+  const entries=[{media:"image",widgets:{context_id:"ctx_a",name:"Alice Smith",color:"#12aabb"}}];
+  assert.equal(renameReferences("@Alice walks; @Alicex stays.",{ctx_a:"Alice"},entries),"@Alice Smith walks; @Alicex stays.");
+  assert.equal(renameReferences("@Alice walks.",{ctx_old:"Alice"},entries),"@Alice walks.","a different ID must not steal the old reference");
+  const tokens=referenceParts("@Alice Smith talks to @Missing. @ctx_a",entries).filter((part)=>part.entry||part.unknown);
+  assert.equal(tokens[0].entry.widgets.context_id,"ctx_a");assert.equal(tokens[1].unknown,true);assert.equal(tokens[2].entry.widgets.name,"Alice Smith");
+  const {downstreamNodes,hasRenderPath,projectRenderIds}=await load("ng_graph.js");
+  const director={id:1,outputs:[{links:[1]}]},output={id:2,comfyClass:"NGDirectorOutput",outputs:[{links:[2]}]},render={id:3,comfyClass:"NGProjectRender",outputs:[{links:[3]}]};
+  const graph={links:{1:{target_id:2},2:{target_id:3},3:{target_id:1}},getNodeById:(id)=>({1:director,2:output,3:render}[id])};director.graph=graph;
+  assert.deepEqual(downstreamNodes(director).map((entry)=>entry.id),[2,3],"cycles are bounded");assert.equal(hasRenderPath(director),true);
+  assert.deepEqual(projectRenderIds(director),[1,2,3]);
+}
+
+{
+  const { readStory, writeStory, moveShot } = await load("ng_story_model.js");
+  const text = "0-8: @Alice enters.\n@Alice says: Hello.\n0:08-0:22.5: She finds a robot.";
+  const parsed = readStory(text);
+  assert.equal(parsed.error, "");
+  assert.equal(parsed.shots.length, 2);
+  assert.equal(parsed.shots[1].end, 22.5);
+  assert.deepEqual(readStory(writeStory(parsed.shots)).shots, parsed.shots, "timing and multiline dialogue survive editing");
+  assert.match(readStory("unrecognized shot without times").error, /retained/);
+  const shot = { start: 8, end: 12, text: "Action" };
+  assert.deepEqual(moveShot(shot, -100, "move", 20), { start: 0, end: 4, text: "Action" });
+  assert.deepEqual(moveShot(shot, 100, "move", 20), { start: 16, end: 20, text: "Action" });
+  assert.ok(moveShot(shot, 100, "start", 20).start < 12);
+  assert.ok(moveShot(shot, -100, "end", 20).end > 8);
+}
+
+{
+  const { belongsToNode, attachProgress } = await load("ng_studio_progress.js");
+  assert.equal(belongsToNode("5.0.1.sample",5),true);
+  assert.equal(belongsToNode("50.0.1.sample",5),false,"progress must not spill into another Director");
+  const handlers=new Map();
+  const api={addEventListener:(name,fn)=>handlers.set(name,fn),removeEventListener:(name)=>handlers.delete(name)};
+  const status={textContent:""};
+  const progress=attachProgress({id:5},api,status,{hidden:true});
+  handlers.get("executing")({detail:"5"});
+  assert.equal(status.textContent,"Rendering…");
+  handlers.get("progress_text")({detail:{nodeId:"5.0.1.start",text:"Iteration 1 / 2"}});
+  handlers.get("progress")({detail:{node:"5.0.1.sample",value:4,max:8}});
+  assert.equal(status.textContent,"Iteration 1 / 2 · 50%");
+  progress.planning("new plan");
+  assert.equal(status.textContent,"Iteration 1 / 2 · 50%","editing a plan must not replace render progress");
+  handlers.get("executing")({detail:"16"});
+  assert.equal(status.textContent,"Iteration 1 / 2 · 50%","executing a different node is not completion");
+  handlers.get("execution_interrupted")({detail:{node_id:"5"}});
+  assert.equal(status.textContent,"Render interrupted");
+  handlers.get("executing")({detail:"5"});
+  handlers.get("executing")({detail:null});
+  assert.equal(status.textContent,"Render finished · see Save Video");
+  progress.dispose();assert.equal(handlers.size,0,"listeners are removed with the node");
+}

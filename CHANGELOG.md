@@ -2,37 +2,27 @@
 
 ## 1.0.0 (unreleased)
 
-**NG: the second generation of the Director.** Videos of any length, small context nodes instead of one big editor, and a live plan.
-Nothing existing was removed or renamed (node ids are unchanged); the timeline Director is marked **Legacy** and works as before.
+**H3 Director NG: a connected Director interface with reusable media contexts.** Local development; no push, tag or publication.
+The original timeline Director remains Legacy with its existing node ID and behavior.
 
-- **New nodes, category *MiniMax H3 / NG*:** `NG Director`, `NG Context Image / Video / Audio / Text`, `NG Chunk Conditioning`, `NG Collect`.
-  They sit on ComfyUI's own **Start Loop / End Loop** (List mode): the Director plans chunks, the loop renders one per iteration, Collect joins them.
-- **Chunks continue each other.** The last 22 frames and the last second of sound of a chunk are pinned in front of the next, cut straight out of its latent
-  (no decode, no re-encode), then the pinned head is cut off again. Measured: the sound over the pinned stretch matches the previous chunk's end with
-  a correlation of 0.92 (0.13 without the pin); picture jumps at the joins were 0.7-2.7 times a normal frame step. The idea is
-  [NikoDemon80's H3 Motion Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context); this is an independent re-implementation, checked against ComfyUI's
-  own H3 layout in the tests.
-- **A locked song stays locked across chunks** (envelope correlation 0.97 to the song, constant 4 ms offset before and after the join).
-- **A live plan panel on the Director** shows chunks, timing, references, notes and the compiled prompt of every chunk while you edit, before anything renders. It is
-  served by `/ng/plan`, which runs the same compiler the render uses and decodes no media.
-- **Context items say what a medium means** (content) and what the model should do with it (usage): character, voice, motion, style, first frame, lock, copy.
-  A voice names its speaker; `@Name` in a shot points at a picture by its name.
-- **Reusable context cards:** persistent identity and colour, local versioned presets, image/video thumbnails and bounded audio waveforms. Input subfolders are supported;
-  paths are checked again before reading. Duplicate names and discarded or unsupported roles are reported.
-- **Explicit context analysis:** Ollama, LM Studio or a compatible custom endpoint; text/vision reuse the legacy transport. Audio needs declared `input_audio` support.
-  Suggestions are applied manually, credentials come from environment variables, and rendering does not call a provider.
-- **Simple / Guided / Expert plan views** persist across workflow reloads and leave render settings unchanged. Automatic continued shots include a continuation instruction.
-- **Shot-aware chunk boundaries.** A new action asked for right after a join comes about 2.4 s late (the pinned picture holds the previous one), so the planner moves
-  a boundary, in whole 17-frame steps and without changing the total, until no shot starts within 2.5 s after it.
-- **Honest notes instead of silent corrections**: the finished length (chunks sit on H3's frame grid), a shot that still begins within 2.5 s of a join when the boundary cannot move, a long chain (the sound loses its highs; measured at five joins), a changed resolution between chunks.
-- **Legacy tag:** the original Director is now *MiniMax H3 Director (Legacy)* in category *MiniMax H3 / Legacy*. Its node id, behaviour and saved workflows are unchanged; the other nodes
-  (Preview Override, Retake Stitch, Enhance Prompt, Save Last Frame) stay current and work with NG.
-- A new guide, [docs/NG.md](docs/NG.md), text and image/voice example workflows, and [the validation record](docs/NG-validation.md).
-  NG has 158 automated tests (one environment-dependent symlink test skipped); the legacy suites remain 371/371 and 74/74.
+- Nine product nodes: H3 AI Loader, Context Connector, Director, Director Output, Context Image/Video/Audio/Text and Render Sequence.
+- Connector collects native lazy MODEL/CLIP/VAE links and dynamically growing Context groups. Output exposes native sampler values and a separate complete sequence.
+- Director has Simple/Guided/Expert views, idea/settings, media context cards, editable scene cards, separate story/render timelines, generation summary and expandable prompt/audio/advanced panels.
+- Generate queues the connected workflow. Sequence expands native StartLoop/List, conditioning, SamplerCustomAdvanced, EndLoop and collection, with native preview/progress/interruption.
+- Four compact Context cards open full media workspaces. Image supports multiple content/usage roles and property preservation; timed guides condition the relevant chunk.
+  Video has playback/source ranges, motion/camera guidance, last-source-frame continuation and optional paired audio.
+  Audio has waveform/playback, draggable source selection/zoom, speaker, copy/lock roles and clearly labeled preview volume/fades.
+  Text has a large editor, quick insertion, editable templates/examples and highlighted references.
+- Context identity, roles, preservation, timing and colors survive versioned local presets and workflow serialization. Recognized references follow a renamed persistent context.
+- Separate optional AI provider: explicit context Analyze/Apply and timed Auto Direct/Apply proposals. Environment-variable credentials; no request on load/connect/render.
+- Existing chunk/continuity/planner implementation is reused, including audio lock, shot-aware boundaries, frame-grid and long-chain warnings.
+  Technical IDs remain under NG/Expert; old Context data without new fields remain readable.
+- Three normal product workflows and updated [guide](docs/NG.md) and [validation record](docs/NG-validation.md).
+  186 NG checks (185 passed, one Windows symlink skip), 98.01% executable core-line coverage; Legacy 371/371 and 74/74.
 
-Known limits: one resolution per project; scene cards, timeline editing, AI Auto Direct and adaptive continuity remain later work.
-Single-seed live runs and sparse frame inspection do not establish invisible joins or consistent long-chain quality. Listening remains unverified.
-NG needs native loop support; live checks used ComfyUI 0.37.0 / frontend 1.53.6. Version 1.0.0 is an unreleased local candidate; no tag or push has been made.
+Known limits: one project resolution, H3 at 24 fps, preservation/structure are guidance, Video Continue is a last-frame guide.
+Long chains can drift in image/audio; single-seed functional evidence does not establish invisible seams or bit-identical sound.
+Listening, broad multi-seed quality, adaptive continuity/crossfades and a full relationship editor remain further work.
 
 ## 0.3.2
 

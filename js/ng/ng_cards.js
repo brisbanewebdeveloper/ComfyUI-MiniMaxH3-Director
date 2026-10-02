@@ -1,113 +1,98 @@
-// Context previews and local preset controls. File bytes and provider keys never become widget values.
-import { ensureStyle } from "./ng_style.js";
-import { values, applyValues, element, request, newContextId } from "./ng_widgets.js";
+import { ensureStudioStyle } from "./ng_studio_style.js";
+import { control, hideNative, section } from "./ng_editor_fields.js";
+import { values, applyValues, element, newContextId,analysisFingerprint } from "./ng_widgets.js";
 import { attachAnalysis } from "./ng_analysis.js";
 import { FAMILY } from "./ng_context.js";
+import { rolePanel, preservePanel, optionNumber, contextOptions, setOptions, selectedRoles } from "./ng_context_controls.js";
+import { mediaEditor } from "./ng_media_editor.js";
+import { textEditor } from "./ng_context_text.js";
+import { presetEditor } from "./ng_context_presets.js";
 
-const { app } = window.comfyAPI.app;
-const { api } = window.comfyAPI.api;
-const MEDIA = { NGContextImage: "image", NGContextVideo: "video", NGContextAudio: "audio", NGContextText: "text" };
+const { app }=window.comfyAPI.app, { api }=window.comfyAPI.api;
+const MEDIA={NGContextImage:"image",NGContextVideo:"video",NGContextAudio:"audio",NGContextText:"text"};
+const ICONS={image:"▧",video:"▣",audio:"♫",text:"T"};
 
-function drawPreview(root, data) {
-  root.replaceChildren();
-  if (data.thumbnail) {
-    const image = element("img", "ng-thumbnail");
-    image.src = data.thumbnail;
-    image.alt = "Context preview";
-    root.append(image);
+function attach(node,media) {
+  ensureStudioStyle();node.properties||={};
+  const identity=node.widgets?.find((widget)=>widget.name==="context_id");if(identity&&!identity.value)identity.value=newContextId();
+  const root=element("div","ng-studio-context"), header=element("div","ng-header"), titles=element("div");
+  root.dataset.media=media;
+  const title=element("strong","ng-context-title",`${ICONS[media]} H3 CONTEXT ${media.toUpperCase()}`), nameText=element("div","ng-context-name");
+  const analyzed=element("span","ng-ai-badge"), toggle=element("button","","Details");titles.append(title,nameText);header.append(titles,analyzed,toggle);
+  const caption=element("div","ng-context-caption"), details=element("div","ng-context-details"), status=element("div","ng-status");
+  const fields=[], components=[], top=element("div","ng-context-top"), lower=element("div","ng-context-bottom");
+  const source=section(media==="audio"?"♫ Audio Track":"Source"), file=media==="text"?null:control(node,media,"Input file");
+  if(file){fields.push(file);source.append(file.label);const upload=element("button","","Browse / Upload");
+    upload.onclick=()=>{const widget=node.widgets.find((entry)=>entry.name==="upload"||entry.name==="choose file to upload");
+      if(widget)widget.callback?.();else status.textContent="Use ComfyUI's file upload action.";};source.append(upload);}
+  const name=control(node,"name","Name"), description=control(node,"description","Description",{multiline:true});fields.push(name,description);
+  const content=rolePanel(node,media,"content"), usage=rolePanel(node,media,"usage");components.push(content,usage);
+  let preview=null;
+  if(media==="text") {const editor=textEditor(node);components.push(editor);top.append(editor.root,usage.root);lower.append(content.root);}
+  else {preview=mediaEditor(node,media,api);top.append(preview.root,content.root);lower.append(usage.root);}
+  if(media==="image") {
+    const preserve=preservePanel(node);components.push(preserve);lower.append(preserve.root);
+    const anchor=optionNumber(node,"anchor_s","Keyframe / storyboard scene time · seconds",-1);components.push(anchor);usage.root.append(anchor.root);
   }
-  if (data.peaks) {
-    const canvas = element("canvas", "ng-waveform");
-    canvas.width = 320; canvas.height = 48;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#b294db";
-    data.peaks.forEach((peak, i) => ctx.fillRect(i * 4, 24 - peak * 23, 2, Math.max(1, peak * 46)));
-    root.append(canvas);
-    root.append(element("small", "ng-dim", `First ${data.sampled_seconds} s`));
+  if(media==="video") {
+    const audio=section("♫ Audio Track"), select=element("select");select.setAttribute("aria-label","Video Audio Track");
+    for(const [value,label] of [["ignore","Ignore"],["reference","Use as paired audio reference"]]){const option=element("option","",label);option.value=value;select.append(option);}
+    select.onchange=()=>setOptions(node,{video_audio:select.value});audio.append(select);
+    const preserve=control(node,"preserve","Preserve");fields.push(preserve);audio.append(preserve.label);lower.append(audio);
+    components.push({sync(){select.value=contextOptions(node).video_audio;}});
+    audio.append(element("small","ng-muted","Continue uses the last source frame as a start guide. Structure and camera are reference/prompt guidance."));
   }
+  if(media==="audio") {const speaker=control(node,"speaker","Speaker / Voice"), preserve=control(node,"preserve","Preserve");fields.push(speaker,preserve);lower.append(speaker.label,preserve.label);}
+  const presets=presetEditor(node,media,api,status), colorPanel=section("◉ Context Color"), color=control(node,"color","Auto / Custom · #rrggbb");
+  fields.push(color);const auto=element("button","","Auto"), custom=element("input");custom.type="color";custom.setAttribute("aria-label","Custom context color");
+  auto.onclick=()=>applyValues(node,{color:""});custom.oninput=()=>applyValues(node,{color:custom.value});colorPanel.append(color.label,auto,custom);
+  const advanced=element("details");advanced.append(element("summary","","Description / Identity"),description.label);
+  const id=control(node,"context_id","Context ID");fields.push(id);advanced.append(id.label);
+  details.append(name.label,top,lower,source,presets.root,colorPanel,advanced,status);
+  const analysis=attachAnalysis(node,media,details,status);
+  root.append(header,caption,details);
+  function expand(value) {
+    root.dataset.expanded=String(value);
+    node.properties.ng_context_expanded=value;details.hidden=!value;caption.hidden=value;toggle.textContent=value?"Compact":"Details";
+    node.setSize([value?Math.max(media==="text"?880:700,node.size[0]):Math.max(340,Math.min(node.size[0],440)),value?930:230]);node.setDirtyCanvas?.(true,true);
+  }
+  toggle.onclick=()=>{expand(!node.properties.ng_context_expanded);node.graph?.change();};
+  hideNative(node,(node.widgets||[]).map((widget)=>widget.name));
+  const dom=node.addDOMWidget("ng_context_card","ng_context_card",root,{serialize:false,hideOnZoom:false});
+  // Native uploads add their preview later. Hide those per-node widgets as they arrive, while keeping source callbacks.
+  for(const method of ["addWidget","addCustomWidget"]){const original=node[method];if(!original)continue;
+    node[method]=function(...args){const result=original.apply(this,args);
+      hideNative(node,(node.widgets||[]).filter((widget)=>widget!==dom).map((widget)=>widget.name));return result;};}
+  dom.computeSize=undefined;
+  dom.computeLayoutSize=()=>({minHeight:node.properties.ng_context_expanded?770:125,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});
+  let timer=null,removed=false;
+  function update() {
+    if(removed)return;
+    try {
+    const now=values(node);node.color="#192842";node.bgcolor="#101a2c";
+    // Upload previews can be added asynchronously after nodeCreated; the media workspace already owns the preview.
+    hideNative(node,(node.widgets||[]).filter((widget)=>widget!==dom).map((widget)=>widget.name));
+    const accent=/^#[0-9a-f]{6}$/i.test(now.color)?now.color:FAMILY[node.comfyClass].color;root.style.setProperty("--ng-accent",accent);custom.value=accent;
+    nameText.textContent=now.name||"New "+media+" context";
+    caption.textContent=`${selectedRoles(node,"content").join(" + ")||media} · ${selectedRoles(node,"usage").join(" + ")} · Preserve ${now.preserve}`;
+    const analyzedCurrent=node.properties.ng_analysis?.fingerprint===analysisFingerprint(media,now);analyzed.textContent=analyzedCurrent?"✨ Analyzed":"Manual";
+    fields.forEach((field)=>field.sync());components.forEach((component)=>component.sync());analysis.sync();preview?.refresh();
+    }catch(error){status.textContent=`Check context settings: ${error.message}`;caption.textContent=status.textContent;analyzed.textContent="Check settings";}
+  }
+  function schedule(){clearTimeout(timer);timer=setTimeout(update,80);}
+  for(const widget of node.widgets||[]){if(widget===dom)continue;const previous=widget.callback;
+    widget.callback=function(...args){const result=previous?.apply(this,args);schedule();document.dispatchEvent(new CustomEvent("ng-context-changed"));return result;};}
+  const configured=node.onConfigure;node.onConfigure=function(...args){const result=configured?.apply(this,args);
+    // Old workflows end after ID/colour; browser upload widgets must not fill newly added JSON fields.
+    const saved=args[0]?.widgets_values;
+    if(Array.isArray(saved)&&saved.length<=(media==="audio"?9:8))
+      for(const widget of node.widgets||[])if(["content_roles","usage_roles","context_options"].includes(widget.name))widget.value="";
+    if(identity&&!identity.value)identity.value=newContextId();presets.sync();expand(!!node.properties.ng_context_expanded);schedule();return result;};
+  const connected=node.onConnectionsChange;node.onConnectionsChange=function(...args){const result=connected?.apply(this,args);schedule();return result;};
+  const oldRemoved=node.onRemoved;node.onRemoved=function(...args){removed=true;clearTimeout(timer);preview?.dispose();return oldRemoved?.apply(this,args);};
+  const changed=()=>schedule();document.addEventListener("ng-context-changed",changed);
+  const cleanup=node.onRemoved;node.onRemoved=function(...args){document.removeEventListener("ng-context-changed",changed);return cleanup?.apply(this,args);};
+  expand(!!node.properties.ng_context_expanded);update();
 }
 
-function attach(node, media) {
-  ensureStyle();
-  node.properties ||= {};
-  const identity = node.widgets?.find((w) => w.name === "context_id");
-  if (identity && !identity.value) identity.value = newContextId();
-  const root = element("div", "ng-card");
-  const preview = element("div", "ng-media-preview");
-  const tools = element("div", "ng-tools");
-  const name = element("input");
-  name.placeholder = "Preset name"; name.setAttribute("aria-label", "Preset name");
-  name.value = node.properties.ng_preset_name || "";
-  const choices = element("select");
-  choices.setAttribute("aria-label", "Context presets");
-  const status = element("div", "ng-status");
-  const save = element("button", "", "Save preset");
-  const load = element("button", "", "Load preset");
-  const reload = element("button", "", "Refresh presets");
-  tools.append(name, save, choices, load, reload);
-  root.append(preview, tools, status);
-  const state = { serial: 0, timer: null, removed: false };
-  const report = (error) => { status.textContent = error.message || String(error); };
-  async function refreshPresets() {
-    const data = await request(api, "/ng/presets?media=" + media);
-    choices.replaceChildren();
-    for (const label of data.names) {
-      const option = element("option", "", label); option.value = label; choices.append(option);
-    }
-    load.disabled = !data.names.length;
-  }
-  save.onclick = async () => {
-    try {
-      const data = await request(api, "/ng/presets", { media, name: name.value, widgets: values(node) });
-      node.properties.ng_preset_name = data.name;
-      await refreshPresets(); choices.value = data.name;
-      status.textContent = `Saved ${data.name}. Saving the same name replaces that preset.`;
-    } catch (error) { report(error); }
-  };
-  load.onclick = async () => {
-    try {
-      const data = await request(api, "/ng/preset?" + new URLSearchParams({ media, name: choices.value }));
-      applyValues(node, data.widgets); name.value = choices.value;
-      node.properties.ng_preset_name = choices.value;
-      status.textContent = `Loaded ${choices.value}.`;
-    } catch (error) { report(error); }
-  };
-  reload.onclick = () => refreshPresets().catch(report);
-  async function update() {
-    const serial = ++state.serial;
-    const current = values(node);
-    node.color = /^#[0-9a-f]{6}$/i.test(current.color) ? current.color : FAMILY[node.comfyClass].color;
-    if (media === "text") { preview.textContent = current.text || "Text context"; return; }
-    if (!current[media]) { preview.textContent = "Upload a file to see its preview."; return; }
-    try {
-      const data = await request(api, "/ng/media?" + new URLSearchParams({ media, source: current[media] }));
-      if (!state.removed && serial === state.serial) drawPreview(preview, data);
-    } catch (error) { if (!state.removed && serial === state.serial) preview.textContent = error.message; }
-  }
-  function schedule() {
-    clearTimeout(state.timer); state.serial++;
-    state.timer = setTimeout(update, 350);
-  }
-  for (const widget of node.widgets || []) {
-    const original = widget.callback;
-    widget.callback = function (...args) { const result = original?.apply(this, args); schedule(); return result; };
-  }
-  const widget = node.addDOMWidget("ng_context_card", "ng_context_card", root, { serialize: false });
-  widget.computeSize = (width) => [width, 240];
-  attachAnalysis(node, media, root, status);
-  const configured = node.onConfigure;
-  node.onConfigure = function (...args) {
-    const result = configured?.apply(this, args);
-    if (identity && !identity.value) identity.value = newContextId();
-    name.value = node.properties.ng_preset_name || "";
-    schedule(); return result;
-  };
-  const removed = node.onRemoved;
-  node.onRemoved = function (...args) { state.removed = true; state.serial++; clearTimeout(state.timer); return removed?.apply(this, args); };
-  refreshPresets().catch(report); schedule();
-}
-
-app.registerExtension({
-  name: "mmxd.ng.context_cards",
-  nodeCreated(node) { if (MEDIA[node.comfyClass]) attach(node, MEDIA[node.comfyClass]); },
-});
+app.registerExtension({name:"mmxd.ng.context_cards",nodeCreated(node){if(MEDIA[node.comfyClass])attach(node,MEDIA[node.comfyClass]);}});

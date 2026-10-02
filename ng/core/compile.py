@@ -12,7 +12,7 @@ from .context import DirectorContext, check_item
 from .issues import Issue
 from .legacy_bridge import build_timeline, decide_mode
 
-KINDS = ("picture", "video", "audio", "lock", "first_frame", "last_frame")
+KINDS = ("picture", "video", "audio", "lock", "first_frame", "last_frame", "keyframe", "continue_video")
 
 
 @dataclass(frozen=True)
@@ -109,7 +109,38 @@ def _issues(context, chunk, result, continuity):
         out.extend(check_item(item))
     if not context.idea.strip() and not any(s.text.strip() for s in chunk.shots):
         out.append(Issue("no_text", "There is no text for this chunk; the prompt falls back to a bare placeholder.", "chunk %d" % (chunk.index + 1)))
+    if context.prompt_override.strip():
+        out.append(Issue("prompt_override", "Manual prompt replaces every chunk prompt; references and timing remain as planned."))
     return out
+
+
+def _scene_guides(context, chunk):
+    refs = []
+    for item in context.items:
+        if not item.source:
+            continue
+        if item.media == "image" and set(item.effective_usage) & {"keyframe", "storyboard"} and item.options.anchor_s >= 0:
+            frame = int(round(item.options.anchor_s * limits.FPS))
+            if chunk.story_start_f <= frame < chunk.story_end_f:
+                refs.append(MediaRef("keyframe", item.id, item.source, frame - chunk.story_start_f + chunk.head_frames, 1))
+        if item.media == "video" and "continue" in item.effective_usage and chunk.is_first:
+            end = item.options.end_s or item.length_s
+            start = max(item.options.start_s, end - 1.0) if end else item.options.start_s
+            refs.append(MediaRef("continue_video", item.id, item.source, 0, limits.FPS, int(round(start * limits.FPS))))
+    return refs
+
+
+def _selected_audio(context, refs):
+    selected = []
+    for ref in refs:
+        item = context.item(ref.ctx_id)
+        if ref.kind == "audio" and item:
+            start = max(ref.trim_start_f, int(round(item.options.start_s * limits.FPS)))
+            end = int(round(item.options.end_s * limits.FPS)) if item.options.end_s else 0
+            length = min(ref.length_f, max(0, end - start)) if end else ref.length_f
+            ref = MediaRef(ref.kind, ref.ctx_id, ref.source, ref.start_f, length, start)
+        selected.append(ref)
+    return selected
 
 
 def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: ContinuityPlan) -> CompiledChunk:
@@ -117,6 +148,7 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     tdata, mapping = build_timeline(context, chunk, mode)
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
                                 prepend_text=context.prepend_text, prompt_format="minimax")
-    return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=result["prompt"], refs=tuple(_media_refs(result, mapping)),
+    refs = _selected_audio(context, _media_refs(result, mapping)) + _scene_guides(context, chunk)
+    return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or result["prompt"], refs=tuple(refs),
                          issues=tuple(_issues(context, chunk, result, continuity)))
 

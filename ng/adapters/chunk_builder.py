@@ -9,7 +9,7 @@ from ...minimax_core import core
 from ...minimax_director import lock_audio_latent
 from ..core.chunks import ContinuityPlan
 from ..core.limits import FPS
-from . import conditioning, media
+from . import conditioning, media, scene_guides
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ def _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size):
     return mm.MiniMaxH3ReferenceToVideo.execute(
         clip=clip, vae=vae, audio_vae=audio_vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
         length=job.chunk.sampled_frames, ref_image_size=ref_image_size, ref_images=media.numbered("ref_image", pictures),
-        ref_videos=media.numbered("ref_video", videos), ref_video_audios=None, ref_audios=media.numbered("ref_audio", audios))
+        ref_videos=media.numbered("ref_video", videos), ref_video_audios=scene_guides.video_soundtracks(job), ref_audios=media.numbered("ref_audio", audios))
 
 
 def _frame_conditioning(mm, job, clip, vae):
@@ -85,6 +85,7 @@ def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="m
     else:
         out = _frame_conditioning(mm, job, clip, vae)
     positive, latent = _first_two(out)
+    positive = scene_guides.apply_guides(mm, job, positive, latent, vae)
     continuity: ContinuityPlan = job.project.plan.continuity
     locks = compiled.of_kind("lock")
     if locks:

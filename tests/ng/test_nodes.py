@@ -28,15 +28,18 @@ class Registration(unittest.TestCase):
         self.assertEqual(self.pack.NODE_DISPLAY_NAME_MAPPINGS["MiniMaxH3DirectorCS"], "MiniMax H3 Director (Legacy)")
 
     def test_display_names_exist(self):
-        for node_id in NG_IDS:
-            self.assertTrue(self.pack.NODE_DISPLAY_NAME_MAPPINGS[node_id].startswith("NG "), node_id)
+        expected = {"NGContext" + kind: "H3 Context " + kind for kind in ("Image", "Video", "Audio", "Text")}
+        expected.update(NGDirector="NG Chunk Planner", NGChunkConditioning="NG Chunk Conditioning", NGCollect="NG Collect")
+        for node_id, name in expected.items():
+            self.assertEqual(self.pack.NODE_DISPLAY_NAME_MAPPINGS[node_id], name, node_id)
 
     def test_schemas_have_unique_input_ids_and_a_category(self):
         for node_id in NG_IDS:
             schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
             ids = [i.id for i in schema.inputs]
             self.assertEqual(len(ids), len(set(ids)), node_id)
-            self.assertEqual(schema.category, "MiniMax H3/NG")
+            category = "MiniMax H3/NG/Expert" if node_id in ("NGDirector", "NGChunkConditioning", "NGCollect") else "MiniMax H3/NG"
+            self.assertEqual(schema.category, category)
 
     def test_loop_nodes_take_and_give_what_the_loop_needs(self):
         director = self.pack.NODE_CLASS_MAPPINGS["NGDirector"].GET_SCHEMA()

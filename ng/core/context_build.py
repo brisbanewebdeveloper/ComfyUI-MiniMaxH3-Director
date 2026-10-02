@@ -2,6 +2,7 @@
 import os
 
 from .context import ContextItem
+from .context_options import ContextOptions, roles
 from .issues import SchemaError
 from .project import slug
 
@@ -25,7 +26,8 @@ def item_from_widgets(media, widgets, length_s=0.0):
         source = _clean_source(str(widgets.get(media, "")))
         label = name or os.path.splitext(os.path.basename(source))[0] or media
     return ContextItem(id=str(widgets.get("context_id") or "%s_%s" % (media, slug(label))), name=label, media=media, source=source,
-                       content=(widgets.get("content", ""),) if widgets.get("content") else (),
-                       usage=(widgets.get("usage", ""),) if widgets.get("usage") else (),
+                       content=roles(widgets.get("content_roles", ""), widgets.get("content", "")),
+                       usage=roles(widgets.get("usage_roles", ""), widgets.get("usage", "")),
                        preserve=widgets.get("preserve", "high"), description=str(widgets.get("description", "")).strip(),
-                       speaker=str(widgets.get("speaker", "")).strip(), length_s=float(length_s), color=str(widgets.get("color", "")))
+                       speaker=str(widgets.get("speaker", "")).strip(), length_s=float(length_s), color=str(widgets.get("color", "")),
+                       options=ContextOptions.from_json(widgets.get("context_options", "")))

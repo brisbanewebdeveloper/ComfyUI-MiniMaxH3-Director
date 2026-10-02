@@ -15,11 +15,15 @@ class ProviderConfig:
     api_key_env: str = ""
     vision: bool = True
     audio: bool = False
+    timeout_seconds: int = 120
+    max_tokens: int = 512
+    keep_alive: int = 0
     SCHEMA_VERSION = 1
 
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "provider": self.provider, "base_url": self.base_url,
-                "model": self.model, "api_key_env": self.api_key_env, "vision": self.vision, "audio": self.audio}
+                "model": self.model, "api_key_env": self.api_key_env, "vision": self.vision, "audio": self.audio,
+                "timeout_seconds": self.timeout_seconds, "max_tokens": self.max_tokens, "keep_alive": self.keep_alive}
 
     @classmethod
     def from_dict(cls, data, path="provider"):
@@ -37,7 +41,21 @@ class ProviderConfig:
                 raise ValueError("Use an HTTP(S) base URL without credentials, query or fragment; keys belong in api_key_env.")
         return cls(provider=fields.read_choice(data, "provider", path, ("ollama", "lmstudio", "custom"), "ollama"),
                    base_url=address, model=fields.read_str(data, "model", path, ""),
-                   api_key_env=fields.read_str(data, "api_key_env", path, ""), vision=data.get("vision", True), audio=data.get("audio", False))
+                   api_key_env=fields.read_str(data, "api_key_env", path, ""), vision=data.get("vision", True), audio=data.get("audio", False),
+                   timeout_seconds=_whole_number(data, "timeout_seconds", path, 120, 5, 900),
+                   max_tokens=_whole_number(data, "max_tokens", path, 512, 64, 8192),
+                   keep_alive=_whole_number(data, "keep_alive", path, 0, 0, 3600))
+
+
+def _whole_number(data, key, path, default, minimum, maximum):
+    """A setting the UI offers as a slider; a wrong type must say so instead of being coerced."""
+    value = fields.read_number(data, key, path, default)
+    if isinstance(value, float) and not value.is_integer():
+        raise ValueError("%s.%s must be a whole number, got %r." % (path, key, value))
+    value = int(value)
+    if not minimum <= value <= maximum:
+        raise ValueError("%s.%s must be between %d and %d, got %d." % (path, key, minimum, maximum, value))
+    return value
 
 
 def analysis_prompt(media, content):

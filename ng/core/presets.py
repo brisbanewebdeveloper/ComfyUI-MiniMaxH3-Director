@@ -1,4 +1,5 @@
 """Versioned context presets contain a context item, never provider credentials."""
+import json
 from dataclasses import dataclass
 
 from . import fields
@@ -31,4 +32,6 @@ class ContextPreset:
 def widget_values(item):
     return {"context_id": item.id, "name": item.name, "description": item.description,
             "content": item.content[0] if item.content else "", "usage": item.effective_usage[0], "preserve": item.preserve,
-            item.media if item.media != "text" else "text": item.source, "speaker": item.speaker, "color": item.color}
+            item.media if item.media != "text" else "text": item.source, "speaker": item.speaker, "color": item.color,
+            "content_roles": json.dumps(list(item.content)), "usage_roles": json.dumps(list(item.effective_usage)),
+            "context_options": json.dumps(item.options.to_dict())}

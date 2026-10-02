@@ -18,10 +18,11 @@ async def audio_generate(config, prompt, source, key):
     url = legacy.normalize_base_url(config.base_url, defaults["url"])
     if not url or not config.model:
         raise ValueError("Set the provider's address and audio-capable model name.")
-    payload = {"model": config.model, "stream": False, "max_tokens": 512, "messages": [{"role": "user", "content": [
+    payload = {"model": config.model, "stream": False, "max_tokens": config.max_tokens, "messages": [{"role": "user", "content": [
         {"type": "text", "text": prompt}, {"type": "input_audio", "input_audio": {"data": wav, "format": "wav"}}]}]}
+    timeout = aiohttp.ClientTimeout(total=config.timeout_seconds)
     async with aiohttp.ClientSession(headers=legacy._auth_headers(key)) as session:
-        async with session.post(legacy.chat_completions_url(url), json=payload, timeout=aiohttp.ClientTimeout(total=120)) as response:
+        async with session.post(legacy.chat_completions_url(url), json=payload, timeout=timeout) as response:
             if response.status in (401, 403):
                 raise ValueError("The provider refused authentication; set api_key_env to a variable available to ComfyUI.")
             if response.status != 200:
@@ -63,7 +64,9 @@ async def analyze(payload):
             defaults = legacy._PROVIDER_DEFAULTS[config.provider]
             url = legacy.normalize_base_url(config.base_url, defaults["url"])
             model = config.model or defaults["model"]
-            answer = await legacy.vlm_generate(image_list, prompt, config.provider, url, model, api_key=key, max_tokens=512)
+            answer = await legacy.vlm_generate(image_list, prompt, config.provider, url, model, api_key=key,
+                                                max_tokens=config.max_tokens, timeout=config.timeout_seconds,
+                                                keep_alive=config.keep_alive)
         return parse_suggestion(answer)
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None

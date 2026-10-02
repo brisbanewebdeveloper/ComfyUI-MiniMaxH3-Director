@@ -1,69 +1,33 @@
-// Provider declarations live in node properties; only an environment-variable name is saved, never the key.
-import { values, applyValues, element, request } from "./ng_widgets.js";
+// AI actions use the connected loader; loading or connecting a graph makes no provider request.
+import { values, applyValues, element, request,analysisFingerprint } from "./ng_widgets.js";
+import { contextProvider } from "./ng_read.js";
 const { api } = window.comfyAPI.api;
-const DEFAULTS = { schema_version: 1, provider: "ollama", base_url: "", model: "", api_key_env: "", vision: true, audio: false };
-
-function settings(node, root) {
-  const details = element("details");
-  details.append(element("summary", "", "Analysis provider"));
-  const fields = {};
-  for (const [key, defaultValue] of Object.entries(DEFAULTS)) {
-    const value = node.properties.ng_provider?.[key] ?? defaultValue;
-    if (key === "schema_version") continue;
-    const label = element("label", "", key.replaceAll("_", " "));
-    const field = element(key === "provider" ? "select" : "input");
-    field.setAttribute("aria-label", key.replaceAll("_", " "));
-    if (key === "provider") {
-      for (const name of ["ollama", "lmstudio", "custom"]) { const option = element("option", "", name); option.value = name; field.append(option); }
-    }
-    if (typeof value === "boolean") { field.type = "checkbox"; field.checked = value; } else field.value = value;
-    fields[key] = field; label.append(field); details.append(label);
-    field.onchange = () => {
-      node.properties.ng_provider = { schema_version: 1 };
-      for (const [name, input] of Object.entries(fields)) node.properties.ng_provider[name] = input.type === "checkbox" ? input.checked : input.value;
-      node.graph?.change();
-      node.setDirtyCanvas?.(true, true);
-    };
-  }
-  details.append(element("small", "", "Vision: image or three video stills. Audio: first 15 s; requires input_audio support. Keys come from the ComfyUI server environment."));
-  root.append(details);
-  return () => {
-    for (const [key, field] of Object.entries(fields)) {
-      const value = node.properties.ng_provider?.[key] ?? DEFAULTS[key];
-      if (field.type === "checkbox") field.checked = value; else field.value = value;
-    }
-  };
-}
 
 export function attachAnalysis(node, media, root, status) {
-  const synchronize = settings(node, root);
-  const configured = node.onConfigure;
-  node.onConfigure = function (...args) { const result = configured?.apply(this, args); synchronize(); return result; };
-  const tools = element("div", "ng-tools");
-  const analyze = element("button", "", "Analyze context");
-  const apply = element("button", "", "Apply suggestion");
-  apply.disabled = true;
-  const output = element("div", "ng-suggestion");
-  tools.append(analyze, apply); root.append(tools, output);
-  let suggestion = null;
-  let snapshot = null;
-  analyze.onclick = async () => {
-    analyze.disabled = true; apply.disabled = true; suggestion = null;
-    snapshot = JSON.stringify(values(node));
-    output.textContent = "Analyzing…";
-    try {
-      const data = await request(api, "/ng/analyze", { media, widgets: values(node), provider: { ...DEFAULTS, ...node.properties.ng_provider } });
-      suggestion = data.suggestion;
-      output.textContent = `${suggestion.content}: ${suggestion.description}`;
-      apply.disabled = false;
-    } catch (error) { output.textContent = error.message; } finally { analyze.disabled = false; }
+  const tools=element("div","ng-tools"), analyze=element("button","","✨ Analyze"), apply=element("button","","Apply suggestion");
+  const output=element("div","ng-suggestion"), availability=element("small","ng-muted");
+  tools.append(analyze,apply);root.append(availability,tools,output);
+  let suggestion=null,snapshot=null,busy=false;
+  function sync() {
+    const provider=contextProvider(node);analyze.disabled=busy||!provider;
+    apply.disabled=!suggestion||snapshot!==JSON.stringify(values(node));
+    availability.textContent=provider?`AI: ${provider.model||provider.provider} · explicit analysis` : "AI off · connect H3 AI Loader directly or through the Connector.";
+    if(!provider)apply.disabled=true;
+  }
+  analyze.onclick=async()=>{
+    const provider=contextProvider(node);if(!provider)return;
+    busy=true;suggestion=null;snapshot=JSON.stringify(values(node));sync();output.textContent="Analyzing…";
+    try{const data=await request(api,"/ng/analyze",{media,widgets:values(node),provider});suggestion=data.suggestion;
+      output.textContent=`${suggestion.content}: ${suggestion.description}`;
+    }catch(error){output.textContent=error.message;}finally{busy=false;sync();}
   };
-  apply.onclick = () => {
-    if (snapshot !== JSON.stringify(values(node))) { status.textContent = "This context changed during analysis; analyze it again before applying."; apply.disabled = true; return; }
-    const content = node.widgets?.find((w) => w.name === "content");
-    const changes = { description: suggestion.description };
-    if (content?.options?.values?.includes(suggestion.content)) changes.content = suggestion.content;
-    applyValues(node, changes); apply.disabled = true;
-    status.textContent = "Applied the description and supported content. Usage and preserve stay as set.";
+  apply.onclick=()=>{
+    if(snapshot!==JSON.stringify(values(node))){status.textContent="Context changed; analyze it again before applying.";sync();return;}
+    const content=node.widgets?.find((widget)=>widget.name==="content"), changes={description:suggestion.description};
+    if(content?.options?.values?.includes(suggestion.content)){changes.content=suggestion.content;changes.content_roles=JSON.stringify([suggestion.content]);}
+    applyValues(node,changes);node.properties.ng_analysis={fingerprint:analysisFingerprint(media,values(node)),model:contextProvider(node)?.model};
+    suggestion=null;status.textContent="Applied analysis. Usage and preserve remain editable.";sync();
   };
+  const connected=node.onConnectionsChange;node.onConnectionsChange=function(...args){const result=connected?.apply(this,args);queueMicrotask(sync);return result;};
+  sync();return {sync};
 }

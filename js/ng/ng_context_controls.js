@@ -1,0 +1,63 @@
+import { element, values, applyValues } from "./ng_widgets.js";
+import { section } from "./ng_editor_fields.js";
+
+export const CONTENT = {
+  image: [["character","Character"],["face","Face / Identity"],["outfit","Outfit"],["pose","Pose"],["environment","Environment"],["style","Style"]],
+  video: [["motion","Character Motion"],["camera_motion","Camera Motion"],["environment","Environment"],["shot_rhythm","Shot Rhythm"],["identity","Character Identity"]],
+  audio: [["voice","Voice"],["music","Music"],["ambience","Ambience"],["sound_effect","Sound Effect"]],
+  text: [["character","Character"],["environment","Environment"],["outfit","Outfit / Style"],["camera_motion","Camera Rule"],["lighting","Lighting / Mood"],["action","Action / Motion"],["dialogue","Dialogue Rule"],["rules","Scene Constraint"]],
+};
+export const USAGE = {
+  image: [["reference","Reference"],["first_frame","First Frame"],["keyframe","Keyframe"],["last_frame","Last Frame"],["storyboard","Storyboard Frame"]],
+  video: [["motion","Motion Reference"],["camera","Camera Reference"],["continue","Continue From Video"],["structure","Whole Structure"]],
+  audio: [["voice","Voice Reference"],["copy","Copy Audio"],["lock","Lock Audio"],["music_style","Music Style"],["rhythm","Rhythm Reference"],["sound_reference","Sound Reference"]],
+  text: [["style","Style / Direction"],["character","Character Description"],["world","World Lore"],["scene","Scene Description"],["camera","Camera Rule"],["dialogue","Dialogue Rule"],["constraint","Scene Constraint"],["instruction","General Instruction"],["rule","General Rule"]],
+};
+
+export function contextOptions(node) {
+  const text = values(node).context_options;
+  return text ? JSON.parse(text) : { schema_version:1, preserve:{}, start_s:0, end_s:0, anchor_s:-1, video_audio:"ignore" };
+}
+export function setOptions(node, changes) { applyValues(node,{context_options:JSON.stringify({...contextOptions(node),...changes})}); node.graph?.change(); }
+export function selectedRoles(node, type) {
+  const now=values(node), text=now[type+"_roles"];
+  return text ? JSON.parse(text) : now[type] ? [now[type]] : [];
+}
+
+export function rolePanel(node, media, type) {
+  const root=section(type==="content"?"◎ Detected Content":"◇ Use As"), controls=[];
+  for(const [key,label] of (type==="content"?CONTENT:USAGE)[media]) {
+    const row=element("label","ng-option-row"), input=element("input");input.type=type==="usage"&&media!=="image"?"radio":"checkbox";
+    if(input.type==="radio")input.name=`ng_${node.id}_${media}_usage`;
+    input.setAttribute("aria-label",label);row.append(input,element("span","",label));root.append(row);
+    input.onchange=()=>{
+      const old=selectedRoles(node,type), selected=input.type==="radio"?[key]:input.checked?[...new Set([...old,key])]:old.filter((value)=>value!==key);
+      applyValues(node,{[type+"_roles"]:JSON.stringify(selected),[type]:selected[0]||values(node)[type]});node.graph?.change();
+    };
+    controls.push({key,input});
+  }
+  return {root,sync(){const roles=selectedRoles(node,type);controls.forEach(({key,input})=>input.checked=roles.includes(key));}};
+}
+
+export function preservePanel(node) {
+  const root=section("♢ Preserve"), controls=[];
+  for(const [key,label] of [["identity","Identity"],["outfit","Outfit"],["pose","Pose"],["background","Background"]]) {
+    const row=element("div","ng-preserve-row"), buttons=element("div","ng-segments");row.append(element("span","",label),buttons);
+    for(const value of key==="background"?["ignore","keep","high"]:["low","medium","high"]) {
+      const button=element("button","",value[0].toUpperCase()+value.slice(1));button.setAttribute("aria-label",`${label} preserve ${value}`);
+      button.onclick=()=>{const options=contextOptions(node);setOptions(node,{preserve:{...options.preserve,[key]:value}});};
+      controls.push({key,value,button});buttons.append(button);
+    }
+    root.append(row);
+  }
+  root.append(element("small","ng-muted","Retention guides the prompt; the model may still change details."));
+  return {root,sync(){const options=contextOptions(node), base=values(node).preserve;
+    controls.forEach(({key,value,button})=>button.setAttribute("aria-pressed",String((options.preserve[key]||base)===value)));}};
+}
+
+export function optionNumber(node,key,label,min=0) {
+  const row=element("label","ng-field"), input=element("input");input.type="number";input.min=String(min);input.step="0.1";
+  input.setAttribute("aria-label",label);row.append(element("span","ng-field-label",label),input);
+  input.onchange=()=>{if(input.value!==""&&input.checkValidity())setOptions(node,{[key]:Number(input.value)});};
+  return {root:row,input,sync(){if(document.activeElement!==input)input.value=contextOptions(node)[key];}};
+}

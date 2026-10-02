@@ -7,18 +7,19 @@ from dataclasses import dataclass
 
 from . import fields
 from .issues import Issue, SchemaError
+from .context_options import ContextOptions
 
 MEDIA = ("image", "video", "audio", "text")
 PRESERVE = ("low", "medium", "high")
 
 CONTENT_KINDS = ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style", "pose",
                  "action", "expression", "lighting", "effect", "composition",
-                 "voice", "dialogue", "music", "ambience", "sound_effect", "camera_motion", "motion", "rules")
+                 "voice", "dialogue", "music", "ambience", "sound_effect", "camera_motion", "motion", "rules", "shot_rhythm", "identity")
 USAGE_BY_MEDIA = {
     "image": ("reference", "first_frame", "keyframe", "last_frame", "storyboard"),
-    "video": ("motion", "camera"),
-    "audio": ("voice", "copy", "lock", "music_style"),
-    "text": ("style", "rule"),
+    "video": ("motion", "camera", "continue", "structure"),
+    "audio": ("voice", "copy", "lock", "music_style", "rhythm", "sound_reference"),
+    "text": ("style", "rule", "character", "world", "scene", "camera", "dialogue", "constraint", "instruction"),
 }
 
 
@@ -35,12 +36,14 @@ class ContextItem:
     speaker: str = ""           # audio: id of the item whose voice this is
     length_s: float = 0.0       # audio/video: duration in seconds when known (0 = unknown)
     color: str = ""             # "" = assigned automatically
+    options: ContextOptions = ContextOptions()
     SCHEMA_VERSION = 1
 
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "id": self.id, "name": self.name, "media": self.media,
                 "source": self.source, "content": list(self.content), "usage": list(self.usage), "preserve": self.preserve,
-                "description": self.description, "speaker": self.speaker, "length_s": self.length_s, "color": self.color}
+                "description": self.description, "speaker": self.speaker, "length_s": self.length_s, "color": self.color,
+                "options": self.options.to_dict()}
 
     @classmethod
     def from_dict(cls, data, path="context"):
@@ -53,7 +56,8 @@ class ContextItem:
                    preserve=fields.read_choice(data, "preserve", path, PRESERVE, "high"),
                    description=fields.read_str(data, "description", path, ""),
                    speaker=fields.read_str(data, "speaker", path, ""), length_s=float(fields.read_number(data, "length_s", path, 0.0, minimum=0)),
-                   color=fields.read_str(data, "color", path, ""))
+                   color=fields.read_str(data, "color", path, ""),
+                   options=ContextOptions.from_dict(data["options"], path + ".options") if "options" in data else ContextOptions())
 
     @property
     def effective_usage(self):
@@ -71,8 +75,8 @@ def check_item(item):
         if value not in USAGE_BY_MEDIA[item.media]:
             issues.append(Issue("usage_unknown", "'%s' is not a usage for %s items; the compiler will ignore it."
                                 % (value, item.media), item.name))
-        elif item.media == "image" and value in ("keyframe", "storyboard"):
-            issues.append(Issue("usage_pending", "'%s' is reserved for a later scene editor; this image is not sent for that role." % value, item.name))
+        elif item.media == "image" and value in ("keyframe", "storyboard") and item.options.anchor_s < 0:
+            issues.append(Issue("usage_pending", "Set a scene time for '%s'; this image is not sent for that role until timed." % value, item.name))
     if item.media != "text" and not item.source:
         issues.append(Issue("source_missing", "has no file; it cannot be sent to the model.", item.name))
     if item.media == "text" and not item.source.strip():
@@ -105,6 +109,8 @@ class DirectorContext:
     music: str = ""
     prepend_text: str = ""
     items: tuple = ()
+    style: str = ""
+    prompt_override: str = ""
     SCHEMA_VERSION = 1
 
     def __post_init__(self):
@@ -115,7 +121,7 @@ class DirectorContext:
         return {"schema_version": self.SCHEMA_VERSION, "idea": self.idea, "project_seconds": self.project_seconds,
                 "width": self.width, "height": self.height, "mode": self.mode, "shots_text": self.shots_text,
                 "soundscape": self.soundscape, "music": self.music, "prepend_text": self.prepend_text,
-                "items": [i.to_dict() for i in self.items]}
+                "items": [i.to_dict() for i in self.items], "style": self.style, "prompt_override": self.prompt_override}
 
     @classmethod
     def from_dict(cls, data, path="director"):
@@ -130,7 +136,7 @@ class DirectorContext:
                    mode=fields.read_choice(data, "mode", path, ("auto", "fl2va", "ref2va"), "auto"),
                    shots_text=fields.read_str(data, "shots_text", path, ""), soundscape=fields.read_str(data, "soundscape", path, ""),
                    music=fields.read_str(data, "music", path, ""), prepend_text=fields.read_str(data, "prepend_text", path, ""),
-                   items=items)
+                   items=items, style=fields.read_str(data, "style", path, ""), prompt_override=fields.read_str(data, "prompt_override", path, ""))
 
     def item(self, item_id):
         for found in self.items:

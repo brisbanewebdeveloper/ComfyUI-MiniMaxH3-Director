@@ -4,7 +4,7 @@ import asyncio
 from aiohttp import web
 from server import PromptServer
 
-from ..adapters import presets, preview_media
+from ..adapters import presets, preview_media, waveform
 from ..core.context_build import item_from_widgets
 from ..core.presets import ContextPreset, widget_values
 
@@ -49,6 +49,15 @@ async def read_preset(request):
 async def media_preview(request):
     try:
         data = await asyncio.to_thread(preview_media.preview, request.query["media"], request.query["source"])
+        return web.json_response({"ok": True, **data})
+    except (OSError, ValueError, KeyError) as error:
+        return web.json_response({"ok": False, "error": str(error)}, status=400)
+
+
+@PromptServer.instance.routes.get("/ng/waveform")
+async def media_waveform(request):
+    try:
+        data = await asyncio.to_thread(waveform.envelope, request.query["source"])
         return web.json_response({"ok": True, **data})
     except (OSError, ValueError, KeyError) as error:
         return web.json_response({"ok": False, "error": str(error)}, status=400)
