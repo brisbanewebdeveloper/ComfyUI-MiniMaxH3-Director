@@ -51,9 +51,6 @@ class ProjectPlan:
     compiled: tuple
     issues: tuple
 
-    def chunk_issues(self, index):
-        return tuple(i for i in self.issues if i.ref.startswith("chunk %d" % (index + 1)))
-
 
 @dataclass(frozen=True)
 class ChunkJob:
@@ -74,13 +71,25 @@ def jobs(project: ProjectPlan):
     return [ChunkJob(project, n) for n in range(len(project.plan.chunks))]
 
 
-def _dedupe(issues):
-    seen, out = set(), []
+_CHUNK_REF = re.compile(r"chunk (\d+)$")
+
+
+def _merge(issues, chunk_count):
+    """One entry per distinct problem: the same text found in several chunks is listed once, with the chunks it applies to."""
+    order, numbers, first = [], {}, {}
     for issue in issues:
-        key = (issue.code, issue.text, issue.ref)
-        if key not in seen:
-            seen.add(key)
-            out.append(issue)
+        match = _CHUNK_REF.match(issue.ref)
+        key = (issue.code, issue.text, None if match else issue.ref)
+        if key not in first:
+            first[key], numbers[key] = issue, []
+            order.append(key)
+        if match:
+            numbers[key].append(int(match.group(1)))
+    out = []
+    for key in order:
+        found = sorted(set(numbers[key]))
+        ref = key[2] if key[2] is not None else ("" if len(found) == chunk_count else "chunk " + ", ".join(map(str, found)))
+        out.append(Issue(first[key].code, first[key].text, ref))
     return tuple(out)
 
 
@@ -103,8 +112,8 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
     compiled = tuple(compile_chunk(context, chunk, continuity) for chunk in plan.chunks)
     issues = list(issues) + list(shot_issues) + list(plan.issues)
     for one in compiled:
-        issues.extend(one.issues)       # item problems repeat per chunk; _dedupe keeps one of each
-    return ProjectPlan(context=context, plan=plan, compiled=compiled, issues=_dedupe(issues))
+        issues.extend(one.issues)       # the same problem repeats per chunk; _merge lists it once
+    return ProjectPlan(context=context, plan=plan, compiled=compiled, issues=_merge(issues, len(plan.chunks)))
 
 
 def describe(project: ProjectPlan) -> str:

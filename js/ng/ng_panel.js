@@ -1,0 +1,83 @@
+// Live plan panel on the NG Director: chunks, notes and the prompt of every chunk, updated as widgets and wires change.
+import { ensureStyle } from "./ng_style.js";
+import { isContextNode, readPayload } from "./ng_read.js";
+import { renderPlan } from "./ng_view.js";
+
+const { app } = window.comfyAPI.app;
+const { api } = window.comfyAPI.api;
+
+const DIRECTOR = "NGDirector";
+const DEBOUNCE_MS = 350;
+const panels = new Map();   // director node id -> { node, root, timer, serial }
+
+async function fetchPlan(payload) {
+  const response = await api.fetchApi("/ng/plan", { method: "POST", body: JSON.stringify(payload) });
+  return response.json();
+}
+
+async function refresh(panel) {
+  const serial = ++panel.serial;
+  let data;
+  try {
+    data = await fetchPlan(readPayload(panel.node));
+  } catch (error) {
+    data = { ok: false, error: `could not reach the server: ${error.message || error}` };
+  }
+  if (serial === panel.serial) renderPlan(panel.root, data);
+}
+
+function schedule(panel) {
+  clearTimeout(panel.timer);
+  panel.timer = setTimeout(() => refresh(panel), DEBOUNCE_MS);
+}
+
+export function scheduleAll() {
+  for (const panel of panels.values()) schedule(panel);
+}
+
+// Any widget edit on a node that feeds the plan calls back into the panels.
+function watchWidgets(node) {
+  for (const widget of node.widgets || []) {
+    const original = widget.callback;
+    widget.callback = function (...args) {
+      const result = original ? original.apply(this, args) : undefined;
+      scheduleAll();
+      return result;
+    };
+  }
+  const connections = node.onConnectionsChange;
+  node.onConnectionsChange = function (...args) {
+    const result = connections ? connections.apply(this, args) : undefined;
+    scheduleAll();
+    return result;
+  };
+}
+
+function attach(node) {
+  ensureStyle();
+  const root = document.createElement("div");
+  root.className = "ng-plan";
+  const widget = node.addDOMWidget("ng_plan", "ng_plan", root, { serialize: false, hideOnZoom: false });
+  widget.computeSize = (width) => [width, 260];
+  const panel = { node, root, timer: null, serial: 0 };
+  panels.set(node.id, panel);
+  watchWidgets(node);
+  renderPlan(root, null);
+  schedule(panel);
+  const removed = node.onRemoved;
+  node.onRemoved = function (...args) {
+    panels.delete(node.id);
+    return removed ? removed.apply(this, args) : undefined;
+  };
+}
+
+app.registerExtension({
+  name: "mmxd.ng.plan_panel",
+  nodeCreated(node) {
+    if (node.comfyClass === DIRECTOR) attach(node);
+    else if (isContextNode(node)) watchWidgets(node);
+  },
+  loadedGraphNode() {
+    scheduleAll();
+  },
+});

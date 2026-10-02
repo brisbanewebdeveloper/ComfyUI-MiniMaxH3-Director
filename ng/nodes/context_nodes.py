@@ -8,8 +8,8 @@ import folder_paths
 from comfy_api.latest import io
 
 from ..adapters import probe
-from ..core.context import PRESERVE, USAGE_BY_MEDIA, ContextItem
-from ..core.project import slug
+from ..core.context import PRESERVE, USAGE_BY_MEDIA
+from ..core.context_build import item_from_widgets
 
 NGContext = io.Custom("NG_CONTEXT")
 CATEGORY = "MiniMax H3 NG"
@@ -37,13 +37,6 @@ def _common_inputs(media):
     ]
 
 
-def _item(media, name, source, content, usage, preserve, description, speaker="", length_s=0.0):
-    clean = source.replace(" [input]", "").strip()
-    label = name.strip() or os.path.splitext(os.path.basename(clean))[0] or media
-    return ContextItem(id="%s_%s" % (media, slug(label)), name=label, media=media, source=clean, content=(content,), usage=(usage,),
-                       preserve=preserve, description=description.strip(), speaker=speaker.strip(), length_s=length_s)
-
-
 class NGContextImage(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -54,7 +47,7 @@ class NGContextImage(io.ComfyNode):
 
     @classmethod
     def execute(cls, image, name, description, content, usage, preserve):
-        return io.NodeOutput(_item("image", name, image, content, usage, preserve, description))
+        return io.NodeOutput(item_from_widgets("image", dict(image=image, name=name, description=description, content=content, usage=usage, preserve=preserve)))
 
 
 class NGContextVideo(io.ComfyNode):
@@ -67,8 +60,8 @@ class NGContextVideo(io.ComfyNode):
 
     @classmethod
     def execute(cls, video, name, description, content, usage, preserve):
-        return io.NodeOutput(_item("video", name, video, content, usage, preserve, description,
-                                   length_s=probe.duration_seconds(video.replace(" [input]", ""))))
+        widgets = dict(video=video, name=name, description=description, content=content, usage=usage, preserve=preserve)
+        return io.NodeOutput(item_from_widgets("video", widgets, probe.duration_seconds(video.replace(" [input]", ""))))
 
 
 class NGContextAudio(io.ComfyNode):
@@ -82,8 +75,8 @@ class NGContextAudio(io.ComfyNode):
 
     @classmethod
     def execute(cls, audio, name, description, content, usage, preserve, speaker):
-        return io.NodeOutput(_item("audio", name, audio, content, usage, preserve, description, speaker=speaker,
-                                   length_s=probe.duration_seconds(audio.replace(" [input]", ""))))
+        widgets = dict(audio=audio, name=name, description=description, content=content, usage=usage, preserve=preserve, speaker=speaker)
+        return io.NodeOutput(item_from_widgets("audio", widgets, probe.duration_seconds(audio.replace(" [input]", ""))))
 
 
 class NGContextText(io.ComfyNode):
@@ -96,8 +89,7 @@ class NGContextText(io.ComfyNode):
 
     @classmethod
     def execute(cls, text, name, description, content, usage, preserve):
-        return io.NodeOutput(ContextItem(id="text_%s" % slug(name or text[:24]), name=name.strip() or text[:24].strip() or "note", media="text",
-                                         source=text, content=(content,), usage=(usage,), preserve=preserve, description=description.strip()))
+        return io.NodeOutput(item_from_widgets("text", dict(text=text, name=name, description=description, content=content, usage=usage, preserve=preserve)))
 
 
 NODES = [NGContextImage, NGContextVideo, NGContextAudio, NGContextText]

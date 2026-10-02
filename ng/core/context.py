@@ -106,6 +106,10 @@ class DirectorContext:
     items: tuple = ()
     SCHEMA_VERSION = 1
 
+    def __post_init__(self):
+        if self.mode not in ("auto", "fl2va", "ref2va"):
+            raise ValueError("mode must be auto, fl2va or ref2va, got %r" % (self.mode,))
+
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "idea": self.idea, "project_seconds": self.project_seconds,
                 "width": self.width, "height": self.height, "mode": self.mode, "shots_text": self.shots_text,

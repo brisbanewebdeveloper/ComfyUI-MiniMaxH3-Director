@@ -22,6 +22,12 @@ class ContinuityPlan:
     audio_frames: int = limits.PIN_AUDIO_DEFAULT
     SCHEMA_VERSION = 1
 
+    def __post_init__(self):
+        if self.mode not in CONTINUITY_MODES:
+            raise ValueError("continuity must be one of %s, got %r" % (", ".join(CONTINUITY_MODES), self.mode))
+        if self.video_frames not in limits.PIN_VIDEO_WINDOWS:
+            raise ValueError("pin frames must be one of %s, got %r" % (limits.PIN_VIDEO_WINDOWS, self.video_frames))
+
     @property
     def head(self):
         """Frames in front of every continued chunk that are sampled but not delivered."""

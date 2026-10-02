@@ -63,6 +63,17 @@ class Plan(unittest.TestCase):
         self.assertEqual(codes.count("usage_unknown"), 1)
         self.assertEqual(codes.count("speaker_unknown"), 1)
 
+    def test_the_same_problem_in_every_chunk_is_listed_once(self):
+        out = project.plan_project(context.DirectorContext(idea="A dog runs.", project_seconds=30), 10, VIDEO)
+        soundscape = [i for i in out.issues if "overall_soundscape is empty" in i.text]
+        self.assertEqual(len(soundscape), 1)
+        self.assertEqual(soundscape[0].ref, "")                       # it applies to all three chunks
+
+    def test_a_problem_in_some_chunks_names_them(self):
+        issues = [project.Issue("planner", "x", "chunk 1"), project.Issue("planner", "x", "chunk 3"), project.Issue("other", "y", "shot 2")]
+        merged = project._merge(issues, 3)
+        self.assertEqual([(i.text, i.ref) for i in merged], [("x", "chunk 1, 3"), ("y", "shot 2")])
+
     def test_describe_lists_every_chunk(self):
         out = project.plan_project(context.DirectorContext(idea="x", project_seconds=30), 10, VIDEO)
         text = project.describe(out)
