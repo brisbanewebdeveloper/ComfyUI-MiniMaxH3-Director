@@ -55,6 +55,13 @@ class Preview(unittest.TestCase):
             self.assertTrue(out["error"])
         self.assertFalse(preview.plan_preview({"contexts": [{"media": "gif", "widgets": {}}]})["ok"])
 
+    def test_malformed_requests_and_nonfinite_numbers_are_errors(self):
+        for payload in (None, [], {"director": []}, {"director": "bad"}, {"contexts": [None]},
+                        {"contexts": [{"media": "image", "widgets": []}]}, {"contexts": "bad"},
+                        {"director": {"project_seconds": float("nan")}}, {"director": {"width": float("inf")}}):
+            with self.subTest(payload=payload):
+                self.assertFalse(preview.plan_preview(payload)["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -71,6 +71,8 @@ def check_item(item):
         if value not in USAGE_BY_MEDIA[item.media]:
             issues.append(Issue("usage_unknown", "'%s' is not a usage for %s items; the compiler will ignore it."
                                 % (value, item.media), item.name))
+        elif item.media == "image" and value in ("keyframe", "storyboard"):
+            issues.append(Issue("usage_pending", "'%s' is reserved for a later scene editor; this image is not sent for that role." % value, item.name))
     if item.media != "text" and not item.source:
         issues.append(Issue("source_missing", "has no file; it cannot be sent to the model.", item.name))
     if item.media == "text" and not item.source.strip():
@@ -80,10 +82,15 @@ def check_item(item):
 
 def require_unique(items):
     seen = {}
+    names = set()
     for item in items:
         if item.id in seen:
             raise SchemaError("context.%s" % item.id, "id used twice (%s and %s)" % (seen[item.id], item.name))
         seen[item.id] = item.name
+        name = item.name.casefold()
+        if name in names:
+            raise SchemaError("context.name", "name used twice: %s; use distinct names for @mentions and speakers" % item.name)
+        names.add(name)
 
 
 @dataclass(frozen=True)

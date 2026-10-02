@@ -78,6 +78,12 @@ class References(unittest.TestCase):
         self.assertIn("<Audio 1> is a reference audio clip", out[0].prompt)
         self.assertEqual([r.kind for r in out[0].refs], ["picture", "audio"])
 
+    def test_voice_pointing_to_a_text_note_is_not_discarded(self):
+        note = item("note", "Narrator", "text", "refs/n.wav", usage=("rule",))
+        voice = item("voice", "Sound", "audio", "refs/n.wav", usage=("voice",), speaker="note", length_s=6)
+        _, out = build(self.ctx(items=(note, voice)))
+        self.assertEqual([(r.kind, r.ctx_id) for r in out[0].refs], [("audio", "voice")])
+
     def test_too_many_audio_clips_are_named(self):
         clips = tuple(item("ctx_%04d" % (10 + n), "Clip%d" % n, "audio", "refs/c%d.wav" % n, usage=("voice",), length_s=5) for n in range(4))
         _, out = build(self.ctx(items=(ALICE,) + clips))
@@ -128,6 +134,8 @@ class Chunks(unittest.TestCase):
         plan, out = build(ctx)
         self.assertEqual(len(out), len(plan.chunks))
         self.assertTrue(all("long walk" in c.prompt for c in out))
+        self.assertNotIn("Continue the same scene", out[0].prompt)
+        self.assertTrue(all("Continue the same scene" in c.prompt for c in out[1:]))
 
 
 class Persistence(unittest.TestCase):

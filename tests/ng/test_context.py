@@ -52,6 +52,11 @@ class Director(unittest.TestCase):
         with self.assertRaises(issues.SchemaError):
             context.DirectorContext.from_dict(data)
 
+    def test_duplicate_names_are_refused_for_mentions(self):
+        data = context.DirectorContext(items=(item(), item(id="other", name="ALICE"))).to_dict()
+        with self.assertRaisesRegex(issues.SchemaError, "name used twice"):
+            context.DirectorContext.from_dict(data)
+
     def test_lookup_helpers(self):
         d = context.DirectorContext(items=(item(), item(id="ctx_0002", name="Voice", media="audio", usage=("voice",))))
         self.assertEqual(d.item("ctx_0002").name, "Voice")

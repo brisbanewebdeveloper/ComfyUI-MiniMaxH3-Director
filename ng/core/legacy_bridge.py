@@ -31,7 +31,7 @@ def has_references(context):
         usage = item.effective_usage
         if item.media == "image" and "reference" in usage:
             return True
-        if item.media == "video" or (item.media == "audio" and set(usage) & {"voice", "copy", "music_style"}):
+        if (item.media == "video" and set(usage) & {"motion", "camera"}) or (item.media == "audio" and set(usage) & {"voice", "copy", "music_style"}):
             return True
     return False
 
@@ -63,8 +63,9 @@ def _slot(item, voices):
 def _voices_by_speaker(context):
     """Audio items with usage `voice` and a speaker, keyed by the speaker's item id. One voice per subject; extras stay loose."""
     voices = {}
+    subjects = {item.id for item in _subject_items(context)}
     for item in context.by_media("audio"):
-        if "voice" in item.effective_usage and item.speaker and item.source and item.speaker not in voices:
+        if "voice" in item.effective_usage and item.speaker in subjects and item.source and item.speaker not in voices:
             voices[item.speaker] = item
     return voices
 
@@ -90,7 +91,9 @@ def _audio_segments(context, chunk, voices):
     for item in context.by_media("audio"):
         if item.id in used or not item.source:
             continue
-        usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION), "voice")
+        usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION), None)
+        if usage is None:
+            continue
         timed = usage in ("copy", "lock")
         start, length, trim = _window_frames(chunk) if timed else (FAR_AWAY, int(max(item.length_s, 2.0) * 24), 0)
         segments.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": start, "length": length,
@@ -101,18 +104,20 @@ def _audio_segments(context, chunk, voices):
 def _motion_segments(context):
     out = []
     for item in context.by_media("video"):
-        if item.source:
+        if item.source and set(item.effective_usage) & {"motion", "camera"}:
             length = int(round((item.length_s or 5.0) * 24))
             out.append({"type": "video", "videoFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,
                         "trimStart": 0, "retention": _RETENTION[item.preserve]})
     return out
 
 
-def _shot_text(shot, substitute):
+def _shot_text(shot, substitute, automatic=False):
     """A shot that began in an earlier chunk keeps its action but not its spoken lines: those belong to where the shot starts."""
     text = substitute(shot.text)
     if shot.carried:
         text = "\n".join(line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip()))
+        if automatic and text.strip():
+            text = "Continue the same scene and action from the preceding video, preserving the subject and setting. " + text
     return text
 
 
@@ -134,7 +139,7 @@ def _anchor_segments(context, chunk, is_last):
 def _global_prompt(context):
     parts = [context.idea.strip()] if context.shots_text.strip() else []
     for item in context.by_media("text"):
-        if item.source.strip():
+        if item.source.strip() and set(item.effective_usage) & {"style", "rule"}:
             parts.append(item.source.strip())
     return " ".join(p for p in parts if p)
 
@@ -144,7 +149,8 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
     subjects = _subject_items(context)
     voices = _voices_by_speaker(context)
     substitute = _tag_substitutor([s.id for s in subjects], context)
-    segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f, "prompt": _shot_text(s, substitute)}
+    segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
+                 "prompt": _shot_text(s, substitute, automatic=not context.shots_text.strip())}
                 for s in chunk.shots]
     segments += _anchor_segments(context, chunk, chunk.is_last)
     ref_on = mode == "ref2va"
@@ -155,5 +161,6 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
              "non_diegetic_music": context.music}
     by_source = {}
     for item in context.items:
-        by_source.setdefault(item.source, item.id)
+        if item.media != "text":
+            by_source.setdefault(item.source, item.id)
     return tdata, Mapping([s.id for s in subjects], by_source)

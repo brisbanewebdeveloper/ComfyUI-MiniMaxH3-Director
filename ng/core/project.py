@@ -9,6 +9,7 @@ from . import frames, limits
 from .chunks import ContinuityPlan, SequencePlan, plan_chunks
 from .compile import compile_chunk
 from .context import ContextItem, DirectorContext
+from .context_checks import check_context
 from .issues import Issue
 from .shots import auto_shots, parse_shots
 
@@ -97,7 +98,7 @@ def _prepare(context):
     items, issues = resolve_speakers(context.items)
     (width, height), canvas_issues = snap_canvas(context.width, context.height)
     ctx = DirectorContext.from_dict({**context.to_dict(), "items": [i.to_dict() for i in items], "width": width, "height": height})
-    return ctx, issues + canvas_issues
+    return ctx, issues + canvas_issues + check_context(ctx)
 
 
 def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan) -> ProjectPlan:

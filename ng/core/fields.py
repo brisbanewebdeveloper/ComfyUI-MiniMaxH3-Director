@@ -1,4 +1,6 @@
 """Small readers used by every from_dict: they name the path of a bad field instead of raising a bare KeyError."""
+import math
+
 from .issues import SchemaError
 
 
@@ -27,6 +29,8 @@ def read_number(data, key, path, default=None, minimum=None):
     value = data[key]
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise SchemaError("%s.%s" % (path, key), "expected a number, got %s" % type(value).__name__)
+    if not math.isfinite(value):
+        raise SchemaError("%s.%s" % (path, key), "must be a finite number")
     if minimum is not None and value < minimum:
         raise SchemaError("%s.%s" % (path, key), "must be at least %s, got %s" % (minimum, value))
     return value

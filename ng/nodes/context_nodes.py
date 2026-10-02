@@ -24,7 +24,8 @@ CONTENT_BY_MEDIA = {
 def _files(kinds):
     folder = folder_paths.get_input_directory()
     os.makedirs(folder, exist_ok=True)
-    return sorted(folder_paths.filter_files_content_types(os.listdir(folder), kinds))
+    files, _ = folder_paths.recursive_search(folder, excluded_dir_names=[".git"])
+    return sorted(folder_paths.filter_files_content_types(files, kinds))
 
 
 def _common_inputs(media):
@@ -32,9 +33,16 @@ def _common_inputs(media):
         io.String.Input("name", default="", tooltip="What the Director and your shot text call this. Write @name in a shot to point at it."),
         io.String.Input("description", multiline=True, default="", tooltip="One sentence about what this is (identity, look). It is written into the prompt."),
         io.Combo.Input("content", options=list(CONTENT_BY_MEDIA[media]), tooltip="What is in it."),
-        io.Combo.Input("usage", options=list(USAGE_BY_MEDIA[media]), tooltip="What the model should do with it."),
+        io.Combo.Input("usage", options=[u for u in USAGE_BY_MEDIA[media] if u not in ("keyframe", "storyboard")],
+                       tooltip="What the model should do with it. Scene keyframes and storyboards are planned for later."),
         io.Combo.Input("preserve", options=list(PRESERVE), default="high", tooltip="How closely the result should stay true to it."),
     ]
+
+
+def _identity_inputs():
+    return [io.String.Input("context_id", default="", optional=True, advanced=True,
+                            tooltip="Persistent identity, assigned when a new card is created."),
+            io.String.Input("color", default="", optional=True, advanced=True, tooltip="Optional context colour, #rrggbb.")]
 
 
 class NGContextImage(io.ComfyNode):
@@ -42,7 +50,7 @@ class NGContextImage(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(node_id="NGContextImage", display_name="NG Context Image", category=CATEGORY,
                          description="A picture and what it means: a character, an outfit, a place, a first frame.",
-                         inputs=[io.Combo.Input("image", options=_files(["image"]), upload=io.UploadType.image)] + _common_inputs("image"),
+                         inputs=[io.Combo.Input("image", options=_files(["image"]), upload=io.UploadType.image)] + _common_inputs("image") + _identity_inputs(),
                          outputs=[NGContext.Output()])
 
     @classmethod
@@ -50,8 +58,9 @@ class NGContextImage(io.ComfyNode):
         return probe.file_stamp(image)
 
     @classmethod
-    def execute(cls, image, name, description, content, usage, preserve):
-        return io.NodeOutput(item_from_widgets("image", dict(image=image, name=name, description=description, content=content, usage=usage, preserve=preserve)))
+    def execute(cls, image, name, description, content, usage, preserve, context_id="", color=""):
+        return io.NodeOutput(item_from_widgets("image", dict(image=image, name=name, description=description, content=content,
+                                                            usage=usage, preserve=preserve, context_id=context_id, color=color)))
 
 
 class NGContextVideo(io.ComfyNode):
@@ -59,7 +68,7 @@ class NGContextVideo(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(node_id="NGContextVideo", display_name="NG Context Video", category=CATEGORY,
                          description="A clip used as a motion or camera reference (2-15 s).",
-                         inputs=[io.Combo.Input("video", options=_files(["video"]), upload=io.UploadType.video)] + _common_inputs("video"),
+                         inputs=[io.Combo.Input("video", options=_files(["video"]), upload=io.UploadType.video)] + _common_inputs("video") + _identity_inputs(),
                          outputs=[NGContext.Output()])
 
     @classmethod
@@ -67,8 +76,9 @@ class NGContextVideo(io.ComfyNode):
         return probe.file_stamp(video)
 
     @classmethod
-    def execute(cls, video, name, description, content, usage, preserve):
-        widgets = dict(video=video, name=name, description=description, content=content, usage=usage, preserve=preserve)
+    def execute(cls, video, name, description, content, usage, preserve, context_id="", color=""):
+        widgets = dict(video=video, name=name, description=description, content=content, usage=usage, preserve=preserve,
+                       context_id=context_id, color=color)
         return io.NodeOutput(item_from_widgets("video", widgets, probe.duration_seconds(video.replace(" [input]", ""))))
 
 
@@ -78,7 +88,7 @@ class NGContextAudio(io.ComfyNode):
         return io.Schema(node_id="NGContextAudio", display_name="NG Context Audio", category=CATEGORY,
                          description="A sound: a character's voice, a song to keep exactly (lock) or copy, a music style.",
                          inputs=[io.Combo.Input("audio", options=_files(["audio", "video"]), upload=io.UploadType.audio)] + _common_inputs("audio") + [
-                             io.String.Input("speaker", default="", tooltip="Voice only: the name of the character who speaks with this voice.")],
+                             io.String.Input("speaker", default="", tooltip="Voice only: the name of the character who speaks with this voice.")] + _identity_inputs(),
                          outputs=[NGContext.Output()])
 
     @classmethod
@@ -86,8 +96,9 @@ class NGContextAudio(io.ComfyNode):
         return probe.file_stamp(audio)
 
     @classmethod
-    def execute(cls, audio, name, description, content, usage, preserve, speaker):
-        widgets = dict(audio=audio, name=name, description=description, content=content, usage=usage, preserve=preserve, speaker=speaker)
+    def execute(cls, audio, name, description, content, usage, preserve, speaker, context_id="", color=""):
+        widgets = dict(audio=audio, name=name, description=description, content=content, usage=usage, preserve=preserve, speaker=speaker,
+                       context_id=context_id, color=color)
         return io.NodeOutput(item_from_widgets("audio", widgets, probe.duration_seconds(audio.replace(" [input]", ""))))
 
 
@@ -96,12 +107,13 @@ class NGContextText(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(node_id="NGContextText", display_name="NG Context Text", category=CATEGORY,
                          description="A note that applies to the whole video: style, camera rules, world.",
-                         inputs=[io.String.Input("text", multiline=True, default="")] + _common_inputs("text"),
+                         inputs=[io.String.Input("text", multiline=True, default="")] + _common_inputs("text") + _identity_inputs(),
                          outputs=[NGContext.Output()])
 
     @classmethod
-    def execute(cls, text, name, description, content, usage, preserve):
-        return io.NodeOutput(item_from_widgets("text", dict(text=text, name=name, description=description, content=content, usage=usage, preserve=preserve)))
+    def execute(cls, text, name, description, content, usage, preserve, context_id="", color=""):
+        return io.NodeOutput(item_from_widgets("text", dict(text=text, name=name, description=description, content=content,
+                                                           usage=usage, preserve=preserve, context_id=context_id, color=color)))
 
 
 NODES = [NGContextImage, NGContextVideo, NGContextAudio, NGContextText]

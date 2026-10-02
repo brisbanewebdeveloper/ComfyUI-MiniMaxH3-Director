@@ -3,6 +3,7 @@ from ... import minimax_media as legacy
 from ... import minimax_plan as plan
 from ..core.compile import MediaRef
 from ..core.limits import FPS
+from .paths import input_path
 
 
 class MediaError(RuntimeError):
@@ -11,7 +12,7 @@ class MediaError(RuntimeError):
 
 def _require_file(ref: MediaRef, what):
     """The legacy loaders turn a missing file into a blank picture or silence; NG stops and names the item instead."""
-    if not legacy.resolve_input_path(ref.source):
+    if not input_path(ref.source):
         raise MediaError("the %s '%s' (%s) is not in ComfyUI's input folder" % (what, ref.ctx_id, ref.source))
 
 

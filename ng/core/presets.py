@@ -1,0 +1,34 @@
+"""Versioned context presets contain a context item, never provider credentials."""
+from dataclasses import dataclass
+
+from . import fields
+from .context import ContextItem
+from .issues import SchemaError
+
+
+@dataclass(frozen=True)
+class ContextPreset:
+    name: str
+    item: ContextItem
+    SCHEMA_VERSION = 1
+
+    def to_dict(self):
+        return {"schema_version": self.SCHEMA_VERSION, "name": self.name, "item": self.item.to_dict()}
+
+    @classmethod
+    def from_dict(cls, data, path="preset"):
+        fields.need_dict(data, path)
+        fields.check_version(data, path, cls.SCHEMA_VERSION)
+        extra = set(data) - {"schema_version", "name", "item"}
+        if extra:
+            raise SchemaError(path, "unknown fields: " + ", ".join(sorted(extra)))
+        name = fields.read_str(data, "name", path).strip()
+        if not name or len(name) > 80:
+            raise SchemaError(path + ".name", "use a name of 1 to 80 characters")
+        return cls(name, ContextItem.from_dict(data.get("item"), path + ".item"))
+
+
+def widget_values(item):
+    return {"context_id": item.id, "name": item.name, "description": item.description,
+            "content": item.content[0] if item.content else "", "usage": item.effective_usage[0], "preserve": item.preserve,
+            item.media if item.media != "text" else "text": item.source, "speaker": item.speaker, "color": item.color}

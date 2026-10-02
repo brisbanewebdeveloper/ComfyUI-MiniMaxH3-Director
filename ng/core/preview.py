@@ -1,5 +1,5 @@
 """The plan as plain data for the editor's live panel: no media is loaded and nothing is rendered."""
-from . import frames
+from . import fields, frames
 from .chunks import ContinuityPlan
 from .context import DirectorContext
 from .context_build import item_from_widgets
@@ -14,7 +14,9 @@ DIRECTOR_DEFAULTS = {"idea": "", "shots": "", "project_seconds": 10.0, "chunk_se
 def _items(contexts, probe):
     items = []
     for entry in contexts or []:
-        media, widgets = entry.get("media"), entry.get("widgets") or {}
+        fields.need_dict(entry, "contexts[]")
+        media, widgets = entry.get("media"), entry.get("widgets", {})
+        fields.need_dict(widgets, "contexts[].widgets")
         length = probe(widgets.get(media, "")) if probe and media in ("audio", "video") else 0.0
         items.append(item_from_widgets(media, widgets, length))
     return tuple(items)
@@ -34,14 +36,17 @@ def _chunk_view(chunk, compiled, context):
 
 def plan_preview(payload, probe=None):
     """payload: {"director": {widget values}, "contexts": [{"media": "image", "widgets": {...}}, ...]}. Never raises on bad user input."""
-    values = {**DIRECTOR_DEFAULTS, **(payload.get("director") or {})}
     try:
+        fields.need_dict(payload, "request")
+        director = fields.need_dict(payload.get("director", {}), "director")
+        values = {**DIRECTOR_DEFAULTS, **director}
+        fields.read_list(payload, "contexts", "request")
         context = DirectorContext(idea=values["idea"], project_seconds=float(values["project_seconds"]), width=int(values["width"]),
                                   height=int(values["height"]), mode=values["mode"], shots_text=values["shots"], soundscape=values["soundscape"],
                                   music=values["music"], prepend_text=values["prepend_text"], items=_items(payload.get("contexts"), probe))
         continuity = ContinuityPlan(mode=values["continuity"], video_frames=int(values["pin_frames"]), audio_frames=PIN_AUDIO_DEFAULT)
         project = plan_project(context, float(values["chunk_seconds"]), continuity)
-    except (SchemaError, KeyError, ValueError, TypeError) as error:
+    except (SchemaError, KeyError, ValueError, TypeError, OverflowError) as error:
         return {"ok": False, "error": str(error)}
     return {"ok": True, "total_s": round(frames.frames_to_seconds(project.plan.total_frames), 3), "total_frames": project.plan.total_frames,
             "mode": project.compiled[0].mode, "chunks": [_chunk_view(c, k, project.context) for c, k in zip(project.plan.chunks, project.compiled)],
