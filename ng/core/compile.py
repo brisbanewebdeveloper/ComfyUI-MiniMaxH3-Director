@@ -77,12 +77,21 @@ def _picture_refs(result, mapping):
 
 
 def _anchor_refs(result, mapping):
+    """One first frame and one last frame per chunk.
+
+    H3's frame conditioning takes a single image per slot, so a project that set two last frames must not send two:
+    the planner keeps both events for its own bookkeeping, but only the first of each role reaches the model. Which
+    one was dropped is reported by `ng/core/context_checks.py` as `anchor_multiple`.
+    """
     refs = []
-    for event in result["events"]:
-        source = event["seg"].get("imageFile", "")
-        kind = {plan.ROLE_FIRST: "first_frame", plan.ROLE_LAST: "last_frame"}.get(event["role"])
-        if kind and source:
-            refs.append(MediaRef(kind, mapping.by_source.get(source, ""), source))
+    for kind in ("first_frame", "last_frame"):
+        role = plan.ROLE_FIRST if kind == "first_frame" else plan.ROLE_LAST
+        for event in result["events"]:
+            source = event["seg"].get("imageFile", "")
+            if event["role"] == role and source:
+                ctx_id = event["seg"].get("ng_item") or mapping.anchor_id(role, source)
+                refs.append(MediaRef(kind, ctx_id, source))
+                break
     return refs
 
 

@@ -29,13 +29,17 @@ def empty_latent(frames):
 
 
 class FakeCore:
-    """Stands in for comfy_extras.nodes_minimax_h3: records what it was asked and returns an empty conditioning + latent."""
+    """Stands in for comfy_extras.nodes_minimax_h3: records what it was asked and returns an empty conditioning + latent.
+
+    The two node names are the ones `chunk_builder` really calls: MiniMaxH3ImageToVideo is the frame-guided run
+    (fl2va) and MiniMaxH3ReferenceToVideo takes reference media (ref2va).
+    """
     AUDIO_LATENT_FPS = 40
 
     def __init__(self):
         self.calls = []
-        self.ImageToVideo = self._node("t2va")
-        self.ReferenceToVideo = self._node("ref2va")
+        self.ImageToVideo = self._node("frame")      # MiniMaxH3ImageToVideo
+        self.ReferenceToVideo = self._node("reference")  # MiniMaxH3ReferenceToVideo
 
     def _node(self, name):
         outer = self
@@ -77,12 +81,48 @@ class Build(unittest.TestCase):
         ctx = context.DirectorContext.from_dict({**ctx.to_dict(), "project_seconds": seconds})
         return project.jobs(project.plan_project(ctx, 5, VIDEO))
 
+    def test_last_frame_reaches_the_frame_conditioning(self):
+        # R6: the compiled ref must actually arrive as last_frame, not only exist in the plan.
+        # One chunk only, so the mode belongs to this chunk and is not mixed with the others.
+        end = item("image_end", "Ende", "image", "end.png", usage=("last_frame",))
+        fake = FakeCore()
+        job = self.jobs(context.DirectorContext(idea="She turns.", items=(end,)), seconds=8)[-1]
+        builder.build_chunk(job, clip=object(), vae=object(), mm=fake)
+        name, kw = fake.calls[0]
+        self.assertEqual((name, job.compiled.mode), ("frame", "fl2va"),
+                         "a last frame guide needs the frame model, not the reference model")
+        self.assertIsNone(kw["first_frame"])
+        self.assertIsNotNone(kw["last_frame"], "the compiled last frame must reach MiniMaxH3ImageToVideo")
+        self.assertEqual(tuple(kw["last_frame"].shape), (1, job.project.context.height, job.project.context.width, 3))
+        self.assertEqual(self.pictures, ["end.png"], "the last frame is loaded exactly once")
+
+    def test_only_the_final_chunk_gets_a_last_frame(self):
+        end = item("image_end", "Ende", "image", "end.png", usage=("last_frame",))
+        fake = FakeCore()
+        jobs = self.jobs(context.DirectorContext(idea="She turns.", items=(end,)), seconds=30)
+        self.assertTrue(len(jobs) > 1)
+        for job in jobs[:-1]:
+            builder.build_chunk(job, clip=object(), vae=object(), mm=fake)
+            self.assertIsNone(fake.calls[-1][1]["last_frame"], "chunk %d must not receive it" % (job.index + 1))
+        builder.build_chunk(jobs[-1], clip=object(), vae=object(), mm=fake)
+        self.assertIsNotNone(fake.calls[-1][1]["last_frame"])
+        self.assertEqual(self.pictures, ["end.png"], "the file is loaded once, in the chunk that uses it")
+
+    def test_two_last_frames_send_only_the_first_one(self):
+        first = item("image_a", "Ende A", "image", "a.png", usage=("last_frame",))
+        second = item("image_b", "Ende B", "image", "b.png", usage=("last_frame",))
+        fake = FakeCore()
+        job = self.jobs(context.DirectorContext(idea="She turns.", items=(first, second)))[-1]
+        builder.build_chunk(job, clip=object(), vae=object(), mm=fake)
+        self.assertEqual(self.pictures, ["a.png"], "the second image must not be loaded at all")
+        self.assertIn("anchor_multiple", {i.code for i in job.project.issues})
+
     def test_text_only_uses_the_frame_node(self):
         fake = FakeCore()
         job = self.jobs(context.DirectorContext(idea="A dog runs."))[0]
         built = builder.build_chunk(job, clip=object(), vae=object(), mm=fake)
         name, kw = fake.calls[0]
-        self.assertEqual((name, kw["length"], kw["first_frame"], kw["last_frame"]), ("t2va", job.chunk.sampled_frames, None, None))
+        self.assertEqual((name, kw["length"], kw["first_frame"], kw["last_frame"]), ("frame", job.chunk.sampled_frames, None, None))
         self.assertIn("A dog runs.", kw["prompt"])
         self.assertEqual((built.trim_frames, built.dropped_anchors), (0, ()))
 
@@ -100,7 +140,8 @@ class Build(unittest.TestCase):
         job = self.jobs(context.DirectorContext(idea="Alice talks.", items=(alice, voice)))[0]
         builder.build_chunk(job, clip=object(), vae=object(), audio_vae=object(), mm=fake)
         name, kw = fake.calls[0]
-        self.assertEqual(name, "ref2va")
+        self.assertEqual(name, "reference")
+        self.assertEqual(job.compiled.mode, "ref2va")
         self.assertEqual(list(kw["ref_images"]), ["ref_image_1"])
         self.assertEqual(list(kw["ref_audios"]), ["ref_audio_1"])
         self.assertIsNone(kw["ref_videos"])

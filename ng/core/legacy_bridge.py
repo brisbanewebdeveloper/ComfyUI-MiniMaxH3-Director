@@ -22,11 +22,21 @@ _AUDIO_RETENTION = {"voice": "reference", "music_style": "weak_reference", "copy
 
 
 class Mapping:
-    """What each legacy slot or file stands for, so results can be translated back to context ids."""
+    """What each legacy slot or file stands for, so results can be translated back to context ids.
 
-    def __init__(self, slot_items, by_source):
+    `by_source` is only a fallback for media whose card cannot be told apart by anything else. Frame anchors are
+    resolved by their role instead: two cards may hold the same file, and then "first wins" would attribute the last
+    frame to the first-frame card.
+    """
+
+    def __init__(self, slot_items, by_source, anchor_items=None):
         self.slot_items = tuple(slot_items)   # context id per legacy subject slot (slot number - 1)
         self.by_source = dict(by_source)      # file path -> context id (first item wins)
+        self.anchor_items = dict(anchor_items or {})   # source path -> context id of the card holding that frame role
+
+    def anchor_id(self, role, source):
+        found = self.anchor_items.get((role, source))
+        return found if found is not None else self.by_source.get(source, "")
 
 
 def has_references(context):
@@ -40,6 +50,8 @@ def has_references(context):
 
 
 def decide_mode(context):
+    """`context.mode` is the user's explicit choice; the actual per-chunk mode comes out of the legacy planner,
+    which already treats a first/last frame guide as fl2va (minimax_plan.py, `has_keyframe`)."""
     if context.mode != "auto":
         return context.mode
     return "ref2va" if has_references(context) else "fl2va"
@@ -149,17 +161,20 @@ def _shot_text(shot, substitute, automatic=False):
 
 
 def _anchor_segments(context, chunk, is_last):
-    """Images used as first/last frame: only the first chunk takes a first frame and only the last chunk takes a last frame."""
+    """Images used as first/last frame: only the first chunk takes a first frame and only the last chunk takes a last frame.
+
+    Each segment carries `ng_item` so a card can be told from its file alone; two cards may hold the same image.
+    """
     out = []
     for item in context.by_media("image"):
         usage = item.effective_usage
         if "first_frame" in usage and chunk.is_first:
             out.append({"type": "image", "imageFile": item.source, "fileName": item.name, "start": 0,
-                        "length": max(chunk.sampled_frames // 8, 1), "prompt": ""})
+                        "length": max(chunk.sampled_frames // 8, 1), "prompt": "", "ng_item": item.id})
         if "last_frame" in usage and is_last:
             out.append({"type": "image", "imageFile": item.source, "fileName": item.name, "isEndFrame": True,
                         "start": chunk.sampled_frames - max(chunk.sampled_frames // 8, 1),
-                        "length": max(chunk.sampled_frames // 8, 1), "prompt": ""})
+                        "length": max(chunk.sampled_frames // 8, 1), "prompt": "", "ng_item": item.id})
     return out
 
 
@@ -198,7 +213,12 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
              "motionSegments": _motion_segments(context) if ref_on else [], "overall_soundscape": context.soundscape,
              "non_diegetic_music": context.music}
     by_source = {}
+    anchors = {}
     for item in context.items:
-        if item.media != "text":
-            by_source.setdefault(item.source, item.id)
-    return tdata, Mapping([s.id for s in subjects], by_source), extra_voice_issues(extra_voices)
+        if item.media == "text":
+            continue
+        by_source.setdefault(item.source, item.id)
+        for role, key in (("first_frame", plan.ROLE_FIRST), ("last_frame", plan.ROLE_LAST)):
+            if role in item.effective_usage:
+                anchors.setdefault((key, item.source), item.id)
+    return tdata, Mapping([s.id for s in subjects], by_source, anchors), extra_voice_issues(extra_voices)

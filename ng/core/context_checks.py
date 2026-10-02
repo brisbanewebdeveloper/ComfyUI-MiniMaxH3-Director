@@ -8,8 +8,11 @@ def check_context(context):
     for role in ("first_frame", "last_frame"):
         items = [i for i in context.by_media("image") if role in i.effective_usage and i.source]
         if len(items) > 1:
-            issues.append(Issue("anchor_multiple", "Only one %s can be applied; keep one of: %s."
-                                % (role, ", ".join(i.name for i in items))))
+            # H3 takes one frame per slot, so exactly the first one is sent. The warning has to say which one won,
+            # otherwise the user cannot tell why their second image seems to be ignored.
+            issues.append(Issue("anchor_multiple", "Only one %s is sent to the model; '%s' is used and these are "
+                                "ignored: %s. Remove the unused ones or keep them as Reference."
+                                % (role.replace("_", " "), items[0].name, ", ".join(i.name for i in items[1:]))))
     sources = {}
     for item in context.items:
         if item.media != "text" and item.source:
