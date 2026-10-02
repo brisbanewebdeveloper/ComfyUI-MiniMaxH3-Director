@@ -145,10 +145,10 @@ def _selected_audio(context, refs):
 
 def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: ContinuityPlan) -> CompiledChunk:
     mode = decide_mode(context)
-    tdata, mapping = build_timeline(context, chunk, mode)
+    tdata, mapping, voice_notes = build_timeline(context, chunk, mode)
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
                                 prepend_text=context.prepend_text, prompt_format="minimax")
     refs = _selected_audio(context, _media_refs(result, mapping)) + _scene_guides(context, chunk)
     return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or result["prompt"], refs=tuple(refs),
-                         issues=tuple(_issues(context, chunk, result, continuity)))
+                         issues=tuple(voice_notes) + tuple(_issues(context, chunk, result, continuity)))
 

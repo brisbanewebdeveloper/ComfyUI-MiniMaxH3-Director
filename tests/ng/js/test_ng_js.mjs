@@ -281,3 +281,38 @@ console.log("ng js: all checks passed");
   assert.equal(summarizeBatch({results:[],skipped:[]}).part,"Nothing analyzed");
   assert.equal(summarizeBatch(null).part,"Nothing analyzed","a malformed answer must not throw in the panel");
 }
+{
+  const { isSubject, subjectChoices, voiceAssignment, SUBJECT_ROLES } = await load("ng_subjects.js");
+  assert.deepEqual(SUBJECT_ROLES,["character","face","animal"]);
+  const alice={media:"image",widgets:{context_id:"ctx_a",name:"Alice",image:"a.png",content_roles:'["character"]'}};
+  const coat={media:"image",widgets:{context_id:"ctx_c",name:"Coat",image:"c.png",content_roles:'["outfit"]'}};
+  const empty={media:"image",widgets:{context_id:"ctx_e",name:"Empty",image:"",content_roles:'["character"]'}};
+  const unlabelled={media:"image",widgets:{context_id:"ctx_u",name:"Mystery",image:"u.png"}};
+  assert.equal(isSubject(alice),true);
+  assert.equal(isSubject(coat),false,"an outfit is an asset, not a figure that can speak");
+  assert.equal(isSubject(empty),false,"a figure without a file cannot be drawn from");
+  assert.equal(isSubject(unlabelled),true,"no content label yet: still offer it, the user decides");
+  assert.equal(isSubject({media:"audio",widgets:{context_id:"x",name:"Voice",audio:"v.wav"}}),false);
+  assert.equal(isSubject(null),false);
+
+  assert.deepEqual(subjectChoices([alice,coat,empty]),[{id:"ctx_a",name:"Alice"}]);
+  assert.deepEqual(subjectChoices([unlabelled]),[{id:"ctx_u",name:"Mystery"}],
+    "an item without content_roles falls back to the single content widget");
+  assert.deepEqual(subjectChoices([alice,{media:"image",widgets:{context_id:"ctx_a",name:"Alice again",image:"a.png"}}]),
+    [{id:"ctx_a",name:"Alice"}],"the same figure must not appear twice");
+  // A stored speaker that is no longer connected stays visible, so the value cannot vanish from the workflow.
+  assert.deepEqual(subjectChoices([alice],"ctx_gone"),[{id:"ctx_a",name:"Alice"},{id:"ctx_gone",name:"ctx_gone (not connected)"}]);
+  assert.deepEqual(subjectChoices([], "ctx_gone"),[{id:"ctx_gone",name:"ctx_gone (not connected)"}]);
+  assert.deepEqual(subjectChoices(null),[]);
+  assert.deepEqual(subjectChoices([{media:"image",widgets:{name:"No id",image:"x.png"}}]),[]);
+
+  const voices=[alice,
+    {media:"audio",widgets:{context_id:"v1",name:"Take 1",audio:"1.wav",speaker:"ctx_a"}},
+    {media:"audio",widgets:{context_id:"v2",name:"Take 2",audio:"2.wav",speaker:"ctx_a"}}];
+  const flag=voiceAssignment(voices);
+  assert.equal(flag("ctx_a","v1"),"Another take also names this figure; the first one fills the voice slot.");
+  assert.equal(flag("ctx_a","v2"),"Another take also names this figure; the first one fills the voice slot.");
+  assert.equal(flag("",  "v1"),"","no speaker chosen, nothing to warn about");
+  assert.equal(flag("ctx_z","v1"),"","a speaker nobody else claims needs no note");
+  assert.equal(voiceAssignment([{media:"audio",widgets:{context_id:"only",speaker:"ctx_a"}}])("ctx_a","only"),"");
+}

@@ -10,6 +10,7 @@ from ... import minimax_plan as plan
 from .chunks import Chunk
 from .context import DirectorContext
 from .context_options import retention_note
+from .issues import Issue
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
@@ -63,13 +64,30 @@ def _slot(item, voices):
 
 
 def _voices_by_speaker(context):
-    """Audio items with usage `voice` and a speaker, keyed by the speaker's item id. One voice per subject; extras stay loose."""
+    """Voice items grouped by the subject they speak for: {subject id: [item, ...]} in project order.
+
+    A subject may have more than one take. H3's slot takes a single voice file per subject, so the first take wins
+    the slot and every further take stays an ordinary reference audio segment. Both facts are reported by
+    `extra_voice_issues`, so a second take is never silently demoted to "some audio".
+    """
     voices = {}
     subjects = {item.id for item in _subject_items(context)}
     for item in context.by_media("audio"):
-        if "voice" in item.effective_usage and item.speaker in subjects and item.source and item.speaker not in voices:
-            voices[item.speaker] = item
-    return voices
+        if "voice" in item.effective_usage and item.speaker in subjects and item.source:
+            voices.setdefault(item.speaker, []).append(item)
+    return {subject: takes[0] for subject, takes in voices.items()}, \
+           {subject: takes[1:] for subject, takes in voices.items() if len(takes) > 1}
+
+
+def extra_voice_issues(extra):
+    """One Issue per further take, naming the subject it was meant for."""
+    out = []
+    for takes in extra.values():
+        for item in takes:
+            out.append(Issue("voice_extra_take",
+                             "is a further voice take for the same figure; the first take keeps the subject's voice "
+                             "slot and this one is sent as an additional reference.", item.name))
+    return out
 
 
 def _tag_substitutor(slot_items, context):
@@ -165,9 +183,9 @@ def _global_prompt(context):
 
 
 def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
-    """Return (timeline_data dict, Mapping) for one chunk."""
+    """Return (timeline_data dict, Mapping, voice_notes) for one chunk."""
     subjects = _subject_items(context)
-    voices = _voices_by_speaker(context)
+    voices, extra_voices = _voices_by_speaker(context)
     substitute = _tag_substitutor([s.id for s in subjects], context)
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
                  "prompt": _shot_text(s, substitute, automatic=not context.shots_text.strip())}
@@ -183,4 +201,4 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
     for item in context.items:
         if item.media != "text":
             by_source.setdefault(item.source, item.id)
-    return tdata, Mapping([s.id for s in subjects], by_source)
+    return tdata, Mapping([s.id for s in subjects], by_source), extra_voice_issues(extra_voices)

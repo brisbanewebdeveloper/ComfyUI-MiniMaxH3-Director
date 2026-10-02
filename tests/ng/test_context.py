@@ -4,6 +4,7 @@ from _pack import module
 
 context = module("ng.core.context")
 issues = module("ng.core.issues")
+chunks_mod = module("ng.core.chunks")
 
 
 def item(**kw):
@@ -68,6 +69,66 @@ class Director(unittest.TestCase):
             context.DirectorContext.from_dict({"schema_version": 1, "project_seconds": 0})
         with self.assertRaises(issues.SchemaError):
             context.DirectorContext.from_dict({"schema_version": 1, "mode": "sideways"})
+
+
+class SubjectsAndVoices(unittest.TestCase):
+    """R4: a figure may own several voice cards, and a second take is never silently demoted."""
+
+    def project(self, items, seconds=4):
+        director = context.DirectorContext(idea="Alice walks.", project_seconds=seconds,
+                                           shots_text="0-%d: Alice walks." % seconds, items=tuple(items))
+        project = module("ng.core.project").plan_project(
+            director, 0.0, chunks_mod.ContinuityPlan(mode="video_audio", video_frames=22, audio_frames=24))
+        return project.compiled[0]
+
+    def figure(self):
+        return item(id="ctx_a", name="Alice", usage=("reference",))
+
+    def voice(self, ctx_id, speaker="ctx_a", **kw):
+        base = dict(id=ctx_id, name="Voice", media="audio", source="refs/%s.wav" % ctx_id,
+                    usage=("voice",), speaker=speaker)
+        base.update(kw)
+        return context.ContextItem(**base)
+
+    def test_one_voice_fills_the_subject_slot(self):
+        compiled = self.project([self.figure(), self.voice("ctx_v")])
+        self.assertIn("<Audio 1> is the voice-timbre reference for <Subject 1>.", compiled.prompt)
+        self.assertEqual([r.ctx_id for r in compiled.refs if r.kind == "audio"], ["ctx_v"])
+        self.assertEqual([i.code for i in compiled.issues if i.code == "voice_extra_take"], [])
+
+    def test_a_second_take_is_sent_and_named(self):
+        # H3 has one voice slot per subject, so the first take keeps it; the second still reaches the model and
+        # the user is told why it is not the subject's voice.
+        compiled = self.project([self.figure(), self.voice("ctx_v1", name="Take 1"), self.voice("ctx_v2", name="Take 2")])
+        self.assertIn("<Audio 1> is the voice-timbre reference for <Subject 1>.", compiled.prompt)
+        self.assertEqual(sorted(r.ctx_id for r in compiled.refs if r.kind == "audio"), ["ctx_v1", "ctx_v2"])
+        notes = [i for i in compiled.issues if i.code == "voice_extra_take"]
+        self.assertEqual([str(i) for i in notes], [
+            "is a further voice take for the same figure; the first take keeps the subject's voice slot and this "
+            "one is sent as an additional reference. (Take 2)"])
+
+    def test_three_takes_report_once_each(self):
+        compiled = self.project([self.figure()] + [self.voice("ctx_v%d" % n, name="Take %d" % n) for n in (1, 2, 3)])
+        self.assertEqual([str(i).split(".")[-1].strip() for i in compiled.issues if i.code == "voice_extra_take"],
+                         ["(Take 2)", "(Take 3)"])
+        self.assertEqual(len([r for r in compiled.refs if r.kind == "audio"]), 3)
+
+    def test_a_voice_without_a_figure_stays_an_ordinary_reference(self):
+        compiled = self.project([self.figure(), self.voice("ctx_v", speaker="")])
+        self.assertIn("<Audio 1> is a reference audio clip", compiled.prompt)
+        self.assertEqual([i.code for i in compiled.issues if i.code == "voice_extra_take"], [])
+
+    def test_every_planned_chunk_reports_the_extra_take(self):
+        # The note lives on the chunk, so a long project must not lose it after the first 10 seconds.
+        context_ = context.DirectorContext(idea="Alice walks.", project_seconds=20,
+                                           shots_text="0-20: Alice walks.",
+                                           items=(self.figure(), self.voice("ctx_v1", name="Take 1"),
+                                                  self.voice("ctx_v2", name="Take 2")))
+        project = module("ng.core.project").plan_project(
+            context_, 0.0, chunks_mod.ContinuityPlan(mode="video_audio", video_frames=22, audio_frames=24))
+        self.assertTrue(len(project.plan.chunks) > 1, "the example must actually split into several chunks")
+        for chunk in project.compiled:
+            self.assertEqual([i.code for i in chunk.issues if i.code == "voice_extra_take"], ["voice_extra_take"])
 
 
 if __name__ == "__main__":

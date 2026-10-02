@@ -9,6 +9,7 @@ import { textEditor } from "./ng_context_text.js";
 import { presetEditor } from "./ng_context_presets.js";
 import { autoColor } from "./ng_identity.js";
 import { relatedContexts } from "./ng_read.js";
+import { subjectChoices, voiceAssignment } from "./ng_subjects.js";
 
 const { app }=window.comfyAPI.app, { api }=window.comfyAPI.api;
 const MEDIA={NGContextImage:"image",NGContextVideo:"video",NGContextAudio:"audio",NGContextText:"text"};
@@ -55,10 +56,16 @@ function attach(node,media) {
   }
   if(media==="audio") {const speaker=control(node,"speaker","Speaker / Voice"),speakerPanel=section("Speaker / Voice");fields.push(speaker);speakerPanel.append(speaker.label);
     const choices=element("select");choices.setAttribute("aria-label","Assign known speaker");speakerPanel.append(choices);
+    const note=element("small","ng-muted");speakerPanel.append(note);
     choices.onchange=()=>{if(choices.value)applyValues(node,{speaker:choices.value});};
-    components.push({sync(){const current=speaker.field.value;choices.replaceChildren();const empty=element("option","","Choose a connected character");empty.value="";choices.append(empty);
-      for(const entry of relatedContexts(node).filter((entry)=>entry.media==="image")) {const option=element("option","",entry.widgets.name);option.value=entry.widgets.context_id;choices.append(option);}
-      choices.value=current;}});footer.append(speakerPanel);}
+    // Only figures (character/face/animal images with a file) can be spoken for, and a stored speaker that is no
+    // longer connected stays listed, so choosing someone else never silently drops the old value.
+    components.push({sync(){const entries=relatedContexts(node),current=speaker.field.value;
+      choices.replaceChildren();const empty=element("option","","Choose a connected character");empty.value="";choices.append(empty);
+      for(const entry of subjectChoices(entries,current)) {const option=element("option","",entry.name);option.value=entry.id;choices.append(option);}
+      choices.value=current;
+      const flag=voiceAssignment(entries)(current,node.widgets?.find((widget)=>widget.name==="context_id")?.value);
+      note.textContent=flag;note.hidden=!flag;}});footer.append(speakerPanel);}
   const presets=presetEditor(node,media,api,status), colorPanel=section("◉ Context Color"), color=control(node,"color","Auto / Custom · #rrggbb");
   fields.push(color);const auto=element("button","","Auto"), custom=element("input");custom.type="color";custom.setAttribute("aria-label","Custom context color");
   auto.onclick=()=>{applyValues(node,{color:""});assignColor();update();};custom.oninput=()=>applyValues(node,{color:custom.value});colorPanel.append(color.label,auto,custom);
