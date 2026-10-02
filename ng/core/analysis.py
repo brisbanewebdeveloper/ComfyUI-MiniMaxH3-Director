@@ -6,6 +6,9 @@ from urllib.parse import urlsplit
 from . import fields
 from .context import CONTENT_KINDS
 
+# The fields an analysis may fill. Everything else on a card stays the user's own text.
+ANALYSIS_FIELDS = ("description", "content", "usage")
+
 
 @dataclass(frozen=True)
 class ProviderConfig:
@@ -58,15 +61,47 @@ def _whole_number(data, key, path, default, minimum, maximum):
     return value
 
 
+@dataclass(frozen=True)
+class AnalysisSuggestion:
+    """What one analysis offers. `why` explains the choice so the panel can show it instead of a bare result."""
+    description: str = ""
+    content: str = ""
+    usage: str = ""
+    why: str = ""
+    SCHEMA_VERSION = 1
+
+    def to_dict(self):
+        return {"schema_version": self.SCHEMA_VERSION, "description": self.description, "content": self.content,
+                "usage": self.usage, "why": self.why}
+
+    @classmethod
+    def from_dict(cls, data, path="analysis"):
+        fields.need_dict(data, path)
+        fields.check_version(data, path, cls.SCHEMA_VERSION)
+        if set(data) - set(cls().to_dict()):
+            raise ValueError("The analysis contains unknown fields; ask again or write the card yourself.")
+        return cls(description=fields.read_str(data, "description", path, "").strip(),
+                   content=fields.read_choice(data, "content", path, CONTENT_KINDS, ""),
+                   usage=fields.read_str(data, "usage", path, "").strip(),
+                   why=fields.read_str(data, "why", path, "").strip())
+
+    def offered(self):
+        """Only the fields that really carry a value, so Apply never blanks a field it has nothing for."""
+        return {name: value for name, value in ((key, getattr(self, key)) for key in ANALYSIS_FIELDS) if value}
+
+
 def analysis_prompt(media, content):
     scope = {"image": "the image", "video": "three ordered stills from the first 15 seconds of a video; avoid inferring unseen motion",
              "audio": "the first 15 seconds of the audio", "text": "the supplied context text"}
     return ("Describe %s as a reference for a video director. Focus on %s. Return only JSON with "
-            "description (one concise sentence) and content (one of: %s). Do not invent facts or rewrite the user's usage."
+            "description (one concise sentence), content (one of: %s), usage (optional, how the director should use it) "
+            "and why (one short sentence naming the visible reason for that choice). Do not invent facts or rewrite the user's usage."
             % (scope[media], content or "observable features", ", ".join(CONTENT_KINDS)))
 
 
 def parse_suggestion(text):
+    """Reads a provider answer. Extra keys are tolerated here on purpose: this is a model's reply, not saved data.
+    `usage` is kept as free text because only the card knows which roles its medium offers."""
     if not isinstance(text, str):
         raise ValueError("The provider must return a JSON text suggestion.")
     text = text.strip()
@@ -79,4 +114,8 @@ def parse_suggestion(text):
     content = fields.read_choice(data, "content", "analysis", CONTENT_KINDS, None)
     if not description or len(description) > 2000:
         raise ValueError("Analysis needs a description of 1 to 2000 characters; try again or describe it manually.")
-    return {"description": description, "content": content}
+    why = fields.read_str(data, "why", "analysis", "").strip()
+    if len(why) > 600:
+        raise ValueError("The reason is longer than 600 characters; ask again or write it yourself.")
+    return AnalysisSuggestion(description=description, content=content,
+                              usage=fields.read_str(data, "usage", "analysis", "").strip(), why=why)

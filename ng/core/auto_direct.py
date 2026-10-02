@@ -17,6 +17,41 @@ def direction_prompt(idea, seconds, contexts):
             "Idea: %s\nContexts: %s" % (seconds, seconds, idea, json.dumps(meanings, ensure_ascii=False)))
 
 
+def keep_manual_dialogue(suggested, current_shots):
+    """A scene proposal replaces action and camera, never a line the user wrote themselves.
+
+    Dialogue is the one thing a director cannot invent twice: if the proposal says nothing for a speaker who has
+    a line in the current shots, that line is kept and the result says which ones were kept.
+    """
+    if not suggested or not current_shots:
+        return suggested, []
+    spoken = _spoken_lines(current_shots)
+    said = _spoken_lines(suggested)
+    missing = [line for speaker, lines in spoken.items() if speaker not in said for line in lines]
+    if not missing:
+        return suggested, []
+    # Appended as further text of the last shot, which is how parse_shots reads a dialogue line; a separate
+    # `end-end:` block would be an empty range and get dropped with an Issue.
+    return "\n".join([suggested, *missing]), missing
+
+
+def _spoken_lines(text):
+    """The `@Name says:` lines of each shot block, keyed by the speaking name."""
+    spoken, current = {}, None
+    for line in (text or "").splitlines():
+        if _is_header(line):
+            current = []
+            continue
+        found = re.match(r"^\s*@?([\w-]+)\s+says:", line.strip(), re.IGNORECASE)
+        if found and current is not None:
+            spoken.setdefault(found.group(1).casefold(), []).append(line.strip())
+    return spoken
+
+
+def _is_header(line):
+    return re.match(r"^\s*(?:\d+:)?\d+(?:\.\d+)?s?\s*(?:-|–|—)\s*(?:\d+:)?\d+(?:\.\d+)?s?\s*(?::|\s)", line)
+
+
 def parse_direction(text, seconds, contexts=None):
     if not isinstance(text, str):
         raise ValueError("Auto Direct needs a JSON text response.")

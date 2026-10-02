@@ -4,7 +4,7 @@ import json
 from comfy_execution.graph_utils import GraphBuilder
 
 from ..core.analysis import analysis_prompt, parse_suggestion
-from ..core.auto_direct import direction_prompt, parse_direction
+from ..core.auto_direct import direction_prompt, keep_manual_dialogue, parse_direction
 from ..core.fields import need_dict, read_number, read_str
 from .ai_provider import NativeAIProvider
 
@@ -59,5 +59,10 @@ def parse_result(text, action, request_json):
     # Generic Qwen CLIP tokenizers can decode the assistant role header with the answer.
     text = text.removeprefix("assistant\n").strip()
     if action == "analyze":
-        return parse_suggestion(text)
-    return parse_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"])
+        return parse_suggestion(text).to_dict()
+    suggestion = parse_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"])
+    shots, kept = keep_manual_dialogue(suggestion["shots"], payload["director"].get("shots", ""))
+    suggestion["shots"] = shots
+    if kept:
+        suggestion["kept_dialogue"] = kept
+    return suggestion

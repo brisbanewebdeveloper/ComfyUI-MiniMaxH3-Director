@@ -248,3 +248,36 @@ console.log("ng js: all checks passed");
   assert.equal(status.textContent,"Render finished · see Save Video");
   progress.dispose();assert.equal(handlers.size,0,"listeners are removed with the node");
 }
+{
+  const { MODES, canAutoDirect, offeredFields, applyChanges, reasonLine, summarizeBatch } = await load("ng_assist.js");
+  assert.deepEqual(MODES,["manual","assist","auto"]);
+  assert.equal(canAutoDirect("auto",true),true);
+  assert.equal(canAutoDirect("manual",true),false,"Manual must never start a scene proposal");
+  assert.equal(canAutoDirect("assist",true),false);
+  assert.equal(canAutoDirect("auto",false),false,"no loader, no proposal");
+  assert.equal(canAutoDirect("auto",true,true),false,"a running request must not start another");
+
+  const full={description:"A woman in a red coat.",content:"character",usage:"reference",why:"  she fills the frame.  "};
+  assert.deepEqual(offeredFields(full),{description:"A woman in a red coat.",content:"character",usage:"reference"});
+  assert.deepEqual(offeredFields({description:"A woman.",content:"",usage:"   "}),{description:"A woman."},
+    "an empty field is never offered, so Apply cannot blank what the user typed");
+  assert.deepEqual(offeredFields(null),{});
+
+  assert.deepEqual(applyChanges(full,["description"]),{description:"A woman in a red coat."},
+    "only ticked fields are written");
+  assert.deepEqual(applyChanges(full,["content","usage"]),{content:"character",content_roles:'["character"]',
+    usage:"reference",usage_roles:'["reference"]'});
+  assert.deepEqual(applyChanges(full,["why","color"]),{},"why is a reason, not a widget");
+  assert.deepEqual(applyChanges({description:"x"},[]),{});
+
+  assert.equal(reasonLine(full),"Why: she fills the frame.");
+  assert.equal(reasonLine({why:"  "}),"");
+  assert.equal(reasonLine({}),"");
+
+  const batch=summarizeBatch({results:[{ok:true},{ok:false,error:"Enable audio"}],skipped:["Empty: text is empty"]});
+  assert.equal(batch.part,"1 analyzed · 1 failed");
+  assert.deepEqual(batch.failed,["Enable audio"]);
+  assert.deepEqual(batch.skipped,["Empty: text is empty"]);
+  assert.equal(summarizeBatch({results:[],skipped:[]}).part,"Nothing analyzed");
+  assert.equal(summarizeBatch(null).part,"Nothing analyzed","a malformed answer must not throw in the panel");
+}

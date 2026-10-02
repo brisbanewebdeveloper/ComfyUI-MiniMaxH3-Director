@@ -10,6 +10,7 @@ import { projectRenderIds,hasRenderPath } from "./ng_graph.js";
 import { renameReferences,renderReferences } from "./ng_references.js";
 import { contextColor } from "./ng_identity.js";
 import { inspector,warningView } from "./ng_inspector.js";
+import { summarizeBatch } from "./ng_assist.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -46,7 +47,10 @@ function attach(node) {
   const settings=section("⚙ Project Settings"), fps=element("div","ng-field");fps.append(element("span","ng-field-label","FPS"),element("span","ng-generation-card","24 · H3 native"));
   const style=control(node,"style","Style");ratioLabel.append(ratio);row.append(duration.label,chunk.label,ratioLabel,fps);
   if(node.widgets.some((widget)=>widget.name==="style"))row.append(style.label);settings.append(row);
-  const context = section("Context"), contextList=element("div","ng-context-list");context.append(contextList);
+  const context = section("Context"), contextList=element("div","ng-context-list");
+  const batch=element("div","ng-tools"),batchButton=element("button","ng-secondary","✨ Analyze all contexts"),batchCancel=element("button","","Cancel AI");
+  const batchStatus=element("small","ng-muted");batch.append(batchButton,batchCancel,batchStatus);
+  context.append(batch,contextList);
   const story=storyEditor(node);
   const direction=directionTools(node,api);create.append(direction.root);
   const audio=element("details","ng-guided");audio.append(element("summary","","♫ Audio · Voice / Music / SFX"));const audioTracks=element("div");audio.append(audioTracks);
@@ -75,6 +79,34 @@ function attach(node) {
   dom.computeSize=undefined;
   dom.computeLayoutSize=()=>({minHeight:root.dataset.mode==="simple"?450:root.dataset.mode==="expert"?900:760,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});
   let timer=null, serial=0, removed=false;
+  async function runBatch() {
+    const provider=connectedProvider(node);
+    if(!provider||batchBusy)return;
+    batchBusy=true;batchController=new AbortController();syncBatch();
+    batchStatus.textContent="Analyzing every context…";
+    try{
+      const data=await request(api,"/ng/analyze_all",{provider,mode:node.properties.ng_assist_mode||"assist",contexts:readContexts(node)},batchController.signal);
+      const sum=summarizeBatch(data);
+      // The cards themselves are not touched here: the user reviews each suggestion on its own card and applies
+      // the fields they want, so a batch run can never overwrite a card behind the user's back.
+      batchStatus.textContent=[sum.part,...sum.failed,...sum.skipped].join(" · ")||"Nothing analyzed";
+    }catch(error){batchStatus.textContent=error.message;}
+    finally{batchBusy=false;batchController=null;syncBatch();}
+  }
+  let batchBusy=false, batchController=null;
+  function syncBatch() {
+    const provider=connectedProvider(node);
+    batchButton.disabled=batchBusy||!provider||(node.properties.ng_assist_mode||"assist")==="manual";
+    batchCancel.hidden=!batchBusy;
+    if(!batchBusy&&!batchStatus.textContent)batchStatus.textContent=provider?"Each card still needs its own Apply.":"Connect H3 AI Loader to the Connector.";
+  }
+  function batchSettings(){
+    // Manual never sends an analysis, so the batch button is disabled there instead of explaining a refusal.
+    batchButton.title=(node.properties.ng_assist_mode||"assist")==="manual"?"Manual mode sends no analysis. Choose Assist or Auto.":"Analyzes every context; each card still needs its own Apply.";
+    syncBatch();
+  }
+  batchButton.onclick=()=>runBatch();
+  batchCancel.onclick=()=>batchController?.abort();
   function contexts() {
     contextList.replaceChildren();
     const entries=readContexts(node);story.contexts(entries,api);direction.sync();audioTracks.replaceChildren();
@@ -83,7 +115,8 @@ function attach(node) {
     node.properties.ng_context_names=Object.fromEntries(entries.filter((entry)=>entry.widgets.context_id&&entry.widgets.name).map((entry)=>[entry.widgets.context_id,entry.widgets.name]));
     if(Object.keys(renamed).length)applyValues(node,renamed);
     renderReferences(referencePreview,values(node).idea||"",entries,element);
-    status.textContent=connectedProvider(node)?"AI Assist · available":"AI off · manual";
+    status.textContent=connectedProvider(node)?`AI Assist · available`: "AI off · manual";
+    batchSettings();
     generate.disabled=!hasRenderPath(node);
     hint.textContent=generate.disabled?"Connect Director Output to a Render Sequence or native sampler, then a video output.":"Context Connector → Director → Director Output → Render Sequence → Save Video";
     if (!entries.length) contextList.append(element("span","ng-muted","Optional · connect an Image, Video, Audio or Text context."));
@@ -130,7 +163,7 @@ function attach(node) {
   const configured=node.onConfigure;
   node.onConfigure=function(...args){const result=configured?.apply(this,args);fields.forEach((field)=>field.sync());story.rebuild();mode(node.properties.ng_view_mode||"guided");schedule();return result;};
   const originalRemoved=node.onRemoved;
-  node.onRemoved=function(...args){removed=true;serial++;clearTimeout(timer);studios.delete(schedule);progress.dispose();direction.dispose();return originalRemoved?.apply(this,args);};
+  node.onRemoved=function(...args){removed=true;serial++;clearTimeout(timer);studios.delete(schedule);progress.dispose();direction.dispose();batchController?.abort();return originalRemoved?.apply(this,args);};
   studios.add(schedule);mode(node.properties.ng_view_mode||"guided");schedule();
 }
 

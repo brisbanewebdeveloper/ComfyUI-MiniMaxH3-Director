@@ -29,6 +29,23 @@ class Routes(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(response.status, 400)
                     self.assertFalse(json.loads(response.text)["ok"])
 
+    async def test_analyze_all_route_reports_a_bad_request_as_json(self):
+        # The batch route has to answer with the same ok/error shape, otherwise the panel shows a raw exception.
+        for payload in (None, [], {"contexts": [], "provider": {"provider": "magic"}}):
+            request = types.SimpleNamespace(json=AsyncMock(return_value=payload))
+            response = await self.analysis.analyze_every_context(request)
+            self.assertEqual(response.status, 400)
+            self.assertFalse(json.loads(response.text)["ok"])
+
+    async def test_analyze_all_route_returns_results_and_skipped(self):
+        payload = {"provider": {"schema_version": 1, "provider": "custom", "base_url": "", "model": ""},
+                   "mode": "manual", "contexts": [{"media": "image", "widgets": {"image": "a.png"}}]}
+        response = await self.analysis.analyze_every_context(types.SimpleNamespace(json=AsyncMock(return_value=payload)))
+        body = json.loads(response.text)
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["results"], [])
+        self.assertIn("Manual", body["skipped"][0])
+
     async def test_preset_roundtrip_and_media_mismatch(self):
         payload = {"name": "Camera", "media": "text", "widgets": {"name": "Camera", "text": "Slow camera.", "context_id": "ctx-roundtrip"}}
         response = await self.context.write_preset(types.SimpleNamespace(json=AsyncMock(return_value=payload)))

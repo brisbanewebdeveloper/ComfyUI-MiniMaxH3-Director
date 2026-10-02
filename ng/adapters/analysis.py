@@ -67,6 +67,6 @@ async def analyze(payload):
             answer = await legacy.vlm_generate(image_list, prompt, config.provider, url, model, api_key=key,
                                                 max_tokens=config.max_tokens, timeout=config.timeout_seconds,
                                                 keep_alive=config.keep_alive)
-        return parse_suggestion(answer)
+        return parse_suggestion(answer).to_dict()
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None

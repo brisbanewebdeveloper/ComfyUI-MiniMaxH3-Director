@@ -229,6 +229,11 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-product-node .ng-header .ng-context-title { font-size:16px; letter-spacing:0; }
 .ng-product-node .ng-ai-badge { font-size:10px; padding:3px 5px; }
 .ng-studio-context .ng-suggestion:empty { display:none; }
+  .ng-field-picker { display:flex; flex-direction:column; gap:4px; margin:7px 0; padding:7px; border-left:2px solid #a88abd; }
+  .ng-field-row { display:flex; align-items:flex-start; gap:6px; font-size:12px; cursor:pointer; }
+  .ng-field-row span { white-space:pre-wrap; word-break:break-word; }
+  .ng-direction-tools .ng-modebar { display:flex; gap:5px; margin:6px 0; }
+  .ng-direction-tools .ng-modebar button[aria-pressed=true] { background:#2f4a63; border-color:#7fb2dd; color:#eaf4ff; }
 `;
 
 export function ensureStudioStyle() {

@@ -49,6 +49,30 @@ class Suggestions(unittest.TestCase):
         self.assertIn("15 seconds", core.analysis_prompt("audio", "voice"))
         self.assertIn("context text", core.analysis_prompt("text", "rules"))
 
+    def test_a_suggestion_carries_its_reason_and_round_trips(self):
+        # The panel shows why, so a provider that returns nothing for it must still produce a usable suggestion.
+        answer = '{"description":"A woman in a red coat.","content":"character","why":"she fills the frame."}'
+        parsed = core.parse_suggestion(answer)
+        self.assertEqual(parsed.why, "she fills the frame.")
+        self.assertEqual(core.AnalysisSuggestion.from_dict(parsed.to_dict()), parsed)
+        bare = core.parse_suggestion('{"description":"A woman.","content":"character"}')
+        self.assertEqual(bare.why, "", "a missing reason is allowed, a wrong one is not")
+        for text in ('{"description":"x","content":"character","why":5}',
+                     '{"description":"x","content":"character","usage":7}',
+                     json.dumps({"description": "x" * 601, "content": "character", "why": "y" * 601})):
+            with self.subTest(text=text[:40]), self.assertRaises(ValueError):
+                core.parse_suggestion(text)
+        # A model may answer with extra keys; that is not saved data, so it is ignored rather than refused.
+        extra = core.parse_suggestion('{"description":"x","content":"character","schema_version":9,"tone":"warm"}')
+        self.assertEqual(extra.description, "x")
+
+    def test_only_filled_fields_are_offered(self):
+        partial = core.parse_suggestion('{"description":"A woman.","content":"character"}')
+        self.assertEqual(partial.offered(), {"description": "A woman.", "content": "character"})
+        self.assertEqual(core.parse_suggestion('{"description":"A woman.","content":"character"}').offered().get("usage", None), None)
+        empty = core.AnalysisSuggestion(description="A woman.")
+        self.assertEqual(empty.offered(), {"description": "A woman."})
+
 
 @unittest.skipUnless(comfy_available(), "ComfyUI is not importable")
 class ProviderTransport(unittest.IsolatedAsyncioTestCase):
@@ -158,6 +182,55 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["duration_s"], 20.0)
         self.assertEqual((data["sample_rate"], data["channels"], len(data["peaks"])), (16000, 1, 320))
         self.assertGreater(data["peaks"][-1], 0)
+
+    async def test_analyze_all_covers_usable_cards_and_names_the_rest(self):
+        adapter = module("ng.adapters.analyze_all")
+        base = self.payload(audio=True)
+        payload = {"provider": base["provider"], "mode": "assist", "contexts": [
+            {"media": "image", "widgets": base["widgets"]},
+            {"media": "audio", "widgets": base["widgets"]},
+            {"media": "text", "widgets": {"text": "  ", "name": "Empty"}},
+            {"media": "image", "widgets": {"image": "", "name": "Blank"}}]}
+        result = await adapter.analyze_all(payload)
+        self.assertEqual([entry["index"] for entry in result["results"]], [0, 1])
+        self.assertTrue(all(entry["ok"] for entry in result["results"]), result["results"])
+        self.assertEqual(result["results"][0]["suggestion"]["description"], "red object")
+        self.assertEqual(len(self.requests), 2, "only the usable cards reach the provider")
+        self.assertEqual(len(result["skipped"]), 2)
+        self.assertTrue(any("text is empty" in reason for reason in result["skipped"]))
+        self.assertTrue(any("no file chosen" in reason for reason in result["skipped"]))
+
+    async def test_an_undeclared_capability_is_a_result_not_a_crash(self):
+        # The same card works with audio enabled and reports the reason here; the batch keeps its other results.
+        adapter = module("ng.adapters.analyze_all")
+        base = self.payload()
+        payload = {"provider": base["provider"], "mode": "assist", "contexts": [
+            {"media": "audio", "widgets": base["widgets"]},
+            {"media": "image", "widgets": base["widgets"]}]}
+        result = await adapter.analyze_all(payload)
+        self.assertEqual([entry["ok"] for entry in result["results"]], [False, True])
+        self.assertIn("Enable audio", result["results"][0]["error"])
+        self.assertEqual(result["results"][1]["suggestion"]["description"], "red object")
+
+    async def test_analyze_all_keeps_going_after_one_card_fails_and_says_so(self):
+        adapter = module("ng.adapters.analyze_all")
+        base = self.payload()
+        payload = {"provider": base["provider"], "mode": "assist", "contexts": [
+            {"media": "image", "widgets": base["widgets"]},
+            {"media": "image", "widgets": {**base["widgets"], "content": "still fine"}}]}
+        self.status = 500
+        result = await adapter.analyze_all(payload)
+        self.assertEqual([entry["ok"] for entry in result["results"]], [False, False])
+        self.assertIn("same error", result["skipped"][-1].lower())
+
+    async def test_analyze_all_respects_manual_mode_without_any_request(self):
+        adapter = module("ng.adapters.analyze_all")
+        base = self.payload()
+        payload = {"provider": base["provider"], "mode": "manual",
+                   "contexts": [{"media": "image", "widgets": base["widgets"]}]}
+        result = await adapter.analyze_all(payload)
+        self.assertEqual(result["results"], [])
+        self.assertEqual(self.requests, [], "Manual must not contact the provider")
 
     async def test_auto_direct_uses_existing_transport_and_returns_a_proposal(self):
         adapter = module("ng.adapters.auto_direct")
