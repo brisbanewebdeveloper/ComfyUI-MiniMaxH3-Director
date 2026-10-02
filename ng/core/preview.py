@@ -4,11 +4,11 @@ from .chunks import ContinuityPlan
 from .context import DirectorContext
 from .context_build import item_from_widgets
 from .issues import SchemaError
-from .limits import PIN_AUDIO_DEFAULT
+from .limits import DEFAULT_SOUNDSCAPE, PIN_AUDIO_DEFAULT
 from .project import plan_project
 
 DIRECTOR_DEFAULTS = {"idea": "", "shots": "", "project_seconds": 10.0, "chunk_seconds": 0.0, "width": 768, "height": 1152, "mode": "auto",
-                     "continuity": "video_audio", "pin_frames": "22", "soundscape": "", "music": "", "prepend_text": ""}
+                     "continuity": "video_audio", "pin_frames": "22", "soundscape": DEFAULT_SOUNDSCAPE, "music": "", "prepend_text": ""}
 
 
 def _items(contexts, probe):
@@ -20,11 +20,16 @@ def _items(contexts, probe):
     return tuple(items)
 
 
-def _chunk_view(chunk, compiled):
+def _name(context, ref):
+    found = context.item(ref.ctx_id)
+    return found.name if found else ref.source
+
+
+def _chunk_view(chunk, compiled, context):
     return {"index": chunk.index, "start_s": round(frames.frames_to_seconds(chunk.story_start_f), 3),
             "end_s": round(frames.frames_to_seconds(chunk.story_end_f), 3), "delivered_frames": chunk.delivered_frames,
             "sampled_frames": chunk.sampled_frames, "head_frames": chunk.head_frames, "mode": compiled.mode, "prompt": compiled.prompt,
-            "refs": [{"kind": r.kind, "ctx_id": r.ctx_id, "source": r.source} for r in compiled.refs]}
+            "refs": [{"kind": r.kind, "ctx_id": r.ctx_id, "name": _name(context, r)} for r in compiled.refs]}
 
 
 def plan_preview(payload, probe=None):
@@ -39,5 +44,5 @@ def plan_preview(payload, probe=None):
     except (SchemaError, KeyError, ValueError, TypeError) as error:
         return {"ok": False, "error": str(error)}
     return {"ok": True, "total_s": round(frames.frames_to_seconds(project.plan.total_frames), 3), "total_frames": project.plan.total_frames,
-            "mode": project.compiled[0].mode, "chunks": [_chunk_view(c, k) for c, k in zip(project.plan.chunks, project.compiled)],
+            "mode": project.compiled[0].mode, "chunks": [_chunk_view(c, k, project.context) for c, k in zip(project.plan.chunks, project.compiled)],
             "issues": [i.to_dict() for i in project.issues]}

@@ -43,11 +43,18 @@ function issues(list) {
   return block;
 }
 
+function refList(refs) {
+  const groups = {};
+  for (const ref of refs) (groups[ref.kind] ||= []).push(ref.name);
+  return Object.entries(groups).map(([kind, names]) => `${kind}: ${names.join(", ")}`).join("  ·  ");
+}
+
 function chunkRow(chunk) {
   const row = el("details");
   const head = `chunk ${chunk.index + 1}  ${seconds(chunk.start_s)} - ${seconds(chunk.end_s)}`;
   const detail = chunk.head_frames ? `  (sampled ${chunk.sampled_frames}, head ${chunk.head_frames})` : "";
   row.append(el("summary", "", head), el("div", "ng-dim", `${chunk.delivered_frames} frames${detail}, ${chunk.mode}, ${chunk.refs.length} reference(s)`));
+  if (chunk.refs.length) row.append(el("div", "ng-dim", refList(chunk.refs)));
   row.append(el("pre", "", chunk.prompt));
   return row;
 }

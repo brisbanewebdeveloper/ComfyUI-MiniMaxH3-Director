@@ -28,3 +28,6 @@ DEFAULT_CHUNK_SECONDS = 10.0
 LATE_CHANGE_FRAMES = 60
 # Above this many joins the sound visibly loses its highs (E6: >4 kHz share fell to a ninth over five joins).
 AUDIO_DULLING_JOINS = 4
+
+# Written into overall_soundscape when the user leaves it alone: the guide lists the field as required.
+DEFAULT_SOUNDSCAPE = "ambience that fits the scene"

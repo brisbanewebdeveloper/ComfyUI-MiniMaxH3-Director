@@ -55,7 +55,7 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   assert.equal(root.find("ng-error").length, 1);
 
   const chunk = (index, start, end, head) => ({ index, start_s: start, end_s: end, delivered_frames: Math.round((end - start) * 24), sampled_frames: 260,
-    head_frames: head, mode: "ref2va", prompt: `prompt ${index}`, refs: [{ kind: "picture" }] });
+    head_frames: head, mode: "ref2va", prompt: `prompt ${index}`, refs: [{ kind: "picture", name: "Alice" }, { kind: "audio", name: "Alice voice" }] });
   const data = { ok: true, total_s: 20, total_frames: 480, mode: "ref2va", chunks: [chunk(0, 0, 10, 0), chunk(1, 10, 20, 22)],
     issues: [{ text: "late", ref: "shot 2" }, { text: "global", ref: "" }] };
   renderPlan(root, data);
@@ -68,6 +68,7 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   assert.match(text, /chunk 2 +10\.00 s - 20\.00 s/);
   assert.match(text, /sampled 260, head 22/);
   assert.match(text, /prompt 1/);
+  assert.match(text, /picture: Alice +· +audio: Alice voice/);
 
   renderPlan(root, { ...data, chunks: [chunk(0, 0, 8, 0)], issues: [] });
   assert.match(root.text(), /1 chunk\b/);

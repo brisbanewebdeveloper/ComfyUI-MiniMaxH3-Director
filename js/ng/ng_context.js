@@ -21,3 +21,19 @@ app.registerExtension({
     }
   },
 });
+
+// One colour family per medium, as the design asks: pictures blue, clips orange, sounds violet, notes teal.
+const FAMILY = {
+  NGContextImage: { color: "#2f5d8c", bgcolor: "#223f5e" },
+  NGContextVideo: { color: "#9a6a2e", bgcolor: "#6b4a21" },
+  NGContextAudio: { color: "#6f4a99", bgcolor: "#4b3366" },
+  NGContextText: { color: "#2f7d78", bgcolor: "#21564f" },
+};
+
+app.registerExtension({
+  name: "mmxd.ng.context_colors",
+  nodeCreated(node) {
+    const family = FAMILY[node.comfyClass];
+    if (family) Object.assign(node, family);
+  },
+});

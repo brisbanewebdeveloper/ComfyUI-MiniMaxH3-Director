@@ -6,7 +6,7 @@ from comfy_api.latest import io
 
 from ..core.chunks import ContinuityPlan
 from ..core.context import ContextItem, DirectorContext
-from ..core.limits import DEFAULT_CHUNK_SECONDS, PIN_AUDIO_DEFAULT
+from ..core.limits import DEFAULT_CHUNK_SECONDS, DEFAULT_SOUNDSCAPE, PIN_AUDIO_DEFAULT
 from ..core.project import describe, jobs, plan_project
 from .context_nodes import CATEGORY, NGContext
 
@@ -28,15 +28,15 @@ class NGDirector(io.ComfyNode):
                 io.String.Input("shots", multiline=True, default="", tooltip="Optional. One shot per line: 0-8: Alice enters the station.  Lines below a shot belong to it; "
                                 "@Alice says: ... writes dialogue."),
                 io.Float.Input("project_seconds", default=10.0, min=0.5, max=3600.0, step=0.5, tooltip="Length of the finished video. Chunks sit on H3's frame grid, so it can differ by a fraction of a second."),
-                io.Float.Input("chunk_seconds", default=0.0, min=0.0, max=15.0, step=0.5,
+                io.Float.Input("chunk_seconds", default=0.0, min=0.0, max=15.0, step=0.5, advanced=True,
                                tooltip="Target length of one H3 run. 0 = automatic (%.0f s)." % DEFAULT_CHUNK_SECONDS),
                 io.Int.Input("width", default=768, min=64, max=16384, step=32),
                 io.Int.Input("height", default=1152, min=64, max=16384, step=32),
-                io.Combo.Input("mode", options=MODES, default="auto", tooltip="auto: references selected -> ref2va, otherwise fl2va."),
-                io.Combo.Input("continuity", options=CONTINUITY, default="video_audio",
+                io.Combo.Input("mode", options=MODES, default="auto", advanced=True, tooltip="auto: references selected -> ref2va, otherwise fl2va."),
+                io.Combo.Input("continuity", options=CONTINUITY, default="video_audio", advanced=True,
                                tooltip="How a chunk continues the one before: video_audio pins the last frames and the last second of sound; video only the frames; none = independent clips."),
-                io.Combo.Input("pin_frames", options=PIN_FRAMES, default="22", tooltip="Frames of the previous chunk pinned in front of the next. 22 costs 0.9 s per join."),
-                io.String.Input("soundscape", default="", tooltip="Ambience of the whole video."),
+                io.Combo.Input("pin_frames", options=PIN_FRAMES, default="22", advanced=True, tooltip="Frames of the previous chunk pinned in front of the next. 22 costs 0.9 s per join."),
+                io.String.Input("soundscape", default=DEFAULT_SOUNDSCAPE, tooltip="Ambience of the whole video; N/A for silence."),
                 io.String.Input("music", default="", tooltip="Score of the whole video; N/A for none."),
                 io.String.Input("prepend_text", default="", force_input=True, optional=True, tooltip="Text in front of every prompt, for example LoRA trigger words."),
                 io.Autogrow.Input("contexts", template=contexts, optional=True),
