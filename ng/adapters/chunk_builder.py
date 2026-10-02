@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import torch
 
 from ... import minimax_media as legacy
-from ... import minimax_plan as plan
 from ...minimax_core import core
 from ...minimax_director import lock_audio_latent
 from ..core.chunks import ContinuityPlan

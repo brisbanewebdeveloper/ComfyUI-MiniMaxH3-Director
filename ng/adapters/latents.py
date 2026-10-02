@@ -1,5 +1,4 @@
 """Cut tails out of H3 AV latents. Pure tensor work: no model, no VAE, no files."""
-from ..core import pin
 
 
 def split_av(latent):
@@ -27,10 +26,6 @@ def check_same_canvas(video, previous_video):
     if here != there or video.shape[1] != previous_video.shape[1]:
         raise ValueError("the previous chunk was %dx%d but this one is %dx%d; a latent cannot be resized, so keep one resolution "
                          "for the whole project" % (there[1] * 16, there[0] * 16, here[1] * 16, here[0] * 16))
-
-
-def video_steps(latent):
-    return int(split_av(latent)[0].shape[2])
 
 
 def trim_head(frames, wave, sample_rate, head_frames, fps):

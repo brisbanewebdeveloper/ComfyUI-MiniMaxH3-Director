@@ -78,12 +78,6 @@ def check_item(item):
     return tuple(issues)
 
 
-def new_item_id(existing, prefix="ctx_"):
-    """Next free id of the form ctx_0001."""
-    numbers = [int(i[len(prefix):]) for i in existing if i.startswith(prefix) and i[len(prefix):].isdigit()]
-    return "%s%04d" % (prefix, (max(numbers) + 1) if numbers else 1)
-
-
 def require_unique(items):
     seen = {}
     for item in items:

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from . import frames, limits
 from .chunks import ContinuityPlan, SequencePlan, plan_chunks
-from .compile import CompiledChunk, compile_chunk
+from .compile import compile_chunk
 from .context import ContextItem, DirectorContext
 from .issues import Issue
 from .shots import auto_shots, parse_shots

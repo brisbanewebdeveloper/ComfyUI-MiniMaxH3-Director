@@ -41,10 +41,6 @@ class Items(unittest.TestCase):
             context.ContextItem.from_dict({"schema_version": 2}, "items[0]")
         self.assertIn("schema_version", str(e.exception))
 
-    def test_new_ids(self):
-        self.assertEqual(context.new_item_id([]), "ctx_0001")
-        self.assertEqual(context.new_item_id(["ctx_0001", "ctx_0007", "other"]), "ctx_0008")
-
 
 class Director(unittest.TestCase):
     def test_roundtrip_with_items(self):
