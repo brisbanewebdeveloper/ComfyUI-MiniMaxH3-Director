@@ -10,6 +10,7 @@ Everything here is plain arithmetic over frames, so it can be tested without a G
 from dataclasses import dataclass
 
 from . import fields, frames, limits
+from .boundaries import align_to_shots
 from .issues import Issue, SchemaError
 
 CONTINUITY_MODES = ("none", "video", "video_audio")
@@ -201,6 +202,8 @@ def plan_chunks(project_frames, chunk_target_frames, continuity, shots=()):
         raise ValueError("the project needs at least one frame")
     head = continuity.head
     lengths = plan_lengths(project_frames, max(chunk_target_frames, 1), head)
+    if head and shots:
+        lengths = align_to_shots(lengths, head, shots)
     chunks, cursor = [], 0
     for index, delivered in enumerate(lengths):
         this_head = head if index else 0

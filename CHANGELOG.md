@@ -17,8 +17,9 @@ Nothing existing was removed or renamed (node ids are unchanged); the timeline D
   served by `/ng/plan`, which runs the same compiler the render uses and loads no media.
 - **Context items say what a medium means** (content) and what the model should do with it (usage): character, voice, motion, style, first frame, lock, copy.
   A voice names its speaker; `@Name` in a shot points at a picture by its name.
-- **Honest notes instead of silent corrections**: the finished length (chunks sit on H3's frame grid), a shot that begins within 2.5 s of a join (the pinned picture holds the previous action
-  for about 2.4 s, so the change comes late), a long chain (the sound loses its highs; measured at five joins), a changed resolution between chunks.
+- **Shot-aware chunk boundaries.** A new action asked for right after a join comes about 2.4 s late (the pinned picture holds the previous one), so the planner moves
+  a boundary, in whole 17-frame steps and without changing the total, until no shot starts within 2.5 s after it.
+- **Honest notes instead of silent corrections**: the finished length (chunks sit on H3's frame grid), a shot that still begins within 2.5 s of a join when the boundary cannot move, a long chain (the sound loses its highs; measured at five joins), a changed resolution between chunks.
 - **Legacy tag:** the original Director is now *MiniMax H3 Director (Legacy)* in category *MiniMax H3 / Legacy*. Its node id, behaviour and saved workflows are unchanged; the other nodes
   (Preview Override, Retake Stitch, Enhance Prompt, Save Last Frame) stay current and work with NG.
 - A new guide, [docs/NG.md](docs/NG.md), an example workflow (`NG Director - text project.json`) and 126 tests for NG (the legacy suites, 371 and 74 checks, are unchanged and green).

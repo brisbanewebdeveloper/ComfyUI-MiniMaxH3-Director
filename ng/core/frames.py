@@ -1,5 +1,5 @@
 """Frame arithmetic for H3: the 17k+5 grid, seconds <-> frames, chunk length rules."""
-from .limits import FPS, GRID_OFFSET, GRID_STEP
+from .limits import FPS, GRID_OFFSET, GRID_STEP, SAMPLED_MAX_FRAMES, SAMPLED_MIN_FRAMES
 
 
 def seconds_to_frames(seconds):
@@ -46,3 +46,8 @@ def delivered_candidates(target, head, lo, hi):
     residue = delivered_residue(head)
     values = [v for v in range(max(lo, 1), hi + 1) if v % GRID_STEP == residue]
     return sorted(values, key=lambda v: (abs(v - target), v))
+
+
+def delivered_bounds(head):
+    """Shortest and longest delivered length whose sampled clip (head included) is inside H3's trained range."""
+    return max(SAMPLED_MIN_FRAMES - head, 1), SAMPLED_MAX_FRAMES - head

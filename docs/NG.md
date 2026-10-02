@@ -105,8 +105,9 @@ All of it is in `_notes/NG/03-experiments.md` of the development folder; the sho
   correlation of 0.92, against 0.13 without the pin.
 - Across five joins nothing got worse from join to join, but **the sound loses its highs along a long chain** (the share above 4 kHz
   fell to a ninth after five joins). NG warns from the fifth join on.
-- A new action asked for right after a join comes **about 2.4 s late**, because the pinned picture holds the old action. NG warns when
-  a shot starts less than 2.5 s after a chunk boundary.
+- A new action asked for right after a join comes **about 2.4 s late**, because the pinned picture holds the old action. So the planner
+  **moves a chunk boundary** (in whole 17-frame steps, keeping the total) so that no shot starts less than 2.5 s after it, and only warns when it cannot
+  (one seed; the effect of the move itself has not been re-measured).
 - A locked song stayed locked across a join (envelope correlation 0.97, constant 4 ms offset before and after).
 - A voice reference works without any picture (it changed the timbre toward the reference, 0.97 against 0.69 without).
 

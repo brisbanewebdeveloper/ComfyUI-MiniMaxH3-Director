@@ -71,14 +71,23 @@ class Lengths(unittest.TestCase):
         self.assertNotIn("audio_dulling", codes(chunks.plan_chunks(480, 240, VIDEO)))
         self.assertNotIn("no_continuity", codes(chunks.plan_chunks(200, 240, NONE)))
 
+    @staticmethod
+    def story_with_a_change_at(frame):
+        text = "0-%s: a\n%s-40: b" % (frame / 24.0 - 0.5, frame / 24.0)
+        return shots.parse_shots(text, 900)[0]
+
     def test_shot_change_right_after_a_join_is_flagged(self):
-        first = chunks.plan_chunks(900, 240, VIDEO)
-        boundary = first.chunks[1].story_start_f
-        near, _ = shots.parse_shots("0-%s: a\n%s-40: b" % (boundary / 24.0 - 0.5, (boundary + 24) / 24.0), 900)
-        flagged = chunks.plan_chunks(900, 240, VIDEO, near)
-        self.assertIn("late_change", codes(flagged))
-        far, _ = shots.parse_shots("0-%s: a\n%s-40: b" % (boundary / 24.0 - 0.5, (boundary + 120) / 24.0), 900)
-        self.assertNotIn("late_change", codes(chunks.plan_chunks(900, 240, VIDEO, far)))
+        plain = chunks.plan_chunks(900, 240, VIDEO)                    # no shots, so the boundaries are not moved
+        boundary = plain.chunks[1].story_start_f
+        near = self.story_with_a_change_at(boundary + 24)
+        self.assertEqual([i.code for i in chunks._late_changes(near, plain.chunks)], ["late_change"])
+        far = self.story_with_a_change_at(boundary + 120)
+        self.assertEqual(chunks._late_changes(far, plain.chunks), [])
+
+    def test_the_planner_fixes_what_it_can_instead_of_warning(self):
+        boundary = chunks.plan_chunks(900, 240, VIDEO).chunks[1].story_start_f
+        near = self.story_with_a_change_at(boundary + 24)
+        self.assertNotIn("late_change", codes(chunks.plan_chunks(900, 240, VIDEO, near)))
         self.assertNotIn("late_change", codes(chunks.plan_chunks(900, 240, NONE, near)))
 
     def test_rejects_empty_project(self):
