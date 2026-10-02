@@ -123,8 +123,7 @@ The panel follows the user reference: three source cards, then the sections that
 **Local** offers the servers that really run on the machine (`ollama`, `lmstudio`) and both have a default
 address. **API** offers only an OpenAI-compatible endpoint, so it has no local example and no default
 address. **CLIP / Encoder** hides Provider/Model and Settings entirely, because a CLIP encodes text for
-H3 and cannot answer AI actions; the badge then reads *Encoder at Connector*. This is setup guidance;
-connect the standard CLIP Loader to the Connector's actual CLIP input. Picking this card also disables the
+H3 and cannot answer AI actions; the badge then reads *Encoder declared*. Picking it also disables the
 Analyze button on the connected context, so no request is offered for an encoder that cannot answer one.
 Load the encoder itself with a standard CLIP Loader. There is no separate "Custom"
 card: an extra adapter is either a local server or a compatible endpoint, and both are already covered.

@@ -13,7 +13,8 @@ class ProductNodes(unittest.TestCase):
     def packet(self):
         provider = self.nodes["NGAIProvider"].execute(source="local", provider="custom", base_url="http://127.0.0.1:18319",
                                                      model="mock", api_key_env="", vision=True, audio=False,
-                                                     timeout_seconds=90, max_tokens=256, keep_alive=30).args[0]
+                                                     timeout_seconds=90, max_tokens=256, keep_alive=30,
+                                                     clip=["clip", 0]).args[0]
         text = self.nodes["NGContextText"].execute(text="Slow camera.", name="Camera", description="",
                                                  content="rules", usage="rule", preserve="high").args[0]
         return self.nodes["NGContextConnector"].execute(clip=["clip", 0], vae=["vae", 0], audio_vae=["audio", 0],
@@ -28,12 +29,12 @@ class ProductNodes(unittest.TestCase):
                                                  sampler_name="res_multistep", scheduler="simple",
                                                  shift_video=12.0, shift_audio=3.0).args[0]
 
-    def test_ai_loader_keeps_its_panel_settings_and_encoder_belongs_to_connector(self):
+    def test_ai_loader_takes_an_optional_clip_and_keeps_its_panel_settings(self):
         schema = self.nodes["NGAIProvider"].GET_SCHEMA()
-        self.assertNotIn("clip", {value.id for value in schema.inputs})
-        clip = {value.id: value for value in self.nodes["NGContextConnector"].GET_SCHEMA().inputs}["clip"]
+        clip = {value.id: value for value in schema.inputs}["clip"]
         self.assertEqual(clip.io_type, "CLIP")
-        self.assertTrue(clip.rawLink, "the Connector must defer native model loading to conditioning")
+        self.assertTrue(clip.optional, "the AI Loader must work without a CLIP")
+        self.assertTrue(clip.rawLink, "a loader link must not evaluate the CLIP on its own")
         self.assertTrue(clip.lazy)
         for name in ("source", "timeout_seconds", "max_tokens", "keep_alive"):
             self.assertIn(name, {value.id for value in schema.inputs})

@@ -24,13 +24,16 @@ class NGAIProvider(io.ComfyNode):
                                  io.Int.Input("max_tokens", default=512, min=64, max=8192, advanced=True,
                                               tooltip="Upper bound for the answer length. A short description needs few tokens."),
                                  io.Int.Input("keep_alive", default=0, min=0, max=3600, advanced=True,
-                                              tooltip="Seconds the provider keeps the model loaded. 0 releases it after every request.")],
+                                              tooltip="Seconds the provider keeps the model loaded. 0 releases it after every request."),
+                                 io.Clip.Input("clip", display_name="CLIP", raw_link=True, lazy=True, optional=True,
+                                               tooltip="Optional. H3 already needs a CLIP at the Connector; this port only confirms which encoder the graph runs with.")],
                          outputs=[NGAI.Output(display_name="AI provider")])
 
     @classmethod
     def execute(cls, **values):
-        # `source` steers the panel; native H3 encoders belong to the Connector.
+        # `source` only steers the panel, and the CLIP port only declares the encoder H3 runs with.
         values.pop("source", None)
+        values.pop("clip", None)
         config = ProviderConfig.from_dict({"schema_version": 1, **values})
         return io.NodeOutput(config)
 

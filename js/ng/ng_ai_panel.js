@@ -20,8 +20,8 @@ export const SOURCES = [
     note: "A remote endpoint has no default address, so it is required before a request can work." },
   { id: "clip", title: "CLIP / Encoder", hint: "Text encoder only", icon: "&#128206;",
     providers: [],
-    address: "H3 needs its CLIP at the Context Connector. Load the encoder with a standard CLIP Loader and connect it there.",
-    note: "A CLIP encodes text for H3. It cannot answer AI actions, so this card explains encoder setup and disables assistant actions." },
+    address: "H3 needs its CLIP at the Context Connector. This card only records which encoder the graph runs with.",
+    note: "A CLIP encodes text for H3. It cannot answer AI actions, so this source has no provider or model and no Analyze button. Load the encoder itself with a standard CLIP Loader." },
 ];
 
 // The existing Director node already talks to these servers, so reuse its real addresses as the
@@ -140,7 +140,7 @@ export function buildPanel(node, root, header, widget) {
     // A local server needs no key, so the row would only be one more thing to wonder about.
     keyField.label.hidden = !hint.key;
     fields.forEach((field) => field.sync());
-    if (current.providers.length === 0) status.textContent = "Encoder at Connector";
+    if (current.providers.length === 0) status.textContent = "Encoder declared";
     else if (!config.model) status.textContent = "Not configured";
     else if (config.provider === "custom" && !config.base_url) status.textContent = "Address needed";
     else status.textContent = "Configured \u00b7 not tested";
