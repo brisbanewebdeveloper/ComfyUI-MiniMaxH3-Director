@@ -3,6 +3,16 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Requirements audit: E17
+
+All nine product nodes were compared again with the original specification, user TXT and nine PNG references. E17 identified missing requirements. E18 implements and tests native CLIP/Disk assistance, distinct Audio/Text layouts, context colors and the compiler inspector. Full analysis/control modes, native media inputs, subject/asset relationships, remaining layouts and Last Frame continuity remain open. Earlier passing suites establish only their tested scope.
+
+## Native AI and layout evidence: E18
+
+Installed `qwen3vl_4b_bf16.safetensors`, native CLIPLoader type `stable_diffusion`: connected CLIP text analysis, disk text analysis, image analysis and a complete 0–8 s scene proposal succeeded. Browser CLIP/Disk Analyze and Apply succeeded; edited input disabled stale Apply, Cancel interrupted its own prompt, and changing settings invalidated the tested badge. The AI prompt excludes H3 rendering nodes. This does not establish audio support or full video-motion understanding.
+
+194 NG tests: 193 passed, one existing Windows symlink skip; core trace 98.03%. New checks cover native provider/context/connector packets, bounded settings/capabilities, graph expansion, prompt pruning, full scene timing and known names, color/label identity and normalized Inspector Context parity. Legacy 371/371 and 74/74 still pass. Nine separate UI views and Inspector Override/Rebuild/Raw were checked in ComfyUI. Default Image/Video/Director details still require scrolling; reference-layout acceptance remains partial. Full evidence lives in the local `_notes/NG/14-native-ai-layout.md` and `experiments/e18_*` records.
+
 ## Automated checks
 
 - 186 NG checks: 185 passed, one Windows symlink-permission skip. Ordinary path containment checks pass.
@@ -65,8 +75,8 @@ The Connector accepts a second Video Context through a real dragged cable, grows
 Extra empty restored tails are removed only on the NG Connector; connected slots and gaps before them remain intact.
 Waveform Zoom reaches 400% without altering the source range. Compact labels and the separate AI source cards are readable.
 The current AI Loader's timeout, token limit and keep-alive reach the transport for Analyze/Auto Direct; an older six-widget provider configuration is migrated on restore.
-Configured providers are labeled *not tested*. CLIP/Encoder selection disables assistant actions; no provider request runs during load or rendering.
-Final layout uses ComfyUI DOM widget sizing so the panels follow the available node height.
+Configured providers are labeled *not tested*. Native CLIP selection now enables assistant actions when the actual encoder is connected. Successful native requests record action/medium; model/settings changes invalidate the badge. No provider request runs during load or rendering.
+Layouts use ComfyUI DOM widget sizing; remaining default sizing/scroll issues are tracked as open requirements.
 
 ## Practical limits
 

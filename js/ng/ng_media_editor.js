@@ -1,4 +1,5 @@
 import { element, values, request } from "./ng_widgets.js";
+import { section } from "./ng_editor_fields.js";
 import { contextOptions, setOptions, optionNumber } from "./ng_context_controls.js";
 
 export function mediaURL(source, api) {
@@ -12,7 +13,7 @@ export function mediaEditor(node, media, api) {
   let source="", serial=0, disposed=false, player=null, envelope=null;
   const controls=[], selection=element("div","ng-wave-selection");
   const waveform=element("div","ng-wave-container"), track=element("div","ng-wave-track"), canvas=element("canvas","ng-waveform");canvas.width=640;canvas.height=100;
-  const metadata=element("div","ng-muted");
+  const metadata=element("div","ng-muted"),settings=section("Preview Settings"),ruler=element("div","ng-wave-ruler");
   function draw() {
     if(!envelope)return;
     const ctx=canvas.getContext("2d");ctx.clearRect(0,0,640,100);ctx.fillStyle="#9974ff";
@@ -23,9 +24,9 @@ export function mediaEditor(node, media, api) {
   }
   function sync() {controls.forEach((field)=>field.sync());draw();}
   function audioControls() {
-    track.append(canvas,selection);waveform.append(track);root.append(waveform);
+    track.append(canvas,selection);waveform.append(track);root.append(waveform,ruler);
     const row=element("div","ng-row"), start=optionNumber(node,"start_s","Start · seconds"), end=optionNumber(node,"end_s","End · 0 = file end");
-    controls.push(start,end);row.append(start.root,end.root);root.append(row);
+    controls.push(start,end);row.append(start.root,end.root);settings.append(row);
     for(const part of ["start_s","end_s"]) {
       const handle=element("span","ng-wave-handle "+(part==="start_s"?"ng-time-start":"ng-time-end"));selection.append(handle);
       handle.onpointerdown=(event)=>{
@@ -42,7 +43,6 @@ export function mediaEditor(node, media, api) {
         handle.onpointercancel=()=>{handle.onpointermove=null;sync();};
       };
     }
-    const settings=element("details");settings.append(element("summary","","Preview settings · volume and fades"));
     node.properties.ng_preview_settings ||= {volume:1,fade_in:0,fade_out:0,zoom:1};
     for(const [key,label,max] of [["volume","Volume",1],["fade_in","Fade In",5],["fade_out","Fade Out",5],["zoom","Waveform Zoom",4]]) {
       const line=element("label","ng-field"), input=element("input");input.type="range";input.min=key==="zoom"?"1":"0";input.max=String(max);input.step="0.05";
@@ -53,7 +53,7 @@ export function mediaEditor(node, media, api) {
         node.graph?.change();};
     }
     track.style.width=`${node.properties.ng_preview_settings.zoom*100}%`;
-    settings.append(element("small","ng-muted","Volume/fades affect playback only. Start/end select the source used by generation."));root.append(settings);
+    settings.append(element("small","ng-muted","Volume/fades affect playback only. Start/end select the source used by generation."));
   }
   async function refresh() {
     const current=values(node)[media]||"";sync();if(source===current)return;
@@ -77,6 +77,7 @@ export function mediaEditor(node, media, api) {
         const data=await request(api,"/ng/waveform?"+new URLSearchParams({source}));
         if(disposed||version!==serial)return;envelope=data;
         metadata.textContent=`${data.duration_s.toFixed(2)} s · ${(data.sample_rate/1000).toFixed(1)} kHz · ${data.channels===2?"Stereo":data.channels+" channel(s)"}`;draw();
+        ruler.replaceChildren();for(let tick=0;tick<=4;tick++)ruler.append(element("span","",`${(data.duration_s*tick/4).toFixed(1)} s`));
       } catch(error){if(version===serial)status.textContent=error.message;}
     }
   }
@@ -85,6 +86,6 @@ export function mediaEditor(node, media, api) {
     const row=element("div","ng-row");for(const [key,label] of [["start_s","Source start · seconds"],["end_s","Source end · 0 = file end"]]){
       const field=optionNumber(node,key,label);controls.push(field);row.append(field.root);}root.append(row);
   }
-  root.append(metadata,status);
-  return {root,refresh,sync,dispose(){disposed=true;serial++;player?.pause();}};
+  root.append(status);
+  return {root,settings,metadata,refresh,sync,dispose(){disposed=true;serial++;player?.pause();}};
 }

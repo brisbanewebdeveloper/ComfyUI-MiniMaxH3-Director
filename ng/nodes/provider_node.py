@@ -1,7 +1,8 @@
 """AI configuration is shared by connected contexts; loading it makes no requests."""
 from comfy_api.latest import io
+import folder_paths
 
-from ..core.analysis import ProviderConfig
+from ..adapters.ai_provider import provider_from_values
 from .context_nodes import CATEGORY
 
 NGAI = io.Custom("NG_AI_PROVIDER")
@@ -11,7 +12,7 @@ class NGAIProvider(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="NGAIProvider", display_name="H3 AI Loader", category=CATEGORY,
-                         description="Configure a local model server or an OpenAI-compatible API. Connect to a Context or the Connector to enable AI actions. No request runs when loading this node.",
+                         description="Connect a generative CLIP loader, local model server or compatible API. AI runs only after an explicit Analyze or Auto Direct action.",
                          inputs=[io.String.Input("source", default="local", tooltip="Which kind of provider the fields below belong to. The panel on the node shows the matching address and options."),
                                  io.Combo.Input("provider", options=["ollama", "lmstudio", "custom"], default="ollama"),
                                  io.String.Input("base_url", default="", tooltip="Local Ollama/LM Studio or compatible API address."),
@@ -26,16 +27,17 @@ class NGAIProvider(io.ComfyNode):
                                  io.Int.Input("keep_alive", default=0, min=0, max=3600, advanced=True,
                                               tooltip="Seconds the provider keeps the model loaded. 0 releases it after every request."),
                                  io.Clip.Input("clip", display_name="CLIP", raw_link=True, lazy=True, optional=True,
-                                               tooltip="Optional. H3 already needs a CLIP at the Connector; this port only confirms which encoder the graph runs with.")],
+                                               tooltip="For CLIP / Encoder: connect a generative text/vision model. H3's conditioning CLIP stays independently connected at the Connector."),
+                                 io.Combo.Input("local_backend", options=["server", "disk"], default="server", optional=True),
+                                 io.Combo.Input("local_model", options=[""] + folder_paths.get_filename_list("text_encoders"), default="", optional=True),
+                                 io.Combo.Input("local_type", options=["stable_diffusion", "ltxv", "minimax"], default="stable_diffusion", optional=True)],
                          outputs=[NGAI.Output(display_name="AI provider")])
 
     @classmethod
     def execute(cls, **values):
-        # `source` only steers the panel, and the CLIP port only declares the encoder H3 runs with.
-        values.pop("source", None)
-        values.pop("clip", None)
-        config = ProviderConfig.from_dict({"schema_version": 1, **values})
-        return io.NodeOutput(config)
+        source = values.pop("source", "local")
+        clip = values.pop("clip", None)
+        return io.NodeOutput(provider_from_values(source, clip, values))
 
 
 NODES = [NGAIProvider]

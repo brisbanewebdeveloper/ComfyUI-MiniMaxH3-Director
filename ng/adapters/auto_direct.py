@@ -22,6 +22,6 @@ async def direct(payload):
         answer = await legacy.vlm_generate([], prompt, config.provider, url, config.model or defaults["model"],
                                           api_key=key, max_tokens=config.max_tokens,
                                           timeout=config.timeout_seconds, keep_alive=config.keep_alive)
-        return parse_direction(answer, seconds)
+        return parse_direction(answer, seconds, contexts)
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None

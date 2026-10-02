@@ -36,6 +36,24 @@ class SceneSuggestion(unittest.TestCase):
         self.assertNotIn("private/file.png", prompt)
         self.assertIn("Do not claim generation", prompt)
 
+    def test_gaps_incomplete_duration_and_unknown_contexts_are_rejected(self):
+        for change in ({"start_s": 5}, {"end_s": 7}):
+            answer=self.answer();answer["shots"][1].update(change)
+            with self.assertRaises(ValueError):
+                direction.parse_direction(json.dumps(answer),8)
+        with self.assertRaisesRegex(ValueError,"unknown context"):
+            direction.parse_direction(json.dumps(self.answer()),8,[])
+        self.assertIn("Alice",direction.parse_direction(json.dumps(self.answer()),8,[{"widgets":{"name":"Alice"}}])["shots"])
+
+    def test_context_names_with_spaces_and_prefixes_are_resolved(self):
+        answer = self.answer()
+        answer["shots"][0]["action"] = "@Alice Cooper enters. @Alice follows."
+        contexts = [{"widgets": {"name": "Alice"}}, {"widgets": {"name": "Alice Cooper"}}]
+        self.assertIn("@Alice Cooper", direction.parse_direction(json.dumps(answer), 8, contexts)["shots"])
+        answer["shots"][0]["action"] = "@AliceX enters."
+        with self.assertRaisesRegex(ValueError, "unknown context"):
+            direction.parse_direction(json.dumps(answer), 8, contexts)
+
 
 if __name__ == "__main__":
     unittest.main()

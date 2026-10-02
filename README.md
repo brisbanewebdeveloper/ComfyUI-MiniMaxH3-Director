@@ -47,10 +47,12 @@ see the exact prompt the model will receive while you are still editing it.
 
 ## NG: videos of any length
 
+**Development status: incomplete.** Native CLIP assistance, media-specific layouts and the compiler inspector have advanced after the requirements audit. Full AI controls/analysis, native context media inputs, subject/asset relationships, remaining layout work and Last Frame continuity still require implementation and acceptance. Published 0.3.2 is unchanged.
+
 **H3 Director NG** now has its own connected product workflow: **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
 Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text contexts describe your references;
 the Director provides Simple/Guided/Expert views, editable scene cards, separate story/chunk timelines and a generation summary.
-An optional **H3 AI Loader** enables explicit Analyze/Apply and Auto Direct/Apply through your running local or compatible API provider.
+An optional **H3 AI Loader** enables explicit Analyze/Apply and Auto Direct/Apply through a generative CLIP connection, an installed encoder from disk, or a running local/compatible API provider. [Native AI setup](docs/NG-native-ai.md) explains the separate assistant encoder.
 
 Open **`example_workflows/H3 Director NG - text studio.json`** for the complete render path, **`H3 Director NG - image and voice.json`**
 for references, or **`H3 Director NG - native sampler.json`** to use native Output ports with your sampler.
@@ -1020,7 +1022,7 @@ across the whole thing instead of the generated one.
 
 ## Longer than 15 seconds
 
-**Solved in 1.0 by the NG nodes** (see above and [docs/NG.md](docs/NG.md)). The rest of this section describes the Legacy Director.
+**Multi-chunk rendering is demonstrated in the unfinished local NG implementation** (see above and [docs/NG.md](docs/NG.md)). The rest of this section describes the Legacy Director.
 
 Not solved yet in the Legacy Director. There was a **Director Chain** node that rendered a long timeline as a
 chain of anchored windows, and its sampling worked — but there was no usable way to hand

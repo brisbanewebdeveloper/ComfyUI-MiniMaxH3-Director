@@ -11,6 +11,7 @@ from ..adapters import probe
 from ..core.context import PRESERVE, USAGE_BY_MEDIA
 from ..core.context_build import item_from_widgets
 from ..core.analysis import ProviderConfig
+from ..adapters.ai_provider import NativeAIProvider
 
 NGContext = io.Custom("NG_CONTEXT")
 CATEGORY = "MiniMax H3/NG"
@@ -52,7 +53,7 @@ def _identity_inputs():
 
 def _widget_extras(extras):
     config = extras.pop("ai_provider", None)
-    if config is not None and not isinstance(config, ProviderConfig):
+    if config is not None and not isinstance(config, (ProviderConfig, NativeAIProvider)):
         raise ValueError("Connect H3 AI Loader to AI provider.")
     return extras
 

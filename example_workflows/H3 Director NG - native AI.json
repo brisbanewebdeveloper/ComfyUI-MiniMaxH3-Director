@@ -1,0 +1,164 @@
+{
+  "last_node_id": 31,
+  "last_link_id": 16,
+  "nodes": [
+    {
+      "id": 31,
+      "type": "CLIPLoader",
+      "pos": [
+        0,
+        -280
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            15
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "qwen3vl_4b_bf16.safetensors",
+        "stable_diffusion",
+        "default"
+      ]
+    },
+    {
+      "id": 30,
+      "type": "NGAIProvider",
+      "pos": [
+        0,
+        0
+      ],
+      "size": [
+        720,
+        900
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AI provider",
+          "type": "NG_AI_PROVIDER",
+          "links": [
+            16
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGAIProvider"
+      },
+      "widgets_values": [
+        "clip",
+        "ollama",
+        "",
+        "",
+        "",
+        true,
+        false,
+        120,
+        768,
+        0,
+        "disk",
+        "qwen3vl_4b_bf16.safetensors",
+        "stable_diffusion"
+      ]
+    },
+    {
+      "id": 20,
+      "type": "NGContextText",
+      "pos": [
+        820,
+        0
+      ],
+      "size": [
+        1280,
+        860
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "ai_provider",
+          "type": "NG_AI_PROVIDER",
+          "link": 16
+        }
+      ],
+      "outputs": [
+        {
+          "name": "NG_CONTEXT",
+          "type": "NG_CONTEXT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NGContextText",
+        "ng_context_expanded": true
+      },
+      "widgets_values": [
+        "Keep the camera static and maintain warm lighting.",
+        "Camera rules",
+        "",
+        "rules",
+        "rule",
+        "high",
+        "ctx_example_native_ai",
+        "",
+        "",
+        "",
+        ""
+      ]
+    }
+  ],
+  "links": [
+    [
+      15,
+      31,
+      0,
+      30,
+      0,
+      "CLIP"
+    ],
+    [
+      16,
+      30,
+      0,
+      20,
+      0,
+      "NG_AI_PROVIDER"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.45,
+      "offset": [
+        600,
+        580
+      ]
+    }
+  },
+  "version": 0.4
+}

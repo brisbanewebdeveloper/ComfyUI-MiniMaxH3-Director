@@ -23,6 +23,17 @@ const { readContexts, readPayload, isContextNode } = await load("ng_read.js");
 const { connectedProvider, contextProvider, restoredProviderValues } = await load("ng_read.js");
 const { renderPlan } = await load("ng_view.js");
 const { extraContextInputs,compactContextInputs } = await load("ng_connector_slots.js");
+const { nativePrompt } = await load("ng_ai_request.js");
+
+{
+  const output={"1":{class_type:"CLIPLoader",inputs:{clip_name:"model.safetensors"}},
+    "2":{class_type:"NGAIProvider",inputs:{source:"clip",clip:["1",0]}},
+    "3":{class_type:"NGProjectRender",inputs:{sequence:["4",0]}}};
+  const prompt=nativePrompt(output,"2","analyze",{media:"text",widgets:{text:"Rules"}});
+  assert.deepEqual(Object.keys(prompt).sort(),["1","2","ng_ai_action"].sort(),"AI actions must not queue H3 rendering");
+  assert.deepEqual(prompt.ng_ai_action.inputs.ai_provider,["2",0]);
+  assert.throws(()=>nativePrompt(output,"missing","analyze",{}),/unavailable/);
+}
 
 assert.deepEqual(restoredProviderValues(["custom","http://localhost:1234","old-model","MY_KEY",true,false]),
   {source:"api",provider:"custom",base_url:"http://localhost:1234",model:"old-model",api_key_env:"MY_KEY",vision:true,audio:false,
@@ -48,6 +59,21 @@ assert.equal(restoredProviderValues(["api","custom","http://localhost:1234","new
 
 function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   return { comfyClass, widgets: Object.entries(widgets).map(([name, value]) => ({ name, value })), inputs, graph };
+}
+
+{
+  const {nativeAIFingerprint}=await load("ng_widgets.js");
+  const encoder=node("CLIPLoader",{clip_name:"qwen.safetensors"});encoder.id=31;
+  const loader=node("NGAIProvider",{source:"clip",vision:true,audio:false,max_tokens:256,timeout_seconds:120},[{name:"clip",link:15}]);loader.id=30;
+  const graph={links:{15:{origin_id:31},16:{origin_id:30}},getNodeById:(id)=>({30:loader,31:encoder}[id])};loader.graph=graph;
+  const context=node("NGContextText",{},[{name:"ai_provider",link:16}],graph);
+  assert.equal(connectedProvider(context).model,"qwen.safetensors");
+  assert.equal(connectedProvider(context).loader_node_id,"30");
+  const tested=nativeAIFingerprint(loader);encoder.widgets[0].value="other.safetensors";
+  assert.notEqual(nativeAIFingerprint(loader),tested,"changing the connected model invalidates its tested badge");
+  loader.inputs[0].link=null;assert.equal(connectedProvider(context),null,"a selected CLIP source needs a real connection");
+  loader.widgets=node("NGAIProvider",{source:"local",local_backend:"disk",local_model:"disk.safetensors",local_type:"stable_diffusion"}).widgets;
+  assert.equal(connectedProvider(context).model,"disk.safetensors");
 }
 
 // --- reading -----------------------------------------------------------------
@@ -165,6 +191,21 @@ console.log("ng js: all checks passed");
   const graph={links:{1:{target_id:2},2:{target_id:3},3:{target_id:1}},getNodeById:(id)=>({1:director,2:output,3:render}[id])};director.graph=graph;
   assert.deepEqual(downstreamNodes(director).map((entry)=>entry.id),[2,3],"cycles are bounded");assert.equal(hasRenderPath(director),true);
   assert.deepEqual(projectRenderIds(director),[1,2,3]);
+}
+
+{
+  const {autoColor,contextColor}=await load("ng_identity.js");
+  const {compiledParts}=await load("ng_references.js");
+  const first=autoColor("image","ctx_a",[]),second=autoColor("image","ctx_b",[first]);
+  assert.notEqual(first,second,"same-media contexts need distinguishable automatic colors");
+  assert.equal(autoColor("image","ctx_a",[]),first,"identity makes the default color stable");
+  assert.equal(contextColor({media:"audio",widgets:{color:"#123abc"}}),"#123abc");
+  const image={media:"image",widgets:{context_id:"ctx_a",name:"Alice",color:first}};
+  const audio={media:"audio",widgets:{context_id:"ctx_voice",name:"Voice",color:"#123abc"}};
+  const parts=compiledParts("<Picture 1> <Subject 1> <Audio 1> <Video 1>",
+    [{kind:"picture",ctx_id:"ctx_a"},{kind:"audio",ctx_id:"ctx_voice"}],[image,audio]).filter((part)=>part.text.startsWith("<"));
+  assert.equal(parts[0].entry,image);assert.equal(parts[1].entry,image);assert.equal(parts[2].entry,audio);
+  assert.equal(parts[3].entry,undefined,"a missing video must never borrow a picture's color");
 }
 
 {

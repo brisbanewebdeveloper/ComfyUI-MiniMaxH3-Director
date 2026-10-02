@@ -15,6 +15,12 @@ export function analysisFingerprint(media,widgets) {
   return JSON.stringify([widgets[media],widgets.description,widgets.content_roles||widgets.content]);
 }
 
+export function nativeAIFingerprint(node) {
+  const port=node.inputs?.find((input)=>input.name==="clip"),link=node.graph?.links?.[port?.link];
+  const encoder=link&&node.graph.getNodeById(link.origin_id);
+  return JSON.stringify([values(node),encoder?.id,encoder?values(encoder):null]);
+}
+
 export function applyValues(node, changes) {
   for (const widget of node.widgets || []) {
     if (!(widget.name in changes)) continue;
@@ -32,8 +38,8 @@ export function element(tag, className = "", text) {
   return node;
 }
 
-export async function request(api, path, payload) {
-  const options = payload ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) } : {};
+export async function request(api, path, payload, signal) {
+  const options = payload ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal } : {signal};
   const response = await api.fetchApi(path, options);
   const data = await response.json();
   if (!data.ok) throw new Error(data.error || "The request failed.");

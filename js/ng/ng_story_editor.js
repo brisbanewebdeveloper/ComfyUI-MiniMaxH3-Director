@@ -3,19 +3,21 @@ import { section, control } from "./ng_editor_fields.js";
 import { readStory, writeStory, moveShot } from "./ng_story_model.js";
 import { mediaURL } from "./ng_media_editor.js";
 import { renderReferences } from "./ng_references.js";
+import { contextColor } from "./ng_identity.js";
 
 export function storyEditor(node) {
   const root = section("Scene", "ng-guided");
   const cards = element("div", "ng-shot-cards");
   const timeline = element("div", "ng-story-timeline");
   const chunks = element("div", "ng-generation-track");
+  const ruler=element("div","ng-timeline-ruler");
   const raw = control(node, "shots", "Original shot text", { multiline: true });
   const fallback = element("details", "ng-raw-shots");
   fallback.append(element("summary", "", "Edit shot text"), raw.label);
   const add = element("button", "ng-button", "+ Shot");
   const reset = element("button", "ng-button ng-secondary", "Use idea as one scene");
   const tools = element("div", "ng-actions"); tools.append(add, reset);
-  root.append(cards, tools, element("h4", "ng-track-label", "Story · drag a shot or its edges"), timeline,
+  root.append(cards, tools, element("h4", "ng-track-label", "Story · drag a shot or its edges"),ruler, timeline,
               element("h4", "ng-track-label", "Generation · planned render chunks"), chunks, fallback);
   let shots = [], writing = false, entries = [], api = null;
   function commit() {
@@ -25,11 +27,13 @@ export function storyEditor(node) {
   function drawTimeline() {
     timeline.replaceChildren();
     const duration = Number(values(node).project_seconds);
+    ruler.replaceChildren();for(let tick=0;tick<=5;tick++)ruler.append(element("span","",`${(duration*tick/5).toFixed(1)} s`));
     shots.forEach((shot, index) => {
       const bar = element("div", "ng-story-block", `${index + 1}`);
       bar.title = `Shot ${index + 1}: ${shot.start.toFixed(2)}–${shot.end.toFixed(2)} s`;
       bar.style.left = `${shot.start / duration * 100}%`;
       bar.style.width = `${(shot.end - shot.start) / duration * 100}%`;
+      const entry=entries.find((entry)=>shot.text.includes("@"+entry.widgets.name));if(entry)bar.style.borderColor=contextColor(entry);
       for (const part of ["start", "end"]) {
         const handle = element("span", "ng-time-handle ng-time-" + part);
         handle.dataset.part = part; bar.append(handle);
@@ -51,6 +55,8 @@ export function storyEditor(node) {
   }
   function shotCard(shot, index) {
     const card = element("article", "ng-shot-card");
+    card.setAttribute("aria-selected",String((node.properties.ng_selected_shot||0)===index));
+    card.onclick=()=>{node.properties.ng_selected_shot=index;for(const [number,entry] of [...cards.children].entries())entry.setAttribute("aria-selected",String(number===index));node.graph?.change();};
     const header = element("div", "ng-shot-header");
     const remove = element("button", "ng-icon-button", "×"); remove.setAttribute("aria-label", `Remove shot ${index + 1}`);
     header.append(element("strong", "", `SHOT ${String(index + 1).padStart(2, "0")}`), remove);

@@ -1,27 +1,26 @@
-// The H3 AI Loader panel: three source cards, then only the sections and settings the picked
-// source actually needs.
-import { element, values, applyValues } from "./ng_widgets.js";
+// Each AI source has a real execution path; native sources use ComfyUI's queue and loaders.
+import { element, values, applyValues,nativeAIFingerprint } from "./ng_widgets.js";
 import { control, hideNative, section } from "./ng_editor_fields.js";
+import { upstreamNode } from "./ng_read.js";
 
 const { app } = window.comfyAPI.app;
 
-// Local already covers both local servers and API covers every OpenAI-compatible endpoint, so a
-// separate "Custom" card would only repeat one of the two. Each source names the providers it
-// really offers: listing "ollama" under API would be a false example. Icons are HTML entities
-// rather than emoji literals so this file survives any editor's encoding.
 export const SOURCES = [
-  { id: "local", title: "Local", hint: "Running server", icon: "&#128421;",
+  { id: "local", title: "Local", hint: "Disk / local server", icon: "&#128421;",
     providers: ["ollama", "lmstudio"],
-    address: "A model server already running on this machine, such as Ollama or LM Studio. Nothing is uploaded.",
-    note: "Both local servers have a built-in default address, so an empty address field still works." },
+    address: "Use an installed text encoder or a running Ollama / LM Studio server.",
+    note: "Disk models load only during an explicit AI action; ComfyUI manages the device and memory." },
   { id: "api", title: "API", hint: "Online provider", icon: "&#127760;",
     providers: ["custom"],
     address: "Any OpenAI-compatible endpoint. Enter its address below; the key comes from an environment variable.",
     note: "A remote endpoint has no default address, so it is required before a request can work." },
-  { id: "clip", title: "CLIP / Encoder", hint: "Text encoder only", icon: "&#128206;",
+  { id: "clip", title: "CLIP / Encoder", hint: "Connected ComfyUI model", icon: "&#128206;",
     providers: [],
-    address: "H3 needs its CLIP at the Context Connector. This card only records which encoder the graph runs with.",
-    note: "A CLIP encodes text for H3. It cannot answer AI actions, so this source has no provider or model and no Analyze button. Load the encoder itself with a standard CLIP Loader." },
+    address: "Connect Load CLIP to this node's CLIP input. Analyze and Auto Direct use native Generate Text.",
+    note: "Choose a generative encoder. Image/audio support depends on the loaded model; H3's conditioning encoder stays at the Connector." },
+  { id: "custom", title: "Custom", hint: "Compatible adapter", icon: "&#129513;", providers:["custom"],
+    address:"Use a custom local or remote OpenAI-compatible adapter, including llama.cpp's server.",
+    note:"Set the adapter address and its served model name. Only explicit AI actions call it." },
 ];
 
 // The existing Director node already talks to these servers, so reuse its real addresses as the
@@ -68,6 +67,9 @@ export function buildPanel(node, root, header, widget) {
   body.append(sourceSection);
 
   const identity = section("2. Provider / Model");
+  const backendField=control(node,"local_backend","Local source"),diskField=control(node,"local_model","Installed text encoder");
+  const typeField=control(node,"local_type","Encoder loader type");
+  identity.append(backendField.label,diskField.label,typeField.label);
   const identityRow = element("div", "ng-row");
   const providerField = control(node, "provider", "Provider");
   const modelField = control(node, "model", "Model");
@@ -97,7 +99,7 @@ export function buildPanel(node, root, header, widget) {
     "No request runs on connect. Analyze and Auto Direct are the only actions that call the provider, and only when you click them."));
   body.append(advanced);
 
-  const fields = [providerField, modelField, vision, audio, timeout, tokens, urlField, keepAlive, keyField];
+  const fields = [providerField, modelField, vision, audio, timeout, tokens, urlField, keepAlive, keyField,backendField,diskField,typeField];
   const providerWidget = node.widgets?.find((entry) => entry.name === "provider");
 
   // The dropdown must only offer what this source really supports, so a wrong provider cannot be
@@ -126,24 +128,28 @@ export function buildPanel(node, root, header, widget) {
     for (const entry of cards.children) entry.setAttribute("aria-pressed", String(entry.dataset.source === current.id));
     address.textContent = current.address;
     note.textContent = current.note;
-    // A CLIP encoder needs neither a provider nor request settings; showing them would ask for
-    // values nothing would read.
-    identity.hidden = current.providers.length === 0;
-    settings.hidden = current.providers.length === 0;
-    applyProviderChoices(current.providers);
+    const config = values(node),native=current.id==="clip"||(current.id==="local"&&config.local_backend==="disk");
+    identity.hidden = current.id==="clip";
+    backendField.label.hidden=current.id!=="local";
+    diskField.label.hidden=typeField.label.hidden=!(current.id==="local"&&native);
+    identityRow.hidden=native;timeout.label.hidden=false;
+    urlField.label.hidden=keepAlive.label.hidden=native;
+    if(!native)applyProviderChoices(current.providers);
     // Reuse the addresses the existing Director node already works with, so the field shows the
     // server that actually answers instead of a blank box.
-    const config = values(node);
     const hint = PROVIDER_HINTS[config.provider] || { url: "", model: "", key: false };
     if (urlField.field.tagName === "INPUT") urlField.field.placeholder = hint.url;
     if (modelField.field.tagName === "INPUT") modelField.field.placeholder = hint.model;
     // A local server needs no key, so the row would only be one more thing to wonder about.
-    keyField.label.hidden = !hint.key;
+    keyField.label.hidden = native||!hint.key;
     fields.forEach((field) => field.sync());
-    if (current.providers.length === 0) status.textContent = "Encoder declared";
+    if (current.id==="clip")status.textContent=upstreamNode(node.graph,node.inputs?.find((input)=>input.name==="clip"))?"CLIP connected · not tested":"Connect Load CLIP";
+    else if(native)status.textContent=config.local_model?"Selected · loads on action":"Choose encoder";
     else if (!config.model) status.textContent = "Not configured";
     else if (config.provider === "custom" && !config.base_url) status.textContent = "Address needed";
     else status.textContent = "Configured \u00b7 not tested";
+    const test=node.properties.ng_ai_test;
+    if(native&&test?.fingerprint===nativeAIFingerprint(node))status.textContent=`Tested · ${test.action} / ${test.media}`;
     node.setDirtyCanvas?.(true, true);
   }
 
@@ -158,7 +164,7 @@ export function buildPanel(node, root, header, widget) {
   }
 
   hideNative(node, ["source", "provider", "base_url", "model", "api_key_env", "vision", "audio",
-                     "timeout_seconds", "max_tokens", "keep_alive"]);
+                     "timeout_seconds", "max_tokens", "keep_alive","local_backend","local_model","local_type"]);
 
   const MIN_HEIGHT = 240;
   function panelHeight() {
@@ -186,7 +192,9 @@ export function buildPanel(node, root, header, widget) {
   const resized = node.onResize; node.onResize = function (...args) { const result = resized?.apply(this, args);
     queueMicrotask(() => fit()); return result; };
   const observer=new ResizeObserver(() => fit());observer.observe(body);
+  const changed=node.onConnectionsChange;node.onConnectionsChange=function(...args){const result=changed?.apply(this,args);queueMicrotask(sync);return result;};
+  const tested=()=>sync();document.addEventListener("ng-ai-tested",tested);
   sync();
   fit(true);
-  return { sync, fit, dispose(){observer.disconnect();} };
+  return { sync, fit, dispose(){observer.disconnect();document.removeEventListener("ng-ai-tested",tested);} };
 }

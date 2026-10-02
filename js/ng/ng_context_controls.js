@@ -40,16 +40,18 @@ export function rolePanel(node, media, type) {
 }
 
 export function preservePanel(node) {
-  const root=section("♢ Preserve"), controls=[];
-  for(const [key,label] of [["identity","Identity"],["outfit","Outfit"],["pose","Pose"],["background","Background"]]) {
+  const root=section("♢ Preserve"), controls=[],expert=element("details");expert.append(element("summary","","Expert · Face / Hair / Body / Style / Lighting / Composition"));
+  for(const [key,label] of [["identity","Identity"],["outfit","Outfit"],["pose","Pose"],["background","Background"],
+    ["face","Face"],["hair","Hair"],["body","Body Shape"],["style","Style"],["lighting","Lighting"],["composition","Composition"]]) {
     const row=element("div","ng-preserve-row"), buttons=element("div","ng-segments");row.append(element("span","",label),buttons);
     for(const value of key==="background"?["ignore","keep","high"]:["low","medium","high"]) {
       const button=element("button","",value[0].toUpperCase()+value.slice(1));button.setAttribute("aria-label",`${label} preserve ${value}`);
       button.onclick=()=>{const options=contextOptions(node);setOptions(node,{preserve:{...options.preserve,[key]:value}});};
       controls.push({key,value,button});buttons.append(button);
     }
-    root.append(row);
+    (controls.length<=12?root:expert).append(row);
   }
+  root.append(expert);
   root.append(element("small","ng-muted","Retention guides the prompt; the model may still change details."));
   return {root,sync(){const options=contextOptions(node), base=values(node).preserve;
     controls.forEach(({key,value,button})=>button.setAttribute("aria-pressed",String((options.preserve[key]||base)===value)));}};

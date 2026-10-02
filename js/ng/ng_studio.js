@@ -8,6 +8,8 @@ import { mediaURL } from "./ng_media_editor.js";
 import { directionTools } from "./ng_direction.js";
 import { projectRenderIds,hasRenderPath } from "./ng_graph.js";
 import { renameReferences,renderReferences } from "./ng_references.js";
+import { contextColor } from "./ng_identity.js";
+import { inspector,warningView } from "./ng_inspector.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -25,7 +27,7 @@ function attach(node) {
   function mode(value) {
     node.properties.ng_view_mode = value; root.dataset.mode = value;
     buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mode === value)));
-    node.setSize([value==="simple"?650:1100,value==="simple"?690:value==="expert"?1230:1110]);
+    node.setSize([value==="simple"?650:1100,value==="simple"?660:value==="expert"?1100:980]);
     node.setDirtyCanvas(true, true);
   }
   for (const name of ["simple", "guided", "expert"]) {
@@ -49,7 +51,7 @@ function attach(node) {
   const direction=directionTools(node,api);create.append(direction.root);
   const audio=element("details","ng-guided");audio.append(element("summary","","♫ Audio · Voice / Music / SFX"));const audioTracks=element("div");audio.append(audioTracks);
   const generation=section("Generation"), summary=element("div","ng-plan-summary","Planning…"), warnings=element("div");
-  const generationCards=element("div","ng-generation-cards"),renderStatus=element("span","ng-status","Ready");
+  const generationCards=element("div","ng-generation-cards"),renderStatus=element("span","ng-status","Checking plan…");
   const preview=element("img","ng-live-preview");preview.alt="Live H3 sampling preview";preview.hidden=true;
   generation.append(generationCards,summary,renderStatus,preview,warnings);
   const progress=attachProgress(node,api,renderStatus,preview,()=>projectRenderIds(node));
@@ -62,18 +64,16 @@ function attach(node) {
     const field=control(node,name,label,{number:["chunk_seconds","width","height","seed","steps","shift_video","shift_audio"].includes(name)});
     fields.push(field);expert.append(field.label);
   }
-  const prompt=element("details","ng-expert");prompt.append(element("summary","","Compiled H3 prompts"));
-  const prompts=element("div");prompt.append(prompts);
+  const outputInspector=inspector(node);
   const actions=element("div","ng-actions"), generate=element("button","ng-button","Generate video");
   const hint=element("span","ng-muted","Context Connector → Director → Director Output → Render Sequence → Save Video");
-  const override=control(node,"prompt_override","Manual H3 prompt override · every chunk",{multiline:true});
-  if(node.widgets.some((widget)=>widget.name==="prompt_override")){fields.push(override);prompt.append(override.label);}
   generate.onclick=()=>app.queuePrompt(0,1);generation.append(generate);actions.append(hint);
-  root.append(header,toolbar,create,settings,context,story.root,generation,prompt,audio,expert,actions);
+  const creation=element("div","ng-creation-grid");creation.append(create,settings);
+  root.append(header,toolbar,creation,context,story.root,generation,outputInspector.root,audio,expert,actions);
   hideNative(node,(node.widgets || []).map((widget)=>widget.name));
   const dom=node.addDOMWidget("ng_studio","ng_studio",root,{serialize:false,hideOnZoom:false});
   dom.computeSize=undefined;
-  dom.computeLayoutSize=()=>({minHeight:root.dataset.mode==="simple"?450:root.dataset.mode==="expert"?970:850,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});
+  dom.computeLayoutSize=()=>({minHeight:root.dataset.mode==="simple"?450:root.dataset.mode==="expert"?900:760,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});
   let timer=null, serial=0, removed=false;
   function contexts() {
     contextList.replaceChildren();
@@ -89,11 +89,16 @@ function attach(node) {
     if (!entries.length) contextList.append(element("span","ng-muted","Optional · connect an Image, Video, Audio or Text context."));
     for (const entry of entries) {
       const chip=element("div","ng-context-chip",`${ICONS[entry.media]} ${entry.widgets.name || entry.media}`);
-      if (/^#[0-9a-f]{6}$/i.test(entry.widgets.color)) chip.style.setProperty("--context-color",entry.widgets.color);
+      chip.style.setProperty("--context-color",contextColor(entry));
       chip.append(element("small","",entry.widgets.usage?.replaceAll("_"," ")||""));
       if(entry.media==="image"||entry.media==="video"){const preview=element(entry.media==="image"?"img":"video");preview.src=mediaURL(entry.widgets[entry.media],api);if(entry.media==="image")preview.alt=entry.widgets.name||"Context";else preview.preload="metadata";chip.append(preview);}
       if(entry.media==="audio"){const player=element("audio");player.controls=true;player.src=mediaURL(entry.widgets.audio,api);player.preload="metadata";
-        const track=element("div","ng-audio-track");track.append(element("span","",`${entry.widgets.name||"Audio"} · ${entry.widgets.usage}`),player);audioTracks.append(track);
+        const track=element("div","ng-audio-track"),lane=element("div","ng-audio-lane"),bar=element("span","ng-audio-region",entry.widgets.usage);
+        bar.style.background=contextColor(entry);let options={};try{options=JSON.parse(entry.widgets.context_options||"{}");}catch{}
+        const seconds=Number(values(node).project_seconds),length=options.end_s?options.end_s-(options.start_s||0):seconds;
+        const timed=["copy","lock"].includes(entry.widgets.usage);bar.style.width=`${timed?Math.min(100,length/seconds*100):100}%`;
+        bar.title=timed?`Source selection placed from 0 to ${Math.min(seconds,length).toFixed(2)} s`:"Reference for the whole project; not a copied soundtrack.";
+        lane.append(bar);track.append(element("span","",`${entry.widgets.name||"Audio"} · ${entry.widgets.usage}`),lane,player);audioTracks.append(track);
         chip.append(element("span","ng-muted","♫ "+(entry.widgets.speaker||"Audio")));}
       chip.title=entry.widgets.usage || "";contextList.append(chip);
     }
@@ -110,10 +115,10 @@ function attach(node) {
                                ["Continuity",now.continuity.replaceAll("_"," + ")],["Total Duration",`${data.total_s.toFixed(2)} s · ${data.total_frames} frames`],
                                [generate.disabled?"Connect render path":"Ready",data.mode.toUpperCase()]]){
         const card=element("div","ng-generation-card");card.append(element("strong","",title),element("small","",detail));generationCards.append(card);}
-      warnings.replaceChildren();data.issues.forEach((issue)=>warnings.append(element("div","ng-warning",`${issue.ref ? issue.ref+": " : ""}${issue.text}`)));
-      prompts.replaceChildren();data.chunks.forEach((chunk)=>prompts.append(element("h4","",`Chunk ${chunk.index+1}`),element("pre","",chunk.prompt)));
+      warnings.replaceChildren();data.issues.forEach((issue)=>warnings.append(warningView(issue,readContexts(node))));
+      outputInspector.render(data,readContexts(node));
       story.plan(data);progress.planning("Ready · plan checked");
-    } catch (error) { if (current===serial&&!removed) { summary.textContent=error.message; progress.planning("Check project"); generationCards.replaceChildren();prompts.replaceChildren(); story.plan(null);generate.disabled=true; } }
+    } catch (error) { if (current===serial&&!removed) { summary.textContent=error.message; progress.planning("Check project"); generationCards.replaceChildren();outputInspector.render(null,[]); story.plan(null);generate.disabled=true; } }
   }
   function schedule() { clearTimeout(timer); serial++;timer=setTimeout(refresh,300); }
   for (const widget of node.widgets || []) {
@@ -125,7 +130,7 @@ function attach(node) {
   const configured=node.onConfigure;
   node.onConfigure=function(...args){const result=configured?.apply(this,args);fields.forEach((field)=>field.sync());story.rebuild();mode(node.properties.ng_view_mode||"guided");schedule();return result;};
   const originalRemoved=node.onRemoved;
-  node.onRemoved=function(...args){removed=true;serial++;clearTimeout(timer);studios.delete(schedule);progress.dispose();return originalRemoved?.apply(this,args);};
+  node.onRemoved=function(...args){removed=true;serial++;clearTimeout(timer);studios.delete(schedule);progress.dispose();direction.dispose();return originalRemoved?.apply(this,args);};
   studios.add(schedule);mode(node.properties.ng_view_mode||"guided");schedule();
 }
 

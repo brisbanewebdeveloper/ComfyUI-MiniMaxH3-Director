@@ -11,5 +11,6 @@ from .provider_node import NODES as _PROVIDER
 from .connector_node import NODES as _CONNECTOR
 from .product_director_node import NODES as _PRODUCT
 from .output_node import NODES as _OUTPUT
+from .ai_nodes import NODES as _AI
 
-NODES = _CONTEXT + _DIRECTOR + _CHUNK + _RENDER + _STUDIO + _PROVIDER + _CONNECTOR + _PRODUCT + _OUTPUT
+NODES = _CONTEXT + _DIRECTOR + _CHUNK + _RENDER + _STUDIO + _PROVIDER + _CONNECTOR + _PRODUCT + _OUTPUT + _AI

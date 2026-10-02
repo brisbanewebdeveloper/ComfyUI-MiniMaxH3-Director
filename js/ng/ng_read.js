@@ -53,10 +53,17 @@ export function connectedProvider(node) {
   const direct = upstreamNode(node.graph, node.inputs?.find((input) => input.name === "ai_provider"));
   if (direct?.comfyClass === "NGAIProvider") {
     const config=widgetValues(direct);
-    // A CLIP encoder only records which text encoder the graph runs with. It cannot answer AI
-    // actions, so it must not enable the Analyze button, even though the provider widgets still
-    // hold whatever was configured before the card was switched.
-    if(config.source==="clip")return null;
+    if(config.source==="local"&&config.local_backend==="disk") {
+      if(!config.local_model)return null;
+      return {source:"clip",loader_node_id:String(direct.id),model:config.local_model,local_type:config.local_type,
+        vision:config.vision,audio:config.audio,max_tokens:config.max_tokens,timeout_seconds:config.timeout_seconds};
+    }
+    if(config.source==="clip") {
+      const encoder=upstreamNode(direct.graph,direct.inputs?.find((input)=>input.name==="clip"));
+      if(!encoder)return null;
+      return {source:"clip",loader_node_id:String(direct.id),model:widgetValues(encoder).clip_name||"Connected CLIP",
+        vision:config.vision,audio:config.audio,max_tokens:config.max_tokens,timeout_seconds:config.timeout_seconds};
+    }
     const provider={schema_version:1};
     for(const key of ["provider","base_url","model","api_key_env","vision","audio","timeout_seconds","max_tokens","keep_alive"])
       if(config[key]!==undefined)provider[key]=config[key];
@@ -80,6 +87,16 @@ export function contextProvider(node) {
   }
   const unique=[...new Map(providers.map((provider)=>[JSON.stringify(provider),provider])).values()];
   return unique.length===1?unique[0]:null;
+}
+
+export function relatedContexts(node) {
+  const found=new Map();
+  for(const id of node.outputs?.[0]?.links||[]) {
+    const link=node.graph?.links?.[id],target=link&&node.graph.getNodeById(link.target_id);
+    if(target?.comfyClass!=="NGContextConnector")continue;
+    for(const entry of readContexts(target))found.set(entry.widgets.context_id||entry.widgets.name,entry);
+  }
+  return [...found.values()];
 }
 
 export function readPayload(director) {

@@ -48,6 +48,15 @@ class Preview(unittest.TestCase):
         out = preview.plan_preview({"director": {"idea": "x", "project_seconds": 8, "width": 500, "height": 700}})
         self.assertIn("canvas_snapped", [i["code"] for i in out["issues"]])
 
+    def test_inspector_context_contains_the_compilers_normalized_values(self):
+        context = module("ng.core.context")
+        project = module("ng.core.project")
+        out = preview.plan_preview({"director": {"idea": "x", "project_seconds": 8, "width": 500, "height": 700}, "contexts": []})
+        restored = context.DirectorContext.from_dict(out["director_context"])
+        rebuilt = project.plan_project(restored, 10, preview.ContinuityPlan())
+        self.assertEqual(rebuilt.context.to_dict(), out["director_context"])
+        self.assertEqual(rebuilt.compiled[0].prompt, out["chunks"][0]["prompt"])
+
     def test_bad_input_is_an_error_not_a_crash(self):
         for director in ({"project_seconds": "abc"}, {"mode": "sideways"}, {"project_seconds": 0}, {"continuity": "magic"}):
             out = preview.plan_preview({"director": director})

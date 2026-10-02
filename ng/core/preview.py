@@ -51,4 +51,5 @@ def plan_preview(payload, probe=None):
         return {"ok": False, "error": str(error)}
     return {"ok": True, "total_s": round(frames.frames_to_seconds(project.plan.total_frames), 3), "total_frames": project.plan.total_frames,
             "mode": project.compiled[0].mode, "chunks": [_chunk_view(c, k, project.context) for c, k in zip(project.plan.chunks, project.compiled)],
+            "director_context": project.context.to_dict(),
             "issues": [i.to_dict() for i in project.issues]}

@@ -1,6 +1,6 @@
 # H3 Director NG
 
-NG is the new Director interface in this pack. It separates reusable media contexts, model connections, story editing and rendering.
+NG is an unfinished Director interface in this pack. The requirements audit found missing AI, context and reference-layout work. It separates reusable media contexts, model connections, story editing and rendering.
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
 The local 1.0.0 development version is unreleased; the published version remains 0.3.2.
 
@@ -116,41 +116,22 @@ if they should be separate items. Duplicate IDs are rejected, and ambiguous name
 
 Connect **H3 AI Loader** to the Connector for Director assistance, or directly to a Context for analysis.
 Contexts can also inherit the single provider from their downstream Connector. Without an AI connection the manual workflow remains usable.
-Local selects a running Ollama or LM Studio server; API/Custom use a compatible endpoint. The node does not load an LLM into ComfyUI.
-CLIP is the H3 text encoder and cannot substitute for a generative assistant.
-
-The panel follows the user reference: three source cards, then the sections that source actually needs.
-**Local** offers the servers that really run on the machine (`ollama`, `lmstudio`) and both have a default
-address. **API** offers only an OpenAI-compatible endpoint, so it has no local example and no default
-address. **CLIP / Encoder** hides Provider/Model and Settings entirely, because a CLIP encodes text for
-H3 and cannot answer AI actions; the badge then reads *Encoder declared*. Picking it also disables the
-Analyze button on the connected context, so no request is offered for an encoder that cannot answer one.
-Load the encoder itself with a standard CLIP Loader. There is no separate "Custom"
-card: an extra adapter is either a local server or a compatible endpoint, and both are already covered.
-The badge says *address needed* for a remote endpoint rather than promising an address that does not exist.
-Advanced holds the address, keep-alive and the key variable. The address and model fields show the defaults of
-the existing Director node as placeholders (`http://127.0.0.1:11434` with `qwen2.5vl:7b` for Ollama,
-`http://127.0.0.1:1234` for LM Studio), so a fresh node shows the server that actually answers. The key row
-is hidden for both local servers, which need no key, and only offered to a remote endpoint.
-
-The panel sizes itself through `computeLayoutSize` rather than `computeSize`, because LiteGraph hands the
-space a node gained only to widgets that declare a layout size. Dragging the node downwards therefore grows
-the panel with it, and the last panel takes the slack instead of leaving a dead gap.
+The four source cards have real execution paths. **Local** chooses an installed text encoder from disk or a running Ollama/LM Studio server. **CLIP / Encoder** consumes a connected generative Load CLIP through native Generate Text. **API** and **Custom** use compatible endpoints. H3's conditioning encoder stays independently connected at the Connector. See [native AI setup](NG-native-ai.md).
 
 Enter provider, base URL, model and declared Vision/Audio capabilities. Timeout, Max tokens and Keep model loaded
 change the outgoing request itself and are range-checked in the core. Credentials come from the named server
 environment variable; workflow files store the variable name rather than the secret. Use a URL without embedded
 credentials/query parameters; `/v1` is supported.
-**Configured · not tested** describes configuration, not a successful request. Declaring capability does not add it to an incompatible model.
+**Configured · not tested** describes configuration, not a successful request. Native sources show the successful action/medium after a real request; changes to the model/settings invalidate that status. Declaring capability does not add it to an incompatible model.
 
 **Analyze** makes one explicit request. Images send bounded thumbnails; videos send three ordered stills from at most the first 15 seconds,
-which cannot establish unseen motion. Audio sends at most 15 seconds of mono WAV to a provider supporting `input_audio`; Ollama has no audio transport.
+which cannot establish unseen motion. Audio uses at most 15 seconds of mono audio; HTTP providers need `input_audio`, while native models must accept ComfyUI AUDIO. Ollama has no audio transport. **Cancel AI** cancels this action; native cancellation targets its own queue prompt.
 **Apply suggestion** changes description/supported content choices, preserving source, usage and preservation settings.
 
 **Auto Direct** asks the connected provider for a timed scene proposal using the idea and context descriptions.
 It displays the proposal for review; **Apply scene suggestion** updates editable shots and any proposed soundscape/music.
 Changed input invalidates a pending suggestion. Loading, connecting and rendering do not trigger provider requests.
-Tests use a local mock; the quality of real LLM answers depends on your provider/model.
+Native CLIP and disk tests with installed Qwen3VL 4B cover real text/image analysis and a timed scene proposal. HTTP transport tests also use a local mock. Full analysis fields, Analyze All, AI control modes and scene-Apply field selection remain unfinished.
 
 ## Continuity and verification
 

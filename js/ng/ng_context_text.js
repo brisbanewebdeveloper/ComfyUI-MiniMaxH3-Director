@@ -1,6 +1,8 @@
 import { element, values, applyValues } from "./ng_widgets.js";
 import { control, section } from "./ng_editor_fields.js";
 import { CONTENT } from "./ng_context_controls.js";
+import { relatedContexts } from "./ng_read.js";
+import { renderReferences } from "./ng_references.js";
 
 const TEMPLATES={
   "Cinematic Rules":"Keep camera movement slow and physical. Avoid rapid cuts. Maintain consistent lighting and spatial continuity.",
@@ -14,7 +16,10 @@ const TEMPLATES={
 
 export function textEditor(node) {
   const root=element("div","ng-text-workspace"), editor=section("☷ Text Content"), field=control(node,"text","Context text",{multiline:true});
-  const count=element("span","ng-text-count"), preview=element("pre","ng-text-highlight");editor.append(field.label,count,preview);
+  const count=element("span","ng-text-count"), preview=element("pre","ng-editor-highlight"),overlay=element("div","ng-editor-overlay");
+  overlay.append(preview,field.field);field.label.append(overlay);editor.append(field.label,count);
+  field.field.classList.add("ng-highlight-input");field.field.spellcheck=false;
+  field.field.onscroll=()=>{preview.scrollTop=field.field.scrollTop;preview.scrollLeft=field.field.scrollLeft;};
   const quick=section("★ Quick Insert");
   for(const [key,label] of CONTENT.text) {
     const button=element("button","ng-quick-insert",label);button.dataset.kind=key;
@@ -27,12 +32,15 @@ export function textEditor(node) {
   use.onclick=()=>{applyValues(node,{text:TEMPLATES[choices.value]});node.graph?.change();};templates.append(choices,use);
   const examples=section("☀ Example Templates");for(const name of Object.keys(TEMPLATES)){
     const button=element("button","",name);button.onclick=()=>{choices.value=name;use.click();};examples.append(button);}
-  root.append(editor,quick,templates,examples);
+  const main=element("div","ng-text-main"),sidebar=element("div","ng-text-sidebar");main.append(editor,templates,examples);root.append(main,quick,sidebar);
   function sync() {
     field.sync();const text=values(node).text||"";count.textContent=`${text.length} characters`;preview.replaceChildren();
-    const parts=text.split(/(@[\p{L}\p{N}_-]+|\[[^\]\n]+\])/u);
-    for(const part of parts){const span=element("span",/^@|^\[/.test(part)?"ng-text-token":"",part);preview.append(span);}
+    const parts=text.split(/(\[[^\]\n]+\])/u),entries=relatedContexts(node);
+    for(const part of parts){const span=element("span",/^\[/.test(part)?"ng-template-placeholder":"");
+      if(/^\[/.test(part)){span.textContent=part;span.title="Template placeholder · replace with a description or @Context.";}
+      else renderReferences(span,part,entries,element);preview.append(span);}
+    preview.append(element("span","","\n"));
     preview.title="Template placeholders in brackets must be replaced with your own descriptions. @Name refers to a connected context.";
   }
-  sync();return {root,sync};
+  sync();return {root,sidebar,sync};
 }

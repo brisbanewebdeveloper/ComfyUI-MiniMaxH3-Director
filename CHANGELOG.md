@@ -2,6 +2,13 @@
 
 ## 1.0.0 (unreleased)
 
+Development remains incomplete after the specification/reference audit. Native CLIP assistance now has real-model and browser evidence; full AI controls/analysis, native media inputs, subject/asset mapping, remaining reference layouts and Last Frame continuity still require work. Existing test/render records describe their tested scope, not complete product acceptance.
+
+- Native CLIP/Disk assistant jobs reuse ComfyUI Generate Text, model management and targeted queue cancellation. Four source cards have real execution paths; no AI request during connection/load/render.
+- Separate Audio/Text layouts, real @Context editor highlighting, stable persisted context colors and compiler Output Inspector with Raw Context, budget, views and Override/Rebuild.
+- Real installed Qwen3VL 4B: connected CLIP text/image analysis, disk text analysis and a complete 8-s Auto Direct proposal; browser Apply, stale-response protection, cancellation and tested-source status.
+- E18: 194 NG tests (193 pass/one Windows skip), core line trace 98.03%, existing Legacy 371/371 + 74/74; limits and old tests preserved.
+
 **H3 Director NG: a connected Director interface with reusable media contexts.** Local development; no push, tag or publication.
 The original timeline Director remains Legacy with its existing node ID and behavior.
 

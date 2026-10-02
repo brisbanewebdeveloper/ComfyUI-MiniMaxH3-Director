@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from comfy_execution.graph_utils import GraphBuilder
 
 from ..core.analysis import ProviderConfig
+from .ai_provider import NativeAIProvider
 from ..core.project import jobs
 from .render_graph import render_sequence
 
@@ -16,7 +17,7 @@ class DirectorInputs:
     model_fl2va: object = None
     model_ref2va: object = None
     contexts: tuple = ()
-    ai_provider: ProviderConfig | None = None
+    ai_provider: ProviderConfig | NativeAIProvider | None = None
 
     def links(self):
         return {name: getattr(self, name) for name in ("clip", "vae", "audio_vae", "model_fl2va", "model_ref2va")}
