@@ -109,9 +109,6 @@ def _issues(context, chunk, result, continuity):
         out.extend(check_item(item))
     if not context.idea.strip() and not any(s.text.strip() for s in chunk.shots):
         out.append(Issue("no_text", "There is no text for this chunk; the prompt falls back to a bare placeholder.", "chunk %d" % (chunk.index + 1)))
-    if chunk.head_frames and continuity.mode == "video_audio" and result["lock_audio_segs"]:
-        out.append(Issue("lock_and_pin", "Locked audio and a pinned audio tail both write the sound of the first second; the lock wins.",
-                         "chunk %d" % (chunk.index + 1)))
     return out
 
 
