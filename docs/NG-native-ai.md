@@ -32,3 +32,11 @@ The native path is verified with one installed model (Qwen3VL 4B). Nothing here 
 A figure can own more than one voice card. H3 has one voice slot per subject, so the first card fills that slot and every further card is still sent as an additional reference. Each further card is named in the plan's warnings, so a second take is never silently demoted to "some audio".
 
 The **Speaker / Voice** menu only offers figures – image cards holding a file with the content role character, face or animal. It stores the context ID, not the name, because that is what the compiler resolves. A speaker that is no longer connected stays visible in the menu instead of disappearing from the workflow. When more than one voice card names the same figure, the card says which one fills the slot.
+
+## First Frame and Last Frame
+
+An image card set to **First Frame** opens the clip, one set to **Last Frame** closes it. A first frame only reaches the first chunk and a last frame only the last one, so a long project never sends the guide twice.
+
+H3 takes exactly one image per frame role. If you set two Last Frames, only the first one is sent and the plan names the ones it ignored – the same for two First Frames. An image can be both a Reference and a Last Frame at once; the two roles stay independent.
+
+Frame guides are matched by role, not by file name: two cards pointing at the same picture still each keep their own role. A frame guide also switches the run to the frame model (FL2VA); without it the planner would fall back to a text-only run and ignore the frame.
