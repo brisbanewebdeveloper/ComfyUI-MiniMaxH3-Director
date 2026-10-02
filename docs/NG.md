@@ -8,9 +8,14 @@ The legacy nodes are untouched and keep working. NG nodes have their own names, 
 
 ## Quick start
 
+NG requires native **Start Loop / End Loop** with List mode and accumulation. The live checks used ComfyUI 0.37.0 and frontend 1.53.6.
+
 1. Open **example_workflows → `NG Director - text project.json`**.
 2. Pick your models (the example uses the fl2va checkpoint, the CLIP and the two VAEs).
 3. Write what the video is about in **idea**, set **project_seconds**, queue.
+
+For a character and voice, open **`NG Director - image and voice.json`**, upload your own picture and voice in the two Context nodes,
+and choose your installed models. The example filenames are placeholders; media is not bundled.
 
 The node on the left of the plan shows what will happen *before* you render: how many chunks, how long each is, what the prompt of
 every chunk looks like, and notes about anything that was adjusted.
@@ -66,7 +71,8 @@ Leave **shots** empty and the **idea** carries the whole video. Or write one sho
 
 Times are seconds, `m:ss` or `m:ss.s`. Lines below a time belong to that shot. `@Name` points at a context item by its name;
 `@Alice says: …` writes dialogue. A shot that began in an earlier chunk keeps its action but not its spoken lines, which belong to
-where the shot starts.
+where the shot starts. With **shots** empty, each continued chunk also receives an explicit instruction to continue the same scene,
+subject and action. This is a prompt instruction, not a guarantee of stable identity.
 
 ## Context items
 
@@ -78,7 +84,7 @@ with it) and **preserve** (how closely to stay true to it).
 | Image | `reference` | A character, outfit, place… the model keeps it recognisable. Needs the ref2va model. |
 | | `first_frame` / `last_frame` | Opens or closes the video. |
 | Audio | `voice` | A voice. Set **speaker** to the name of the character who talks with it. |
-| | `lock` | The sound is held exactly; the video is made around it, across chunks. Needs the audio VAE. |
+| | `lock` | Holds the source audio latent across chunks and makes the video around it. Needs the audio VAE; reconstruction can alter the waveform. |
 | | `copy` | The model reuses the sound (works most of the time, not always). |
 | Video | `motion` | A 2–15 s clip whose motion and camera work the model follows. |
 | Text | `style` / `rule` | A note that applies to the whole video. |
@@ -86,7 +92,36 @@ with it) and **preserve** (how closely to stay true to it).
 Pictures, voices and clips switch the project to **ref2va** automatically; with none of them it is fl2va (text and frames). Connect both
 models to *NG Chunk Conditioning* and only the one that is needed is loaded.
 
-Files must be in the top level of ComfyUI's `input` folder (the upload button puts them there).
+Files must be inside ComfyUI's `input` folder; subfolders are supported. NG rejects absolute paths, traversal and symlinks that
+lead outside it. A moved or deleted reference stops rendering with a message naming the item.
+
+New context cards receive a persistent **context_id**. Renaming a card does not change its identity. Use distinct names for
+`@mentions` and speakers. Loading the same preset twice restores the same ID: assign a different advanced **context_id** if those
+cards should represent different items. **color** accepts `#rrggbb`; leaving it empty restores the medium's colour family.
+
+## Presets and analysis
+
+**Save preset** writes one versioned JSON file under the current ComfyUI user's `minimax_h3_ng/contexts` folder. Saving the same
+name replaces that preset atomically. **Load preset** restores source, name, description, role, preservation, colour and identity.
+Presets reference input files; they do not bundle them. Provider settings and media bytes are excluded.
+
+**Analyze context** is optional and runs only when clicked. Expand **Analysis provider** to choose Ollama, LM Studio or a compatible
+custom endpoint, model and capabilities. An empty address/model uses the legacy transport's defaults where available. Put credentials
+in the ComfyUI server environment and enter only their variable name in **api key env**. Restart ComfyUI after changing its environment.
+Use a base URL without embedded credentials or query parameters; a trailing `/v1` is supported.
+
+Image analysis sends a bounded thumbnail; video analysis sends three ordered stills from the first 15 seconds. It cannot establish
+unseen motion. Audio analysis sends at most the first 15 seconds as mono WAV and requires a provider/model that supports `input_audio`;
+the Ollama transport has no audio input. Text needs no vision capability. Declaring a capability does not make an incompatible model support it.
+
+The result is a suggestion. **Apply suggestion** updates the description and a supported content choice; **usage**, **preserve** and
+source stay as set. A context changed during analysis must be analyzed again before applying. Rendering never contacts an analysis provider.
+
+## Plan views
+
+**Simple** shows the project summary and warnings. **Guided** adds per-chunk length and reference details. **Expert** also exposes
+the exact compiled H3 prompt. The choice is saved in the workflow and changes the inspector presentation only. Render settings
+remain available in each view; switching views does not change prompts, chunks or sampling.
 
 ## Settings worth knowing
 
@@ -107,19 +142,21 @@ All of it is in `_notes/NG/03-experiments.md` of the development folder; the sho
   fell to a ninth after five joins). NG warns from the fifth join on.
 - A new action asked for right after a join comes **about 2.4 s late**, because the pinned picture holds the old action. So the planner
   **moves a chunk boundary** (in whole 17-frame steps, keeping the total) so that no shot starts less than 2.5 s after it, and only warns when it cannot
-  (one seed; the effect of the move itself has not been re-measured).
+  (one seed). Fresh NG runs exercised the moved 9.42 s and 19.33 s boundaries; a controlled delay comparison remains unverified.
 - A locked song stayed locked across a join (envelope correlation 0.97, constant 4 ms offset before and after).
 - A voice reference works without any picture (it changed the timbre toward the reference, 0.97 against 0.69 without).
 
 Tested so far at 384×576 with 8 steps for the function checks and one run at 768×1152 with 20 steps. Everything was measured
-with numbers, not listened to. One seed per case. Treat the figures as evidence, not as guarantees.
+with numbers, not listened to. Fresh E13 contact sheets were also inspected. One seed per case. Treat the figures as evidence, not as guarantees.
+See [NG-validation.md](NG-validation.md) for the current software checks, live runs and release limits.
 
 ## Known limits
 
 - One resolution for the whole project (a latent cannot be resized between chunks).
-- A reference file has to be in the top level of `input`.
-- No presets, no AI analysis of context items and no scene-card or timeline editor yet; shots are text.
-- The look of a long chain is not yet judged by ear or eye over many chunks, only by measurement.
+- Scene cards, an editable timeline, AI Auto Direct and adaptive continuity remain later work; shots are text.
+- Scene `keyframe` and `storyboard` roles are reserved for that editor and are not offered by the current cards. Imported roles receive a warning.
+- A long chain can drift in appearance and audio timbre. Listening and broad multi-seed quality validation are still outstanding.
+- Preview/progress is provided by the standard sampler in the native loop; accumulated latents consume memory until collection.
 
 ## Troubleshooting
 

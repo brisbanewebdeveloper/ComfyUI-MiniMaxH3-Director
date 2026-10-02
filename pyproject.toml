@@ -1,7 +1,7 @@
 [project]
 name = "minimaxh3-director"
-description = "A timeline editor for MiniMax H3 — storyboard prompts, first/last keyframes, image/video/audio references, native joint audio, live sampling preview, retakes and shot chaining."
-version = "0.3.2"
+description = "NG project planning and native loop rendering for MiniMax H3, reusable media contexts and optional analysis, alongside the Legacy timeline Director."
+version = "1.0.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 # Nothing beyond what ComfyUI itself already installs.
@@ -21,5 +21,5 @@ Repository = "https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director"
 PublisherId = "seesee75-commits"
 DisplayName = "MiniMax H3 Director"
 Icon = ""
-# comfy_api.latest, the packed AV latent and H3 support all landed in ComfyUI 0.30.0.
-requires-comfyui = ">=0.30.0"
+# NG depends on native List loops; this release is validated against ComfyUI 0.37.0.
+requires-comfyui = ">=0.37.0"

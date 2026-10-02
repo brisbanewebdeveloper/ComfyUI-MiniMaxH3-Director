@@ -6,8 +6,8 @@ press Run. Instead of one prompt box for a whole clip you get a storyboard — a
 see the exact prompt the model will receive while you are still editing it.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
-[![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-0.3.2-brightgreen)](CHANGELOG.md)
+[![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.37.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
+[![version](https://img.shields.io/badge/version-1.0.0_unreleased-orange)](CHANGELOG.md)
 
 ![The MiniMax H3 Director node](docs/images/director-node.png)
 
@@ -52,10 +52,13 @@ maintained. For anything longer than one H3 run, or for a simpler way to work, u
 
 - **NG Director** plans a whole video of any length as chunks of H3 runs and shows the plan, the notes and every prompt *before* you render.
 - **NG Context Image / Video / Audio / Text** are small nodes for a picture, a clip, a voice or a note: what it *is* and what the model should *do* with it.
+- Context cards add local presets, bounded media previews and optional provider analysis with an explicit Apply step.
 - Each chunk **continues the one before** (its last frames and last second of sound are pinned in front), inside ComfyUI's own **Start Loop / End Loop**.
 - **NG Collect** joins everything into one video with sound.
 
-Start with **example_workflows → `NG Director - text project.json`** and read [docs/NG.md](docs/NG.md).
+Start with **example_workflows → `NG Director - text project.json`** or **`NG Director - image and voice.json`** and read [docs/NG.md](docs/NG.md).
+NG uses native loop support (tested on ComfyUI 0.37.0). Read the [validation record and known quality limits](docs/NG-validation.md)
+before relying on long-chain continuity. Version 1.0.0 is an unreleased local draft.
 
 ---
 
@@ -184,8 +187,8 @@ any OpenAI-compatible endpoint) with automatic VRAM release before a run.
 
 ## Requirements
 
-* **ComfyUI ≥ 0.30.0** — H3 support, `comfy_api.latest` and the packed AV latent all
-  landed in 0.30. Older builds will fail to load the nodes.
+* **ComfyUI ≥ 0.37.0** for this NG release, including native Start Loop / End Loop with List mode.
+  H3 and the Legacy nodes originally required 0.30.0; NG's live validation uses 0.37.0.
 * **Python 3.10+** (ComfyUI's own environment; the portable build's `python_embeded` is fine).
 * **No extra pip packages.** Everything the nodes import ships with ComfyUI already.
 * **VRAM:** the fp8 checkpoints are ~21 GB on disk. 16 GB VRAM works with ComfyUI's
@@ -1036,7 +1039,7 @@ For a dependable long piece the answer is still several in-range windows spliced
 **The nodes do not appear after installing.**
 Restart ComfyUI fully and hard-reload the browser (Ctrl+F5). If they still do not appear,
 look at the ComfyUI console during startup — an import error is printed there. Check your
-ComfyUI version is ≥ 0.30.0.
+ComfyUI version is ≥ 0.37.0 for this NG release.
 
 **The node loads but the timeline is blank / looks like a plain widget list.**
 Stale frontend cache. Ctrl+F5. In a private window it will look correct if that is the cause.

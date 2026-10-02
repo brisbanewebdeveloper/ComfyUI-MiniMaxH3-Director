@@ -17,15 +17,22 @@ Nothing existing was removed or renamed (node ids are unchanged); the timeline D
   served by `/ng/plan`, which runs the same compiler the render uses and loads no media.
 - **Context items say what a medium means** (content) and what the model should do with it (usage): character, voice, motion, style, first frame, lock, copy.
   A voice names its speaker; `@Name` in a shot points at a picture by its name.
+- **Reusable context cards:** persistent identity and colour, local versioned presets, image/video thumbnails and bounded audio waveforms. Input subfolders are supported;
+  paths are checked again before reading. Duplicate names and discarded or unsupported roles are reported.
+- **Explicit context analysis:** Ollama, LM Studio or a compatible custom endpoint; text/vision reuse the legacy transport. Audio needs declared `input_audio` support.
+  Suggestions are applied manually, credentials come from environment variables, and rendering does not call a provider.
+- **Simple / Guided / Expert plan views** persist across workflow reloads and leave render settings unchanged. Automatic continued shots include a continuation instruction.
 - **Shot-aware chunk boundaries.** A new action asked for right after a join comes about 2.4 s late (the pinned picture holds the previous one), so the planner moves
   a boundary, in whole 17-frame steps and without changing the total, until no shot starts within 2.5 s after it.
 - **Honest notes instead of silent corrections**: the finished length (chunks sit on H3's frame grid), a shot that still begins within 2.5 s of a join when the boundary cannot move, a long chain (the sound loses its highs; measured at five joins), a changed resolution between chunks.
 - **Legacy tag:** the original Director is now *MiniMax H3 Director (Legacy)* in category *MiniMax H3 / Legacy*. Its node id, behaviour and saved workflows are unchanged; the other nodes
   (Preview Override, Retake Stitch, Enhance Prompt, Save Last Frame) stay current and work with NG.
-- A new guide, [docs/NG.md](docs/NG.md), an example workflow (`NG Director - text project.json`) and 126 tests for NG (the legacy suites, 371 and 74 checks, are unchanged and green).
+- A new guide, [docs/NG.md](docs/NG.md), text and image/voice example workflows, and [the validation record](docs/NG-validation.md).
+  NG has 158 automated tests (one environment-dependent symlink test skipped); the legacy suites remain 371/371 and 74/74.
 
-Known limits: one resolution per project; reference files must be in the top level of `input`; no presets, AI analysis of context items or scene-card editor yet;
-measured with numbers at 384x576 / 8 steps and one 768x1152 / 20 steps run, one seed per case, not judged by ear or eye over many chunks.
+Known limits: one resolution per project; scene cards, timeline editing, AI Auto Direct and adaptive continuity remain later work.
+Single-seed live runs and sparse frame inspection do not establish invisible joins or consistent long-chain quality. Listening remains unverified.
+NG needs native loop support; live checks used ComfyUI 0.37.0 / frontend 1.53.6. Version 1.0.0 is an unreleased local candidate; no tag or push has been made.
 
 ## 0.3.2
 
