@@ -65,7 +65,10 @@ class Collect(unittest.TestCase):
         plan = self.plan()
         frames, audio, issues = self.run_collect(plan, extra_samples=300)
         self.assertEqual(audio["waveform"].shape[-1], round(frames.shape[0] / 24.0 * RATE))
-        _, audio, issues = self.run_collect(plan, extra_samples=-300)
+        _, audio, issues = self.run_collect(plan, extra_samples=-300)         # 9 ms: the grid's normal rounding, no warning
+        self.assertEqual(audio["waveform"].shape[-1], round(plan.total_frames / 24.0 * RATE))
+        self.assertEqual(issues, ())
+        _, audio, issues = self.run_collect(plan, extra_samples=-1000)        # 31 ms: more than one audio step
         self.assertEqual(audio["waveform"].shape[-1], round(plan.total_frames / 24.0 * RATE))
         self.assertTrue(issues and issues[0].code == "audio_short")
 

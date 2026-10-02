@@ -110,6 +110,7 @@ class Chunks(unittest.TestCase):
         _, out = build(ctx)
         self.assertIn("Hello there.", out[0].prompt)
         self.assertNotIn("Hello there.", out[1].prompt)
+        self.assertFalse([i for i in out[1].issues if "no spoken line" in str(i)])      # absent on purpose, not a mistake
         self.assertIn("walks through the market", out[1].prompt)
 
     def test_lock_audio_follows_the_story_not_the_chunk(self):

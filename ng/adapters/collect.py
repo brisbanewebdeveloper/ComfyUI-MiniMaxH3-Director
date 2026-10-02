@@ -7,7 +7,7 @@ and Ton cannot drift apart over many chunks (E6: 634 frames / 26.417 s, audio 26
 import torch
 
 from ..core.issues import Issue
-from ..core.limits import FPS
+from ..core.limits import AUDIO_HZ, FPS
 from . import latents
 
 
@@ -32,7 +32,8 @@ def collect_chunks(chunk_latents, plan, decode_video, decode_audio):
             raise ValueError("chunk %d decoded to %d frames but the plan sampled %d" % (chunk.index + 1, frames.shape[0], chunk.sampled_frames))
         frames, wave = latents.trim_head(frames, wave, rate, chunk.head_frames, FPS)
         wave, padded = _pad_to(wave, int(round(frames.shape[0] / float(FPS) * rate)))
-        if padded:
+        # up to one audio step (25 ms) short is the grid's normal rounding (E11: 266 samples at 32 kHz = 8 ms), not worth a warning
+        if padded > rate / float(AUDIO_HZ):
             issues.append(Issue("audio_short", "the sound of chunk %d was %d samples short and was padded with silence." % (chunk.index + 1, padded)))
         pictures.append(frames)
         waves.append(wave)

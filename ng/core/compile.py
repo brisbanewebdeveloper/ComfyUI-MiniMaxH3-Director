@@ -101,7 +101,10 @@ def _media_refs(result, mapping):
 
 
 def _issues(context, chunk, result, continuity):
-    out = [Issue("planner", text, "chunk %d" % (chunk.index + 1)) for text in result["ref_warnings"]]
+    # a continued chunk deliberately has no spoken line for a shot that began earlier (see legacy_bridge._shot_text)
+    resumed = any(s.carried for s in chunk.shots)
+    out = [Issue("planner", text, "chunk %d" % (chunk.index + 1)) for text in result["ref_warnings"]
+           if not (resumed and "has no spoken line" in text)]
     for item in context.items:
         out.extend(check_item(item))
     if not context.idea.strip() and not any(s.text.strip() for s in chunk.shots):
