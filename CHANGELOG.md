@@ -8,6 +8,8 @@ Development remains incomplete after the specification/reference audit. Native C
 - Separate Audio/Text layouts, real @Context editor highlighting, stable persisted context colors and compiler Output Inspector with Raw Context, budget, views and Override/Rebuild.
 - Real installed Qwen3VL 4B: connected CLIP text/image analysis, disk text analysis and a complete 8-s Auto Direct proposal; browser Apply, stale-response protection, cancellation and tested-source status.
 - E18: 194 NG tests (193 pass/one Windows skip), core line trace 98.03%, existing Legacy 371/371 + 74/74; limits and old tests preserved.
+- Controllable AI flow: Manual/Assist/Auto modes, a checkbox per suggested field so Apply writes only what you tick, an optional reason for each suggestion, Analyze all contexts with per-card results and skip reasons, and scene proposals that keep dialogue you typed.
+- E19: 216 NG tests (215 pass/one Windows skip), core line trace 98.23%, Legacy 371/371 + 74/74. The new AI controls have no browser run and no real-model answer on the batch endpoint yet, so they are not a product acceptance.
 
 **H3 Director NG: a connected Director interface with reusable media contexts.** Local development; no push, tag or publication.
 The original timeline Director remains Legacy with its existing node ID and behavior.

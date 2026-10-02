@@ -17,4 +17,12 @@ Images are bounded to 1024×1024 for native analysis. Video analysis uses three 
 
 Replies must satisfy the JSON schema. Auto Direct requires at least one shot, ordered continuous coverage of the entire duration and only connected @Context names. Invalid answers cannot be applied. Editing the context, project or AI source invalidates pending Apply.
 
-Analysis currently proposes a description and supported content choice. Full field review, Analyze All and Manual/Assist/Auto control modes remain under development. Scene Apply currently replaces the suggested shots/soundscape/music; save your manual dialogue before replacing it. Passing native requests are functional evidence for the tested model, not a guarantee about other encoders or output quality.
+Analysis proposes a description, a supported content choice, an optional usage and a short reason for the choice. **Manual / Assist / Auto** sit above the Create area: Manual sends nothing, Assist fills a card only after you press Apply, and Auto lets the assistant plan a whole scene – Apply is still required. The mode is saved with the workflow.
+
+Every suggestion shows one checkbox per offered field. Apply writes only the ticked ones, so a role you chose yourself stays. A suggested role the medium does not offer is reported instead of being mapped to something else.
+
+**Analyze all contexts** asks for every usable card in one go and reports how many were analyzed, which failed and why the rest were skipped. It deliberately does not write any card: each suggestion is reviewed and applied on its own card.
+
+Auto Direct replaces the suggested shots, soundscape and music. Dialogue you typed yourself is kept and named in the panel, so a proposal cannot silently delete a line a character says. Editing the context, project or AI source invalidates a pending Apply.
+
+The native path is verified with one installed model (Qwen3VL 4B). Nothing here is a guarantee about other encoders or output quality.
