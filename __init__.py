@@ -35,7 +35,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MiniMaxH3DirectorCS": "MiniMax H3 Director",
+    "MiniMaxH3DirectorCS": "MiniMax H3 Director (Legacy)",
     "MiniMaxH3PreviewOverrideCS": "MiniMax H3 Preview Override",
     "MiniMaxH3RetakeStitchCS": "MiniMax H3 Retake Stitch",
     "MiniMaxH3EnhancePromptCS": "MiniMax H3 Enhance Prompt",

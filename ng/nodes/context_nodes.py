@@ -12,7 +12,7 @@ from ..core.context import PRESERVE, USAGE_BY_MEDIA
 from ..core.context_build import item_from_widgets
 
 NGContext = io.Custom("NG_CONTEXT")
-CATEGORY = "MiniMax H3 NG"
+CATEGORY = "MiniMax H3/NG"
 CONTENT_BY_MEDIA = {
     "image": ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style", "pose", "composition"),
     "video": ("motion", "camera_motion", "action", "effect", "style"),

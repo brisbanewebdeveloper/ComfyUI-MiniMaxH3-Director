@@ -319,10 +319,11 @@ class MiniMaxH3Director(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3DirectorCS",
-            display_name="MiniMax H3 Director",
-            category="MiniMax H3",
+            display_name="MiniMax H3 Director (Legacy)",
+            category="MiniMax H3/Legacy",
             description=(
-                "Visual timeline for MiniMax H3. Segments become a storyboard prompt with "
+                "LEGACY - the timeline Director of 0.x, kept and maintained for existing workflows. For videos of any length use the "
+                "NG nodes (docs/NG.md). Visual timeline for MiniMax H3. Segments become a storyboard prompt with "
                 "[0s-1.5s] shot markers, timeline images become first/last keyframes (fl2va) "
                 "or <Picture i> references (ref2va), the reference-video track becomes "
                 "<Video k>, and audio clips become <Audio j> plus a muxable audio output. "
@@ -755,4 +756,4 @@ class MiniMaxH3Director(io.ComfyNode):
 
 
 NODE_CLASS_MAPPINGS = {"MiniMaxH3DirectorCS": MiniMaxH3Director}
-NODE_DISPLAY_NAME_MAPPINGS = {"MiniMaxH3DirectorCS": "MiniMax H3 Director"}
+NODE_DISPLAY_NAME_MAPPINGS = {"MiniMaxH3DirectorCS": "MiniMax H3 Director (Legacy)"}

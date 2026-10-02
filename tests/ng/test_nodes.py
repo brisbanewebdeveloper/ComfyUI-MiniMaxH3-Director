@@ -20,6 +20,13 @@ class Registration(unittest.TestCase):
             self.assertIn(node_id, mappings)
         self.assertTrue(all(not n.endswith("CS") for n in NG_IDS))
 
+    def test_the_old_director_is_marked_legacy_without_changing_its_id(self):
+        schema = self.pack.NODE_CLASS_MAPPINGS["MiniMaxH3DirectorCS"].GET_SCHEMA()
+        self.assertEqual(schema.display_name, "MiniMax H3 Director (Legacy)")
+        self.assertEqual(schema.category, "MiniMax H3/Legacy")
+        self.assertTrue(schema.description.startswith("LEGACY"))
+        self.assertEqual(self.pack.NODE_DISPLAY_NAME_MAPPINGS["MiniMaxH3DirectorCS"], "MiniMax H3 Director (Legacy)")
+
     def test_display_names_exist(self):
         for node_id in NG_IDS:
             self.assertTrue(self.pack.NODE_DISPLAY_NAME_MAPPINGS[node_id].startswith("NG "), node_id)
@@ -29,7 +36,7 @@ class Registration(unittest.TestCase):
             schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
             ids = [i.id for i in schema.inputs]
             self.assertEqual(len(ids), len(set(ids)), node_id)
-            self.assertEqual(schema.category, "MiniMax H3 NG")
+            self.assertEqual(schema.category, "MiniMax H3/NG")
 
     def test_loop_nodes_take_and_give_what_the_loop_needs(self):
         director = self.pack.NODE_CLASS_MAPPINGS["NGDirector"].GET_SCHEMA()
