@@ -46,6 +46,10 @@ class NGContextImage(io.ComfyNode):
                          outputs=[NGContext.Output()])
 
     @classmethod
+    def fingerprint_inputs(cls, image, **_):
+        return probe.file_stamp(image)
+
+    @classmethod
     def execute(cls, image, name, description, content, usage, preserve):
         return io.NodeOutput(item_from_widgets("image", dict(image=image, name=name, description=description, content=content, usage=usage, preserve=preserve)))
 
@@ -57,6 +61,10 @@ class NGContextVideo(io.ComfyNode):
                          description="A clip used as a motion or camera reference (2-15 s).",
                          inputs=[io.Combo.Input("video", options=_files(["video"]), upload=io.UploadType.video)] + _common_inputs("video"),
                          outputs=[NGContext.Output()])
+
+    @classmethod
+    def fingerprint_inputs(cls, video, **_):
+        return probe.file_stamp(video)
 
     @classmethod
     def execute(cls, video, name, description, content, usage, preserve):
@@ -72,6 +80,10 @@ class NGContextAudio(io.ComfyNode):
                          inputs=[io.Combo.Input("audio", options=_files(["audio", "video"]), upload=io.UploadType.audio)] + _common_inputs("audio") + [
                              io.String.Input("speaker", default="", tooltip="Voice only: the name of the character who speaks with this voice.")],
                          outputs=[NGContext.Output()])
+
+    @classmethod
+    def fingerprint_inputs(cls, audio, **_):
+        return probe.file_stamp(audio)
 
     @classmethod
     def execute(cls, audio, name, description, content, usage, preserve, speaker):

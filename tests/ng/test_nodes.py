@@ -75,6 +75,24 @@ class Execution(unittest.TestCase):
             self.context_nodes.probe.duration_seconds = saved
         self.assertEqual((item.length_s, item.speaker, item.usage), (7.5, "Alice", ("voice",)))
 
+    def test_replacing_a_file_changes_the_cache_key_of_its_context_node(self):
+        import os
+        import folder_paths
+        path = os.path.join(folder_paths.get_input_directory(), "ng_stamp_test.png")
+        try:
+            with open(path, "wb") as f:
+                f.write(b"first")
+            node = self.nodes["NGContextImage"]
+            before = node.fingerprint_inputs(image="ng_stamp_test.png")
+            self.assertEqual(before, node.fingerprint_inputs(image="ng_stamp_test.png [input]"))
+            with open(path, "wb") as f:
+                f.write(b"second version")
+            self.assertNotEqual(before, node.fingerprint_inputs(image="ng_stamp_test.png"))
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+        self.assertEqual(self.nodes["NGContextAudio"].fingerprint_inputs(audio="not there.wav"), "missing")
+
     def test_text_context_keeps_the_text(self):
         (item,) = self.out("NGContextText", text="Keep the camera slow.", name="", description="", content="rules", usage="style", preserve="high")
         self.assertEqual((item.media, item.source), ("text", "Keep the camera slow."))
