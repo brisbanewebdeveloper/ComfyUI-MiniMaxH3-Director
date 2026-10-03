@@ -71,4 +71,4 @@ def apply_asset_relations(result, mapping, context, refs):
     if video_lines:
         prompt = prompt.replace("\n\nsummary:", "\n" + "\n".join(video_lines) + "\n\nsummary:", 1)
     names = {item.name: owned[item.id] for item in context.by_media("image") if item.subject_ids and item.id in owned}
-    return replace_mentions(prompt, names), tuple(issues)
+    return replace_mentions(prompt, names, (item.name for item in context.items)), tuple(issues)

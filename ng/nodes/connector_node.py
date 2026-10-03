@@ -25,8 +25,8 @@ class NGContextConnector(io.ComfyNode):
                                  io.Vae.Input("vae", display_name="VAE", raw_link=True, lazy=True),
                                  io.Vae.Input("audio_vae", display_name="audio VAE", raw_link=True, lazy=True),
                                  NGAI.Input("ai_provider", display_name="AI provider", optional=True),
-                                 context_group("text", 15), context_group("image", 9),
-                                 context_group("video", 3), context_group("audio", 3)],
+                                 context_group("text", 15), context_group("image", 15),
+                                 context_group("video", 15), context_group("audio", 15)],
                          outputs=[NGInputs.Output(display_name="H3 context")])
 
     @classmethod

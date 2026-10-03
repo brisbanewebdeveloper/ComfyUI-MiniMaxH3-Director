@@ -32,9 +32,10 @@ export function selectedRoles(node, type) {
 
 export function rolePanel(node, media, type) {
   const root=section(type==="content"?"◎ Detected Content":"◇ Use As"), controls=[];
+  const radioGroup=`ng_usage_${crypto.randomUUID()}`;
   for(const [key,label] of (type==="content"?CONTENT:USAGE)[media]) {
     const row=element("label","ng-option-row"), input=element("input");input.type=type==="usage"&&media!=="image"?"radio":"checkbox";
-    if(input.type==="radio")input.name=`ng_${node.id}_${media}_usage`;
+    if(input.type==="radio")input.name=radioGroup;
     input.setAttribute("aria-label",label);row.append(input,element("span","",label));root.append(row);
     input.onchange=()=>{
       const old=selectedRoles(node,type), selected=input.type==="radio"?[key]:input.checked?[...new Set([...old,key])]:old.filter((value)=>value!==key);

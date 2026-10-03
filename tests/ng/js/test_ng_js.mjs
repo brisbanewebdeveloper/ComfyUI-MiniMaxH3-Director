@@ -25,7 +25,20 @@ const { connectedProvider, contextProvider, restoredProviderValues } = await loa
 const { renderPlan } = await load("ng_view.js");
 const { extraContextInputs,compactContextInputs } = await load("ng_connector_slots.js");
 const { nativePrompt } = await load("ng_ai_request.js");
-const { contextOptions, preservePanel, optionNumber, setOptions } = await load("ng_context_controls.js");
+const { contextOptions, preservePanel, optionNumber, setOptions, rolePanel } = await load("ng_context_controls.js");
+
+{
+  const first={id:-1,widgets:[{name:"usage",value:"lock"}]},second={id:-1,widgets:[{name:"usage",value:"lock"}]};
+  const panels=[rolePanel(first,"audio","usage"),rolePanel(second,"audio","usage")];
+  const radios=panels.map((panel)=>panel.root.all().filter((element)=>element.type==="radio"));
+  assert.notEqual(radios[0][0].name,radios[1][0].name,"restored cards created before native IDs must not share one radio group");
+  const groups=radios.map((inputs)=>inputs[0].name);
+  first.id=66;second.id=67;panels.forEach((panel)=>panel.sync());
+  assert.deepEqual(radios.map((inputs)=>inputs.filter((input)=>input.checked).map((input)=>input.attributes["aria-label"])),
+    [["Lock Audio"],["Lock Audio"]],"both cards display their own saved role");
+  assert.deepEqual(radios.map((inputs)=>[...new Set(inputs.map((input)=>input.name))]),groups.map((name)=>[name]),
+    "all choices in one panel keep one stable DOM group across configure");
+}
 
 {
   const card = {widgets:[{name:"context_options",value:JSON.stringify({schema_version:1,anchor_s:20})},
@@ -81,7 +94,14 @@ assert.equal(restoredProviderValues(["api","custom","http://localhost:1234","new
   inputs.push({name:"context_video.video_1",link:3});compactContextInputs(node);
   assert.ok(inputs.some((input)=>input.name==="context_video.video_2"),"a connected final slot must leave a next input within the schema limit");
   inputs.find((input)=>input.name==="context_video.video_2").link=4;compactContextInputs(node);
-  assert.equal(inputs.some((input)=>input.name==="context_video.video_3"),false,"video group cannot exceed three slots");
+  assert.ok(inputs.some((input)=>input.name==="context_video.video_3"),"three references may still need a continuation card");
+  for(const media of ["image","video","audio"]){
+    const connected=Array.from({length:15},(_,i)=>({name:`context_${media}.${media}_${i}`,link:100+i}));
+    const restored={inputs:connected,removeInput:(index)=>connected.splice(index,1),
+      addInput:(name,type)=>connected.push({name,type,link:null})};
+    compactContextInputs(restored);
+    assert.equal(connected.filter((input)=>input.name.startsWith(`context_${media}.`)).length,15,"the Context cap remains finite");
+  }
 }
 
 function node(comfyClass, widgets = {}, inputs = [], graph = null) {

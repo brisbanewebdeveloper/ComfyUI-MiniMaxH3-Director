@@ -53,9 +53,15 @@ The next chunk receives the previous **untrimmed** AV latent. Existing H3 pinnin
 round trip, and its audio tail onto the next chunk's conditioning. The default 22-frame video window is seven H3 latent steps;
 the 24-frame audio window is 40 audio steps. The sampled head is removed from picture and sound only by Collect.
 Locked source audio takes priority over the audio pin; the video pin remains.
+The Connector accepts up to 15 Context cards per medium, including unnumbered frame guides and audio locks.
+This does not raise H3's native reference budgets; the compiler and Inspector still enforce/report those caps.
+Mentions use the longest complete Context name across roles, so `@Rain Track` cannot borrow the reference
+number of a separate card named `Rain`. Missing sources and omitted guides keep their own meaning/warnings.
 Lock card names use descriptive prose in the H3 prompt, with a card warning: a lock has no numbered `<Audio N>`
 reference. Paired video soundtracks and voice references keep their own native numbers. An ended lock is reported
 for that chunk and contributes no further source audio.
+Multiple locks keep separate source selections. Where they overlap, the later card replaces the earlier audio;
+after its end, the longer source remains. This is not additive track mixing or a separate story-time placement.
 
 Missing, trimmed or wrong-format continuity returns fail with an actionable error. Direct video pins require the previous
 and new chunk at the same resolution. End Loop can separately carry a base-resolution latent while collecting a final-stage

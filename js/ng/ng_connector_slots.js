@@ -17,10 +17,10 @@ export function extraContextInputs(inputs) {
 export function compactContextInputs(node) {
   for(const index of extraContextInputs(node.inputs||[]))node.removeInput(index);
   // Slot removal can make the native layout restore drop an empty tail. Keep an accessible next port within the schema limit.
-  for(const [media,maximum]of Object.entries({text:15,image:9,video:3,audio:3})){
+  for(const media of ["text","image","video","audio"]){
     const prefix=`context_${media}.${media}_`,group=(node.inputs||[]).filter((input)=>input.name.startsWith(prefix));
     const last=Math.max(-1,...group.filter((input)=>input.link!=null).map((input)=>Number(input.name.slice(prefix.length))));
-    if(last+1<maximum&&!group.some((input)=>input.link==null&&Number(input.name.slice(prefix.length))>last))
+    if(last+1<15&&!group.some((input)=>input.link==null&&Number(input.name.slice(prefix.length))>last))
       node.addInput(prefix+(last+1),"NG_CONTEXT");
   }
 }

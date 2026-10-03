@@ -3,6 +3,37 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Complete Context names and card capacity: E40 (2026-10-03)
+
+Mixed compiler passes could turn `@Rain Track` into `<Subject 1> Track` or a longer guide into an audio
+reference plus a suffix. The common matcher now considers all Context names when choosing the longest
+candidate, while each pass still resolves only its retained native labels/prose. Seven new contracts cover
+Subjects, scoped assets/text, video, voice, multiple locks/guides, missing sources, Unicode, dialogue and raw overrides.
+
+An actual four-audio-card run exposed a second error: the Connector's three-card schema silently omitted the
+second lock. Context groups now permit 15 cards per medium, including guides and locks; native H3 reference
+caps and Inspector warnings are unchanged. Two further contracts exercise ComfyUI's real V3 expansion for
+4 audio/4 video/10 image cards and check two voices/two locks with a paired video soundtrack.
+Frontend restoration preserves connected cards and the next empty port, with a finite 15-card cap.
+
+Save/Reload also exposed shared radio groups: cards were created before native IDs were assigned, so only
+the last audio/video card displayed its saved selection. Each panel now owns a unique temporary DOM group.
+The new JS regression and fresh-browser check retain both Voice selections and both Lock selections.
+
+Native two-stage API run `4da4d79a` passed in 135.83 s; saved UI run `843695ab` passed in 116.797 s.
+Both produced 294 frames at 256×256, 4 steps, 12.25 s video/audio. Independent API checks verify lock source
+windows 2–7 and 1–3 s, source VAE difference 0, held audio within 1e-5, exact next video tails and restored
+audio-tail conditioning after expiry. Per-chunk lock counts are 2/1/0; paired video and voices keep Audio1/2/3.
+The Inspector shows the correct prose/native mappings and budget 5 images, 1 video, 2 standalone audio, total 8.
+Eleven direct-file cards plus Text restore without media input sockets or an ng_product_nodes load error.
+
+Final joint suite: 416 NG/415 pass/one existing Windows symlink skip, legacy 371/74, five JS suites,
+JS syntax, compileall and diff check pass. Other ongoing Text/AI UI edits were preserved separately.
+Evidence: external `_notes/NG/34-mention-ownership-and-context-capacity.md`, `experiments/e40_*`,
+and saved workflow `H3 NG - complete names two locks E40 verified.json` in the user's workflows folder.
+Overlapping locks retain the existing later-card precedence, rather than additive mixing; source selection
+is not a soundtrack placement control. No listening, arbitrary sampler/upscale or product-quality acceptance.
+
 ## Audio lock names and native sampler stages: E39 (2026-10-03)
 
 Known lock names now resolve to prose, with a card warning for the absent numbered reference or an ended lock.

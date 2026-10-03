@@ -23,7 +23,7 @@ def resolve_media_mentions(prompt, context, refs):
     # A video's @name denotes its picture stream, rather than its paired soundtrack.
     labels = {identity: label for label, identity in reversed(media_labels(context, refs))}
     names = {item.name:labels[item.id] for item in context.items if item.id in labels}
-    return replace_mentions(prompt, names)
+    return replace_mentions(prompt, names, (item.name for item in context.items))
 
 
 def resolve_lock_mentions(prompt, context, refs):
@@ -34,7 +34,7 @@ def resolve_lock_mentions(prompt, context, refs):
             continue
         active = item.id in locked
         label = item.description.strip().rstrip(".") or ("the locked audio" if active else item.name)
-        resolved = replace_mentions(prompt, {item.name: label})
+        resolved = replace_mentions(prompt, {item.name: label}, (candidate.name for candidate in context.items))
         if resolved != prompt:
             code = "audio_lock_mention_prose" if active else "audio_lock_mention_unavailable"
             reason = "has locked audio but no numbered reference token" if active else "is not locked in this chunk"
@@ -71,7 +71,7 @@ def resolve_guide_mentions(prompt, context, refs, labels):
         ref = unnumbered.get(item.id)
         fallback = "the continuation frame" if ref and ref.kind == "continue_video" else "the guide image"
         label = pictures.get(item.id) or item.description.strip().rstrip(".") or (fallback if ref else item.name)
-        resolved = replace_mentions(prompt, {item.name: label})
+        resolved = replace_mentions(prompt, {item.name: label}, (candidate.name for candidate in context.items))
         if resolved != prompt and item.id not in pictures:
             code = "guide_mention_prose" if ref else "guide_mention_unavailable"
             reason = "has frame conditioning but no numbered reference token" if ref else "is not presented in this chunk"

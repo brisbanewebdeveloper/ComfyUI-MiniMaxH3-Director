@@ -113,7 +113,7 @@ def extra_voice_issues(extra):
 
 def _tag_substitutor(slot_items, context):
     names = {context.item(i).name: "@ref%d" % n for n, i in enumerate(slot_items, 1)}
-    return lambda text: replace_mentions(text, names)
+    return lambda text: replace_mentions(text, names, (item.name for item in context.items))
 
 
 def _window_frames(chunk, item_trim=0):
