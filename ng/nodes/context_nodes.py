@@ -58,12 +58,17 @@ def _widget_extras(extras):
     return extras
 
 
+def _subject_inputs():
+    return [io.String.Input("subject_ids", default="", optional=True, advanced=True,
+                            tooltip="JSON list of owning Subject context IDs; edited by the card's Subject assignment list.")]
+
+
 class NGContextImage(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="NGContextImage", display_name="H3 Context Image", category=CATEGORY,
                          description="A picture and what it means: a character, an outfit, a place, a first frame.",
-                         inputs=[io.Combo.Input("image", options=_files(["image"]), upload=io.UploadType.image)] + _common_inputs("image") + _identity_inputs(),
+                         inputs=[io.Combo.Input("image", options=_files(["image"]), upload=io.UploadType.image)] + _common_inputs("image") + _identity_inputs() + _subject_inputs(),
                          outputs=[NGContext.Output(display_name="context")])
 
     @classmethod
@@ -81,7 +86,7 @@ class NGContextVideo(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(node_id="NGContextVideo", display_name="H3 Context Video", category=CATEGORY,
                          description="A clip used as a motion or camera reference (2-15 s).",
-                         inputs=[io.Combo.Input("video", options=_files(["video"]), upload=io.UploadType.video)] + _common_inputs("video") + _identity_inputs(),
+                         inputs=[io.Combo.Input("video", options=_files(["video"]), upload=io.UploadType.video)] + _common_inputs("video") + _identity_inputs() + _subject_inputs(),
                          outputs=[NGContext.Output(display_name="context")])
 
     @classmethod
@@ -120,7 +125,7 @@ class NGContextText(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(node_id="NGContextText", display_name="H3 Context Text", category=CATEGORY,
                          description="A note that applies to the whole video: style, camera rules, world.",
-                         inputs=[io.String.Input("text", multiline=True, default="")] + _common_inputs("text") + _identity_inputs(),
+                         inputs=[io.String.Input("text", multiline=True, default="")] + _common_inputs("text") + _identity_inputs() + _subject_inputs(),
                          outputs=[NGContext.Output(display_name="context")])
 
     @classmethod

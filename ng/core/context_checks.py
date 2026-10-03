@@ -4,7 +4,7 @@ from .issues import Issue
 
 def check_context(context):
     issues = []
-    subjects = {i.id for i in context.by_media("image") if "reference" in i.effective_usage and i.source}
+    subjects = {i.id for i in context.by_media("image") if "reference" in i.effective_usage and i.source and not i.subject_ids}
     for role in ("first_frame", "last_frame"):
         items = [i for i in context.by_media("image") if role in i.effective_usage and i.source]
         if len(items) > 1:

@@ -3,6 +3,58 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Local commit verification: E30–E32 (2026-10-03)
+
+The Director changes were staged separately from the concurrent, uncommitted AI Loader refactor.
+The exact staged source tree passed 279 NG checks (278 passed/one existing Windows symlink skip),
+Legacy 371/371 and 74/74, all four JS logic suites, NG JS syntax and Python compilation.
+Shared files contain only Subject ownership or native workflow-restoration changes in this snapshot;
+the provider registry, requests, settings and branding remain in the working tree.
+Earlier GPU/browser evidence below concerns the integrated development tree; no new render is claimed here.
+Local evidence: `_notes/NG/experiments/e32_commit_manifest.json` and `e32_commit_*.log`.
+
+## Subject assets and workflow compatibility: E32 (2026-10-03)
+
+Simple image/video/text ownership is stored as optional v1 `subject_ids`. Grouped image references share a native
+Subject while keeping their own `ng_item`/Picture ownership. Shared assets, card order, equal files, voice binding,
+property preservation, mixed video/soundtrack/voice/text, caps, unavailable guides, presets and exact override are covered.
+Actual installed H3 node/tokenizer checks cover two Subjects with a shared image and paired audio token order.
+Fixed voice casefold and invalid text scopes after a Subject is dropped by the native reference budget.
+
+Native widget restoration also preserves old AI Loader arrays after inserted numeric fields: defaults come from
+the Python schema, original arrays are read before ComfyUI's positional migration, named values stay authoritative.
+Six-field, Source-based, removed disk-switch and current formats are covered, including older still-running backends
+and lazy legacy disk-provider arguments. No new AI request, model cache or second provider implementation.
+
+318 NG checks: 317 passed/one existing Windows symlink skip; Legacy 371/371 and 74/74; core coverage 98.90%.
+The suite includes concurrent provider work. Python/JS/structure checks passed; existing tests remain exercised.
+Real native two-stage API render: 238.41 s, three chunks, CFG 1/normal RandomNoise, five file-loaded Contexts,
+294 frames/392000 samples at 32 kHz, 12.25 seconds, exact previous video/audio tails in both continued chunks.
+Browser checkbox assignment, rename, Save/Reload, old-format loading, canonical Inspector colors and native Run passed:
+247.931 s, 294 frames, 12.25-second image/audio. Saved example: `H3 NG - subject assets E32 verified`.
+
+The initial dynamic-loader run sampled three chunks but failed during Video VAE decode with Windows/aimdo error 1450
+(`HostBuffer.read_file_slice failed`). Evidence is retained; successful functional runs use the classic native memory loader
+only on the private test server (`--disable-dynamic-vram --disable-async-offload --disable-pinned-memory`).
+This is an unresolved local native-loader issue, not a claimed NG/model-math fix. User 8189 is preserved.
+Sources and precise limits: `_notes/NG/26-subject-assets.md`, `experiments/e32_*`, `output/ng_lab/e32/e32_assets_*`.
+Independent Subjects without images, nested relationships, extracted multiple voices and perceptual/seam quality remain open.
+
+## Editor and Inspector reference mapping: E31 (2026-10-03)
+
+Fixed the two E30 display discrepancies: Unicode casefold aliases now highlight and rename with their stable context ID;
+the Inspector uses canonical compiler `prompt_labels`, so Audio 1 belongs to the video soundtrack and Audio 2 to the voice.
+Picture and Subject numbers use the planner's ownership mapping. Optional v1 display metadata roundtrips and loads older saves;
+the still-running older backend has a narrow refs-based display path reading actual `context_options` JSON.
+Browser Unicode folding matches Python across every scalar value, verified independently in JS and Python. No new dependency.
+
+263 NG checks: 262 passed/one existing skip; Legacy 371/371 and 74/74; core coverage 98.69%; Python/JS/structure checks passed.
+Actual browser rename, Save/Reload, three Inspector views and native two-stage Run passed: 294 frames, 12.25-second video/audio,
+120.622 s. An additional mixed image/video-soundtrack/voice/text native two-stage run passed in 100.58 s with canonical labels
+and exact prior AV pins in all continued chunks. These are functional mapping checks, not perceptual quality acceptance.
+Private 8191 only; the user server 8189 and concurrent UI work are preserved. File-only contexts and E27 sampling stay intact.
+Evidence and current limits: local `_notes/NG/25-ui-reference-mapping.md` and `experiments/e31_*`.
+
 ## Shared media files keep their own card identity: E29 (2026-10-03)
 
 A file may be reused by several context cards. Each card now keeps its own identity, source window and role instead of
@@ -27,6 +79,35 @@ the duplicate-file run kept both card IDs and their separate windows and declare
 
 These are functional and mapping checks at low resolution. Listening, seam quality, long-chain identity and multiple
 seeds remain unmeasured. Full current evidence: local `_notes/NG/23-media-identity.md` and `experiments/e29_*`.
+
+## Unicode compiler mentions: E30 (2026-10-03)
+
+Fixed three reproduced image/video/audio compiler exceptions caused by inconsistent regex and name folding.
+One shared resolver follows Unicode casefold name equivalence, resolves expansions such as Straße/STRASSE, and preserves
+unknown aliases instead of crashing. Distinct dotted-I/ASCII names stay distinct. All four media types and chunk boundaries are tested.
+257 NG checks: 256 passed/one existing skip; Legacy 371/371 and 74/74; core coverage 98.66%.
+An actual mixed-reference H3 render and browser Save/Reload/two-stage Run passed at 256×256/four Euler steps/CFG 1:
+294 frames and 12.25-second video/audio, with exact measured prior AV pins in the instrumented API loop.
+The draft highlighting and Inspector audio tooltip/color discrepancies observed here were subsequently fixed in E31 above.
+See local `_notes/NG/24-unicode-mentions.md` for evidence and limits. File-only contexts and E27 sampling are unchanged.
+
+## File contexts, native media labels and workflow reload: E29 (2026-10-03)
+
+Context Image/Video/Audio use file selection/upload in their own cards; the user rejected extra native media inputs.
+E27 sampling stays intact. Fixed three reproduced media bugs: distinct cards using the same video file lost their identity,
+Voice inherited another audio card's trim, and paired video audio displaced standalone Voice labels in H3's actual presentation.
+Compilation now retains card identity and resolves Video/Audio mentions against retained references; manual prompt override stays untouched.
+
+Fixed the reported `ng_product_nodes.js` configure crash when refreshed JS expects a sigma-shift widget absent from the
+still-running Python backend. The real extension reproduces the pre-fix exception; regression checks cover missing widgets,
+old placeholder migration and preserved explicit false. Original workflow Save/Reload works with the unchanged old backend.
+
+253 NG checks: 252 passed/one existing skip; Legacy 371/371 and 74/74; core coverage 98.66%; Python/JS/structure checks passed.
+Four actual H3 GPU variants with image/video/paired audio/voice/text passed: one/two native samplers, duplicate source cards,
+and Render Sequence. Each delivered 294 frames/392000 audio samples at 32 kHz. Open loops verified reference labels/windows
+and exact prior AV pins. A file-only two-stage frontend graph also saved, reloaded and rendered successfully, preserving disabled shifts;
+its MP4 has 294 frames and 12.25-second video/audio tracks. No perceptual quality or upscaler approval follows from these checks.
+Full local evidence: `_notes/NG/23-media-identity-and-prompt-labels.md` and `experiments/e29_*`.
 
 ## One Director Output and native RandomNoise: E27 (2026-10-03)
 
@@ -66,7 +147,7 @@ Exact scripts, histories and failure/method corrections are recorded in the supp
 
 ## Requirements audit: E17
 
-All nine product nodes were compared again with the original specification, user TXT and nine PNG references. E17 identified missing requirements. E18 implements and tests native CLIP/Disk assistance, distinct Audio/Text layouts, context colors and the compiler inspector. Full analysis/control modes, native media inputs, subject/asset relationships, remaining layouts and Last Frame continuity remain open. Earlier passing suites establish only their tested scope.
+All nine product nodes were compared again with the original specification, user TXT and nine PNG references. E17 identified missing requirements. E18 implements and tests native CLIP/Disk assistance, distinct Audio/Text layouts, context colors and the compiler inspector. Full analysis/control modes, subject/asset relationships, remaining layouts and Last Frame continuity remain open in that audit. The earlier native-media-input proposal was superseded by the user's file-source decision in E28. Earlier passing suites establish only their tested scope.
 
 ## Native AI and layout evidence: E18
 

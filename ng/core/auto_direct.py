@@ -8,11 +8,13 @@ from . import fields
 def direction_prompt(idea, seconds, contexts):
     meanings = [{"name": entry["widgets"].get("name", ""), "media": entry["media"],
                  "description": entry["widgets"].get("description", ""), "usage": entry["widgets"].get("usage", ""),
-                 "speaker": entry["widgets"].get("speaker", "")} for entry in contexts]
+                 "speaker": entry["widgets"].get("speaker", ""), "context_id": entry["widgets"].get("context_id", ""),
+                 "subject_ids": entry["widgets"].get("subject_ids", "")} for entry in contexts]
     return ("Create at least one shot from the Idea, even when Contexts is empty. Return only JSON with shots (list of objects containing start_s, end_s, "
             "action, camera, dialogue), soundscape (string), music (string). All times are finite seconds in 0..%s, "
             "shots are ordered and non-overlapping. Cover the project duration. Use only supplied names for @Name references; "
-            "dialogue may contain '@Name says: exact words'. Do not claim generation or media analysis has occurred. "
+            "dialogue may contain '@Name says: exact words'. subject_ids bind assets to Subjects identified by context_id; "
+            "keep those meanings instead of inventing independent figures for linked assets. Do not claim generation or media analysis has occurred. "
             "Example structure: {\"shots\":[{\"start_s\":0,\"end_s\":%s,\"action\":\"Describe the idea's action\",\"camera\":\"Static\",\"dialogue\":\"\"}],\"soundscape\":\"Room tone\",\"music\":\"N/A\"}. "
             "Idea: %s\nContexts: %s" % (seconds, seconds, idea, json.dumps(meanings, ensure_ascii=False)))
 

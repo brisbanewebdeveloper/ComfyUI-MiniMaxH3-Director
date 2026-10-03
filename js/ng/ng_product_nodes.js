@@ -2,7 +2,8 @@
 import { element, values } from "./ng_widgets.js";
 import { control, hideNative, section } from "./ng_editor_fields.js";
 import { ensureStudioStyle } from "./ng_studio_style.js";
-import { connectedProvider, readContexts, restoredProviderValues } from "./ng_read.js";
+import { connectedProvider, readContexts } from "./ng_read.js";
+import { providerRestoreValues, configureProviderType, restoreProviderFields } from "./ng_provider_restore.js";
 import { attachProgress } from "./ng_studio_progress.js";
 import { compactContextInputs } from "./ng_connector_slots.js";
 import { buildPanel } from "./ng_ai_panel.js";
@@ -24,12 +25,13 @@ function shell(node, title, accent, size) {
 }
 
 function provider(node) {
+  const defaults={...values(node),...node.constructor.ng_provider_defaults};
   const { root, header, widget } = shell(node, "H3 AI LOADER", "#a77cff", [660, 300]);
   const panel = buildPanel(node, root, header, widget);
   const removed=node.onRemoved;node.onRemoved=function(...args){panel.dispose();return removed?.apply(this,args);};
   const configured = node.onConfigure; node.onConfigure = function (...args) { const result = configured?.apply(this, args);
-    const restored=restoredProviderValues(args[0]?.widgets_values);
-    if(restored)for(const entry of node.widgets||[])if(entry.name in restored)entry.value=restored[entry.name];
+    const restored=providerRestoreValues(args[0],defaults);
+    restoreProviderFields(node,restored);
     queueMicrotask(() => { panel.sync(); panel.fit(true); }); return result; };
   for (const entry of node.widgets || []) { if (entry === widget) continue; const previous = entry.callback;
     entry.callback = function (...args) { const result = previous?.apply(this, args); panel.sync();
@@ -73,7 +75,9 @@ function render(node) {
   const progress=attachProgress(node,api,status,preview);widget.computeLayoutSize=()=>({minHeight:110,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});node.setSize([480,245]);
   const removed=node.onRemoved;node.onRemoved=function(...args){progress.dispose();return removed?.apply(this,args);};
 }
-app.registerExtension({name:"mmxd.ng.product_nodes",nodeCreated(node){
+app.registerExtension({name:"mmxd.ng.product_nodes",beforeRegisterNodeDef(nodeType,nodeData){
+  if(nodeData.name==="NGAIProvider")configureProviderType(nodeType,nodeData);
+},nodeCreated(node){
   ({NGAIProvider:provider,NGContextConnector:connector,NGDirectorOutput:output,NGProjectRender:render})[node.comfyClass]?.(node);
   if(["NGAIProvider","NGContextConnector","NGDirectorOutput","NGProjectRender"].includes(node.comfyClass)){
     const changed=node.onConnectionsChange;node.onConnectionsChange=function(...args){const result=changed?.apply(this,args);

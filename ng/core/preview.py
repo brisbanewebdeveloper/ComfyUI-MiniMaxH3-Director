@@ -31,7 +31,8 @@ def _chunk_view(chunk, compiled, context):
     return {"index": chunk.index, "start_s": round(frames.frames_to_seconds(chunk.story_start_f), 3),
             "end_s": round(frames.frames_to_seconds(chunk.story_end_f), 3), "delivered_frames": chunk.delivered_frames,
             "sampled_frames": chunk.sampled_frames, "head_frames": chunk.head_frames, "mode": compiled.mode, "prompt": compiled.prompt,
-            "refs": [{"kind": r.kind, "ctx_id": r.ctx_id, "name": _name(context, r)} for r in compiled.refs]}
+            "refs": [{"kind": r.kind, "ctx_id": r.ctx_id, "name": _name(context, r)} for r in compiled.refs],
+            "prompt_labels": dict(compiled.prompt_labels)}
 
 
 def plan_preview(payload, probe=None):

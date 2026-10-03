@@ -10,6 +10,7 @@ import { presetEditor } from "./ng_context_presets.js";
 import { autoColor } from "./ng_identity.js";
 import { relatedContexts } from "./ng_read.js";
 import { subjectChoices, voiceAssignment } from "./ng_subjects.js";
+import {assetPanel,restoreAssetWidget} from "./ng_asset_relations.js";
 
 const { app }=window.comfyAPI.app, { api }=window.comfyAPI.api;
 const MEDIA={NGContextImage:"image",NGContextVideo:"video",NGContextAudio:"audio",NGContextText:"text"};
@@ -37,6 +38,7 @@ function attach(node,media) {
   const content=rolePanel(node,media,"content"), usage=rolePanel(node,media,"usage");components.push(content,usage);
   let preview=null,editor=null;
   const analysisPanel=section("✨ Preview / Analysis"),footer=element("div","ng-context-footer");
+  const relations=assetPanel(node);if(relations){components.push(relations);footer.append(relations.root);}
   if(media==="text") {editor=textEditor(node);components.push(editor);editor.sidebar.append(usage.root,analysisPanel);top.append(editor.root);}
   else {preview=mediaEditor(node,media,api);source.append(preview.metadata);
     content.root.append(analysisPanel);
@@ -71,7 +73,7 @@ function attach(node,media) {
   auto.onclick=()=>{applyValues(node,{color:""});assignColor();update();};custom.oninput=()=>applyValues(node,{color:custom.value});colorPanel.append(color.label,auto,custom);
   const advanced=element("details");advanced.append(element("summary","","Description / Identity"),description.label);
   const id=control(node,"context_id","Context ID");fields.push(id);advanced.append(id.label,colorPanel);
-  if(media==="text"){advanced.append(content.root);editor.sidebar.append(presets.root);details.append(name.label,top,advanced,status);}
+  if(media==="text"){advanced.append(content.root);editor.sidebar.append(presets.root);if(relations)editor.sidebar.append(relations.root);details.append(name.label,top,advanced,status);}
   else {footer.append(source,presets.root);details.append(name.label,top,lower,footer,advanced,status);}
   const analysis=attachAnalysis(node,media,analysisPanel,status);
   root.append(header,caption,details);
@@ -108,6 +110,7 @@ function attach(node,media) {
   for(const widget of node.widgets||[]){if(widget===dom)continue;const previous=widget.callback;
     widget.callback=function(...args){const result=previous?.apply(this,args);schedule();document.dispatchEvent(new CustomEvent("ng-context-changed"));return result;};}
   const configured=node.onConfigure;node.onConfigure=function(...args){const result=configured?.apply(this,args);
+    restoreAssetWidget(node);
     // Old workflows end after ID/colour; browser upload widgets must not fill newly added JSON fields.
     const saved=args[0]?.widgets_values;
     if(Array.isArray(saved)&&saved.length<=(media==="audio"?9:8))

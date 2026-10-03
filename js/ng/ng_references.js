@@ -1,26 +1,30 @@
 // Stable IDs retain the relationship when a visible context name is changed.
 import { contextColor } from "./ng_identity.js";
+import { caseFold } from "./ng_casefold.js";
 const escape=(value)=>value.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const namePattern=(names)=>[...new Set([...names,...[...names].map(caseFold)])].sort((a,b)=>b.length-a.length).map(escape);
+function hasSoundtrack(entry){try{return JSON.parse(entry?.widgets.context_options||"{}").video_audio==="reference";}catch{return false;}}
 
 export function renameReferences(text,previous,entries) {
   const current=new Map(entries.map((entry)=>[entry.widgets.context_id,entry.widgets.name]));
   const replacements=new Map(Object.entries(previous||{}).filter(([id,name])=>name&&current.get(id)&&name!==current.get(id))
-    .map(([id,name])=>[name.toLocaleLowerCase(),current.get(id)]));
+    .map(([id,name])=>[caseFold(name),current.get(id)]));
   if(!replacements.size)return text;
-  const names=[...replacements.keys()].sort((a,b)=>b.length-a.length);
-  const pattern=new RegExp(`@(${names.map(escape).join("|")})(?![\\p{L}\\p{N}_])`,"giu");
-  return text.replace(pattern,(_,name)=>"@"+replacements.get(name.toLocaleLowerCase()));
+  const names=Object.entries(previous||{}).filter(([,name])=>name&&replacements.has(caseFold(name))).map(([,name])=>name);
+  const pattern=new RegExp(`@(${namePattern(names).join("|")})(?![\\p{L}\\p{N}_])`,"giu");
+  return text.replace(pattern,(match,name)=>replacements.has(caseFold(name))?"@"+replacements.get(caseFold(name)):match);
 }
 
 export function referenceParts(text,entries) {
   const names=new Map();
-  for(const entry of entries) for(const name of [entry.widgets.name,entry.widgets.context_id]) if(name)names.set(name.toLocaleLowerCase(),entry);
-  const known=[...names.keys()].sort((a,b)=>b.length-a.length).map(escape);
+  const originals=[];
+  for(const entry of entries) for(const name of [entry.widgets.name,entry.widgets.context_id]) if(name){names.set(caseFold(name),entry);originals.push(name);}
+  const known=namePattern(originals);
   const pattern=new RegExp(`@(${[...known,"[\\p{L}\\p{N}_-]+"].join("|")})(?![\\p{L}\\p{N}_])`,"giu");
   const result=[];let cursor=0;
   for(const match of text.matchAll(pattern)) {
     result.push({text:text.slice(cursor,match.index)});
-    result.push({text:match[0],entry:names.get(match[1].toLocaleLowerCase()),unknown:!names.has(match[1].toLocaleLowerCase())});
+    result.push({text:match[0],entry:names.get(caseFold(match[1])),unknown:!names.has(caseFold(match[1]))});
     cursor=match.index+match[0].length;
   }
   result.push({text:text.slice(cursor)});return result;
@@ -37,17 +41,25 @@ export function renderReferences(root,text,entries,element) {
   }
 }
 
-export function compiledParts(text,refs,entries) {
+export function compiledParts(text,refs,entries,promptLabels) {
   const byId=new Map(entries.map((entry)=>[entry.widgets.context_id,entry]));
   const counters={picture:0,video:0,audio:0},labels=new Map();
-  for(const ref of refs||[]) {
-    const kind={picture:"Picture",video:"Video",audio:"Audio"}[ref.kind];
-    if(kind)labels.set(`${kind} ${++counters[ref.kind]}`,byId.get(ref.ctx_id));
+  if(promptLabels)for(const [label,id] of Object.entries(promptLabels))labels.set(label,byId.get(id));
+  else {
+    // A still-running older Python backend supplies refs without compiler display metadata.
+    for(const ref of (refs||[]).filter(ref=>ref.kind==="picture")){
+      const number=++counters.picture;labels.set(`<Picture ${number}>`,byId.get(ref.ctx_id));labels.set(`<Subject ${number}>`,byId.get(ref.ctx_id));
+    }
+    for(const ref of (refs||[]).filter(ref=>ref.kind==="video")){
+      const entry=byId.get(ref.ctx_id);labels.set(`<Video ${++counters.video}>`,entry);
+      if(hasSoundtrack(entry))labels.set(`<Audio ${++counters.audio}>`,entry);
+    }
+    for(const ref of (refs||[]).filter(ref=>ref.kind==="audio"))labels.set(`<Audio ${++counters.audio}>`,byId.get(ref.ctx_id));
   }
   const result=[];let cursor=0;
   for(const match of text.matchAll(/<(Picture|Video|Audio|Subject) (\d+)>/g)) {
     result.push({text:text.slice(cursor,match.index)});
-    const label=match[1]+" "+match[2],entry=labels.get(label)||(match[1]==="Subject"?labels.get("Picture "+match[2]):undefined);
+    const entry=labels.get(match[0]);
     result.push({text:match[0],entry});cursor=match.index+match[0].length;
   }
   result.push({text:text.slice(cursor)});return result;
@@ -56,7 +68,7 @@ export function compiledParts(text,refs,entries) {
 export function renderCompiled(root,chunk,entries,view,element) {
   root.replaceChildren();
   if(view==="plain"){root.textContent=chunk.prompt;return;}
-  for(const part of compiledParts(chunk.prompt,chunk.refs,entries)) {
+  for(const part of compiledParts(chunk.prompt,chunk.refs,entries,chunk.prompt_labels)) {
     const span=element("span",part.entry?"ng-text-token":"",part.text);
     if(part.entry){span.style.color=view==="syntax"?"#99d4ff":contextColor(part.entry);
       span.title=`${part.entry.widgets.name} · ${part.entry.widgets.context_id} · ${part.entry.widgets.usage}`;}

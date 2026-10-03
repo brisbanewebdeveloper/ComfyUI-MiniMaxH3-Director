@@ -30,4 +30,5 @@ def item_from_widgets(media, widgets, length_s=0.0):
                        usage=roles(widgets.get("usage_roles", ""), widgets.get("usage", "")),
                        preserve=widgets.get("preserve", "high"), description=str(widgets.get("description", "")).strip(),
                        speaker=str(widgets.get("speaker", "")).strip(), length_s=float(length_s), color=str(widgets.get("color", "")),
-                       options=ContextOptions.from_json(widgets.get("context_options", "")))
+                       options=ContextOptions.from_json(widgets.get("context_options", "")),
+                       subject_ids=roles(widgets.get("subject_ids", ""), ""))

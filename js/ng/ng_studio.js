@@ -8,6 +8,7 @@ import { mediaURL } from "./ng_media_editor.js";
 import { directionTools } from "./ng_direction.js";
 import { projectRenderIds,hasRenderPath } from "./ng_graph.js";
 import { renameReferences,renderReferences } from "./ng_references.js";
+import {relationNames} from "./ng_asset_relations.js";
 import { contextColor } from "./ng_identity.js";
 import { inspector,warningView } from "./ng_inspector.js";
 import { summarizeBatch } from "./ng_assist.js";
@@ -124,6 +125,7 @@ function attach(node) {
       const chip=element("div","ng-context-chip",`${ICONS[entry.media]} ${entry.widgets.name || entry.media}`);
       chip.style.setProperty("--context-color",contextColor(entry));
       chip.append(element("small","",entry.widgets.usage?.replaceAll("_"," ")||""));
+      const owners=relationNames(entry,entries);if(owners)chip.append(element("small","","→ "+owners));
       if(entry.media==="image"||entry.media==="video"){const preview=element(entry.media==="image"?"img":"video");preview.src=mediaURL(entry.widgets[entry.media],api);if(entry.media==="image")preview.alt=entry.widgets.name||"Context";else preview.preload="metadata";chip.append(preview);}
       if(entry.media==="audio"){const player=element("audio");player.controls=true;player.src=mediaURL(entry.widgets.audio,api);player.preload="metadata";
         const track=element("div","ng-audio-track"),lane=element("div","ng-audio-lane"),bar=element("span","ng-audio-region",entry.widgets.usage);

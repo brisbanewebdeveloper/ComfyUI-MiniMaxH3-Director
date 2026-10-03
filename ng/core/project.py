@@ -12,6 +12,7 @@ from .context import ContextItem, DirectorContext
 from .context_checks import check_context
 from .issues import Issue
 from .shots import auto_shots, parse_shots
+from .subjects import resolve_subjects
 
 CANVAS_MULTIPLE = 32
 
@@ -22,13 +23,13 @@ def slug(text):
 
 def resolve_speakers(items):
     """A speaker is written as a name or an id; store ids. Returns (items, issues)."""
-    by_name = {i.name.lower(): i.id for i in items}
+    by_name = {i.name.casefold(): i.id for i in items}
     ids = {i.id for i in items}
     out, issues = [], []
     for item in items:
         speaker = item.speaker.strip()
         if speaker and speaker not in ids:
-            found = by_name.get(speaker.lower())
+            found = by_name.get(speaker.casefold())
             if found is None:
                 issues.append(Issue("speaker_unknown", "names '%s' as the speaker, but no context item has that name." % speaker, item.name))
             item = ContextItem.from_dict({**item.to_dict(), "speaker": found or ""})
@@ -95,10 +96,11 @@ def _merge(issues, chunk_count):
 
 
 def _prepare(context):
-    items, issues = resolve_speakers(context.items)
+    related, relationship_issues = resolve_subjects(context.items)
+    items, issues = resolve_speakers(related)
     (width, height), canvas_issues = snap_canvas(context.width, context.height)
     ctx = DirectorContext.from_dict({**context.to_dict(), "items": [i.to_dict() for i in items], "width": width, "height": height})
-    return ctx, issues + canvas_issues + check_context(ctx)
+    return ctx, relationship_issues + issues + canvas_issues + check_context(ctx)
 
 
 def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan) -> ProjectPlan:

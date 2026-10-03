@@ -1,5 +1,6 @@
 // Which context items are figures a voice or an asset can belong to. Pure functions, so they can be checked
 // with `node` without a browser; the panels in ng_cards.js only render what these decide.
+import {referenceSubject} from "./ng_asset_relations.js";
 
 export const SUBJECT_ROLES = ["character", "face", "animal"];
 
@@ -7,7 +8,7 @@ export const SUBJECT_ROLES = ["character", "face", "animal"];
 // A context node's widget values keep the file under its medium name (`image`); `source` only exists on the
 // finished ContextItem, so both are accepted here.
 export function isSubject(entry) {
-  if (!entry || entry.media !== "image") return false;
+  if (!referenceSubject(entry)) return false;
   const widgets = entry.widgets || {};
   if (!String(widgets.source || widgets.image || "").trim()) return false;
   const roles = widgets.content_roles ? safeList(widgets.content_roles)

@@ -34,4 +34,4 @@ def widget_values(item):
             "content": item.content[0] if item.content else "", "usage": item.effective_usage[0], "preserve": item.preserve,
             item.media if item.media != "text" else "text": item.source, "speaker": item.speaker, "color": item.color,
             "content_roles": json.dumps(list(item.content)), "usage_roles": json.dumps(list(item.effective_usage)),
-            "context_options": json.dumps(item.options.to_dict())}
+            "context_options": json.dumps(item.options.to_dict()), "subject_ids": json.dumps(list(item.subject_ids))}

@@ -11,7 +11,8 @@ from .chunks import Chunk, ContinuityPlan
 from .context import DirectorContext, check_item
 from .issues import Issue
 from .legacy_bridge import build_timeline, decide_mode
-from .media_labels import resolve_media_mentions
+from .media_labels import resolve_media_mentions, prompt_labels, read_prompt_labels
+from .asset_prompt import apply_asset_relations
 
 KINDS = ("picture", "video", "audio", "lock", "first_frame", "last_frame", "keyframe", "continue_video")
 
@@ -46,6 +47,7 @@ class CompiledChunk:
     prompt: str
     refs: tuple = ()           # MediaRef in the order the labels <Picture N>/<Video N>/<Audio N> number them
     issues: tuple = ()
+    prompt_labels: tuple = ()  # (native label, owning context ID); optional display metadata for v1 saves
     SCHEMA_VERSION = 1
 
     def of_kind(self, kind):
@@ -53,7 +55,8 @@ class CompiledChunk:
 
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "index": self.index, "mode": self.mode, "prompt": self.prompt,
-                "refs": [r.to_dict() for r in self.refs], "issues": [i.to_dict() for i in self.issues]}
+                "refs": [r.to_dict() for r in self.refs], "issues": [i.to_dict() for i in self.issues],
+                "prompt_labels": dict(self.prompt_labels)}
 
     @classmethod
     def from_dict(cls, data, path="compiled"):
@@ -62,14 +65,15 @@ class CompiledChunk:
         return cls(index=int(fields.read_number(data, "index", path, minimum=0)), mode=fields.read_choice(data, "mode", path, ("t2va", "fl2va", "ref2va"), None),
                    prompt=fields.read_str(data, "prompt", path),
                    refs=tuple(MediaRef.from_dict(d, "%s.refs[%d]" % (path, n)) for n, d in enumerate(fields.read_list(data, "refs", path))),
-                   issues=tuple(Issue.from_dict(d) for d in fields.read_list(data, "issues", path)))
+                   issues=tuple(Issue.from_dict(d) for d in fields.read_list(data, "issues", path)),
+                   prompt_labels=read_prompt_labels(data, path))
 
 
 def _picture_refs(result, mapping):
     refs = []
     for slot in result["ref_image_slots"]:
         if slot["source"] == "char":
-            ctx = mapping.slot_items[slot["slot"]]
+            ctx = slot["image"].get("ng_item") or mapping.slot_items[slot["slot"]]
             refs.append(MediaRef("picture", ctx, slot["image"].get("name", "")))
         elif slot["source"] == "timeline":
             source = slot["event"]["seg"].get("imageFile", "")
@@ -159,7 +163,9 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
                                 prepend_text=context.prepend_text, prompt_format="minimax")
     refs = _selected_audio(context, _media_refs(result, mapping)) + _scene_guides(context, chunk)
-    prompt = resolve_media_mentions(result["prompt"], context, refs)
+    related_prompt, relation_issues = apply_asset_relations(result, mapping, context, refs)
+    prompt = resolve_media_mentions(related_prompt, context, refs)
     return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or prompt, refs=tuple(refs),
-                         issues=tuple(voice_notes) + tuple(_issues(context, chunk, result, continuity)))
+                         issues=tuple(voice_notes) + relation_issues + tuple(_issues(context, chunk, result, continuity)),
+                         prompt_labels=prompt_labels(result, mapping, context, refs))
 

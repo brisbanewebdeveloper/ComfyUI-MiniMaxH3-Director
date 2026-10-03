@@ -4,13 +4,14 @@ The legacy planner is the one place that knows how H3 wants references labelled,
 limits enforced, and it has hundreds of checks behind it. NG reuses it as the prompt compiler instead of writing a second one;
 this module is the only door into it. Anything legacy needs that NG does not model is filled with a neutral default here.
 """
-import re
 
 from ... import minimax_plan as plan
 from .chunks import Chunk
 from .context import DirectorContext
+from .mentions import replace_mentions
 from .context_options import retention_note
 from .issues import Issue
+from .subjects import subject_groups
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
@@ -69,13 +70,17 @@ def _kind(item):
 
 
 def _subject_items(context):
-    return [i for i in context.items if i.media == "image" and "reference" in i.effective_usage and i.source]
+    return [group.root for group in subject_groups(context)]
 
 
-def _slot(item, voices):
+def _slot(item, voices, images):
     voice = voices.get(item.id)
-    return {"images": [{"name": item.source}], "description": item.description, "shortName": item.name, "kind": _kind(item),
-            "retention": _RETENTION[item.preserve], "retentionNote": retention_note(item.options),
+    note = retention_note(item.options)
+    if len(images) > 1 and not note:
+        note = "Preserve the base identity; linked references control only their stated properties."
+    return {"images": [{"name": image.source, "ng_item": image.id} for image in images],
+            "description": item.description, "shortName": item.name, "kind": _kind(item),
+            "retention": _RETENTION[item.preserve], "retentionNote": note,
             "voice": {"audioFile": voice.source, "fileName": voice.name} if voice else None}
 
 
@@ -107,12 +112,8 @@ def extra_voice_issues(extra):
 
 
 def _tag_substitutor(slot_items, context):
-    names = {context.item(i).name: n for n, i in enumerate(slot_items, 1)}
-    if not names:
-        return lambda text: text
-    pattern = re.compile(r"@(%s)(?![\w])" % "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True)), re.IGNORECASE)
-    lowered = {k.lower(): v for k, v in names.items()}
-    return lambda text: pattern.sub(lambda m: "@ref%d" % lowered[m.group(1).lower()], text)
+    names = {context.item(i).name: "@ref%d" % n for n, i in enumerate(slot_items, 1)}
+    return lambda text: replace_mentions(text, names)
 
 
 def _window_frames(chunk, item_trim=0):
@@ -189,7 +190,9 @@ def _global_prompt(context):
         parts.append("Visual style: %s." % context.style)
     for item in context.by_media("text"):
         if item.source.strip() and set(item.effective_usage) & {"style", "rule", "character", "world", "scene", "camera", "dialogue", "constraint", "instruction"}:
-            parts.append(item.source.strip())
+            owners = [context.item(identity).name for identity in item.subject_ids if context.item(identity)]
+            prefix = "For %s: " % " and ".join("@" + name for name in owners) if owners else ""
+            parts.append(prefix + item.source.strip())
     for item in context.by_media("video"):
         roles = set(item.effective_usage)
         if "camera" in roles:
@@ -204,7 +207,8 @@ def _global_prompt(context):
 
 def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
     """Return (timeline_data dict, Mapping, voice_notes) for one chunk."""
-    subjects = _subject_items(context)
+    groups = subject_groups(context)
+    subjects = [group.root for group in groups]
     voices, extra_voices = _voices_by_speaker(context)
     substitute = _tag_substitutor([s.id for s in subjects], context)
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
@@ -213,7 +217,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
     segments += _anchor_segments(context, chunk, chunk.is_last)
     ref_on = mode == "ref2va"
     tdata = {"reference_mode": "REF2VA" if ref_on else "OFF", "prompt_format": "minimax", "global_prompt": substitute(_global_prompt(context)),
-             "segments": segments, "subjects": [_slot(i, voices) for i in subjects] if ref_on else [],
+             "segments": segments, "subjects": [_slot(group.root, voices, group.images) for group in groups] if ref_on else [],
              "subjectSlotCount": max(len(subjects), 1), "audioSegments": _audio_segments(context, chunk, voices),
              "motionSegments": _motion_segments(context) if ref_on else [], "overall_soundscape": context.soundscape,
              "non_diegetic_music": context.music}

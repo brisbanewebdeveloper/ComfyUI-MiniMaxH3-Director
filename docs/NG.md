@@ -2,8 +2,13 @@
 
 Context Image, Video and Audio select/upload files directly in their own cards. Additional native media inputs on these
 context nodes are intentionally omitted, following the current product decision. Native sampler/model ports remain available.
+Cards using the same file keep their own source windows and roles. Video soundtrack and standalone audio labels follow the
+actual H3 reference order. Workflow reload supports both the original Output schema and its current sigma-shift setting.
 One file may be used by several cards: every card keeps its own name, source window and role, and the prompt labels follow the
 order the media reach the model, so a video with a soundtrack is numbered before a subject's own voice.
+Named references support the compiler's Unicode casefold spellings and follow a context rename through its stable ID.
+Inspector colors/tooltips use canonical compiler labels: video and its soundtrack share their card identity; a separate voice
+keeps its own audio label. Older workflow data still load; current Python fixes require a later server restart to become active.
 
 NG is an unfinished Director interface in this pack. The requirements audit found missing AI, context and reference-layout work. It separates reusable media contexts, model connections, story editing and rendering.
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
@@ -117,10 +122,29 @@ The audio VAE and output codec can change the waveform even with Lock. Preview V
 Text provides an editable large field, character count, quick bracket placeholders, role choices and templates/examples.
 Replace placeholders with real descriptions; `@Name` refers to a connected context. Templates remain ordinary editable text.
 
+## Assign assets to Subjects
+
+An independent reference image defines a Subject. In Image, Video or Text, use **Subject assignment** to link
+the card to one or more connected Subjects. For example, keep Alice's identity image independent and assign
+an outfit image and a motion video to Alice. Audio uses the existing **Speaker / Voice** selector.
+File selection and upload stay inside each Context node.
+
+The compiler presents the identity image and linked image assets within the same Subject, preserving each
+card's ID and actual Picture number. Property, description and preservation guidance are scoped to the asset;
+`@Outfit` names its Picture, while `@Alice` names the Subject. Videos keep their own Video/soundtrack labels;
+assigned text receives an explicit Subject scope. Rename, workflow reload and presets keep the stored IDs.
+An image shared by two Subjects is presented twice and consumes two native reference slots.
+
+Invalid or unavailable relations produce warnings and keep the material. Budget-dropped Subjects are removed
+from text scopes; if none remain, the rule stays as general context guidance. First/Last/Keyframe/Continue
+guides retain their existing native global meaning. Subjects without a reference image, nested relationships,
+automatic extraction of several voices from one file and the optional relationship graph remain further work.
+Manual prompt override remains exact. See [validation](NG-validation.md) for native render evidence and limits.
+
 ## Presets
 
 Save/Save As writes a versioned JSON preset under the current ComfyUI user's `minimax_h3_ng/contexts` folder.
-Load restores source, roles, description, property preservation, timing, identity and color. Media bytes and AI credentials are not included.
+Load restores source, roles, description, property preservation, timing, identity, Subject assignments and color. Media bytes and AI credentials are not included.
 Saving an existing name replaces it atomically. Loading the same preset twice restores its ID twice; give one copy a new advanced Context ID
 if they should be separate items. Duplicate IDs are rejected, and ambiguous names are reported.
 
@@ -153,5 +177,5 @@ and warns when it cannot. Tail continuity reuses the tested PackedLayout adapter
 
 Read [NG-validation.md](NG-validation.md) for automated checks, native sampler/sequence runs, interruption recovery and quality limits.
 Single-seed functional runs show feasibility. Long chains may drift in identity or sound, and pinned audio may lose high frequencies.
-Adaptive continuity/crossfades, a full multi-asset relationship editor and broad perceptual quality validation remain further work.
+Adaptive continuity/crossfades, Subjects without an image, the optional relationship graph and broad perceptual quality validation remain further work.
 An imperceptible seam and a human listening assessment have not been established.
