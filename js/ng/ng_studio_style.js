@@ -314,6 +314,13 @@ img.ng-source-preview { cursor:zoom-in; }
    knobs under "options" and calls the token limit num_predict, so a user reading their own request
    log would otherwise not find the control they just set. */
 .ng-wire-name { font-size:10.5px; color:#7f8ea3; font-family:ui-monospace,Consolas,monospace; margin-top:3px; }
+.ng-shot-binding { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:6px; align-items:center; margin:6px 0; }
+.ng-shot-binding span { overflow-wrap:anywhere; }
+.ng-shot-bindings select,.ng-spoken-line input { width:100%; min-width:0; box-sizing:border-box; }
+.ng-shot-dialogue,.ng-shot-protection { margin-top:8px; }
+.ng-spoken-line { margin:8px 0; padding:8px; border:1px solid #344457; border-radius:6px; }
+.ng-lock-field { display:flex; gap:6px; align-items:center; margin:4px 0; }
+.ng-lock-field input { width:auto; }
 `;
 
 export function ensureStudioStyle() {

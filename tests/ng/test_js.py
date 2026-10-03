@@ -30,6 +30,10 @@ class Frontend(unittest.TestCase):
         result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_studio.mjs")], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_structured_shot_controls_and_migration(self):
+        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_shots.mjs")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

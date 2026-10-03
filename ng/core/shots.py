@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from .frames import seconds_to_frames
 from .issues import Issue
+from .shot_document import read_document, metadata
 
 _TIME = r"(?:\d+:)?\d+(?:\.\d+)?s?"
 _HEADER = re.compile(r"^\s*(?P<a>%s)\s*(?:-|–|—|to)\s*(?P<b>%s)\s*(?::|\s)\s*(?P<rest>.*)$" % (_TIME, _TIME))
@@ -25,6 +26,10 @@ class Shot:
     start_f: int
     end_f: int
     text: str
+    id: str = ""
+    media: tuple = ()
+    spoken: tuple = ()
+    locked_fields: tuple = ()
 
     @property
     def frames(self):
@@ -61,10 +66,16 @@ def parse_shots(text, project_frames):
     """Parse the shot text. Returns (shots, issues). Text before the first timed line is returned as an issue, not discarded."""
     issues = []
     blocks, preamble = _read_blocks(text or "")
+    records = read_document(text or "")
+    if records is not None:
+        blocks = [(r["start"], r["end"], [r.get("text", "")], metadata(r)) for r in records]
+        preamble = []
+    else:
+        blocks = [(*block, {"id": "legacy-shot-%d" % (i + 1)}) for i, block in enumerate(blocks)]
     if preamble:
         issues.append(Issue("shots_preamble", "Text before the first timed shot was ignored: '%s'." % " ".join(preamble)[:80]))
     shots, previous_end = [], 0
-    for number, (start_s, end_s, lines) in enumerate(sorted(blocks, key=lambda b: b[0]), 1):
+    for number, (start_s, end_s, lines, extra) in enumerate(sorted(blocks, key=lambda b: b[0]), 1):
         start_f, end_f = seconds_to_frames(start_s), seconds_to_frames(end_s)
         body = "\n".join(l for l in lines if l.strip()).strip()
         ref = "shot %d" % number
@@ -83,6 +94,6 @@ def parse_shots(text, project_frames):
         if start_f > previous_end and shots:
             issues.append(Issue("shot_gap", "there is a gap of %.2fs before it; nothing is described there." % ((start_f - previous_end) / 24.0), ref))
         if end_f > start_f:
-            shots.append(Shot(len(shots) + 1, start_f, end_f, body))
+            shots.append(Shot(len(shots) + 1, start_f, end_f, body, **extra))
             previous_end = end_f
     return tuple(shots), tuple(issues)

@@ -12,6 +12,7 @@ class Element {
   setAttribute(name,value){this.attributes[name]=String(value);}
   contains(node){return this.all().includes(node);}
   all(){return [this,...this.children.flatMap(child=>child.all())];}
+  querySelectorAll(tag){return this.all().filter(element=>element!==this&&element.tag===tag);}
   checkValidity(){return true;}
 }
 globalThis.document={createElement:tag=>new Element(tag),getElementById:()=>null,head:new Element("head"),
@@ -74,6 +75,18 @@ for(const view of ["simple","guided","expert"]) {
   assert.equal(node.properties.ng_view_mode,undefined,"technical planner drops old view state too");
   node.properties.ng_view_mode=view;node.onConfigure();
   assert.equal(node.properties.ng_view_mode,undefined);node.onRemoved();
+}
+{
+  const node=createNode("NGH3Director","simple"),widget=node.widgets.find(widget=>widget.name==="shots");
+  widget.value="0-10: Original action.";widget.callback(widget.value);
+  const dialogue=controls(node).find(element=>element.className==="ng-shot-dialogue");dialogue.open=true;
+  labelled(node,"Add shot 1 spoken line").onclick();
+  assert.equal(controls(node).find(element=>element.className==="ng-shot-dialogue").open,true,
+    "adding a line must retain the opened dialogue controls");
+  const protectedField=labelled(node,"Protect shot 1 spoken from AI");protectedField.checked=true;protectedField.onchange();
+  assert.ok(controls(node).some(element=>element.textContent==="Protect from AI · 1 fields"),"protection caption updates immediately");
+  assert.equal(JSON.parse(widget.value).shots[0].id,"legacy-shot-1","UI migration preserves the source shot identity");
+  node.onRemoved();
 }
 assert.equal(timers.size,0,"removed nodes must not leave preview updates scheduled");
 const source=name=>readFileSync(new URL("../../../js/ng/"+name,import.meta.url),"utf8");

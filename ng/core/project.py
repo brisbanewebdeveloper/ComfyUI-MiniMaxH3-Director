@@ -13,6 +13,7 @@ from .context_checks import check_context, check_guide_times
 from .issues import Issue
 from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
+from .shot_document import read_document
 
 CANVAS_MULTIPLE = 32
 
@@ -100,7 +101,9 @@ def _prepare(context):
     items, issues = resolve_speakers(related)
     (width, height), canvas_issues = snap_canvas(context.width, context.height)
     ctx = DirectorContext.from_dict({**context.to_dict(), "items": [i.to_dict() for i in items], "width": width, "height": height})
-    return ctx, relationship_issues + issues + canvas_issues + check_context(ctx)
+    # Structured scenes diagnose roles after selecting their chunk's bindings.
+    checks = check_context(ctx) if read_document(ctx.shots_text) is None else []
+    return ctx, relationship_issues + issues + canvas_issues + checks
 
 
 def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan) -> ProjectPlan:

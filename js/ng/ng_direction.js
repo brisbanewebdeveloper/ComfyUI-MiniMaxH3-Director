@@ -2,6 +2,7 @@ import { element,values,applyValues } from "./ng_widgets.js";
 import { readPayload,connectedProvider } from "./ng_read.js";
 import { aiAction } from "./ng_ai_request.js";
 import { canAutoDirect, MODES } from "./ng_assist.js";
+import { sceneApplyProblem } from "./ng_story_model.js";
 const { app } = window.comfyAPI.app;
 
 // The mode is workflow state on the node, so a reload keeps the same choice. It gates what the AI may start.
@@ -54,6 +55,8 @@ export function directionTools(node,api) {
   };
   apply.onclick=()=>{
     if(state.snapshot!==fingerprint()){status.textContent="Project changed; request a fresh scene suggestion.";state.suggestion=null;sync();return;}
+    const problem=sceneApplyProblem(values(node).shots||"");
+    if(problem){status.textContent=problem;return;}
     // Only the three planned fields are written; kept_dialogue is a report, not a widget.
     applyValues(node,{shots:state.suggestion.shots,soundscape:state.suggestion.soundscape,music:state.suggestion.music});
     node.graph?.change();state.suggestion=null;preview.textContent="";status.textContent="Applied · edit any shot or timing.";sync();

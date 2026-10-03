@@ -12,6 +12,7 @@ from .mentions import replace_mentions
 from .context_options import retention_note
 from .issues import Issue
 from .subjects import subject_groups
+from .shot_bindings import spoken_text
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
@@ -156,9 +157,9 @@ def _motion_segments(context):
     return out
 
 
-def _shot_text(shot, substitute, automatic=False):
+def _shot_text(shot, substitute, automatic=False, context=None):
     """A shot that began in an earlier chunk keeps its action but not its spoken lines: those belong to where the shot starts."""
-    text = substitute(shot.text)
+    text = substitute(spoken_text(shot, context)[0] if context else shot.text)
     if shot.carried:
         text = "\n".join(line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip()))
         if automatic and text.strip():
@@ -212,7 +213,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
     voices, extra_voices = _voices_by_speaker(context)
     substitute = _tag_substitutor([s.id for s in subjects], context)
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
-                 "prompt": _shot_text(s, substitute, automatic=not context.shots_text.strip())}
+                 "prompt": _shot_text(s, substitute, automatic=not context.shots_text.strip(), context=context)}
                 for s in chunk.shots]
     segments += _anchor_segments(context, chunk, chunk.is_last)
     ref_on = mode == "ref2va"
@@ -231,4 +232,5 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
             if role in item.effective_usage:
                 anchors.setdefault((key, item.source), item.id)
     voice_items = {number: voices[s.id].id for number, s in enumerate(subjects, 1) if s.id in voices}
-    return tdata, Mapping([s.id for s in subjects], by_source, anchors, voice_items), extra_voice_issues(extra_voices)
+    notes = extra_voice_issues(extra_voices) + [issue for shot in chunk.shots for issue in spoken_text(shot, context)[1]]
+    return tdata, Mapping([s.id for s in subjects], by_source, anchors, voice_items), notes

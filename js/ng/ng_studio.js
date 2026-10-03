@@ -12,6 +12,7 @@ import {relationNames} from "./ng_asset_relations.js";
 import { contextColor } from "./ng_identity.js";
 import { inspector,warningView } from "./ng_inspector.js";
 import { summarizeBatch } from "./ng_assist.js";
+import { renameStoryReferences } from "./ng_story_model.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -106,7 +107,8 @@ function attach(node) {
     contextList.replaceChildren();
     const entries=readContexts(node);story.contexts(entries,api);direction.sync();audioTracks.replaceChildren();
     const previous=node.properties.ng_context_names||{},now=values(node),renamed={};
-    for(const key of ["idea","shots"]){const text=renameReferences(now[key]||"",previous,entries);if(text!==now[key])renamed[key]=text;}
+    for(const key of ["idea","shots"]){const rename=key==="shots"?renameStoryReferences:renameReferences;
+      const text=rename(now[key]||"",previous,entries);if(text!==now[key])renamed[key]=text;}
     node.properties.ng_context_names=Object.fromEntries(entries.filter((entry)=>entry.widgets.context_id&&entry.widgets.name).map((entry)=>[entry.widgets.context_id,entry.widgets.name]));
     if(Object.keys(renamed).length)applyValues(node,renamed);
     renderReferences(referencePreview,values(node).idea||"",entries,element);

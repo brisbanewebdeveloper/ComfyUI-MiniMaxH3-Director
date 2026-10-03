@@ -14,6 +14,12 @@ NG is an unfinished Director interface in this pack. The requirements audit foun
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
 The local 1.0.0 development version is unreleased; the published version remains 0.3.2.
 
+Shots now retain stable IDs and explicit Context bindings after editing an old timed-text scene.
+Use each shot's Dialogue controls for exact spoken words, a Subject or narrator, language and delivery;
+no AI/API is required. Protected fields remain manually editable. The old whole-scene AI Apply is
+blocked for scenes with these bindings/dialogue/protections until selective merging is implemented.
+See the [structured shot contract and current limits](NG-shots.md).
+
 ## Start with a connected workflow
 
 Use **example_workflows / H3 Director NG - text studio.json** for a complete text-to-video graph.

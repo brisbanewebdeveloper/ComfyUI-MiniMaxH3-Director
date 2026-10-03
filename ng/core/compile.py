@@ -13,6 +13,7 @@ from .issues import Issue
 from .legacy_bridge import build_timeline, decide_mode
 from .media_labels import resolve_media_mentions, resolve_guide_mentions, resolve_lock_mentions, prompt_labels, read_prompt_labels
 from .asset_prompt import apply_asset_relations
+from .shot_bindings import scoped_context
 
 KINDS = ("picture", "video", "audio", "lock", "first_frame", "last_frame", "keyframe", "continue_video")
 
@@ -121,7 +122,7 @@ def _issues(context, chunk, result, continuity):
            if not (resumed and "has no spoken line" in text)]
     for item in context.items:
         out.extend(check_item(item))
-    if not context.idea.strip() and not any(s.text.strip() for s in chunk.shots):
+    if not context.idea.strip() and not any(s.text.strip() or any(line.text.strip() for line in s.spoken) for s in chunk.shots):
         out.append(Issue("no_text", "There is no text for this chunk; the prompt falls back to a bare placeholder.", "chunk %d" % (chunk.index + 1)))
     if context.prompt_override.strip():
         out.append(Issue("prompt_override", "Manual prompt replaces every chunk prompt; references and timing remain as planned."))
@@ -160,6 +161,7 @@ def _selected_audio(context, refs):
 
 
 def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: ContinuityPlan) -> CompiledChunk:
+    context, binding_issues = scoped_context(context, chunk)
     mode = decide_mode(context)
     tdata, mapping, voice_notes = build_timeline(context, chunk, mode)
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
@@ -171,6 +173,6 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     prompt, guide_issues = (prompt, ()) if context.prompt_override.strip() else resolve_guide_mentions(prompt, context, refs, labels)
     prompt, lock_issues = (prompt, ()) if context.prompt_override.strip() else resolve_lock_mentions(prompt, context, refs)
     return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or prompt, refs=tuple(refs),
-                         issues=tuple(voice_notes) + relation_issues + guide_issues + lock_issues + tuple(_issues(context, chunk, result, continuity)),
+                         issues=binding_issues + tuple(voice_notes) + relation_issues + guide_issues + lock_issues + tuple(_issues(context, chunk, result, continuity)),
                          prompt_labels=labels)
 

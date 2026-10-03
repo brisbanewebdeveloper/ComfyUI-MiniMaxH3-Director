@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from . import fields, frames, limits
 from .boundaries import align_to_shots
 from .issues import Issue, SchemaError
+from .shot_document import MediaBinding, SpokenLine
 
 CONTINUITY_MODES = ("none", "video", "video_audio")
 
@@ -57,11 +58,17 @@ class ChunkShot:
     text: str
     carried: bool           # began before this chunk's delivered part
     continues: bool         # goes on into the next chunk
+    shot_id: str = ""
+    media: tuple = ()
+    spoken: tuple = ()
+    locked_fields: tuple = ()
     SCHEMA_VERSION = 1
 
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "shot_index": self.shot_index, "local_start_f": self.local_start_f,
-                "local_end_f": self.local_end_f, "text": self.text, "carried": self.carried, "continues": self.continues}
+                "local_end_f": self.local_end_f, "text": self.text, "carried": self.carried, "continues": self.continues,
+                "shot_id": self.shot_id, "media": [b.to_dict() for b in self.media],
+                "spoken": [s.to_dict() for s in self.spoken], "locked_fields": list(self.locked_fields)}
 
     @classmethod
     def from_dict(cls, data, path="chunk_shot"):
@@ -69,7 +76,11 @@ class ChunkShot:
         fields.check_version(data, path, cls.SCHEMA_VERSION)
         return cls(shot_index=int(fields.read_number(data, "shot_index", path)), local_start_f=int(fields.read_number(data, "local_start_f", path)),
                    local_end_f=int(fields.read_number(data, "local_end_f", path)), text=fields.read_str(data, "text", path, ""),
-                   carried=bool(data.get("carried", False)), continues=bool(data.get("continues", False)))
+                   carried=bool(data.get("carried", False)), continues=bool(data.get("continues", False)),
+                   shot_id=fields.read_str(data, "shot_id", path, ""),
+                   media=tuple(MediaBinding.from_dict(b) for b in fields.read_list(data, "media", path)),
+                   spoken=tuple(SpokenLine.from_dict(s) for s in fields.read_list(data, "spoken", path)),
+                   locked_fields=fields.read_texts(data, "locked_fields", path))
 
 
 @dataclass(frozen=True)
@@ -169,7 +180,8 @@ def _shots_for_chunk(shots, story_start, story_end, head):
             continue
         out.append(ChunkShot(shot_index=shot.index, local_start_f=max(shot.start_f, window_start) - window_start,
                              local_end_f=min(shot.end_f, story_end) - window_start, text=shot.text,
-                             carried=shot.start_f < story_start, continues=shot.end_f > story_end))
+                             carried=shot.start_f < story_start, continues=shot.end_f > story_end,
+                             shot_id=shot.id, media=shot.media, spoken=shot.spoken, locked_fields=shot.locked_fields))
     return tuple(out)
 
 

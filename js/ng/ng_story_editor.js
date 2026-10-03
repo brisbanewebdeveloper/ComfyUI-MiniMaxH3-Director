@@ -1,6 +1,7 @@
 import { element, applyValues, values } from "./ng_widgets.js";
 import { section, control } from "./ng_editor_fields.js";
-import { readStory, writeStory, moveShot } from "./ng_story_model.js";
+import { readStory, writeStory, moveShot, createShot } from "./ng_story_model.js";
+import { shotFields } from "./ng_shot_fields.js";
 import { mediaURL } from "./ng_media_editor.js";
 import { renderReferences } from "./ng_references.js";
 import { contextColor } from "./ng_identity.js";
@@ -13,7 +14,7 @@ export function storyEditor(node) {
   const ruler=element("div","ng-timeline-ruler");
   const raw = control(node, "shots", "Original shot text", { multiline: true });
   const fallback = element("details", "ng-raw-shots");
-  fallback.append(element("summary", "", "Edit shot text"), raw.label);
+  fallback.append(element("summary", "", "Original / structured shot data"), raw.label);
   const add = element("button", "ng-button", "+ Shot");
   const reset = element("button", "ng-button ng-secondary", "Use idea as one scene");
   const tools = element("div", "ng-actions"); tools.append(add, reset);
@@ -33,7 +34,7 @@ export function storyEditor(node) {
       bar.title = `Shot ${index + 1}: ${shot.start.toFixed(2)}–${shot.end.toFixed(2)} s`;
       bar.style.left = `${shot.start / duration * 100}%`;
       bar.style.width = `${(shot.end - shot.start) / duration * 100}%`;
-      const entry=entries.find((entry)=>shot.text.includes("@"+entry.widgets.name));if(entry)bar.style.borderColor=contextColor(entry);
+      const entry=entries.find((entry)=>shot.media.some(binding=>binding.context_id===entry.widgets.context_id)||shot.text.includes("@"+entry.widgets.name));if(entry)bar.style.borderColor=contextColor(entry);
       for (const part of ["start", "end"]) {
         const handle = element("span", "ng-time-handle ng-time-" + part);
         handle.dataset.part = part; bar.append(handle);
@@ -55,8 +56,10 @@ export function storyEditor(node) {
   }
   function shotCard(shot, index) {
     const card = element("article", "ng-shot-card");
-    card.setAttribute("aria-selected",String((node.properties.ng_selected_shot||0)===index));
-    card.onclick=()=>{node.properties.ng_selected_shot=index;for(const [number,entry] of [...cards.children].entries())entry.setAttribute("aria-selected",String(number===index));node.graph?.change();};
+    card.dataset.shotId=shot.id;
+    const selected=node.properties.ng_selected_shot_id||shots[node.properties.ng_selected_shot||0]?.id;
+    card.setAttribute("aria-selected",String(selected===shot.id));
+    card.onclick=()=>{node.properties.ng_selected_shot_id=shot.id;for(const entry of cards.children)entry.setAttribute("aria-selected",String(entry.dataset.shotId===shot.id));node.graph?.change();};
     const header = element("div", "ng-shot-header");
     const remove = element("button", "ng-icon-button", "×"); remove.setAttribute("aria-label", `Remove shot ${index + 1}`);
     header.append(element("strong", "", `SHOT ${String(index + 1).padStart(2, "0")}`), remove);
@@ -74,27 +77,30 @@ export function storyEditor(node) {
     const highlighted=element("div","ng-text-highlight");renderReferences(highlighted,shot.text,entries,element);
     text.oninput = () => { shots[index].text = text.value; renderReferences(highlighted,text.value,entries,element);commit(); };
     remove.onclick = () => { shots.splice(index, 1); commit(); rebuild(); };
-    const imageContext=entries.find((entry)=>entry.media==="image"&&shot.text.includes("@"+entry.widgets.name))||entries.find((entry)=>entry.media==="image");
+    const imageContext=entries.find((entry)=>entry.media==="image"&&(shot.media.some(binding=>binding.context_id===entry.widgets.context_id)||shot.text.includes("@"+entry.widgets.name)));
     if(imageContext&&api){const preview=element("img","ng-shot-thumbnail");preview.src=mediaURL(imageContext.widgets.image,api);preview.alt="Reference preview · not a generated shot";card.append(header,preview);}
     else card.append(header);
-    const contexts=element("select");contexts.setAttribute("aria-label",`Shot ${index+1} context`);const option=element("option","","+ Assign context");option.value="";contexts.append(option);
-    for(const entry of entries){const name=entry.widgets.name;if(name){const option=element("option","",name);option.value=name;contexts.append(option);}}
-    contexts.onchange=()=>{if(contexts.value){shots[index].text=`@${contexts.value} `+shots[index].text;commit();rebuild();}};
-    card.append(times,text,highlighted,contexts);return card;
+    card.append(times,text,highlighted,shotFields(shot,index,entries,commit,rebuild));return card;
   }
   function rebuild() {
+    const opened=new Map([...cards.children].map(card=>[card.dataset.shotId,
+      [...(card.querySelectorAll?.("details")||[])].filter(detail=>detail.open).map(detail=>detail.className)]));
     const result = readStory(values(node).shots || ""); shots = result.shots;
     cards.replaceChildren(); add.disabled = !!result.error;
     if (result.error) { cards.append(element("p", "ng-error", result.error)); fallback.open = true; }
     else if (!shots.length) cards.append(element("p", "ng-muted", "Auto scene · your idea describes the whole project. Add shots when you need timing."));
-    else shots.forEach((shot, index) => cards.append(shotCard(shot, index)));
+    else shots.forEach((shot, index) => {
+      const card=shotCard(shot,index);
+      for(const detail of card.querySelectorAll?.("details")||[])detail.open=opened.get(shot.id)?.includes(detail.className)||false;
+      cards.append(card);
+    });
     drawTimeline(); raw.sync();
   }
   add.onclick = () => {
     const duration = Number(values(node).project_seconds);
     const start = shots.length ? shots[shots.length - 1].end : 0;
     if (start >= duration) { cards.append(element("p", "ng-error", "Increase project duration or shorten the last shot before adding another.")); return; }
-    shots.push({ start, end: duration, text: "" }); commit(); rebuild();
+    shots.push(createShot({ start, end: duration })); commit(); rebuild();
   };
   reset.onclick = () => { shots = []; commit(); rebuild(); };
   const shotWidget = node.widgets.find((widget) => widget.name === "shots"), previous = shotWidget.callback;

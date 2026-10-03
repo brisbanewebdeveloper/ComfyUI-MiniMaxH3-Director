@@ -431,9 +431,49 @@ Full histories, event traces, scripts, contact sheets and exact local output pat
 `_notes/NG/experiments/e13_*`. The local mock fixture is reproducible with `e13_mock_provider.py`; it is not an installed provider.
 ## E42 — One Director interface (2026-10-04)
 
+E43a extends this baseline; its separate results are recorded below.
+
 Obsolete workflow views are discarded, while render/story inputs and saved sizes remain.
 Main settings stay editable without expanding details. AI action choices now match the loaded workflow.
 The new frontend test checks real extension hooks with a DOM stand-in; registration tests check all ten technical IDs.
 NG: 475 checks, 474 passed/one existing Windows skip. Legacy: 374/374 and 74/74; all six frontend suites passed.
 An isolated ComfyUI browser session verified manual edits, two shots, compiler preview, mouse resize and Save/Reload.
 No new GPU render or quality acceptance was performed for this frontend change.
+
+## E43a — Structured shot foundation (2026-10-04)
+
+The existing String widget now accepts a versioned shot document and old timed text.
+Stable IDs, media bindings, manual spoken lines, locks and separate inactive drafts
+survive serialization and chunk splitting. Actual compiled references are selected
+per intersecting shot; global contexts and Subject dependencies retain their roles.
+Preview and execution share the parser/compiler. Invalid structured input is retained
+for repair and is never silently downgraded to legacy text.
+
+NG: 496 checks, 495 passed/one existing Windows skip; Legacy 374/374 + 74/74.
+All seven frontend suites, NG syntax checks, compileall and git diff checks passed.
+New tests cover migration, malformed data, raster/head intersections, dependencies,
+roles, exact dialogue, disconnected contexts, compiler/preview equivalence and UI
+controls. Two new fixture assertions initially assumed an exact 10-second boundary;
+they were corrected to the actual 243-frame boundary, with a separate regression
+for a chunk extending into the next shot. No existing behavioral test was weakened.
+
+A real browser on isolated CPU servers verified assigning an image, two manually
+authored dialog lines in German/English, protection controls, manual editing of
+protected words, real compiler output and Save/Reload. Shot IDs, bindings, exact
+words and locks persist; width 780 px equals scrollWidth. The scene compiles Ref2VA
+then T2VA as its reference scope ends. Adding dialogue keeps its controls open and
+the protection count updates immediately; both found UI defects have regressions.
+
+Evidence lives in `_notes/NG/experiments/e43_*`, especially the baseline counterprobe,
+live preview, browser/reload JSON, saved workflow and screenshots. The E42 counterprobe
+was run after implementation and is not presented as a before-code TDD run.
+Own servers 8197/8198 and the browser tab are closed; user server 8189 is unchanged.
+That running server needs a restart to use the new backend before structured shots
+are used there. No GPU render or quality acceptance is claimed in E43a.
+
+E43 remains partial. Required next: native render/adapter validation of scoped
+references and per-chunk mode changes, plus the remaining binding/placement edge
+contracts. E46 must provide ID-addressed drafts and selective AI Apply; currently
+the old scene replacement is blocked for bindings, structured dialogue or locks.
+Audio placement/mixing, media indicators, timeline work and human quality/design
+acceptance remain open. See [the exact shot contract](NG-shots.md).

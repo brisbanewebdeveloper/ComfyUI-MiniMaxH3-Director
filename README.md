@@ -47,7 +47,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 ## NG: videos of any length
 
-**Development status: incomplete.** One Director interface, native CLIP assistance, media cards and the compiler inspector are available. Structured shots with explicit media bindings and protected fields, timeline placement/mixing of audio, remaining layout work and continuity/quality acceptance remain open. Context cards load media files directly. Published 0.3.2 is unchanged.
+**Development status: incomplete.** One Director interface, native CLIP assistance, media cards and the compiler inspector are available. Structured shot storage, explicit media bindings, manual dialogue and protection metadata are implemented; selective AI merging, native validation of scoped references, timeline placement/mixing of audio, remaining layout work and continuity/quality acceptance remain open. See [the shot contract](docs/NG-shots.md). Context cards load media files directly. Published 0.3.2 is unchanged.
 
 **H3 Director NG** now has its own connected product workflow: **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
 Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text contexts describe your references;
