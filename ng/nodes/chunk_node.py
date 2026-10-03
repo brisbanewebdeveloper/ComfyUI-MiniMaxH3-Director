@@ -4,7 +4,7 @@ import logging
 from comfy_api.latest import io
 
 from ...minimax_core import audio_nodes, core
-from ..adapters import chunk_builder, collect, latents
+from ..adapters import audio_locks, chunk_builder, collect, latents
 from ..adapters.media import MediaError
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
@@ -82,6 +82,7 @@ class NGChunkConditioning(io.ComfyNode):
         if apply_sigma_shift:
             shifted = mm.MiniMaxH3SigmaShift.execute(model=model, shift_video=float(shift_video), shift_audio=float(shift_audio))
             model = getattr(shifted, "args", shifted)[0]
+        model = audio_locks.bind_source(model, job, audio_vae)
         return io.NodeOutput(model, built.positive, built.latent, job.compiled.prompt)
 
 

@@ -36,6 +36,13 @@ SplitSigmas provides high and low schedules. The first SamplerCustomAdvanced rec
 Connect its **output**, which can retain noise, to the second sampler's latent; connect the low schedule and native DisableNoise
 to that second sampler. Return the second sampler's finished AV latent to End Loop. The supplied example keeps one canvas.
 
+For **Lock Audio**, Output binds the selected source to its current model through ComfyUI's `OUTER_SAMPLE` hook.
+Every native stage restores only the locked audio positions before sampling; free audio and video retain the preceding
+stage's values. This prevents a partial schedule's remaining noise from becoming the next stage's locked source.
+Use Output's model for the Guider/KSampler in every stage. No extra lock/noise/guider node is required.
+The source is loaded and encoded by the native audio VAE per stage, with no retained tensor cache. This adds work
+to locked-audio stages; it does not change steps, sampler, noise, CFG, sigma shifts or collection.
+
 This is a continuation of one schedule, with no upscale operation. A learned H3 upscale workflow can require the first stage's
 `denoised_output`, its own re-noising and updated H3 reference conditioning. That is a separate integration; a generic image
 latent resize does not establish H3 video/audio compatibility.
@@ -46,6 +53,9 @@ The next chunk receives the previous **untrimmed** AV latent. Existing H3 pinnin
 round trip, and its audio tail onto the next chunk's conditioning. The default 22-frame video window is seven H3 latent steps;
 the 24-frame audio window is 40 audio steps. The sampled head is removed from picture and sound only by Collect.
 Locked source audio takes priority over the audio pin; the video pin remains.
+Lock card names use descriptive prose in the H3 prompt, with a card warning: a lock has no numbered `<Audio N>`
+reference. Paired video soundtracks and voice references keep their own native numbers. An ended lock is reported
+for that chunk and contributes no further source audio.
 
 Missing, trimmed or wrong-format continuity returns fail with an actionable error. Direct video pins require the previous
 and new chunk at the same resolution. End Loop can separately carry a base-resolution latent while collecting a final-stage

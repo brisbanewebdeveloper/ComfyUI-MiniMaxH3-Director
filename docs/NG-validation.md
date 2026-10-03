@@ -3,6 +3,34 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Audio lock names and native sampler stages: E39 (2026-10-03)
+
+Known lock names now resolve to prose, with a card warning for the absent numbered reference or an ended lock.
+Paired video soundtracks and voices retain their native Audio1/2/3 labels. Raw prompts and unknown names stay intact.
+Seven compiler/adapter contracts cover source selections, mixed roles, shared files and boundaries.
+
+A weighted split-schedule run exposed a second error: initial source audio and masks matched exactly, but the
+final locked latent differed by 12.026966. A single full schedule passed. The partial schedule's noisy output
+became the next sampler's inpaint source. Output now binds an `OUTER_SAMPLE` adapter through ModelPatcher;
+each stage reloads/native-encodes the declared source and restores only held audio positions and their mask.
+Free video/audio values, native arguments, other wrappers, CFG/noise/sigmas and collection remain unchanged.
+Four further contracts cover stage transitions, soft/absent masks and node integration. No extra node or tensor cache.
+
+Native three-chunk checks at 256×256/4 steps passed: two SamplerCustomAdvanced stages `48093769` (121.58 s),
+ordinary KSampler `439a60fe` (113.34 s), and UI Save/Reload/run `4b9db414` (115.53 s).
+Each produced 294 frames and 12.25 s AV; API probes measured initial source difference 0, final held difference
+at most 1.1920928955078125e-7 and exact previous AV tails after lock expiry. References: paired video 80 audio
+steps, VoiceA 80, VoiceB 60; Picture slots 5/4/5. Source selection 2–7 s is retained.
+Eleven direct-file/text cards, one Output/loop/normal RandomNoise/CFGGuider CFG 1, inspector budget 5 images,
+1 video, 2 standalone audio references, total 8. No media input ports or workflow-load error.
+
+Final joint suite: 407 NG/406 pass/one existing Windows symlink skip, unchanged legacy 371/74, five JS suites,
+all JS syntax checks, compileall and diff check pass. Concurrent Text/AI work was preserved in parent 1738436.
+Private fixture/verification mistakes were corrected separately; no product tests were removed or weakened.
+Evidence: external `_notes/NG/33-audio-lock-mentions.md` and `experiments/e39_*`, native output `ng_lab/e39`.
+Per-stage source/VAE work has a cost; these timings establish correctness, not a speed improvement.
+No arbitrary third-party sampler, upscale, identity/voice/seam or final product-quality acceptance is implied.
+
 ## Guide boundaries and timing controls: E36 (2026-10-03)
 
 A timed Keyframe/Storyboard beyond the actual snapped video end was silently omitted when its name was not mentioned.

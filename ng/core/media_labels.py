@@ -26,6 +26,24 @@ def resolve_media_mentions(prompt, context, refs):
     return replace_mentions(prompt, names)
 
 
+def resolve_lock_mentions(prompt, context, refs):
+    locked = {ref.ctx_id for ref in refs if ref.kind == "lock"}
+    issues = []
+    for item in context.by_media("audio"):
+        if "lock" not in item.effective_usage or not item.source:
+            continue
+        active = item.id in locked
+        label = item.description.strip().rstrip(".") or ("the locked audio" if active else item.name)
+        resolved = replace_mentions(prompt, {item.name: label})
+        if resolved != prompt:
+            code = "audio_lock_mention_prose" if active else "audio_lock_mention_unavailable"
+            reason = "has locked audio but no numbered reference token" if active else "is not locked in this chunk"
+            issues.append(Issue(code, "'%s' %s; its named mention uses prose. Use an audio reference role "
+                                "if it must have a numbered audio reference." % (item.name, reason), item.name))
+        prompt = resolved
+    return prompt, tuple(issues)
+
+
 def prompt_labels(result, mapping, context, refs):
     pictures = [ref for ref in refs if ref.kind == "picture"]
     if result.get("mode") == "fl2va":
