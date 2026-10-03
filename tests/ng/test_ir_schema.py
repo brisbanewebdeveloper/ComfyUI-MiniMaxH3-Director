@@ -375,6 +375,100 @@ class LabelStability(unittest.TestCase):
             self.assertIn(label, LABELS, "%r is not a documented H3 label" % label)
 
 
+class SoundscapeRule(unittest.TestCase):
+    """base-en.txt §4.6 vs §4.7 — the two sound fields disagree about an empty box.
+
+    §4.6, overall_soundscape: "Use 1–4 English sentences in one continuous paragraph to
+    summarize the ambient sound, physical action sounds, and non-verbal human sounds across the
+    full video … Use `N/A` only when the user explicitly requests complete silence throughout the
+    video." So there is no value for an empty box, and leaving the field out is not one of the
+    guide's options.
+
+    §4.7, non_diegetic_music: "Use `N/A` when there is no non-diegetic music." An empty box has a
+    value of its own.
+
+    The consequence is that an empty soundscape must not silently become N/A (that claims the user
+    asked for silence) and must not be dropped (that leaves two of three core fields).
+    """
+
+    def value_of(self, prompt, field="overall_soundscape"):
+        if field + ":" not in prompt:
+            return None
+        return prompt.split(field + ":", 1)[1].split("\n\n")[0].strip()
+
+    def test_the_field_is_written_when_the_box_is_empty(self):
+        plan = module("minimax_plan")
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8))
+        self.assertEqual(self.value_of(out[0].prompt), plan.SOUNDSCAPE_PLACEHOLDER)
+
+    def test_a_whitespace_only_box_counts_as_empty(self):
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8, soundscape="   "))
+        self.assertNotEqual(self.value_of(out[0].prompt), "")
+        self.assertTrue(self.value_of(out[0].prompt))
+
+    def test_an_empty_box_never_becomes_N_A(self):
+        # N/A claims the video was asked to be silent. Only the user can make that claim.
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8))
+        self.assertNotEqual(self.value_of(out[0].prompt), "N/A")
+
+    def test_a_user_who_asks_for_silence_still_gets_N_A(self):
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8, soundscape="N/A"))
+        self.assertEqual(self.value_of(out[0].prompt), "N/A")
+
+    def test_the_users_own_words_are_untouched(self):
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8,
+                                               soundscape="wind, distant traffic"))
+        self.assertEqual(self.value_of(out[0].prompt), "wind, distant traffic")
+
+    def test_the_placeholder_is_reported_not_passed_off_as_the_users_own(self):
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8))
+        warnings = " ".join(str(i) for i in out[0].issues)
+        self.assertIn("overall_soundscape is empty", warnings)
+        self.assertIn(module("minimax_plan").SOUNDSCAPE_PLACEHOLDER, warnings)
+
+    def test_no_warning_once_the_user_wrote_something(self):
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8,
+                                               soundscape="wind, distant traffic"))
+        warnings = " ".join(str(i) for i in out[0].issues)
+        self.assertNotIn("overall_soundscape is empty", warnings)
+
+    def test_music_keeps_its_own_value_for_an_empty_box(self):
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8))
+        self.assertEqual(self.value_of(out[0].prompt, "non_diegetic_music"), "N/A")
+
+    def test_the_field_is_present_in_every_mode(self):
+        plan = module("minimax_plan")
+        cases = (
+            ("t2va", context.DirectorContext(idea="A woman plays.", project_seconds=8)),
+            ("ref2va", ref2va_ctx()),
+            ("fl2va", context.DirectorContext(idea="She turns.", project_seconds=8, items=(FIRST,))),
+        )
+        for label, ctx in cases:
+            _, out = build(ctx)
+            self.assertIn("overall_soundscape:", out[0].prompt, "%s lost the field" % label)
+            self.assertEqual(fields_of(out[0].prompt),
+                             [f for f in (REF2VA_FIELDS if label == "ref2va" else BASE_FIELDS)
+                              if f in fields_of(out[0].prompt)],
+                             "%s: field order broken by the placeholder" % label)
+
+    def test_field_order_is_unchanged_by_the_placeholder(self):
+        _, out = build(context.DirectorContext(idea="A woman plays.", project_seconds=8))
+        found = fields_of(out[0].prompt)
+        self.assertEqual(found, list(BASE_FIELDS))
+
+    def test_an_empty_timeline_gets_no_prompt_from_defaults_alone(self):
+        # The guard the music field already had: nothing to describe means nothing to attach to.
+        plan = module("minimax_plan")
+        bare = plan.plan_timeline({"prompt_format": "minimax"}, 0, 288, 24.0)["prompt"]
+        self.assertNotIn("overall_soundscape:", bare)
+
+    def test_the_two_constants_are_one_string(self):
+        # limits.py used to hold a second copy of this text. Two copies of a prompt string drift.
+        plan = module("minimax_plan")
+        limits = module("ng.core.limits")
+        self.assertEqual(limits.DEFAULT_SOUNDSCAPE, plan.SOUNDSCAPE_PLACEHOLDER)
+
+
 class GuideFixture(unittest.TestCase):
     """Pin the fixture against the guide text, so a change to the expectation cannot pass unnoticed.
 

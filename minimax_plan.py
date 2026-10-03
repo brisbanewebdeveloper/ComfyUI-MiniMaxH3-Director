@@ -66,6 +66,24 @@ RETENTION_AUDIO_DEFAULT = "reference"
 # because that is where the editor already keeps "how is this clip used".
 AUDIO_LOCK = "lock"
 
+# --- the sound fields (references/base-en.txt §4.6 and §4.7) --------------------------
+# The two guides make different promises about an empty box, and the difference decides what
+# happens when the user writes nothing.
+#
+# §4.7 non_diegetic_music: "Use `N/A` when there is no non-diegetic music." An empty music
+# box therefore has a value of its own and the field is always written.
+#
+# §4.6 overall_soundscape: "Use 1–4 English sentences in one continuous paragraph to summarize
+# the ambient sound, physical action sounds, and non-verbal human sounds across the full video
+# … Use `N/A` only when the user explicitly requests complete silence throughout the video."
+# Here `N/A` is reserved for a claim only the user can make, so an empty box is not silence —
+# but it is also not permission to leave the field out, because the guide offers no such
+# option. Omitting it produced a prompt that matched neither branch: two of three core
+# fields. The field is therefore always written, and an empty box gets a stated placeholder
+# instead of silence. A user who really wants a silent video types N/A, and that passes
+# through untouched.
+SOUNDSCAPE_PLACEHOLDER = "ambience that fits the scene"
+
 # <Subject N> is not a character slot. The guide lists "people, animals, or objects;
 # scenes, backgrounds, or environments; clothing, props, interfaces, or visual effects;
 # styles, actions, expressions, or poses". The noun is only used when a slot has no
@@ -744,16 +762,24 @@ def compile_storyboard_minimax(global_prompt, shots, soundscape="", music="",
         parts.append(("detailed_description: " if subject_lines
                       else "integrated_multimodal_description: ") + " ".join(body))
 
-    if (soundscape or "").strip():
-        parts.append("overall_soundscape: " + soundscape.strip())
+    # base-en.txt §4.6 lists 1–4 sentences as the field's content and reserves "N/A" for a video
+    # the user asked to be silent. Leaving the field out is not one of the guide's options, so
+    # within a real prompt it is written either way: the user's own words when they gave some,
+    # and otherwise the placeholder — which states a shape ("ambience that fits the scene") rather
+    # than inventing specific sounds. A user who wants silence writes N/A, and that reaches the
+    # prompt untouched.
+    #
+    # The `parts` guard is the same one non_diegetic_music has: a timeline with nothing in it at
+    # all has no description, and bolting the sound fields onto an empty prompt would manufacture
+    # one out of defaults. That case is reported as "detailed_description is empty" instead.
+    written = (soundscape or "").strip()
+    if written or parts:
+        parts.append("overall_soundscape: " + (written or SOUNDSCAPE_PLACEHOLDER))
     if (music or "").strip():
         parts.append("non_diegetic_music: " + music.strip())
     elif parts:
-        # Both guides list non_diegetic_music as a required field, and both write "N/A"
-        # in it — the base guide says to do so "when there is no non-diegetic music",
-        # which is exactly what an empty box means. overall_soundscape deliberately does
-        # not get the same treatment: there "N/A" is reserved for a video the user asked
-        # to be silent, so filling it in would state something nobody said.
+        # §4.7: "Use `N/A` when there is no non-diegetic music", which is exactly what an empty
+        # box means. Unlike the soundscape, this field has a correct value for the empty case.
         #
         # `parts` guards against writing a prompt that is nothing but this line.
         parts.append("non_diegetic_music: N/A")
@@ -1769,14 +1795,18 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
                 "generation tasks."
                 % (description_words, DESCRIPTION_MIN_WORDS, DESCRIPTION_MAX_WORDS))
 
-        # Both guides list the three core fields as required, and this is the one that
-        # cannot be filled in for the user: "N/A" here means the video was asked to be
-        # silent, which is a claim only the user can make. H3 generates the audio, so
-        # leaving it out hands the whole soundtrack to the model's guess.
+        # Both guides list the three core fields as required, and §4.6 gives the soundscape no
+        # value of its own for an empty box — "N/A" there claims the video was asked to be
+        # silent, a claim only the user can make. So the field is written with a stated
+        # placeholder, and this warning is what tells the user that is what happened. It keeps
+        # the words "overall_soundscape is empty", which is still exactly true: the input was.
+        # H3 generates the audio, so an unnoticed placeholder hands the whole soundtrack to the
+        # model's guess.
         if not (soundscape or "").strip():
             ref_warnings.append(
-                "overall_soundscape is empty; the guide lists it as a required field. "
-                "Describe the ambience, or write N/A if the video is meant to be silent.")
+                "overall_soundscape is empty, so %r was written as a placeholder; the guide lists "
+                "the field as required. Describe the ambience, or write N/A if the video is meant "
+                "to be silent." % SOUNDSCAPE_PLACEHOLDER)
 
         # The same rule for the field that carries the whole video. Unlike the soundscape
         # there is no N/A for it: a prompt with no detailed_description has described nothing,

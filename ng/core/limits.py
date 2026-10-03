@@ -29,5 +29,7 @@ LATE_CHANGE_FRAMES = 60
 # Above this many joins the sound visibly loses its highs (E6: >4 kHz share fell to a ninth over five joins).
 AUDIO_DULLING_JOINS = 4
 
-# Written into overall_soundscape when the user leaves it alone: the guide lists the field as required.
-DEFAULT_SOUNDSCAPE = "ambience that fits the scene"
+# Written into overall_soundscape when the user leaves it alone: the guide lists the field as
+# required (base-en.txt §4.6). The text lives in the planner, because that is the place that
+# writes the field, and two copies of a prompt string would drift apart.
+DEFAULT_SOUNDSCAPE = _plan.SOUNDSCAPE_PLACEHOLDER
