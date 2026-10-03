@@ -1,5 +1,6 @@
 """Cross-item diagnostics before legacy compilation; never hide ambiguous or discarded inputs."""
 from .issues import Issue
+from . import frames
 
 
 def check_context(context):
@@ -29,4 +30,16 @@ def check_context(context):
             item.media == "audio" and bool(set(item.effective_usage) & {"voice", "copy", "music_style", "rhythm", "sound_reference"}))
         if context.mode == "fl2va" and reference:
             issues.append(Issue("reference_disabled", "Is omitted by explicit fl2va mode; choose auto or ref2va to use it.", item.name))
+    return issues
+
+
+def check_guide_times(context, total_frames):
+    issues = []
+    for item in context.by_media("image"):
+        if not item.source or not set(item.effective_usage) & {"keyframe", "storyboard"} or item.options.anchor_s < 0:
+            continue
+        if frames.seconds_to_frames(item.options.anchor_s) >= total_frames:
+            issues.append(Issue("guide_outside_project", "Scene time %.3fs is outside the rendered video; choose %.3fs "
+                                "or earlier, or extend the project." % (item.options.anchor_s,
+                                                                      frames.frames_to_seconds(total_frames - 1)), item.name))
     return issues

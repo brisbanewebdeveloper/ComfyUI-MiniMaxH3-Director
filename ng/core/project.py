@@ -9,7 +9,7 @@ from . import frames, limits
 from .chunks import ContinuityPlan, SequencePlan, plan_chunks
 from .compile import compile_chunk
 from .context import ContextItem, DirectorContext
-from .context_checks import check_context
+from .context_checks import check_context, check_guide_times
 from .issues import Issue
 from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
@@ -113,7 +113,7 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
     chunk_frames = frames.seconds_to_frames(chunk_seconds or limits.DEFAULT_CHUNK_SECONDS)
     plan = plan_chunks(total, chunk_frames, continuity, shots)
     compiled = tuple(compile_chunk(context, chunk, continuity) for chunk in plan.chunks)
-    issues = list(issues) + list(shot_issues) + list(plan.issues)
+    issues = list(issues) + list(shot_issues) + list(plan.issues) + check_guide_times(context, plan.total_frames)
     for one in compiled:
         issues.extend(one.issues)       # the same problem repeats per chunk; _merge lists it once
     return ProjectPlan(context=context, plan=plan, compiled=compiled, issues=_merge(issues, len(plan.chunks)))

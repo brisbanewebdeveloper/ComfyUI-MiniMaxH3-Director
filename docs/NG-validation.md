@@ -3,6 +3,33 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Guide boundaries and timing controls: E36 (2026-10-03)
+
+A timed Keyframe/Storyboard beyond the actual snapped video end was silently omitted when its name was not mentioned.
+Planning now warns with the card name and last valid frame time while preserving the input. Boundary frames and snapped
+end padding remain valid; conditioning is unchanged. Five new contracts cover all continuity modes and native First/Last
+with distinct timed-image guides at identical offsets.
+
+Browser testing found valid partial ContextOptions stopped card synchronization before displaying the stored time.
+The frontend now fills backend defaults when reading options. Time controls accept frame-accurate fractions and commit
+valid edits immediately, including when saved while focused; empty/invalid edits preserve the previous value.
+One JS fixture reproduces and verifies default loading, retention, precise time input and edit persistence.
+
+Final 383 NG checks: 382 passed/one existing Windows symlink skip; Legacy 371/371 and 74/74, five JS suites,
+JS syntax, Python compilation, structure and diff checks passed. Weighted mixed native three-chunk/two-sampler Run:
+73.81 s, 294 frames/392000 samples at 32 kHz, 12.25 seconds. Global frame 107 is local frame 22 after the continuity head;
+global frame 293 is local frame 123. Both source VAE guides and both subsequent AV tails match exactly.
+Weighted FL Run: 16.27 s, 124 frames/165333 samples, four retained guides at [0,123,0,123], native Picture 1/2 labels.
+Actual browser Save/Reload/Run: 69.788 s, 294 frames/12.25-second video/audio. Valid 12.208 is persisted and clears the
+warning; restored 20 is persisted and restores the warning. Twelve Context cards retain direct file loading, one Director
+Output in the loop, normal RandomNoise, CFGGuider CFG 1 and two freely connected native samplers. No loading-aborted error.
+
+All loaded Python sources match the runs; the only changed JS control module was verified in a fresh browser context.
+The private dynamic-loader server and own tabs are closed, the lab junction moved reversibly outside custom_nodes,
+and the user server preserved. Existing foreign E38 text styling is retained without claiming its complete visual acceptance.
+No sampler/model math change, native Windows loader repair or perceptual quality acceptance. Evidence and exact local
+commit: `_notes/NG/30-guide-boundaries.md`, `experiments/e36_*`. No push, tag or publication.
+
 ## Native frame-guide names and Inspector budget: E35 (2026-10-03)
 
 Known `@Name` references to frame guides previously remained unresolved, and FL-only workflows had no Picture labels

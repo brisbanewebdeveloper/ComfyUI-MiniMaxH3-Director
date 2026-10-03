@@ -25,6 +25,32 @@ const { connectedProvider, contextProvider, restoredProviderValues } = await loa
 const { renderPlan } = await load("ng_view.js");
 const { extraContextInputs,compactContextInputs } = await load("ng_connector_slots.js");
 const { nativePrompt } = await load("ng_ai_request.js");
+const { contextOptions, preservePanel, optionNumber, setOptions } = await load("ng_context_controls.js");
+
+{
+  const card = {widgets:[{name:"context_options",value:JSON.stringify({schema_version:1,anchor_s:20})},
+    {name:"preserve",value:"high"}]};
+  const saved = card.widgets[0].value;
+  const panel = preservePanel(card), timing = optionNumber(card,"anchor_s","Scene time",-1);
+  assert.doesNotThrow(()=>panel.sync(),"valid partial settings must not stop card synchronization before its timing field");
+  timing.sync();
+  assert.equal(timing.input.step,"any","scene time must accept native 24 fps timestamps between decimal tenths");
+  assert.equal(timing.input.value,20,"the card must display the actual stored scene time");
+  assert.equal(card.widgets[0].value,saved,"reading defaults must not rewrite stored options");
+  assert.deepEqual(contextOptions(card).preserve,{});
+  setOptions(card,{anchor_s:0,preserve:{identity:"low"}});
+  panel.sync();timing.sync();
+  assert.equal(timing.input.value,0,"zero is a valid first-frame guide time");
+  assert.equal(contextOptions(card).preserve.identity,"low","explicit retention must survive default loading");
+  assert.equal(contextOptions(card).video_audio,"ignore");
+  timing.input.value="12.208";timing.input.checkValidity=()=>true;
+  timing.input.oninput();
+  assert.equal(contextOptions(card).anchor_s,12.208,"saving while the time field is focused must retain its latest valid edit");
+  timing.input.value="";timing.input.oninput();
+  assert.equal(contextOptions(card).anchor_s,12.208,"an empty edit must not replace the stored time with zero");
+  timing.input.value="-2";timing.input.checkValidity=()=>false;timing.input.oninput();
+  assert.equal(contextOptions(card).anchor_s,12.208,"an invalid time must preserve the previous valid value");
+}
 
 {
   const output={"1":{class_type:"CLIPLoader",inputs:{clip_name:"model.safetensors"}},

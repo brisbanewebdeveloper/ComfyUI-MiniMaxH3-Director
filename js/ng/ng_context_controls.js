@@ -16,7 +16,8 @@ export const USAGE = {
 
 export function contextOptions(node) {
   const text = values(node).context_options;
-  return text ? JSON.parse(text) : { schema_version:1, preserve:{}, start_s:0, end_s:0, anchor_s:-1, video_audio:"ignore" };
+  return { schema_version:1, preserve:{}, start_s:0, end_s:0, anchor_s:-1, video_audio:"ignore",
+    ...(text ? JSON.parse(text) : {}) };
 }
 export function setOptions(node, changes) { applyValues(node,{context_options:JSON.stringify({...contextOptions(node),...changes})}); node.graph?.change(); }
 export function selectedRoles(node, type) {
@@ -58,8 +59,8 @@ export function preservePanel(node) {
 }
 
 export function optionNumber(node,key,label,min=0) {
-  const row=element("label","ng-field"), input=element("input");input.type="number";input.min=String(min);input.step="0.1";
+  const row=element("label","ng-field"), input=element("input");input.type="number";input.min=String(min);input.step="any";
   input.setAttribute("aria-label",label);row.append(element("span","ng-field-label",label),input);
-  input.onchange=()=>{if(input.value!==""&&input.checkValidity())setOptions(node,{[key]:Number(input.value)});};
+  input.oninput=input.onchange=()=>{if(input.value!==""&&input.checkValidity())setOptions(node,{[key]:Number(input.value)});};
   return {root:row,input,sync(){if(document.activeElement!==input)input.value=contextOptions(node)[key];}};
 }
