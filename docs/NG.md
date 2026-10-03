@@ -64,7 +64,7 @@ See [connections and continuity contract](NG-external-sampling.md).
 | H3 Context Image | Image source, content roles, usages, property preservation, preview and presets |
 | H3 Context Video | Video player, source range, motion/camera/continuation usages and optional paired audio |
 | H3 Context Audio | Player/waveform, source selection, speaker, voice/copy/lock usages and presets |
-| H3 Context Text | Text editor, quick insertion, editable templates, context meaning and presets |
+| H3 Context Text | Text editor with quick insertion over the real H3 fields, one AI button that turns the note into the English prompt block, presets |
 | H3 Render Sequence | Expanded native List loop, sampler and collector; outputs VIDEO, IMAGE, AUDIO and notes |
 
 Native port types, names and colors come from ComfyUI. Context identity colors affect the cards and references.

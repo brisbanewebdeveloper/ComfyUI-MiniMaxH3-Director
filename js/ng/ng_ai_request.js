@@ -67,6 +67,11 @@ async function nativeAction(app,api,action,payload,signal) {
   });
 }
 
+// Each action names its own endpoint. "prompt" is the Text card's build button; it is listed here
+// rather than folded into the fallback, because a misrouted action would send a note to the analyze
+// endpoint and hand back a field suggestion where a prompt was expected.
+const ENDPOINTS = { direct: "/ng/direct", prompt: "/ng/h3prompt" };
+
 export async function aiAction(app,api,action,payload,signal) {
   if(payload.provider.source==="clip") {
     const loader=app.graph.getNodeById(payload.provider.loader_node_id),before=loader&&nativeAIFingerprint(loader);
@@ -77,5 +82,5 @@ export async function aiAction(app,api,action,payload,signal) {
     }
     return result;
   }
-  return request(api,action==="direct"?"/ng/direct":"/ng/analyze",payload,signal);
+  return request(api,ENDPOINTS[action]||"/ng/analyze",payload,signal);
 }

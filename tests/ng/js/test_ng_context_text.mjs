@@ -1,9 +1,36 @@
 import assert from "node:assert/strict";
-import {textEditor} from "../../../js/ng/ng_context_text.js";
+import {readFileSync} from "node:fs";
 import {inspector} from "../../../js/ng/ng_inspector.js";
+import {CONTENT} from "../../../js/ng/ng_context_controls.js";
+
+// The Text card reaches the AI through the shared transport, which reads `window.comfyAPI` while it
+// is imported. An ESM import always runs before this file's own statements, so the browser stand-in
+// is installed first and the card module is pulled in afterwards. The provider answers with a fixed
+// prompt, which is what the card is then asked to show.
+const sent={prompt:"[Shot 1] A girl in a red coat crosses the yard as the camera pushes in."};
+globalThis.window={comfyAPI:{api:{fetchApi:async()=>({json:async()=>({ok:true,suggestion:sent})})},
+  app:{graph:{getNodeById:()=>null}}}};
+globalThis.comfyAPI=globalThis.window.comfyAPI;
+const {textEditor}=await import("../../../js/ng/ng_context_text.js");
+
+// The Quick Insert rows name content kinds, and the backend decides which kinds a text note may
+// carry. The Python source is read as text rather than imported: this suite runs under node, and
+// being the one place both lists are compared is what stops them drifting apart.
+const contextSource=readFileSync(new URL("../../../ng/core/context.py",import.meta.url),"utf8");
+const quoted=(source)=>[...source.matchAll(/"([a-z_]+)"/g)].map(match=>match[1]);
+// The two names are anchored on their assignment, so a dictionary key such as "text" is never
+// mistaken for the tuple it sits in.
+const textKinds=quoted(contextSource.slice(contextSource.indexOf('"text": ('),
+  contextSource.indexOf("),\n}",contextSource.indexOf('"text": ('))));
+const allKinds=quoted(contextSource.slice(contextSource.indexOf("CONTENT_KINDS = ("),
+  contextSource.indexOf(")\n#",contextSource.indexOf("CONTENT_KINDS = ("))));
 
 class Element {
-  constructor(tag){this.tag=tag;this.children=[];this.style={};this.classList={add:()=>{}};this.dataset={};}
+  constructor(tag){this.tag=tag;this.children=[];this.style={};this.classList={add:()=>{}};this.dataset={};
+    // A textarea/input carries a value in the browser; the build panel writes one and reads it back.
+    // Without it here the panel would silently look empty, which is exactly the failure the suite
+    // is meant to catch rather than paper over.
+    if(tag==="textarea"||tag==="input")this.value="";}
   append(...nodes){this.children.push(...nodes);}
   replaceChildren(...nodes){this.children=[...nodes];}
   setAttribute(){}
@@ -92,9 +119,15 @@ console.log("Context text stylesheet: shared sheet stays free of Text rules, eve
 const rich=widgets=>Object.entries(widgets).map(([name,value])=>({name,value}));
 const styled={id:9,comfyClass:"NGContextText",properties:{},widgets:rich({context_id:"rules",name:"Rules",
   text:"[character] walks. [unknown_kind] stays. Keep @Alice."}),outputs:[{links:[21]}]};
-// change() marks the graph dirty; the fixture carries it because applying a template does the same
-// every other panel in the card does when the user picks a value.
-styled.graph={links:{21:{origin_id:9,target_id:10}},getNodeById:id=>[styled,connector].find(node=>node.id===id),change(){}};
+// The AI provider the card finds through its own connection. The build button reads it exactly the
+// way the browser does, so a card with no provider must leave the button disabled.
+const loader={id:7,comfyClass:"NGAIProvider",widgets:rich({provider:"ollama",model:"qwen3",base_url:"",source:"api",
+  api_key_env:"",vision:false,audio:false,timeout_seconds:120,max_tokens:512,keep_alive:0,temperature:0.7,
+  top_p:0.9,top_k:40,min_p:0,fixed_seed:false,seed:0,frequency_penalty:0,presence_penalty:0})};
+styled.inputs=[{name:"ai_provider",link:22}];
+styled.graph={links:{21:{origin_id:9,target_id:10},22:{origin_id:7,target_id:9}},
+  getNodeById:id=>[styled,connector,loader].find(node=>node.id===id),change(){}};
+loader.graph=styled.graph;
 const card=textEditor(styled);
 const count=card.root.all().find(node=>node.className==="ng-text-count");
 assert.equal(count.textContent,`${styled.widgets.find(w=>w.name==="text").value.length} / 2000`,
@@ -106,7 +139,7 @@ assert.equal(count.dataset.over,"true","an over-long note is flagged instead of 
 styled.widgets.find(widget=>widget.name==="text").value="[character] walks. [unknown_kind] stays.";
 
 const quick=card.root.all().filter(node=>node.className==="ng-quick-insert");
-assert.equal(quick.length,8,"one Quick Insert row per content kind");
+assert.equal(quick.length,CONTENT.text.length,"one Quick Insert row per content kind");
 for(const button of quick){
   assert.ok(button.dataset.tone,`Quick Insert ${button.dataset.kind} carries a tone`);
   assert.ok(button.children.length===2&&button.children[0].className==="ng-quick-icon",
@@ -115,33 +148,79 @@ for(const button of quick){
 const tones=quick.map(button=>button.dataset.tone);
 assert.equal(new Set(tones).size,tones.length,"each kind has its own tone, none is duplicated");
 
-const tiles=card.root.all().filter(node=>node.className==="ng-text-example");
-assert.equal(tiles.length,7,"one template tile per template");
-for(const tile of tiles)assert.ok(tile.children[0].className==="ng-example-icon",`${tile.textContent} tile shows an icon`);
+// A Quick Insert token is only useful if the prompt builder accepts it. This is the contract that
+// stopped the card from offering names the backend would report as unknown content kinds.
+assert.deepEqual(CONTENT.text.map(entry=>entry[0]),[...new Set(CONTENT.text.map(entry=>entry[0]))],
+  "no kind is listed twice");
+for(const [key] of CONTENT.text){
+  assert.ok(textKinds.includes(key),`${key} is a content kind a text note may carry`);
+  assert.ok(allKinds.includes(key),`${key} is a known content kind`);
+}
+// The sound fields are two of the three the H3 prompt is built from, so a note must be able to
+// reach them. They had no row at all before.
+for(const key of ["dialogue","voice","ambience","music","sound_effect","shot"]){
+  assert.ok(CONTENT.text.some(entry=>entry[0]===key),`Quick Insert offers ${key}`);
+}
 
 // A tone may only be used by a kind the prompt builder actually resolves. The mock-up's decorative
 // `[camera_rule]`/`[atmosphere]` names describe no field, so they must not appear as coloured tokens.
 card.sync();
 const placeholders=card.root.all().filter(node=>node.className==="ng-template-placeholder");
 assert.equal(placeholders.length,2,"both bracket tokens are highlighted");
-assert.equal(placeholders[0].dataset.tone,tones[0],"a known kind gets its own colour in the editor");
+assert.equal(placeholders[0].dataset.tone,
+  quick.find(button=>button.dataset.kind==="character").dataset.tone,
+  "a known kind gets its own colour in the editor");
 assert.equal(placeholders[1].dataset.tone,undefined,"an unknown bracket stays neutral instead of borrowing a colour");
-assert.doesNotMatch(card.root.all().filter(n=>n.tag==="select")[0].children.map(n=>n.textContent).join("|"),/camera_rule|atmosphere/,
-  "the reference's decorative token names are not introduced as templates");
+assert.doesNotMatch(CONTENT.text.map(entry=>entry[0]).join("|"),/camera_rule|atmosphere/,
+  "the reference's decorative token names are not introduced as kinds");
 assert.ok(card.root.all().some(node=>node.className==="ng-text-grow"),"the editor keeps the reference's grow button");
 
-// Choosing a template writes that template's own text, and the button icon follows the choice.
-const picker=card.root.all().filter(node=>node.tag==="select")[0];
-const useButton=card.root.all().find(node=>node.className==="ng-template-use");
-picker.value="Dialogue Rules";picker.onchange();
-assert.ok(useButton.children[0].className==="ng-template-icon","Use Template keeps an icon");
-useButton.onclick();
-assert.equal(styled.widgets.find(widget=>widget.name==="text").value,
-  "@Character says: write the exact dialogue here.","the chosen template's own text is written");
-// An example tile selects its template and applies it in one click, like the reference's tiles.
-// The handler is invoked directly: it is what a click runs, without depending on a DOM click().
-const tile=card.root.all().find(node=>node.className==="ng-text-example"&&node.children[1].textContent==="Camera Rules");
-tile.onclick();
-assert.match(styled.widgets.find(widget=>widget.name==="text").value,/framing, camera movement and lens/,
-  "an example tile applies the template it stands for");
-console.log("Context text reference layout: counter, kind icons and tones, token colours, template tiles");
+// The card is a text-to-video note now. Templates and example tiles were Claude's invention for a
+// free-text box; they wrote placeholder sentences into the one field the AI button reads, so the
+// user's own words had to be deleted before the prompt could be built. Neither has a place left.
+for(const gone of ["ng-template-use","ng-text-example","ng-template-row"]){
+  assert.ok(!card.root.all().some(node=>node.className===gone),`${gone} is gone from the Text card`);
+}
+// A note has no medium, so there is nothing for "Use As" to point at. The other three cards keep it.
+assert.ok(!card.root.all().some(node=>node.className==="ng-option-row"),"the Text card has no Use As list");
+
+// One AI action, and it is the button the card exists for.
+const go=card.root.all().find(node=>node.className==="ng-build-go");
+assert.ok(go,"the card offers Build H3 Prompt");
+assert.equal(go.children[0].className,"ng-build-icon","the build button shows an icon");
+const block=card.root.all().filter(node=>node.tag==="select")[0];
+assert.deepEqual(block.children.map(option=>option.value),["global","storyboard"],
+  "both prompt blocks the enhance node produces are offered");
+const length=card.root.all().find(node=>node.type==="number");
+assert.equal(length.min,"4","the length field starts at the model's shortest video");
+assert.equal(length.max,"15","the length field stops at the model's longest video");
+assert.equal(length.value,"8","the length field opens on a mid-range video");
+// The button reads the visible editor, not the widget, so the fixture has to put the note there
+// the way the card's own sync does.
+// The button reads the visible editor, not the widget, so the fixture has to put the note there
+// the way the card's own sync does. The card holds several textareas, so the editor is the
+// classless one - the answer box and the analysis box both carry a class.
+const note=card.root.all().find(node=>node.tag==="textarea"&&node.className==="");
+note.value="[character] walks. [unknown_kind] stays.";
+// The duration is part of what the AI is told, so it may never leave the model's accepted range.
+for(const [given,expected] of [["1","4"],["99","15"],["abc","8"],["12","12"]]){
+  length.value=given;await go.onclick();
+  assert.equal(length.value,expected,`a typed length of ${given} is clamped to ${expected}`);
+}
+// Building writes a proposal, not the note: the user's own text survives until they say otherwise.
+assert.equal(styled.widgets.find(widget=>widget.name==="text").value,"[character] walks. [unknown_kind] stays.",
+  "building never overwrites the note by itself");
+const answer=card.root.all().find(node=>node.className==="ng-build-answer");
+assert.equal(answer.value,sent.prompt,`the answer lands in the box the user reads first (hint: ${card.root.all().find(node=>node.tagName==="small")?.textContent})`);
+assert.equal(styled.widgets.find(widget=>widget.name==="text").value,"[character] walks. [unknown_kind] stays.",
+  "the note is still untouched while the answer waits");
+const use=card.root.all().find(node=>node.className==="ng-build-use");
+use.onclick();
+assert.equal(styled.widgets.find(widget=>widget.name==="text").value,sent.prompt,"Use this prompt writes the answer");
+assert.equal(styled.properties.ng_text_note,"[character] walks. [unknown_kind] stays.","the original text is kept");
+const restore=card.root.all().find(node=>node.className==="ng-build-restore");
+restore.onclick();
+assert.equal(styled.widgets.find(widget=>widget.name==="text").value,"[character] walks. [unknown_kind] stays.",
+  "the original text comes back");
+assert.equal(styled.properties.ng_text_note,undefined,"and the backup is cleared, so Restore disappears");
+console.log("Context text card: real H3 kinds incl. sound, one AI button, proposal before overwrite");

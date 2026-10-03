@@ -8,6 +8,7 @@ from server import PromptServer
 from ..adapters.analysis import analyze
 from ..adapters.analyze_all import analyze_all
 from ..adapters.auto_direct import direct
+from ..adapters.h3_prompt import build
 
 
 def _answer(data):
@@ -38,5 +39,14 @@ async def analyze_every_context(request):
 async def direct_scenes(request):
     try:
         return _answer({"suggestion": await direct(await request.json())})
+    except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
+        return _failure(error)
+
+
+@PromptServer.instance.routes.post("/ng/h3prompt")
+async def build_h3_prompt(request):
+    """The Text card's AI button: a note in any language becomes the English H3 block."""
+    try:
+        return _answer({"suggestion": await build(await request.json())})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)

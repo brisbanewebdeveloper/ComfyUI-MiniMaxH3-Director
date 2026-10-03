@@ -13,7 +13,7 @@ MEDIA = ("image", "video", "audio", "text")
 PRESERVE = ("low", "medium", "high")
 
 CONTENT_KINDS = ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style", "pose",
-                 "action", "expression", "lighting", "effect", "composition",
+                 "action", "shot", "expression", "lighting", "effect", "composition",
                  "voice", "dialogue", "music", "ambience", "sound_effect", "camera_motion", "motion", "rules", "shot_rhythm", "identity")
 # Which content roles each medium can actually hold. A card is one medium, so offering it a role
 # from another medium is not a suggestion - it is a card that can never render. This lived in the
@@ -24,7 +24,12 @@ CONTENT_BY_MEDIA = {
               "pose", "composition"),
     "video": ("motion", "camera_motion", "environment", "shot_rhythm", "identity", "action", "effect", "style"),
     "audio": ("voice", "dialogue", "music", "ambience", "sound_effect"),
-    "text": ("style", "rules", "environment", "character", "outfit", "camera_motion", "lighting", "action", "dialogue"),
+    # A text note describes a whole video, so it carries what the video is made of: the shot, the
+    # dialogue and - the reason these are here - the sound. overall_soundscape and
+    # non_diegetic_music are two of the three fields the model is asked to write, and a note that
+    # cannot name voice, ambience, music or a sound effect cannot feed them.
+    "text": ("shot", "action", "dialogue", "voice", "ambience", "music", "sound_effect",
+             "camera_motion", "character", "outfit", "environment", "lighting", "style", "rules"),
 }
 
 USAGE_BY_MEDIA = {

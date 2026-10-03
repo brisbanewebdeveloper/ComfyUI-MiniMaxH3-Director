@@ -39,7 +39,10 @@ function attach(node,media) {
   let preview=null,editor=null;
   const analysisPanel=section("✨ Preview / Analysis"),footer=element("div","ng-context-footer");
   const relations=assetPanel(node);if(relations){components.push(relations);footer.append(relations.root);}
-  if(media==="text") {editor=textEditor(node);components.push(editor);editor.sidebar.append(usage.root,analysisPanel);top.append(editor.root);}
+  // A text note is not a medium, so it has no role to assign. The image, video and audio cards keep
+  // their "Use As" panel, where a role says what the model should do with that file; a note already
+  // says what it means, and a second set of roles to pick just competed with the text itself.
+  if(media==="text") {editor=textEditor(node);components.push(editor);editor.sidebar.append(analysisPanel);top.append(editor.root);}
   else {preview=mediaEditor(node,media,api);source.append(preview.metadata);
     content.root.append(analysisPanel);
     if(media==="audio"){top.append(preview.root);lower.append(content.root,usage.root,preview.settings);}

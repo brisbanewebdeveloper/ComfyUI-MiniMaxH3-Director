@@ -3,37 +3,45 @@ import { ensureContextTextStyle } from "./ng_context_text_style.js";
 import { control, section } from "./ng_editor_fields.js";
 import { icon } from "./ng_icons.js";
 import { CONTENT } from "./ng_context_controls.js";
-import { relatedContexts } from "./ng_read.js";
+import { relatedContexts, contextProvider } from "./ng_read.js";
+import { aiAction } from "./ng_ai_request.js";
 import { renameReferences, renderReferences } from "./ng_references.js";
+
+// The browser handle is read when the button runs, not while this module loads. ComfyUI's api and
+// app are published before any card is built, but binding them at import time also froze whatever
+// existed at that moment, which is a value that can be replaced by a later plugin or a test stand-in.
+const comfy=()=>window.comfyAPI;
 
 // The reference card counts "298 / 2000" above the editor. That is guidance, not a cap: the note is
 // free text for the prompt builder, so an over-limit count turns red instead of blocking the input.
 const CHARACTER_LIMIT = 2000;
 
 // One icon and one colour per kind, used by the Quick Insert row AND by the same bracket token in the
-// editor, so the two places are recognisably the same thing. The names come from CONTENT.text because
-// that list is what the prompt builder resolves; the decorative `[camera_rule]`/`[atmosphere]` names on
-// the mock-up describe no field and are deliberately not introduced.
+// editor, so the two places are recognisably the same thing. The names come from CONTENT.text, which
+// is the list CONTENT_BY_MEDIA["text"] in ng/core/context.py accepts - a token naming anything else
+// would be reported as an unknown content kind.
 const KINDS = {
-  character: { icon: "user", tone: "rose" },
-  environment: { icon: "map", tone: "green" },
-  outfit: { icon: "shirt", tone: "blue" },
-  camera_motion: { icon: "film", tone: "cyan" },
-  lighting: { icon: "sun", tone: "orange" },
-  action: { icon: "sparkle", tone: "red" },
+  shot: { icon: "clapper", tone: "rose" },
   dialogue: { icon: "mic", tone: "purple" },
-  rules: { icon: "check", tone: "teal" },
+  voice: { icon: "user", tone: "orange" },
+  ambience: { icon: "globe", tone: "teal" },
+  music: { icon: "music", tone: "cyan" },
+  sound_effect: { icon: "sparkle", tone: "red" },
+  camera_motion: { icon: "film", tone: "blue" },
+  character: { icon: "user", tone: "pink" },
+  outfit: { icon: "shirt", tone: "indigo" },
+  environment: { icon: "map", tone: "green" },
+  lighting: { icon: "sun", tone: "amber" },
+  style: { icon: "palette", tone: "lime" },
+  rules: { icon: "check", tone: "slate" },
+  action: { icon: "sparkle", tone: "rose" },
 };
 
-const TEMPLATES = {
-  "Cinematic Rules": { icon: "clapper", text: "Keep camera movement slow and physical. Avoid rapid cuts. Maintain cool industrial lighting." },
-  "Character Description": { icon: "user", text: "@Character: describe identity, appearance and behaviour here." },
-  "World Lore": { icon: "globe", text: "Describe the location, world rules and atmosphere here." },
-  "Style Instructions": { icon: "palette", text: "Describe the visual style, colour palette and texture here." },
-  "Camera Rules": { icon: "film", text: "Describe framing, camera movement and lens here." },
-  "Dialogue Rules": { icon: "mic", text: "@Character says: write the exact dialogue here." },
-  "Scene Constraints": { icon: "check", text: "Describe what must stay consistent and what must not happen here." },
-};
+// The two blocks the AI button can write, and the length the note is timed for. Both ranges are the
+// model's own: the prompt-writing guide states 4-15 seconds, and the enhance node's two presets are
+// the shape the compiled prompt actually expects.
+const PRESETS = [["global", "Scene + style (one block)"], ["storyboard", "Storyboard (shots + cuts)"]];
+const SECONDS = { min: 4, max: 15, step: 1, value: 8 };
 
 export function textEditor(node) {
   ensureContextTextStyle();
@@ -57,27 +65,67 @@ export function textEditor(node) {
       const insert=`[${key}]`;applyValues(node,{text:text.value.slice(0,position)+insert+text.value.slice(text.selectionEnd??position)});
       text.focus();text.setSelectionRange(position,position+insert.length);node.graph?.change();};quick.append(button);
   }
-  const templates=section("⚙ Text Templates","ng-template-panel"), row=element("div","ng-template-row"),
-    choices=element("select"), use=element("button","ng-template-use");
-  choices.setAttribute("aria-label","Text template");for(const name of Object.keys(TEMPLATES))choices.append(element("option","",name));
-  // The button carries the icon of the template that is currently chosen, so it previews what Use
-  // Template will actually write instead of a neutral glyph. The element is held directly rather than
-  // looked up again, so swapping it never depends on a query the surrounding panel has to answer.
-  const useIcon=icon(TEMPLATES[Object.keys(TEMPLATES)[0]].icon,"ng-template-icon");
-  const syncUseIcon=()=>{useIcon.innerHTML=icon(TEMPLATES[choices.value].icon,"ng-template-icon").innerHTML;};
-  use.append(useIcon,element("span","","Use Template"));
-  const applyTemplate=()=>{applyValues(node,{text:TEMPLATES[choices.value].text});node.graph?.change();};
-  choices.onchange=syncUseIcon;
-  use.onclick=applyTemplate;
-  row.append(choices,use);templates.append(row);
-  const examples=section("☀ Example Templates","ng-example-panel");
-  for(const [name,template] of Object.entries(TEMPLATES)){
-    const button=element("button","ng-text-example");
-    button.append(icon(template.icon,"ng-example-icon"),element("span","ng-example-label",name));
-    // A tile stands for one template: it selects it and applies it, which is the one thing the user
-    // wants from it. Going through applyTemplate instead of a synthetic click keeps both paths identical.
-    button.onclick=()=>{choices.value=name;syncUseIcon();applyTemplate();};examples.append(button);}
-  const main=element("div","ng-text-main"),sidebar=element("div","ng-text-sidebar");main.append(editor,templates,examples);root.append(main,quick,sidebar);
+  // One button, one job: rewrite the note above into the English block H3 expects. It deliberately
+  // does not touch the text field. The note is the user's own words, possibly in any language, and
+  // a rewrite is a proposal - overwriting the only copy the moment a button is pressed is how a
+  // five-line note gets lost. So the answer arrives in a box the user reads first.
+  const build=section("✦ Build H3 Prompt","ng-build-panel"), options=element("div","ng-build-row"),
+    preset=element("select"), seconds=element("input"), go=element("button","ng-build-go"),
+    answer=element("textarea","ng-build-answer"), hint=element("small","ng-muted"), cancel=element("button","","Cancel");
+  preset.setAttribute("aria-label","Prompt block");
+  for(const [value,label] of PRESETS){const option=element("option","",label);option.value=value;preset.append(option);}
+  preset.value=PRESETS[0][0];
+  seconds.type="number";seconds.min=String(SECONDS.min);seconds.max=String(SECONDS.max);
+  seconds.step=String(SECONDS.step);seconds.value=String(SECONDS.value);seconds.setAttribute("aria-label","Video length in seconds");
+  go.append(icon("sparkle","ng-build-icon"),element("span","","Build prompt"));
+  go.onclick=async()=>{
+    const provider=contextProvider(node);
+    if(!provider){hint.textContent="AI off · connect H3 AI Loader directly or through the Connector.";return;}
+    // The note is read here rather than from the widget, so what is sent is exactly what is on
+    // screen - including a rename the user has typed but not committed.
+    const note=field.field.value.trim();
+    if(!note){hint.textContent="Write the scene first, in any language.";answer.value="";sync();return;}
+    busy=true;controller=new AbortController();hint.textContent="";answer.value="";sync();
+    try{
+      const secondsValue=Math.min(SECONDS.max,Math.max(SECONDS.min,Number(seconds.value)||SECONDS.value));
+      seconds.value=String(secondsValue);
+      const data=await aiAction(comfy().app,comfy().api,"prompt",{note,seconds:secondsValue,preset:preset.value,provider},controller.signal);
+      answer.value=data.suggestion?.prompt??"";
+      answer.hidden=!answer.value;
+    }catch(error){hint.textContent=error.message;answer.value="";answer.hidden=true;}
+    finally{busy=false;controller=null;sync();}
+  };
+  cancel.onclick=()=>controller?.abort();
+  const use=element("button","ng-build-use","Use this prompt");
+  // The note is kept before it is replaced, so the button is undoable without a workflow history.
+  use.onclick=()=>{
+    if(!answered())return;
+    node.properties||={};
+    node.properties.ng_text_note=node.properties.ng_text_note||values(node).text||"";
+    applyValues(node,{text:answer.value});node.graph?.change();
+    hint.textContent="Prompt written to the note. Your original text is kept in this card.";answer.value="";answer.hidden=true;sync();
+  };
+  const restore=element("button","ng-build-restore","Restore my text");
+  restore.onclick=()=>{
+    const original=node.properties?.ng_text_note;
+    if(original===undefined)return;
+    applyValues(node,{text:original});delete node.properties.ng_text_note;node.graph?.change();
+    hint.textContent="Your own text is back.";sync();
+  };
+  const actions=element("div","ng-build-actions");
+  options.append(preset,seconds,go,cancel);actions.append(use,restore);build.append(options,hint,answer,actions);
+  let busy=false,controller=null;
+  // The answer is read defensively: a rebuilt panel can sync once before its textarea exists, and a
+  // card that cannot render its own button state is worse than one missing an update.
+  const answered=()=>String(answer.value??"").trim();
+  function syncBuild() {
+    const provider=contextProvider(node);
+    go.disabled=busy||!provider;cancel.hidden=!busy;use.disabled=busy||!answered();
+    restore.hidden=node.properties?.ng_text_note===undefined;
+    answer.hidden=!answered();
+  }
+  const main=element("div","ng-text-main"),sidebar=element("div","ng-text-sidebar");
+  main.append(editor,build,quick);root.append(main,sidebar);
   function sync() {
     const entries=relatedContexts(node),previous=node.properties?.ng_context_names||{},current=values(node).text||"";
     const renamed=renameReferences(current,previous,entries);
@@ -99,7 +147,11 @@ export function textEditor(node) {
         if(KINDS[key]){span.dataset.kind=key;span.dataset.tone=KINDS[key].tone;}}
       else renderReferences(span,part,entries,element);preview.append(span);}
     preview.append(element("span","","\n"));
-    preview.title="Template placeholders in brackets must be replaced with your own descriptions. @Name refers to a connected context.";
+    preview.title="A bracket marks a part of the video. Write what belongs there, or let Build prompt fill it in. @Name refers to a connected context.";
+    // The build panel reads the same state this function writes, so it is refreshed with it rather
+    // than only when its own buttons are clicked - connecting an AI provider has to enable the
+    // button, and that happens without any interaction here.
+    syncBuild();
   }
   sync();return {root,sidebar,sync};
 }

@@ -58,7 +58,7 @@ Open **`example_workflows/H3 Director NG - text studio.json`** for the complete 
 for references, or **`H3 Director NG - native sampler.json`** to use native Output ports with your sampler.
 Select your own installed model files and reference media as needed. Native port colors come from ComfyUI.
 
-The four Context nodes have compact cards and detailed media workspaces: previews, roles, preservation, source ranges, presets and text templates.
+The four Context nodes have compact cards and detailed media workspaces: previews, roles, preservation, source ranges and presets. The Text card is a plain text-to-video note: quick insertion over the real H3 fields, and one AI button that rewrites whatever you wrote, in any language, into the English prompt block H3 expects.
 Rendering expands native ComfyUI loops/samplers, preserving preview, progress and Stop. The original timeline Director below remains **Legacy**.
 Technical chunk/laboratory nodes are available under NG/Expert and keep their saved IDs.
 

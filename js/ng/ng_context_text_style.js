@@ -45,19 +45,24 @@ const CSS = `
 .ng-studio-context[data-media=text] [data-tone=red] { color:#f87171; border-color:#5e2626; background:#2a1212; }
 .ng-studio-context[data-media=text] [data-tone=purple] { color:#c084fc; border-color:#4a2a68; background:#1e1230; }
 .ng-studio-context[data-media=text] [data-tone=teal] { color:#2dd4bf; border-color:#1c5450; background:#08211f; }
+.ng-studio-context[data-media=text] [data-tone=pink] { color:#f472b6; border-color:#6b2447; background:#2a0d1c; }
+.ng-studio-context[data-media=text] [data-tone=indigo] { color:#a5b4fc; border-color:#3b3f7a; background:#14162e; }
+.ng-studio-context[data-media=text] [data-tone=amber] { color:#fbbf24; border-color:#6b4a10; background:#2a1f06; }
+.ng-studio-context[data-media=text] [data-tone=lime] { color:#a3e635; border-color:#41591a; background:#141f06; }
+.ng-studio-context[data-media=text] [data-tone=slate] { color:#94a3b8; border-color:#3c4a5e; background:#131c28; }
 .ng-studio-context[data-media=text] .ng-quick-insert[data-tone] .ng-quick-icon { color:inherit; }
-/* Templates: the select and the Use Template button share one row, and the button's icon follows the
-   selection so it shows which template will actually be written. */
-.ng-studio-context[data-media=text] .ng-template-row { display:flex; gap:8px; align-items:center; }
-.ng-studio-context[data-media=text] .ng-template-row select { flex:1 1 auto; min-width:0; }
-.ng-studio-context[data-media=text] .ng-template-use { display:flex; align-items:center; gap:7px; flex:none; white-space:nowrap; }
-.ng-studio-context[data-media=text] .ng-template-icon { width:15px; height:15px; }
-/* Example templates are the icon tiles of the reference, one per template, laid out as cards. */
-.ng-studio-context[data-media=text] .ng-example-panel { display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:7px; }
-.ng-studio-context[data-media=text] .ng-example-panel h3 { grid-column:1/-1; }
-.ng-studio-context[data-media=text] .ng-text-example { display:flex; align-items:center; gap:8px; padding:8px; font-size:11px; text-align:left; background:#0d1c30; border:1px solid #24406b; border-radius:8px; }
-.ng-studio-context[data-media=text] .ng-example-icon { flex:none; width:16px; height:16px; color:#4a9eff; }
-.ng-studio-context[data-media=text] .ng-example-label { line-height:1.3; }
+/* Build H3 Prompt: the card's one AI action, and the only place it produces text. */
+.ng-studio-context[data-media=text] .ng-build-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.ng-studio-context[data-media=text] .ng-build-row select { flex:1 1 190px; min-width:0; }
+.ng-studio-context[data-media=text] .ng-build-row input[type=number] { flex:none; width:74px; }
+.ng-studio-context[data-media=text] .ng-build-go { display:flex; align-items:center; gap:7px; flex:none;
+  background:#5b3bbf; border-color:#7c5be0; color:#fff; }
+.ng-studio-context[data-media=text] .ng-build-icon { width:15px; height:15px; }
+.ng-studio-context[data-media=text] .ng-build-answer { width:100%; min-height:150px; margin-top:8px;
+  font:12px/1.55 ui-monospace,monospace; background:#060d17; border:1px solid #24406b; border-radius:8px; padding:9px 10px; }
+.ng-studio-context[data-media=text] .ng-build-answer[hidden] { display:none; }
+.ng-studio-context[data-media=text] .ng-build-actions { display:flex; gap:6px; margin-top:8px; }
+.ng-studio-context[data-media=text] .ng-build-use { background:#1c4f3f; border-color:#2a7a5f; color:#d6f5e6; }
 /* Use As on the right reads as a list of radios rather than a stack of small checkboxes. */
 .ng-studio-context[data-media=text] .ng-text-sidebar .ng-option-row { display:flex; align-items:center; gap:9px; padding:5px 7px; font-size:12px; border-radius:7px; }
 .ng-studio-context[data-media=text] .ng-text-sidebar .ng-option-row input { width:15px; height:15px; accent-color:#4a9eff; }

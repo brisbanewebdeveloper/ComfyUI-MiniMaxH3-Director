@@ -1,11 +1,16 @@
 import { element, values, applyValues } from "./ng_widgets.js";
 import { section } from "./ng_editor_fields.js";
 
+// The H3 prompt is built from three fields, and sound is one of them: overall_soundscape and
+// non_diegetic_music are written by the model, so a note has to be able to say what the scene
+// should sound like. Audio had no rows here at all, which left the two sound fields unreachable
+// from the card that exists to describe the video.
 export const CONTENT = {
   image: [["character","Character"],["face","Face / Identity"],["outfit","Outfit"],["pose","Pose"],["environment","Environment"],["style","Style"]],
   video: [["motion","Character Motion"],["camera_motion","Camera Motion"],["environment","Environment"],["shot_rhythm","Shot Rhythm"],["identity","Character Identity"]],
   audio: [["voice","Voice"],["music","Music"],["ambience","Ambience"],["sound_effect","Sound Effect"]],
-  text: [["character","Character"],["environment","Environment"],["outfit","Outfit / Style"],["camera_motion","Camera Rule"],["lighting","Lighting / Mood"],["action","Action / Motion"],["dialogue","Dialogue Rule"],["rules","Scene Constraint"]],
+  text: [["shot","Shot / Action"],["dialogue","Dialogue"],["voice","Voice"],["ambience","Ambience / Soundscape"],["music","Music"],["sound_effect","Sound Effect"],
+         ["camera_motion","Camera"],["character","Character"],["outfit","Outfit"],["environment","Environment"],["lighting","Lighting"],["style","Style"],["rules","Constraint"]],
 };
 export const USAGE = {
   image: [["reference","Reference"],["first_frame","First Frame"],["keyframe","Keyframe"],["last_frame","Last Frame"],["storyboard","Storyboard Frame"]],
