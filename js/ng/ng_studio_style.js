@@ -105,13 +105,12 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-studio-context .ng-waveform { display:block; width:100%; height:100px; }
 .ng-wave-selection { position:absolute; top:0; bottom:0; background:#278cff30; border:1px solid #6094ff; pointer-events:none; }
 .ng-wave-handle { position:absolute; top:0; bottom:0; width:10px; background:#6195ff80; cursor:ew-resize; pointer-events:auto; touch-action:none; }
-.ng-text-workspace { display:grid; grid-template-columns:minmax(0,1fr) 190px; gap:10px; }
-.ng-text-workspace textarea { min-height:250px; font:14px/1.6 ui-monospace,monospace; }
-.ng-text-count { display:block; text-align:right; color:#84a3c4; font-size:11px; }
+/* .ng-text-highlight / .ng-text-token / .ng-reference-unknown stay in this shared sheet on purpose:
+   ng_studio.js, ng_story_editor.js and ng_references.js render references in the Director and in the
+   shot editor too, so they are not owned by the Text context card. */
 .ng-text-highlight { white-space:pre-wrap; font:12px/1.5 ui-monospace,monospace; max-height:100px; overflow:auto; }
 .ng-text-token { color:#6ccbff; }
 .ng-reference-unknown { color:#ffc273; text-decoration:underline wavy; }
-.ng-quick-insert { display:block; width:100%; margin:7px 0; text-align:left; }
 .ng-connector-groups { display:grid; gap:7px; }
 .ng-connector-group { display:flex; justify-content:space-between; gap:12px; border:1px solid #2b5369; padding:9px; border-radius:8px; }
 .ng-connector-group strong { color:#76e3d7; }
@@ -169,7 +168,9 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-context-details .ng-option-row { padding:4px 2px; }
 .ng-context-details .ng-preserve-row { padding:4px 0; }
 .ng-context-footer { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; }
-.ng-studio-context[data-media=audio] .ng-context-top,.ng-studio-context[data-media=text] .ng-context-top { display:block; }
+.ng-studio-context[data-media=audio] .ng-context-top { display:block; }
+/* The text card's top row also switches to display:block; that rule moved into ng_context_text_style.js,
+   where the Text card keeps the rest of its own layout. */
 .ng-studio-context[data-media=audio] .ng-context-bottom { grid-template-columns:1fr 1fr 1.25fr; gap:10px; }
 .ng-studio-context[data-media=audio] .ng-context-footer { grid-template-columns:1fr 1.25fr 1.25fr; }
 .ng-studio-context[data-media=audio] .ng-waveform { height:82px; }
@@ -182,24 +183,8 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-context-details .ng-field { margin:4px 0; gap:3px; }
 .ng-context-details input,.ng-context-details select { padding:5px 7px; }
 .ng-wave-ruler { display:flex; justify-content:space-between; color:#9cacc8; font-size:10px; padding:2px 0; }
-.ng-text-workspace { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(155px,.85fr) minmax(230px,1.1fr); gap:10px; }
-.ng-text-workspace > .ng-section:nth-child(n+3) { grid-column:auto; }
-.ng-text-workspace .ng-quick-insert { margin:5px 0; padding:7px; font-size:12px; }
-.ng-text-workspace .ng-text-main .ng-section:last-child { display:flex; flex-wrap:wrap; gap:5px; }
-.ng-text-workspace .ng-text-main .ng-section:last-child h3 { flex-basis:100%; }
-.ng-text-workspace .ng-text-main .ng-section:last-child button { font-size:11px; padding:5px; }
-.ng-editor-overlay { display:grid; position:relative; min-width:0; }
-.ng-studio-context[data-media=text] .ng-editor-overlay > textarea,.ng-studio-context[data-media=text] .ng-editor-overlay > pre { grid-area:1/1; width:100%; margin:0;
-  padding:8px; font:13px/1.6 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:break-word; tab-size:4; border:1px solid transparent; }
-.ng-editor-overlay > pre { pointer-events:none; color:#e5e9ee; overflow:hidden; min-height:300px; max-height:100%; background:#0a1627; border-radius:8px; }
-.ng-studio-context .ng-editor-overlay > textarea { color:transparent; caret-color:#fff; background:transparent; min-height:300px; position:relative; }
-.ng-editor-overlay textarea::selection { background:#42688c88; }
-.ng-template-placeholder { color:#e2b887; }
-.ng-text-sidebar .ng-suggestion:empty { display:none; }
-.ng-text-sidebar .ng-tools { gap:4px; }
-.ng-text-sidebar .ng-tools button { font-size:11px; padding:5px 6px; }
-.ng-text-sidebar .ng-muted { font-size:11px; }
-.ng-text-workspace .ng-text-main .ng-tools { display:flex; }
+/* The Text card's own layout moved into ng_context_text_style.js. It is the only node with a text
+   workspace, so its rules cannot reach the image, video, audio or product cards that share this sheet. */
 .ng-context-footer .ng-tools { gap:5px; }
 .ng-context-footer .ng-tools input,.ng-context-footer .ng-tools select { flex-basis:100%; }
 .ng-studio { font-size:13px; padding:12px; }
