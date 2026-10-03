@@ -1,6 +1,7 @@
-"""Resolve named video/audio mentions against the same presentation order as native H3."""
+"""Resolve named media and frame guides against actual native H3 presentation."""
 from .mentions import replace_mentions
 from . import fields
+from .issues import Issue
 
 
 def media_labels(context, refs):
@@ -26,14 +27,40 @@ def resolve_media_mentions(prompt, context, refs):
 
 
 def prompt_labels(result, mapping, context, refs):
+    pictures = [ref for ref in refs if ref.kind == "picture"]
+    if result.get("mode") == "fl2va":
+        # ImageToVideo tokenizes first then last even though neither is a Ref2VA reference.
+        pictures = [ref for kind in ("first_frame", "last_frame") for ref in refs if ref.kind == kind]
     labels = [("<Picture %d>" % number, ref.ctx_id) for number, ref in
-              enumerate((ref for ref in refs if ref.kind == "picture"), 1)]
+              enumerate(pictures, 1)]
     labels += [("<Subject %d>" % subject, mapping.slot_items[slot - 1]) for slot, subject in result["subject_of_slot"].items()]
     for slot in result["ref_image_slots"]:
         if slot.get("source") == "timeline" and slot.get("subject"):
             source = slot["event"]["seg"].get("imageFile", "")
             labels.append(("<Subject %d>" % slot["subject"], mapping.media_id(slot["event"]["seg"], source)))
     return tuple(labels) + media_labels(context, refs)
+
+
+def resolve_guide_mentions(prompt, context, refs, labels):
+    pictures = {identity: label for label, identity in reversed(labels) if label.startswith("<Picture ")}
+    unnumbered = {ref.ctx_id: ref for ref in refs if ref.kind in ("keyframe", "continue_video")}
+    issues = []
+    for item in context.items:
+        guide = (item.media == "image" and set(item.effective_usage) & {"first_frame", "last_frame", "keyframe", "storyboard"}) or (
+            item.media == "video" and "continue" in item.effective_usage)
+        if not guide or not item.source:
+            continue
+        ref = unnumbered.get(item.id)
+        fallback = "the continuation frame" if ref and ref.kind == "continue_video" else "the guide image"
+        label = pictures.get(item.id) or item.description.strip().rstrip(".") or (fallback if ref else item.name)
+        resolved = replace_mentions(prompt, {item.name: label})
+        if resolved != prompt and item.id not in pictures:
+            code = "guide_mention_prose" if ref else "guide_mention_unavailable"
+            reason = "has frame conditioning but no numbered reference token" if ref else "is not presented in this chunk"
+            issues.append(Issue(code, "'%s' %s; its named mention uses prose. Keep it as Reference or Motion "
+                                "if it must remain a numbered visual reference." % (item.name, reason), item.name))
+        prompt = resolved
+    return prompt, tuple(issues)
 
 
 def read_prompt_labels(data, path):

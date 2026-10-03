@@ -11,7 +11,7 @@ from .chunks import Chunk, ContinuityPlan
 from .context import DirectorContext, check_item
 from .issues import Issue
 from .legacy_bridge import build_timeline, decide_mode
-from .media_labels import resolve_media_mentions, prompt_labels, read_prompt_labels
+from .media_labels import resolve_media_mentions, resolve_guide_mentions, prompt_labels, read_prompt_labels
 from .asset_prompt import apply_asset_relations
 
 KINDS = ("picture", "video", "audio", "lock", "first_frame", "last_frame", "keyframe", "continue_video")
@@ -167,7 +167,9 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     refs = _selected_audio(context, _media_refs(result, mapping)) + _scene_guides(context, chunk)
     related_prompt, relation_issues = apply_asset_relations(result, mapping, context, refs)
     prompt = resolve_media_mentions(related_prompt, context, refs)
+    labels = prompt_labels(result, mapping, context, refs)
+    prompt, guide_issues = (prompt, ()) if context.prompt_override.strip() else resolve_guide_mentions(prompt, context, refs, labels)
     return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or prompt, refs=tuple(refs),
-                         issues=tuple(voice_notes) + relation_issues + tuple(_issues(context, chunk, result, continuity)),
-                         prompt_labels=prompt_labels(result, mapping, context, refs))
+                         issues=tuple(voice_notes) + relation_issues + guide_issues + tuple(_issues(context, chunk, result, continuity)),
+                         prompt_labels=labels)
 

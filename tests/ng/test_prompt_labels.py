@@ -44,11 +44,11 @@ class PromptLabels(unittest.TestCase):
             self.assertNotIn("voice3", labels.values())
             self.assertNotIn("<Audio 4>", labels)
 
-    def test_frame_only_mode_has_no_reference_labels(self):
+    def test_frame_only_mode_has_native_picture_labels_without_subject_labels(self):
         result = self.plan([card("image", "first", "first_frame")])
         self.assertTrue(result["ok"], result)
         for chunk in result["chunks"]:
-            self.assertEqual(chunk["prompt_labels"], {})
+            self.assertEqual(chunk["prompt_labels"], {"<Picture 1>": "first"} if chunk["index"] == 0 else {})
 
     def test_optional_display_labels_roundtrip_and_load_old_chunks(self):
         old = compile_.CompiledChunk(0, "t2va", "Move.").to_dict()

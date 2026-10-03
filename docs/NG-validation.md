@@ -3,6 +3,33 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Native frame-guide names and Inspector budget: E35 (2026-10-03)
+
+Known `@Name` references to frame guides previously remained unresolved, and FL-only workflows had no Picture labels
+even though native ImageToVideo sends first/last images to its tokenizer. The compiler now follows that native ordering
+and uses existing Picture numbers for Ref2VA anchors. Unnumbered Continue/AddGuide frames use descriptive prose with
+a warning; guides absent from a chunk report availability. Unknown names and raw prompt overrides are preserved.
+The Inspector budget now counts actual reference presentations, excluding duplicated Ref2VA anchors and unnumbered
+Continue/AddGuide/audio-lock conditioning. First and last pictures from the same FL card still consume two image slots.
+
+Eight new Python contracts and two JS fixtures reproduce and verify these changes. 378 integrated NG checks:
+377 passed/one existing Windows symlink skip; Legacy 371/371 and 74/74, five JS suites, syntax/structure/diff checks passed.
+Weighted mixed API Run: 299.47 s, three chunks, 294 frames/392000 samples at 32 kHz, 12.25 seconds;
+native Picture counts 5/4/5, Voice Audio 1/2 lengths 80/60, exact selected continuation frame and both previous AV tails.
+Weighted FL-only Run: 32.36 s, 124 frames/165333 samples at 32 kHz; native first/last guides and Picture 1/2 confirmed.
+Saved/reloaded example `H3 NG - native guide names E35` and actual browser Run: 188.526 s, 294 frames,
+12.25-second video/audio. Fresh Inspector shows images 5, video 0, audio 2, total 7; all nine Context cards load files directly.
+One Director Output, normal RandomNoise, native CFGGuider CFG 1 and two freely connected native samplers are preserved.
+
+Two classic native Windows loaders crashed while reading weights before Director execution, including with mmap disabled.
+Their logs remain; the successful private instance used the existing dynamic loader with fast disk and disabled pinned memory.
+No ComfyUI core code changed and no native loader repair or perceptual quality acceptance is claimed.
+The private server and bound tabs are closed; the test junction was moved reversibly outside custom_nodes after deletion
+review was blocked. The user server was preserved. All loaded Python sources match the render; the changed Inspector
+was verified in a fresh browser context. Source manifests, evidence and limits: `_notes/NG/29-guide-mentions.md`, `experiments/e35_*`.
+The own E35 changes are committed locally after validation; the exact commit is recorded in the external E35 source manifest.
+Existing E33/E34 code remains in `486e0047`. No push, tag or publication.
+
 ## Short video Continue selections: E34 (2026-10-03)
 
 Continue previously read 24 frames even when the selected source window was shorter than one second, so its last
@@ -11,16 +38,23 @@ NG accepts a single continuation guide image while retaining the five-frame mini
 The shared decoder has optional strict error propagation for NG; other Legacy callers keep their existing fallback.
 
 Five new contracts cover short/long windows, single-frame guides, actual lossless frame-indexed decoding and invalid files.
-368 integrated NG checks: 367 passed/one existing Windows symlink skip; Legacy 371/371 and 74/74, syntax/structure checks passed.
+370 integrated NG checks: 369 passed/one existing Windows symlink skip; Legacy 371/371 and 74/74, five JS suites and syntax/structure checks passed.
 Weighted mixed API Run: 176.02 s, three chunks, 294 frames/392000 samples at 32 kHz, 12.25 seconds;
 the actual native VAE guide equals the last selected source frame exactly, and both subsequent AV tails match exactly.
 Browser edit/Save/Reload and native Run: 104.77 s, 294 frames, 12.25-second image/audio; actual submitted graph retains the window.
 Saved example: `H3 NG - short video Continue E34`. Contexts still load files inside their cards; external native sampling is preserved.
 
 This fixes the source selection for the existing last-source-frame guide, not the separate Last Frame continuity mode.
-No motion/audio-tail extraction or perceptual quality acceptance is claimed. User server 8189 is preserved; activation of
-this Python fix there requires its later restart. Sources and limits: `_notes/NG/28-video-continue-windows.md`, `experiments/e34_*`.
-E30–E32 remain locally committed as `705bc72`; E33/E34 are uncommitted. No push, tag or publication.
+No motion/audio-tail extraction or perceptual quality acceptance is claimed. This chat preserved the user server;
+the previously running process required a restart for new Python sources. Sources and limits: `_notes/NG/28-video-continue-windows.md`, `experiments/e34_*`.
+The private test server/tab/lab junction are cleaned up after its queue emptied; test sources and evidence remain.
+The user process was preserved at that cleanup. At later documentation closeout PID 33504 was gone; after an observed
+listener gap the final snapshot shows 8189/PID 43000. This chat did not start or stop that server and claims no render
+acceptance for the newly started user instance (`e34_environment_final.json`).
+At closeout, existing local commit `486e0047` includes the E33/E34 code as well as the concurrent provider work;
+this chat did not create that commit. Only this documentation closeout remains uncommitted. No push, tag or publication.
+The final source manifest confirms all loaded Python sources are unchanged since the weighted run. Six concurrently
+changed frontend modules are identified separately and covered by the later final checks; no fresh browser acceptance is claimed for them.
 
 ## Shared assets, voice windows and Context text: E33 (2026-10-03)
 
