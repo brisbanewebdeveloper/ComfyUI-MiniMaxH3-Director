@@ -22,7 +22,8 @@ export function inspector(node) {
     rawText.textContent=JSON.stringify(data.director_context,null,2);
     const counts={image:0,video:0,audio:0};let total=0;
     for(const chunk of data.chunks){const ids={image:new Set(),video:new Set(),audio:new Set()};
-      for(const ref of chunk.refs){const media={picture:"image",first_frame:"image",last_frame:"image",keyframe:"image",continue_video:"video",video:"video",audio:"audio",lock:"audio"}[ref.kind];if(media)ids[media].add(ref.ctx_id);}
+      // A shared image is presented once per Subject and consumes a slot for each Picture.
+      for(const [index,ref] of chunk.refs.entries()){const media={picture:"image",first_frame:"image",last_frame:"image",keyframe:"image",continue_video:"video",video:"video",audio:"audio",lock:"audio"}[ref.kind];if(media)ids[media].add(ref.kind==="picture"?`${index}:${ref.ctx_id}`:ref.ctx_id);}
       for(const media of Object.keys(counts))counts[media]=Math.max(counts[media],ids[media].size);
       total=Math.max(total,ids.image.size+ids.video.size+ids.audio.size);}
     budget.textContent=`Context budget per chunk · Images ${counts.image}/9 · Video ${counts.video}/3 · Audio ${counts.audio}/3 · Total up to ${total}/12`;

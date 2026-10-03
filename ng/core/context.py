@@ -15,6 +15,18 @@ PRESERVE = ("low", "medium", "high")
 CONTENT_KINDS = ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style", "pose",
                  "action", "expression", "lighting", "effect", "composition",
                  "voice", "dialogue", "music", "ambience", "sound_effect", "camera_motion", "motion", "rules", "shot_rhythm", "identity")
+# Which content roles each medium can actually hold. A card is one medium, so offering it a role
+# from another medium is not a suggestion - it is a card that can never render. This lived in the
+# node module, which meant the analysis prompt and the parse could not ask what a card really
+# allows and said yes to whatever CONTENT_KINDS held.
+CONTENT_BY_MEDIA = {
+    "image": ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style",
+              "pose", "composition"),
+    "video": ("motion", "camera_motion", "environment", "shot_rhythm", "identity", "action", "effect", "style"),
+    "audio": ("voice", "dialogue", "music", "ambience", "sound_effect"),
+    "text": ("style", "rules", "environment", "character", "outfit", "camera_motion", "lighting", "action", "dialogue"),
+}
+
 USAGE_BY_MEDIA = {
     "image": ("reference", "first_frame", "keyframe", "last_frame", "storyboard"),
     "video": ("motion", "camera", "continue", "structure"),

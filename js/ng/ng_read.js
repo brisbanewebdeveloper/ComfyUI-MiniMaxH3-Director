@@ -2,11 +2,23 @@
 
 const CONTEXT_PREFIX = "NGContext";
 
+// The provider fields the panel owns and the request needs. Kept as one list because a field that
+// is missing here is a setting the user can change and the request never sees - the quietest kind
+// of broken. The two native branches below are built separately: they have no provider to talk to.
+const PROVIDER_FIELDS = ["provider", "base_url", "model", "api_key_env", "vision", "audio",
+                         "timeout_seconds", "max_tokens", "keep_alive", "temperature", "top_p",
+                         "top_k", "min_p", "frequency_penalty", "presence_penalty",
+                         "seed", "fixed_seed"];
+
+// An older workflow saved six provider values; a new one saves the rest as well. Reading by name
+// rather than by position means a workflow stays readable when a field is added, and adding one
+// does not shift the meaning of every value behind it.
 export function restoredProviderValues(saved) {
-  if(!Array.isArray(saved)||saved.length!==6||!["ollama","lmstudio","custom"].includes(saved[0]))return null;
-  const names=["provider","base_url","model","api_key_env","vision","audio"];
-  return {source:saved[0]==="custom"?"api":"local",timeout_seconds:120,max_tokens:512,keep_alive:0,
-    ...Object.fromEntries(names.map((name,index)=>[name,saved[index]]))};
+  if (!Array.isArray(saved) || saved.length < 6 || !saved[0] || ["local", "api", "clip"].includes(saved[0])) return null;
+  const names = ["provider", "base_url", "model", "api_key_env", "vision", "audio"];
+  const found = Object.fromEntries(names.map((name, index) => [name, saved[index]]));
+  return { source: found.provider === "custom" ? "api" : "local", timeout_seconds: 120,
+           max_tokens: 512, keep_alive: 0, ...found };
 }
 
 function widgetValues(node) {
@@ -53,20 +65,19 @@ export function connectedProvider(node) {
   const direct = upstreamNode(node.graph, node.inputs?.find((input) => input.name === "ai_provider"));
   if (direct?.comfyClass === "NGAIProvider") {
     const config=widgetValues(direct);
-    if(config.source==="local"&&config.local_backend==="disk") {
-      if(!config.local_model)return null;
-      return {source:"clip",loader_node_id:String(direct.id),model:config.local_model,local_type:config.local_type,
-        vision:config.vision,audio:config.audio,max_tokens:config.max_tokens,timeout_seconds:config.timeout_seconds};
-    }
     if(config.source==="clip") {
+      // A connected encoder wins; an installed one is the fallback. Both reach Generate Text by
+      // the same route, so there is no switch to read and no fourth card that could fall out of
+      // step with this one.
       const encoder=upstreamNode(direct.graph,direct.inputs?.find((input)=>input.name==="clip"));
-      if(!encoder)return null;
-      return {source:"clip",loader_node_id:String(direct.id),model:widgetValues(encoder).clip_name||"Connected CLIP",
+      if(!encoder&&!config.local_model)return null;
+      const model=encoder?(widgetValues(encoder).clip_name||"Connected CLIP"):config.local_model;
+      return {source:"clip",loader_node_id:String(direct.id),model,local_type:config.local_type,
         vision:config.vision,audio:config.audio,max_tokens:config.max_tokens,timeout_seconds:config.timeout_seconds};
     }
-    const provider={schema_version:1};
-    for(const key of ["provider","base_url","model","api_key_env","vision","audio","timeout_seconds","max_tokens","keep_alive"])
-      if(config[key]!==undefined)provider[key]=config[key];
+    const provider = { schema_version: 2 };
+    for (const key of PROVIDER_FIELDS)
+      if (config[key] !== undefined) provider[key] = config[key];
     return provider;
   }
   if (node.comfyClass === "NGH3Director") {

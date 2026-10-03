@@ -2,7 +2,7 @@ import { element, values, applyValues } from "./ng_widgets.js";
 import { control, section } from "./ng_editor_fields.js";
 import { CONTENT } from "./ng_context_controls.js";
 import { relatedContexts } from "./ng_read.js";
-import { renderReferences } from "./ng_references.js";
+import { renameReferences, renderReferences } from "./ng_references.js";
 
 const TEMPLATES={
   "Cinematic Rules":"Keep camera movement slow and physical. Avoid rapid cuts. Maintain consistent lighting and spatial continuity.",
@@ -34,8 +34,14 @@ export function textEditor(node) {
     const button=element("button","",name);button.onclick=()=>{choices.value=name;use.click();};examples.append(button);}
   const main=element("div","ng-text-main"),sidebar=element("div","ng-text-sidebar");main.append(editor,templates,examples);root.append(main,quick,sidebar);
   function sync() {
+    const entries=relatedContexts(node),previous=node.properties?.ng_context_names||{},current=values(node).text||"";
+    const renamed=renameReferences(current,previous,entries);
+    node.properties||={};
+    node.properties.ng_context_names=Object.fromEntries(entries.filter(entry=>entry.widgets.context_id&&entry.widgets.name)
+      .map(entry=>[entry.widgets.context_id,entry.widgets.name]));
+    if(renamed!==current)applyValues(node,{text:renamed});
     field.sync();const text=values(node).text||"";count.textContent=`${text.length} characters`;preview.replaceChildren();
-    const parts=text.split(/(\[[^\]\n]+\])/u),entries=relatedContexts(node);
+    const parts=text.split(/(\[[^\]\n]+\])/u);
     for(const part of parts){const span=element("span",/^\[/.test(part)?"ng-template-placeholder":"");
       if(/^\[/.test(part)){span.textContent=part;span.title="Template placeholder · replace with a description or @Context.";}
       else renderReferences(span,part,entries,element);preview.append(span);}

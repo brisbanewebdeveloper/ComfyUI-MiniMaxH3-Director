@@ -140,7 +140,9 @@ def _scene_guides(context, chunk):
         if item.media == "video" and "continue" in item.effective_usage and chunk.is_first:
             end = item.options.end_s or item.length_s
             start = max(item.options.start_s, end - 1.0) if end else item.options.start_s
-            refs.append(MediaRef("continue_video", item.id, item.source, 0, limits.FPS, int(round(start * limits.FPS))))
+            first = int(round(start * limits.FPS))
+            length = max(1, min(limits.FPS, int(round(end * limits.FPS)) - first)) if end else limits.FPS
+            refs.append(MediaRef("continue_video", item.id, item.source, 0, length, first))
     return refs
 
 

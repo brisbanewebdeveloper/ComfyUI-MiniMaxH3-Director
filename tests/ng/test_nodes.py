@@ -48,6 +48,29 @@ class Registration(unittest.TestCase):
         self.assertEqual([o.display_name for o in chunk.outputs], ["model", "positive", "latent", "prompt"])
         self.assertTrue(self.pack.NODE_CLASS_MAPPINGS["NGCollect"].GET_SCHEMA().is_input_list)
 
+    def test_the_ai_loader_seed_has_no_randomize_switch(self):
+        """ComfyUI hangs a "control after generate" switch on any widget named "seed" unless the
+        schema says otherwise, and the check is a nullish fallback - only an explicit False wins.
+
+        The AI Loader must not have one. Its panel already offers "Fixed seed" beside the field, and
+        that switch is the honest control: the seed here belongs to the AI request, not to the
+        render queue, so "randomize" on the node and "Fixed seed" in the panel were two controls for
+        one decision, and following one silently contradicted the other."""
+        seed = self._input("NGAIProvider", "seed")
+        self.assertIs(seed.control_after_generate, False,
+                      "an omitted or None value makes the frontend add the switch back")
+
+    def test_the_render_nodes_keep_their_randomize_switch(self):
+        """The opposite end of the same rule: on a render node the queue does own the seed, so the
+        switch belongs there. Suppressing it everywhere would take away a control that is correct."""
+        self.assertIs(self._input("NGRenderSequence", "seed").control_after_generate, True)
+
+    def _input(self, node_id, input_id):
+        schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
+        found = [i for i in schema.inputs if i.id == input_id]
+        self.assertEqual(len(found), 1, "%s has no input %s" % (node_id, input_id))
+        return found[0]
+
 
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
 class Execution(unittest.TestCase):

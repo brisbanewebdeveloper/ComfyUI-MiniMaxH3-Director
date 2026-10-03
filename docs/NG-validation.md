@@ -3,6 +3,50 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Short video Continue selections: E34 (2026-10-03)
+
+Continue previously read 24 frames even when the selected source window was shorter than one second, so its last
+guide image could come from beyond the chosen end. The compiler now limits that interval on the existing source frame grid.
+NG accepts a single continuation guide image while retaining the five-frame minimum for video references.
+The shared decoder has optional strict error propagation for NG; other Legacy callers keep their existing fallback.
+
+Five new contracts cover short/long windows, single-frame guides, actual lossless frame-indexed decoding and invalid files.
+368 integrated NG checks: 367 passed/one existing Windows symlink skip; Legacy 371/371 and 74/74, syntax/structure checks passed.
+Weighted mixed API Run: 176.02 s, three chunks, 294 frames/392000 samples at 32 kHz, 12.25 seconds;
+the actual native VAE guide equals the last selected source frame exactly, and both subsequent AV tails match exactly.
+Browser edit/Save/Reload and native Run: 104.77 s, 294 frames, 12.25-second image/audio; actual submitted graph retains the window.
+Saved example: `H3 NG - short video Continue E34`. Contexts still load files inside their cards; external native sampling is preserved.
+
+This fixes the source selection for the existing last-source-frame guide, not the separate Last Frame continuity mode.
+No motion/audio-tail extraction or perceptual quality acceptance is claimed. User server 8189 is preserved; activation of
+this Python fix there requires its later restart. Sources and limits: `_notes/NG/28-video-continue-windows.md`, `experiments/e34_*`.
+E30–E32 remain locally committed as `705bc72`; E33/E34 are uncommitted. No push, tag or publication.
+
+## Shared assets, voice windows and Context text: E33 (2026-10-03)
+
+Two Subjects share one image asset, video/soundtrack and scoped text; two independent Voice cards read different
+windows from the same file. Native presentation contains four Pictures, paired Audio 1/Video 1 and Voice Audio 2/3.
+All three chunks keep their IDs and labels. Actual reference audio lengths are 120/80/60 at H3's 40 Hz timebase.
+The API render passed in 340.23 s: 294 frames, 392000 samples at 32 kHz, 12.25 seconds, exact previous AV tails.
+
+Browser testing found that Subject rename updated Director idea/shots but left the old name in Context Text.
+The Text editor now uses the existing stable-ID/casefold resolver and saves its previous name map in workflow properties.
+The Inspector now counts each shared native Picture presentation in the budget instead of counting its card only once.
+Regression tests reproduce both failures; Unicode, multi-word names, prefix boundaries and saved properties are covered.
+
+Saved/reloaded example `H3 NG - shared assets two voices E33` keeps both asset owners, both voice windows and renamed text.
+The corrected native browser Run passed in 244.311 s: 294 frames, 32-kHz audio, 12.25 seconds; all compiled prompts resolve.
+One Director Output in the native loop, normal RandomNoise, CFGGuider CFG 1, two native samplers and direct file sources remain.
+363 integrated NG checks: 362 passed/one existing Windows symlink skip; Legacy 371/371 and 74/74, five JS suites,
+syntax/structure/Python checks passed. A stale model-list test was aligned with the concurrent registry-default behavior
+using a local HTTP fixture; the provider implementation remains its owner's work.
+
+Classic native memory loading is confined to the private test instance; the earlier aimdo 1450 issue remains unresolved.
+Equal test images and short test WAVs establish routing and windows, not perceptual identity, voice quality or seams.
+The private test server, tabs and lab junction were removed after its queue emptied; user 8189/PID 33504 is preserved.
+E30–E32 remain locally committed as `705bc72`; E33 is uncommitted. Evidence and limits: `_notes/NG/27-shared-assets-and-voices.md`,
+`experiments/e33_*`, `output/ng_lab/e33/e33_shared_*` and `e33_gui_00002_.mp4`.
+
 ## Local commit verification: E30–E32 (2026-10-03)
 
 The Director changes were staged separately from the concurrent, uncommitted AI Loader refactor.

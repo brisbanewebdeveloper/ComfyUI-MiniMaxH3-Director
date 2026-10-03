@@ -72,9 +72,17 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   assert.equal(connectedProvider(context).loader_node_id,"30");
   const tested=nativeAIFingerprint(loader);encoder.widgets[0].value="other.safetensors";
   assert.notEqual(nativeAIFingerprint(loader),tested,"changing the connected model invalidates its tested badge");
-  loader.inputs[0].link=null;assert.equal(connectedProvider(context),null,"a selected CLIP source needs a real connection");
-  loader.widgets=node("NGAIProvider",{source:"local",local_backend:"disk",local_model:"disk.safetensors",local_type:"stable_diffusion"}).widgets;
+  loader.inputs[0].link=null;assert.equal(connectedProvider(context),null,"the CLIP source needs a connection or an installed encoder");
+  // An installed encoder is the same native path, so it needs no switch of its own: with no Load
+  // CLIP connected it is simply what the card uses.
+  loader.widgets=node("NGAIProvider",{source:"clip",local_model:"disk.safetensors",local_type:"stable_diffusion"}).widgets;
   assert.equal(connectedProvider(context).model,"disk.safetensors");
+  assert.equal(connectedProvider(context).source,"clip");
+  // A connected encoder still wins over a leftover model name, so the two cannot disagree. The
+  // encoder was renamed above on purpose, which also shows the name is read from the connection
+  // and not from the widget that is still holding the old encoder.
+  loader.inputs[0].link=15;
+  assert.equal(connectedProvider(context).model,"other.safetensors");
 }
 
 // --- reading -----------------------------------------------------------------
@@ -348,4 +356,38 @@ console.log("ng js: all checks passed");
   assert.equal(flag("",  "v1"),"","no speaker chosen, nothing to warn about");
   assert.equal(flag("ctx_z","v1"),"","a speaker nobody else claims needs no note");
   assert.equal(voiceAssignment([{media:"audio",widgets:{context_id:"only",speaker:"ctx_a"}}])("ctx_a","only"),"");
+}
+
+{
+  const {accepts,fieldHelp,isNative,mediaHint,wantsKey,wireName}=await load("ng_ai_capabilities.js");
+  const ollama={id:"ollama",auth:"none",fields:["max_tokens","seed","top_k"],
+    wire:{max_tokens:"num_predict",seed:"options.seed",top_k:"options.top_k"},
+    help:{max_tokens:"Upper bound."},media:{image:{ok:true,hint:""},audio:{ok:false,hint:"No audio here."}}};
+
+  // The sampling matrix decides what is shown. A field Claude does not have must not appear at all.
+  assert.equal(accepts(ollama,"top_k"),true);
+  assert.equal(accepts({fields:["max_tokens"]},"top_k"),false,"Claude has no top_k");
+  // Unknown is not "supports nothing": hiding every field while the registry loads makes them unfindable.
+  assert.equal(accepts(null,"top_k"),true,"an absent entry must show the field, not hide it");
+  assert.equal(accepts({},"top_k"),true);
+
+  // The way out is named, not only the fault. This is what the context card shows in place of an
+  // error, so an empty hint leaves the user with nothing to do about it.
+  assert.equal(mediaHint(ollama,"audio"),"No audio here.");
+  assert.equal(mediaHint(ollama,"image"),"");
+  assert.equal(mediaHint(null,"audio"),"");
+
+  // The wire name differs only where it really does, so the note appears on Ollama and nowhere else.
+  assert.equal(wireName(ollama,"max_tokens"),"num_predict");
+  assert.equal(wireName(ollama,"keep_alive"),"keep_alive","an unnamed field is sent under its own name");
+  assert.equal(wireName(null,"max_tokens"),"max_tokens");
+
+  assert.equal(fieldHelp(ollama,"max_tokens"),"Upper bound.");
+  assert.equal(fieldHelp(ollama,"top_k"),"","a field with no text carries no ? marker");
+
+  assert.equal(wantsKey(ollama),false,"a local server needs no key");
+  assert.equal(wantsKey({auth:"bearer"}),true);
+  assert.equal(wantsKey(null),false);
+  assert.equal(isNative("clip"),true);
+  assert.equal(isNative("local"),false);
 }

@@ -25,8 +25,9 @@ class NativeAI(unittest.TestCase):
         provider = self.provider()
         self.assertEqual(provider.clip, ["encoder", 0])
         self.assertEqual(provider.config.max_tokens, 256)
-        with self.assertRaisesRegex(ValueError, "Connect a generative"):
-            self.provider(clip=None)
+        # The message has to name both ways in, since the card offers both now.
+        with self.assertRaisesRegex(ValueError, "Connect Load CLIP"):
+            self.provider(clip=None, local_model="")
 
     def test_expansion_uses_native_generate_text_and_bound_settings(self):
         self.assertTrue(self.nodes["NGAIRequest"].GET_SCHEMA().enable_expand)
@@ -39,15 +40,24 @@ class NativeAI(unittest.TestCase):
         self.assertIn("NGAIResult", kinds)
         self.assertNotIn("SamplerCustomAdvanced", kinds)
 
-    def test_local_disk_uses_native_clip_loader_without_loading_during_config(self):
-        provider = self.provider(source="local", clip=None, local_backend="disk", local_model="qwen3vl_4b_bf16.safetensors")
+    def test_an_installed_encoder_uses_the_native_clip_loader_without_loading_during_config(self):
+        """The encoder card has no switch any more: no Load CLIP connected means the installed
+        encoder is what the request uses. It must still load lazily, inside the AI job only."""
+        provider = self.provider(clip=None, source="clip", local_model="qwen3vl_4b_bf16.safetensors")
         self.assertIsNone(provider.clip)
         job = self.nodes["NGAIRequest"].execute(ai_provider=provider, action="analyze", request_json=self.payload())
         kinds = {value["class_type"]: value["inputs"] for value in job.expand.values()}
         self.assertEqual(kinds["CLIPLoader"]["clip_name"], "qwen3vl_4b_bf16.safetensors")
         self.assertEqual(kinds["CLIPLoader"]["type"], "stable_diffusion")
-        with self.assertRaisesRegex(ValueError, "Choose an installed"):
-            self.provider(source="local", local_backend="disk", local_model="")
+        # Neither a clip nor a chosen encoder: the card cannot do anything, and must say so.
+        with self.assertRaisesRegex(ValueError, "Connect Load CLIP"):
+            self.provider(clip=None, source="clip", local_model="")
+
+    def test_a_connected_clip_wins_over_a_leftover_model_name(self):
+        """Choosing an encoder once and connecting Load CLIP later must not leave two candidates."""
+        provider = self.provider(source="clip", local_model="qwen3vl_4b_bf16.safetensors")
+        self.assertEqual(provider.clip, ["encoder", 0])
+        self.assertEqual(provider.local_model, "", "the encoder is not read while a clip is connected")
 
     def test_native_ai_packet_reaches_context_and_connector_without_generation(self):
         provider = self.provider()

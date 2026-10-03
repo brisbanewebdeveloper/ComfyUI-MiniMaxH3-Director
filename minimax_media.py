@@ -560,6 +560,18 @@ def _auth_headers(api_key):
     return {"Authorization": "Bearer %s" % key} if key else None
 
 
+def registry_auth_headers(auth, api_key):
+    """Headers for a registry provider. Claude authenticates with `x-api-key` and needs a version
+    header besides, so sending it a bearer token would fail with a 401 that names neither the
+    provider nor the reason. Every other provider uses the bearer form."""
+    key = (api_key or "").strip()
+    if not key:
+        return None
+    if auth == "x-api-key":
+        return {"x-api-key": key, "anthropic-version": "2023-06-01"}
+    return {"Authorization": "Bearer %s" % key}
+
+
 class VLMError(RuntimeError):
     """A VLM round-trip that failed with a message worth showing the user verbatim."""
 
@@ -577,7 +589,7 @@ def strip_thinking(text):
 
 async def vlm_generate(images_b64, prompt, provider, base_url, model,
                        system_prompt=None, timeout=120, keep_alive=0, max_tokens=None,
-                       api_key=None):
+                       api_key=None, auth="bearer"):
     """One vision-model round-trip, shared by the Analyze endpoint and the Enhance node.
 
     Kept provider-shaped rather than generic on purpose: Ollama takes raw base64 in an
@@ -589,6 +601,7 @@ async def vlm_generate(images_b64, prompt, provider, base_url, model,
 
     `api_key` goes out as a bearer token on both paths — hosted Ollama and reverse proxies
     in front of a local server want one too, and an absent key sends no header at all.
+    `auth` names the registry provider's scheme, so Claude gets `x-api-key` instead.
 
     Raises VLMError with a user-facing message; returns the answer with any thinking
     preamble removed.
@@ -599,7 +612,7 @@ async def vlm_generate(images_b64, prompt, provider, base_url, model,
         raise VLMError("No model name set for %s. Enter the name of the model you have "
                        "loaded there." % provider)
 
-    headers = _auth_headers(api_key)
+    headers = registry_auth_headers(auth, api_key)
 
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
@@ -872,15 +885,18 @@ def _decode_target_size(width, height, max_short_edge, max_pixels):
 
 def load_video_tensor(file_ref: str, trim_start_sec: float, duration_sec: float,
                       out_fps: float = 24.0, max_short_edge: int = 768,
-                      max_pixels: int = 768 * 1344) -> torch.Tensor:
+                      max_pixels: int = 768 * 1344, strict: bool = False) -> torch.Tensor:
     """Decode a clip and resample it to `out_fps`, returning [N, H, W, 3] float32.
 
     Frames are downscaled while decoding — a few seconds of 4K at full resolution would
     otherwise blow up RAM long before the VAE ever sees them.
+    Strict callers receive decode errors instead of the legacy blank-image fallback.
     """
     path = resolve_input_path(file_ref)
     if not path:
         log.warning("[MiniMaxDirector] Video not found: %s", file_ref)
+        if strict:
+            raise ValueError("Video not found: %s" % file_ref)
         return BLANK()
 
     n_out = max(1, int(round(duration_sec * out_fps)))
@@ -926,8 +942,12 @@ def load_video_tensor(file_ref: str, trim_start_sec: float, duration_sec: float,
                 frames.extend([frames[-1]] * (n_out - idx))
     except Exception as e:
         log.warning("[MiniMaxDirector] Video extract error for %s: %s", file_ref, e)
+        if strict:
+            raise
 
     if not frames:
+        if strict:
+            raise ValueError("No readable video frames in '%s'" % file_ref)
         return BLANK()
     return torch.from_numpy(np.asarray(frames, dtype=np.float32) / 255.0)
 

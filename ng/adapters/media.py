@@ -25,10 +25,14 @@ def load_video(ref: MediaRef):
     _require_file(ref, "video")
     seconds = min(plan.REF_VIDEO_MAX_SEC, (ref.length_f or FPS * plan.REF_VIDEO_MAX_SEC) / float(FPS))
     edge = plan.REF_VIDEO_SHORT_EDGE
-    frames = legacy.load_video_tensor(ref.source, ref.trim_start_f / float(FPS), seconds, max_short_edge=edge,
-                                      max_pixels=int(edge * edge * plan.REF_VIDEO_ASPECT_BUDGET))
-    if frames.shape[0] < 5:
-        raise MediaError("the video '%s' (%s) is shorter than 5 frames or could not be read" % (ref.ctx_id, ref.source))
+    try:
+        frames = legacy.load_video_tensor(ref.source, ref.trim_start_f / float(FPS), seconds, max_short_edge=edge,
+                                          max_pixels=int(edge * edge * plan.REF_VIDEO_ASPECT_BUDGET), strict=True)
+    except Exception as error:
+        raise MediaError("the video '%s' (%s) could not be read" % (ref.ctx_id, ref.source)) from error
+    minimum = 1 if ref.kind == "continue_video" else 5
+    if frames.shape[0] < minimum:
+        raise MediaError("the video '%s' (%s) is shorter than %d frames or could not be read" % (ref.ctx_id, ref.source, minimum))
     return frames
 
 

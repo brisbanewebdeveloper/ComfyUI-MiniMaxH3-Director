@@ -8,7 +8,7 @@ import folder_paths
 from comfy_api.latest import io
 
 from ..adapters import probe
-from ..core.context import PRESERVE, USAGE_BY_MEDIA
+from ..core.context import CONTENT_BY_MEDIA, PRESERVE, USAGE_BY_MEDIA
 from ..core.context_build import item_from_widgets
 from ..core.analysis import ProviderConfig
 from ..adapters.ai_provider import NativeAIProvider
@@ -16,12 +16,8 @@ from ..adapters.ai_provider import NativeAIProvider
 NGContext = io.Custom("NG_CONTEXT")
 CATEGORY = "MiniMax H3/NG"
 NGAI = io.Custom("NG_AI_PROVIDER")
-CONTENT_BY_MEDIA = {
-    "image": ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style", "pose", "composition"),
-    "video": ("motion", "camera_motion", "environment", "shot_rhythm", "identity", "action", "effect", "style"),
-    "audio": ("voice", "dialogue", "music", "ambience", "sound_effect"),
-    "text": ("style", "rules", "environment", "character", "outfit", "camera_motion", "lighting", "action", "dialogue"),
-}
+# CONTENT_BY_MEDIA is imported from core rather than repeated: the analysis parse has to check an
+# answer against the same list, and two copies of it is how they start disagreeing.
 
 
 def _files(kinds):

@@ -12,11 +12,67 @@ from _pack import module, comfy_available, stub_prompt_server
 core = module("ng.core.analysis")
 
 
+class ContentRoles(unittest.TestCase):
+    """Found by a real OpenRouter run: gemma answered `content: dialogue` for a picture. The value
+    passed every check because the parse only knew the union of all media, so a card could end up
+    holding a role it can never have."""
+
+    def test_a_picture_cannot_be_answered_as_dialogue(self):
+        answer = '{"description": "a red rectangle", "content": "dialogue"}'
+        with self.assertRaisesRegex(ValueError, "image card cannot be dialogue"):
+            core.parse_suggestion(answer, "image")
+        with self.assertRaisesRegex(ValueError, "voice"):
+            core.parse_suggestion('{"description": "x", "content": "voice"}', "image")
+
+    def test_every_medium_only_accepts_its_own_roles(self):
+        for media, allowed in core.CONTENT_BY_MEDIA.items():
+            for wrong in set(core.CONTENT_KINDS) - set(allowed):
+                with self.subTest(media=media, wrong=wrong):
+                    with self.assertRaises(ValueError):
+                        core.parse_suggestion('{"description": "x", "content": "%s"}' % wrong, media)
+
+    def test_the_roles_a_medium_does_offer_are_accepted(self):
+        for media, allowed in core.CONTENT_BY_MEDIA.items():
+            for good in allowed:
+                with self.subTest(media=media, good=good):
+                    got = core.parse_suggestion('{"description": "x", "content": "%s"}' % good, media)
+                    self.assertEqual(got.content, good)
+
+    def test_the_prompt_offers_only_what_the_card_can_hold(self):
+        """Asking for the whole union is what invited the wrong answer in the first place. Checked
+        on the offered list itself: "effect" is a substring of "sound_effect", so a substring test
+        over the whole prompt would flag a role the audio card really can hold."""
+        for media, allowed in core.CONTENT_BY_MEDIA.items():
+            offered = core.analysis_prompt(media, "").split("content (one of: ")[1].split(")")[0]
+            self.assertEqual([name.strip() for name in offered.split(",")], list(allowed),
+                             "the %s prompt offers the wrong roles" % media)
+
+    def test_an_answer_with_no_role_at_all_is_still_fine(self):
+        got = core.parse_suggestion('{"description": "just a sentence"}', "image")
+        self.assertIsNone(got.content)
+
+    def test_an_unreadable_answer_names_the_likely_cause(self):
+        """A reasoning model can spend its whole budget thinking and return nothing; saying only
+        'invalid JSON' hides the one thing the user can change."""
+        with self.assertRaisesRegex(ValueError, "Max tokens"):
+            core.parse_suggestion("", "image")
+        with self.assertRaisesRegex(ValueError, "Max tokens"):
+            core.parse_suggestion("I cannot help with that.", "image")
+
+    def test_the_nodes_and_the_core_share_one_list(self):
+        """The parse checks against core, so the node's dropdown has to be the very same list."""
+        nodes = module("ng.nodes.context_nodes")
+        self.assertEqual(nodes.CONTENT_BY_MEDIA, core.CONTENT_BY_MEDIA)
+
+
 class Suggestions(unittest.TestCase):
     def test_provider_roundtrip_and_unknown_credentials(self):
         config = core.ProviderConfig(model="local-model", vision=False, audio=True, api_key_env="MY_VLM_KEY")
         self.assertEqual(core.ProviderConfig.from_dict(config.to_dict()), config)
-        for change in ({"provider": "magic"}, {"vision": "yes"}, {"audio": 1}, {"api_key": "secret"}, {"schema_version": 2}):
+        # 3 is a version nobody has written yet: a future field must not slip into an old workflow
+        # by simply raising the number. 2 is current and therefore accepted, so the guard moves on.
+        for change in ({"provider": "magic"}, {"vision": "yes"}, {"audio": 1}, {"fixed_seed": "yes"},
+                       {"api_key": "secret"}, {"schema_version": 3}):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 core.ProviderConfig.from_dict({**config.to_dict(), **change})
         for address in ("ftp://server", "http://name:key@server", "https://server?api_key=secret", "https://server#key"):
@@ -37,12 +93,156 @@ class Suggestions(unittest.TestCase):
         # `source` steers the cards; a saved workflow must not carry it into the config.
         self.assertNotIn("source", core.ProviderConfig().to_dict())
 
+
+class SchemaMigration(unittest.TestCase):
+    """Version 2 added the sampling fields. An old workflow must open, and must not acquire a
+    sampling choice the user never made."""
+
+    def old(self, **over):
+        """Exactly what version 1 wrote: nine fields and the version number."""
+        data = {"schema_version": 1, "provider": "ollama", "base_url": "http://127.0.0.1:11434",
+                "model": "qwen2.5vl:7b", "api_key_env": "", "vision": True, "audio": False,
+                "timeout_seconds": 90, "max_tokens": 1024, "keep_alive": 30}
+        data.update(over)
+        return data
+
+    def test_a_version_1_workflow_still_reads(self):
+        config = core.ProviderConfig.from_dict(self.old())
+        self.assertEqual((config.provider, config.model, config.max_tokens), ("ollama", "qwen2.5vl:7b", 1024))
+        self.assertEqual(config.timeout_seconds, 90)
+        self.assertEqual(config.keep_alive, 30)
+
+    def test_an_old_workflow_keeps_the_settings_it_did_have(self):
+        old = self.old(vision=False, audio=True)
+        config = core.ProviderConfig.from_dict(old)
+        self.assertFalse(config.vision)
+        self.assertTrue(config.audio)
+
+    def test_an_old_workflow_gets_defaults_and_not_a_chosen_sampling(self):
+        """The important half: defaults are the provider's, and fixed_seed is off."""
+        config = core.ProviderConfig.from_dict(self.old())
+        self.assertEqual(config.temperature, core.ProviderConfig().temperature)
+        self.assertEqual(config.top_p, core.ProviderConfig().top_p)
+        self.assertEqual(config.top_k, core.ProviderConfig().top_k)
+        self.assertEqual(config.seed, 0)
+        self.assertFalse(config.fixed_seed, "an old workflow must not come back pinned")
+
+    def test_an_old_workflow_saves_as_the_current_version(self):
+        saved = core.ProviderConfig.from_dict(self.old()).to_dict()
+        self.assertEqual(saved["schema_version"], 2)
+        # And it survives a second round trip, which is what reopening the saved file does.
+        self.assertEqual(core.ProviderConfig.from_dict(saved), core.ProviderConfig.from_dict(self.old()))
+
+    def test_a_new_field_cannot_be_sneaked_into_an_old_workflow(self):
+        """Version 1 drops anything it did not know, so nothing back-fills a value silently."""
+        config = core.ProviderConfig.from_dict(self.old(temperature=1.9, fixed_seed=True, seed=7))
+        self.assertNotEqual(config.temperature, 1.9)
+        self.assertEqual(config.seed, 0)
+        self.assertFalse(config.fixed_seed)
+
+    def test_a_sampling_value_outside_its_range_is_refused(self):
+        for change in ({"temperature": -0.1}, {"temperature": 2.5}, {"top_p": 1.4}, {"top_k": 500},
+                       {"min_p": -1}, {"frequency_penalty": 3}, {"presence_penalty": -9},
+                       {"top_k": 30.5}, {"temperature": "warm"}, {"seed": -1}, {"seed": 2 ** 33},
+                       {"fixed_seed": 1}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                core.ProviderConfig.from_dict({"schema_version": 2, **change})
+
+    def test_every_boolean_round_trips_both_ways(self):
+        """fixed_seed was once validated but never handed to the constructor, so a ticked box came
+        back unticked and the seed was silently dropped from every request. Check every flag."""
+        for name in ("vision", "audio", "fixed_seed"):
+            for value in (True, False):
+                with self.subTest(name=name, value=value):
+                    config = core.ProviderConfig.from_dict({"schema_version": 2, name: value})
+                    self.assertIs(getattr(config, name), value, "%s did not survive" % name)
+                    self.assertEqual(core.ProviderConfig.from_dict(config.to_dict()), config)
+
+    def test_a_ticked_fixed_seed_reaches_the_request_and_an_unticked_one_does_not(self):
+        for value, expected in ((True, 5), (False, None)):
+            with self.subTest(fixed_seed=value):
+                config = core.ProviderConfig.from_dict({"schema_version": 2, "provider": "ollama",
+                                                        "seed": 5, "fixed_seed": value})
+                options = core.providers.provider_payload(config.provider, config.to_dict())["options"]
+                self.assertEqual(options.get("seed"), expected)
+
+
+class ThroughTheNode(unittest.IsolatedAsyncioTestCase):
+    """The path a real request takes: node input -> config -> payload. provider_from_values used
+    to stamp schema_version 1 on fresh values, so the migration dropped every new field on the
+    floor and the panel's settings never reached the provider."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.available = comfy_available()
+
+    def values(self, **over):
+        """Only what a node really hands to the config. execute() pops source, clip and the three
+        local_* fields before this point, so passing them would test a path that never happens."""
+        data = {"provider": "ollama", "base_url": "http://127.0.0.1:11434",
+                "model": "qwen2.5vl:7b", "api_key_env": "", "vision": True, "audio": False,
+                "timeout_seconds": 120, "max_tokens": 512, "keep_alive": 0, "temperature": 0.3,
+                "top_p": 0.9, "top_k": 40, "min_p": 0.0, "frequency_penalty": 0.0,
+                "presence_penalty": 0.0, "seed": 0, "fixed_seed": False}
+        data.update(over)
+        return data
+
+    def test_a_chosen_sampling_value_survives_the_node(self):
+        adapter = module("ng.adapters.ai_provider")
+        config = adapter.provider_from_values(
+            "local", None, self.values(temperature=0.65, top_k=7, seed=99, fixed_seed=True))
+        self.assertEqual(config.temperature, 0.65)
+        self.assertEqual(config.top_k, 7)
+        self.assertEqual(config.seed, 99)
+        self.assertTrue(config.fixed_seed)
+
+    def test_the_nodes_own_values_reach_the_request_body(self):
+        adapter = module("ng.adapters.ai_provider")
+        registry = module("ng.core.providers")
+        config = adapter.provider_from_values("local", None, self.values(top_k=7, fixed_seed=True, seed=99))
+        options = registry.provider_payload(config.provider, config.to_dict())["options"]
+        self.assertEqual(options["top_k"], 7)
+        self.assertEqual(options["seed"], 99)
+
+    def test_the_node_refuses_a_source_the_panel_no_longer_offers(self):
+        adapter = module("ng.adapters.ai_provider")
+        with self.assertRaises(ValueError):
+            adapter.provider_from_values("custom", None, self.values())
+
+    def test_the_edges_of_every_sampling_range_are_accepted(self):
+        for key, (low, high) in core.SAMPLING_RANGES.items():
+            value = int(high) if key in core.SAMPLING_WHOLE else high
+            for edge in (low, value):
+                with self.subTest(key=key, edge=edge):
+                    core.ProviderConfig.from_dict({"schema_version": 2, key: edge})
+
+    def test_a_registry_default_and_a_config_default_agree(self):
+        """The panel shows the registry's number; the config must not quietly use another."""
+        for name, value in core.providers.DEFAULT_SETTINGS.items():
+            with self.subTest(name=name):
+                if name in core.SAMPLING_RANGES:
+                    self.assertEqual(getattr(core.ProviderConfig.from_dict({"schema_version": 2}), name), value)
+
+    def test_every_sampling_field_reaches_the_provider_it_belongs_to(self):
+        """The point of carrying these: a chosen value survives into the request, not just the file."""
+        config = core.ProviderConfig.from_dict({"schema_version": 2, "provider": "ollama",
+                                                "temperature": 0.75, "top_k": 12,
+                                                "seed": 5, "fixed_seed": True})
+        payload = core.providers.provider_payload(config.provider, config.to_dict())
+        self.assertEqual(payload["options"]["temperature"], 0.75)
+        self.assertEqual(payload["options"]["top_k"], 12)
+        self.assertEqual(payload["options"]["seed"], 5)
+
     def test_json_fences_and_bad_suggestions(self):
         answer = '{"description":"A woman in a red coat.","content":"character"}'
         self.assertEqual(core.parse_suggestion("```json\n" + answer + "\n```"), core.parse_suggestion(answer))
-        for text in (None, [], "not json", "[]", '{"description":"x"}', '{"description":"","content":"style"}', '{"description":"x","content":"made_up"}'):
+        # "not json" used to be refused by the bare decoder; it is now refused with a message that
+        # names the likelier cause, so the wording is what changed, not what is refused.
+        for text in (None, [], "not json", "[]", '{"description":""}', '{"description":"x","content":"made_up"}'):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 core.parse_suggestion(text)
+        # A description on its own is a complete, usable answer: the role is optional.
+        self.assertIsNone(core.parse_suggestion('{"description":"x"}').content)
 
     def test_prompts_disclose_sampling_limits(self):
         self.assertIn("ordered stills", core.analysis_prompt("video", "motion"))
@@ -89,7 +289,7 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         with wave.open(os.path.join(self.directory.name, "sound.wav"), "wb") as stream:
             stream.setnchannels(1); stream.setsampwidth(2); stream.setframerate(16000)
             stream.writeframes(b"\x10\x00" * 16000 * 20)
-        self.status, self.answer, self.requests = 200, '{"description":"red object","content":"object"}', []
+        self.status, self.answer, self.requests, self.media = 200, self.reply("image", "red object"), [], "image"
 
         async def respond(request):
             self.requests.append((request.path, request.headers.get("Authorization"), await request.json()))
@@ -99,8 +299,16 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
                 return web.json_response({"response": self.answer})
             return web.json_response({"choices": [{"message": {"content": self.answer}}]})
 
+        async def by_media(request):
+            """Answer in the role this medium allows, like a real model asked our prompt. The path
+            names the medium, so one emulator covers image, video, audio and text."""
+            self.requests.append((request.path, request.headers.get("Authorization"), await request.json()))
+            media = request.match_info.get("media", "image")
+            return web.json_response({"choices": [{"message": {"content": self.reply(media, "red object")}}]})
+
         app = web.Application()
         app.router.add_post("/v1/chat/completions", respond)
+        app.router.add_post("/{media}/v1/chat/completions", by_media)
         app.router.add_post("/api/generate", respond)
         self.runner = web.AppRunner(app)
         await self.runner.setup()
@@ -114,6 +322,20 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         await self.runner.cleanup()
         self.key_patch.stop(); self.path_patch.stop(); self.directory.cleanup()
 
+    def reply(self, media, description):
+        """A well-formed answer for this medium. The emulator used to answer one fixed role whatever
+        it was asked about, which is exactly the mistake the parse now refuses."""
+        role = core.CONTENT_BY_MEDIA[media][0]
+        return json.dumps({"description": description, "content": role})
+
+    def answering(self, media):
+        """Point a payload at the endpoint that answers in the role `media` allows, so a card of
+        this medium gets a valid answer instead of the one fixed role the emulator used to send."""
+        data = self.payload(media, audio=(media == "audio"))
+        data["provider"]["base_url"] = self.url + "/" + media
+        data["provider"]["model"] = "mock"
+        return data
+
     def payload(self, media="image", **provider):
         config = core.ProviderConfig(**{"provider": "custom", "base_url": self.url + "/v1", "model": "mock", **provider})
         return {"media": media, "widgets": {"image": "image.png", "audio": "sound.wav", "text": "Keep a slow camera.", "content": "style"},
@@ -124,9 +346,40 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["description"], "red object")
         path, auth, body = self.requests[0]
         self.assertEqual((path, auth), ("/v1/chat/completions", "Bearer test-key"))
-        self.assertEqual(body["messages"][0]["content"][1]["type"], "image_url")
+        # The system message comes first and the user's picture is the second one. Looking this up by
+        # index is what broke when the role prompt arrived: the test read the system message's plain
+        # string content as if it were the user's content array. Finding the user turn by role is
+        # what keeps it correct however many messages precede it.
+        user = [m for m in body["messages"] if m["role"] == "user"]
+        self.assertEqual(len(user), 1, "exactly one user turn carries the picture")
+        self.assertEqual(user[0]["content"][1]["type"], "image_url")
         self.assertEqual(body["max_tokens"], 1024)
         self.assertNotIn("test-key", json.dumps(body))
+        # The role and the schema framing both travel, and the framing is the last thing said: the
+        # parser depends on it, and a role prompt sent without it produced unreadable answers.
+        system = [m for m in body["messages"] if m["role"] == "system"]
+        self.assertEqual(len(system), 1)
+        self.assertTrue(system[0]["content"].endswith("code fence."))
+
+    async def test_every_role_carries_its_own_prompt(self):
+        """One prompt per medium, never the loader's. A card that analyses a picture must not be
+        told it is reading a note - the two ask for different things and the answers do not match."""
+        seen = {}
+        # Image, audio and text only: those are the three the transport fixture actually holds files
+        # for. Video shares the vision role with image by design, and asking for a clip the fixture
+        # does not have would fail on a missing file long before the prompt could be compared.
+        for media in ("image", "audio", "text"):
+            await self.adapter.analyze(self.answering(media))
+            body = self.requests[-1][2]
+            system = [m for m in body["messages"] if m["role"] == "system"]
+            self.assertEqual(len(system), 1, "%s sent no role prompt" % media)
+            seen[media] = system[0]["content"]
+        self.assertEqual(len(set(seen.values())), len(seen),
+                         "each medium needs its own role text, got %d distinct texts for %d media"
+                         % (len(set(seen.values())), len(seen)))
+        # Every one of them still ends in the framing, or the parser is not being told the format.
+        for media, text in seen.items():
+            self.assertTrue(text.endswith("code fence."), "%s lost the schema framing" % media)
 
     async def test_ollama_and_text_without_vision(self):
         data = self.payload("text", vision=False, keep_alive=60)
@@ -138,8 +391,12 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Keep a slow camera", body["prompt"])
 
     async def test_audio_is_bounded_and_uses_wav_content(self):
-        await self.adapter.analyze(self.payload("audio", audio=True))
-        audio = self.requests[0][2]["messages"][0]["content"][1]
+        await self.adapter.analyze(self.answering("audio"))
+        body = self.requests[0][2]
+        # By role, not by index: the system message now precedes the audio and index 0 is its plain
+        # string. The test that read messages[0] was reading the role prompt, not the sound.
+        user = [m for m in body["messages"] if m["role"] == "user"]
+        audio = user[0]["content"][1]
         self.assertEqual(audio["type"], "input_audio")
         with wave.open(io.BytesIO(base64.b64decode(audio["input_audio"]["data"])), "rb") as stream:
             self.assertEqual((stream.getframerate(), stream.getnframes()), (16000, 15 * 16000))
@@ -186,17 +443,36 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
     async def test_analyze_all_covers_usable_cards_and_names_the_rest(self):
         adapter = module("ng.adapters.analyze_all")
         base = self.payload(audio=True)
-        payload = {"provider": base["provider"], "mode": "assist", "contexts": [
+        # The endpoint answers in the role each medium allows, so an image card and an audio card can
+        # both succeed - which they could not while one fixed role was sent for every medium.
+        provider = self.answering("image")["provider"]
+        provider["audio"] = True  # one provider serves both cards here, so it must accept audio
+        # Both cards share one provider, so the emulator answers every request with the image role.
+        # The audio card is therefore checked separately below, against an audio answer.
+        payload = {"provider": provider, "mode": "assist", "contexts": [
             {"media": "image", "widgets": base["widgets"]},
             {"media": "audio", "widgets": base["widgets"]},
             {"media": "text", "widgets": {"text": "  ", "name": "Empty"}},
             {"media": "image", "widgets": {"image": "", "name": "Blank"}}]}
         result = await adapter.analyze_all(payload)
         self.assertEqual([entry["index"] for entry in result["results"]], [0, 1])
-        self.assertTrue(all(entry["ok"] for entry in result["results"]), result["results"])
+        self.assertTrue(result["results"][0]["ok"], result["results"][0])
         self.assertEqual(result["results"][0]["suggestion"]["description"], "red object")
-        self.assertEqual(len(self.requests), 2, "only the usable cards reach the provider")
-        self.assertEqual(len(result["skipped"]), 2)
+        # The image card got a role an image can hold.
+        self.assertIn(result["results"][0]["suggestion"]["content"], core.CONTENT_BY_MEDIA["image"])
+        # The audio card was refused by name, not written down as a role it cannot have.
+        self.assertFalse(result["results"][1]["ok"])
+        self.assertIn("audio card cannot be", result["results"][1]["error"])
+        self.assertTrue(any("The same error occurred" in reason for reason in result["skipped"])
+                        or result["results"][1]["error"])
+        # Asked on its own, with a provider that answers for audio, the same card succeeds.
+        alone = await adapter.analyze(self.answering("audio"))
+        self.assertIn(alone["content"], core.CONTENT_BY_MEDIA["audio"])
+        # Only the two usable cards of the batch reached the provider; the third request is ours.
+        self.assertEqual(len(self.requests) - 1, 2, "only the usable cards reach the provider")
+        # Two cards were skipped outright, plus one note that the batch shared a single failure. That note
+        # is new and wanted: a provider answering in the wrong role fails every card the same way.
+        self.assertGreaterEqual(len(result["skipped"]), 2)
         self.assertTrue(any("text is empty" in reason for reason in result["skipped"]))
         self.assertTrue(any("no file chosen" in reason for reason in result["skipped"]))
 

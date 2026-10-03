@@ -226,6 +226,11 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-studio .ng-tools select { width:auto; }
 .ng-studio > details.ng-expert > .ng-field { display:inline-flex; width:calc(33.333% - 10px); margin-right:8px; }
 .ng-product-node .ng-header { padding:8px; gap:6px; }
+ /* The accent frame around the whole panel is dropped for the product nodes: the four sections are
+    ordered and titled, so a frame around them costs a border and padding without adding meaning.
+    Only the product nodes are affected - the context cards keep theirs. */
+ .ng-product-node { border-color:#2a3240; border-radius:9px; padding:6px; box-shadow:none; }
+ .ng-product-node .ng-header { background:none; border:0; border-radius:0; padding:8px 6px; }
 .ng-product-node .ng-header .ng-context-title { font-size:16px; letter-spacing:0; }
 .ng-product-node .ng-ai-badge { font-size:10px; padding:3px 5px; }
 .ng-studio-context .ng-suggestion:empty { display:none; }
@@ -234,6 +239,102 @@ img.ng-source-preview { cursor:zoom-in; }
   .ng-field-row span { white-space:pre-wrap; word-break:break-word; }
   .ng-direction-tools .ng-modebar { display:flex; gap:5px; margin:6px 0; }
   .ng-direction-tools .ng-modebar button[aria-pressed=true] { background:#2f4a63; border-color:#7fb2dd; color:#eaf4ff; }
+/* Product nodes: the AI Loader's branded header, icon tiles and framed sections. Kept separate from
+   the studio rules above so the context cards keep the compact density they were tuned for. */
+.ng-icon { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+.ng-icon svg { width:100%; height:100%; display:block; }
+.ng-product-node .ng-brand { display:flex; align-items:center; gap:10px; min-width:0; }
+.ng-brand-mark { width:34px; height:34px; padding:6px; border-radius:10px; color:#e7dcff;
+  background:linear-gradient(145deg,#7a4ff0,#4a2bb0); border:1px solid #8f6cff;
+  box-shadow:0 2px 10px #0006, inset 0 1px 0 #ffffff33; }
+.ng-brand-text { display:flex; flex-direction:column; min-width:0; }
+.ng-brand-title { font-size:19px; font-weight:700; letter-spacing:.01em; line-height:1.15; white-space:nowrap; }
+.ng-brand-lead { color:#f2f5fb; }
+.ng-brand-accent { background:linear-gradient(92deg,#b98cff,#8f6cff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ng-brand-sub { font-size:11.5px; color:#9fb0c8; letter-spacing:.02em; }
+.ng-brand-menu { border:0; background:transparent; color:#8fa0b8; font-size:19px; line-height:1; cursor:pointer;
+  padding:2px 5px; border-radius:6px; }
+.ng-brand-menu:hover { color:#e6edf7; background:#ffffff14; }
+/* The badge carries its state in the colour, so the panel reads at a glance without reading words. */
+.ng-product-node .ng-status { display:inline-flex; align-items:center; gap:6px; margin-left:auto; }
+.ng-status-mark { width:14px; height:14px; }
+.ng-status[data-tone=idle] { border-color:#4d5768; color:#a7b3c4; background:#2a3140; }
+.ng-status[data-tone=warn] { border-color:#c99735; color:#f6d26e; background:#40321388; }
+.ng-status[data-tone=ready] { border-color:#3f9c74; color:#7fe3b4; background:#12332699; }
+/* Section heading: icon, caption and a help marker that carries the explanation as its tooltip. */
+.ng-section-head { display:flex; align-items:center; gap:8px; margin:0 0 9px; }
+.ng-section-icon { width:16px; height:16px; color:#7fb2ff; }
+/* The help marker follows its caption; the reference reads "1. SOURCE (?)" as one phrase. */
+.ng-section-head .ng-section-title { margin:0; line-height:18px; }
+.ng-section-help { width:17px; height:17px; flex:0 0 17px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%; cursor:pointer; border:1px solid #4d5a6e; background:#1d2431; color:#9fb0c8;
+  font:600 11px/1 system-ui; padding:0; margin:0; min-height:0; }
+.ng-section-help:hover { border-color:#7fb2ff; color:#cfe4ff; }
+/* A field tile draws a box around label and input, with the icon in the caption row. */
+.ng-field-tile { gap:5px; margin:0; padding:9px 10px; border:1px solid #2f3d52; border-radius:9px;
+  background:#16202f; }
+.ng-field-tile:focus-within { border-color:#6f9fe0; box-shadow:0 0 0 1px #6f9fe055; }
+.ng-field-head { display:flex; align-items:center; gap:7px; }
+.ng-field-icon { width:15px; height:15px; color:#7fb2ff; }
+.ng-field-tile .ng-field-label { font-size:11.5px; color:#b7c6da; }
+/* Checkbox tiles keep the caption and the box on one line, because a stacked box reads as empty. */
+.ng-field-tile:has(input[type=checkbox]) { flex-direction:row; align-items:center; gap:9px; }
+.ng-field-tile:has(input[type=checkbox]) .ng-field-head { flex:1; }
+.ng-field-tile input[type=checkbox] { width:16px; height:16px; flex:0 0 16px; accent-color:#8f6cff; }
+/* Advanced reads as its own framed row with a chevron, the same shape the reference uses. */
+.ng-advanced { margin:10px 0; padding:0 11px; border:1px solid #2f3d52; border-radius:10px; background:#16202f; }
+/* The framed details rules above would put a second box and a chevron inside this row, and the row
+   already is the box, so the summary keeps only the flex layout. */
+.ng-studio-context .ng-advanced > .ng-advanced-head { display:flex; align-items:center; gap:8px; cursor:pointer;
+  padding:9px 0; margin:0; border:0; background:transparent; list-style:none; }
+.ng-advanced-head::-webkit-details-marker { display:none; }
+.ng-advanced-icon { width:16px; height:16px; color:#c39cff; }
+.ng-advanced-title { font-size:12px; font-weight:700; letter-spacing:.08em; color:#c8a4ff; }
+.ng-advanced-note { font-size:12px; color:#9fb0c8; }
+.ng-advanced-chevron { width:15px; height:15px; margin-left:auto; color:#8fa0b8; transition:transform .15s; }
+.ng-advanced[open] .ng-advanced-chevron { transform:rotate(90deg); }
+.ng-advanced > .ng-field-tile { margin:0 0 8px; }
+/* Source cards: taller tiles, so the title and its hint each keep one line. */
+.ng-product-node .ng-source-cards { gap:9px; }
+.ng-product-node .ng-source-card { flex-direction:column; align-items:flex-start; gap:7px; padding:11px 12px;
+  border-radius:11px; background:#141d2e; }
+.ng-product-node .ng-source-icon { width:22px; height:22px; color:#8fb6ef; }
+.ng-product-node .ng-source-card[aria-pressed=true] .ng-source-icon { color:#d9c4ff; }
+.ng-product-node .ng-source-text strong { font-size:13.5px; }
+.ng-product-node .ng-source-text small { font-size:11px; }
+.ng-product-node .ng-section { padding:12px; margin:9px 0; }
+.ng-product-node .ng-section-title { font-size:12px; letter-spacing:.05em; color:#9dc6f5; }
+/* The overflow button collapses the two hint sentences; fit() re-measures the node around it. */
+.ng-product-node[data-hints=off] .ng-panel-body > .ng-section > .ng-muted { display:none; }
+/* The field-level "?" repeats the section marker on the tiles that need one. It stays hidden until
+   the registry has something to say, so a field the chosen provider does not have carries no "?". */
+.ng-field-help { width:15px; height:15px; flex:0 0 15px; margin-left:auto; display:flex; align-items:center;
+  justify-content:center; border-radius:50%; cursor:pointer; border:1px solid #4d5a6e; background:#1d2431;
+  color:#9fb0c8; font:600 10px/1 system-ui; padding:0; min-height:0; }
+.ng-field-help:hover { border-color:#7fb2ff; color:#cfe4ff; }
+/* The panel's only buttons live inside a tile, so they have to look unlike the inputs above them. */
+.ng-field-actions { display:flex; gap:7px; margin-top:7px; }
+.ng-action { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; cursor:pointer;
+  border:1px solid #3a4a61; border-radius:7px; background:#1b2534; color:#c3d2e4; font:500 11.5px/1 system-ui; }
+.ng-action:hover:not(:disabled) { border-color:#6f9fe0; color:#eaf2ff; }
+.ng-action:disabled { opacity:.5; cursor:default; }
+.ng-action-primary { border-color:#4a6fa5; background:#1d2c44; color:#dceaff; }
+.ng-action-icon { width:13px; height:13px; }
+/* A status line under a field. Amber means something is still missing, green means the provider
+   answered, grey is simply the current state - and never a claim the request did not prove. */
+.ng-field-status { display:block; font-size:11px; line-height:1.45; color:#8e9db2; margin:6px 0 0; }
+.ng-field-status[data-state=ok] { color:#8fd6a4; }
+.ng-field-status[data-state=warn] { color:#e8b661; }
+.ng-secret { width:100%; }
+.ng-secret-stored { border-color:#3f6b4d; }
+/* A capability is a fact, so its tile carries a sentence and no control. It keeps the shape of the
+   fields around it so the row height does not jump when the provider changes underneath it. */
+.ng-field-fact { background:#161b22; border:1px solid #333c47; }
+.ng-fact-text { font-size:12px; color:#cfd8e3; padding:7px 8px; line-height:1.4; }
+/* The wire name goes under the field only where it differs from the label. Ollama nests its sampling
+   knobs under "options" and calls the token limit num_predict, so a user reading their own request
+   log would otherwise not find the control they just set. */
+.ng-wire-name { font-size:10.5px; color:#7f8ea3; font-family:ui-monospace,Consolas,monospace; margin-top:3px; }
 `;
 
 export function ensureStudioStyle() {

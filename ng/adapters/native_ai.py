@@ -6,6 +6,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from ..core.analysis import analysis_prompt, parse_suggestion
 from ..core.auto_direct import direction_prompt, keep_manual_dialogue, parse_direction
 from ..core.fields import need_dict, read_number, read_str
+from ..core.system_prompts import framed, for_node
 from .ai_provider import NativeAIProvider
 
 
@@ -44,7 +45,10 @@ def native_request(provider, action, request_json):
         clip = graph.node("CLIPLoader", clip_name=provider.local_model, type=provider.local_type, device="default").out(0)
     inputs = dict(clip=clip, prompt=prompt, max_length=provider.config.max_tokens,
                   sampling_mode="off", thinking=False, use_default_template=True,
-                  system_prompt="You are a video director's assistant. Follow the requested JSON schema exactly. Return a complete, nonempty JSON object, without a preface or markdown.")
+                  # The role comes from system_prompts.py and the schema framing from there too, so
+                  # the two cannot be edited apart. Auto Direct plans, an Analyze describes: the same
+                  # framing with the wrong role produced answers that read as the wrong task.
+                  system_prompt=framed(for_node("director" if action == "direct" else "context", media)))
     if media:
         source = payload["widgets"].get(media, "")
         loaded = graph.node("NGAIReadMedia", media=media, source=source)
@@ -59,7 +63,8 @@ def parse_result(text, action, request_json):
     # Generic Qwen CLIP tokenizers can decode the assistant role header with the answer.
     text = text.removeprefix("assistant\n").strip()
     if action == "analyze":
-        return parse_suggestion(text).to_dict()
+        # The medium decides which content roles the answer may name: a picture cannot be dialogue.
+        return parse_suggestion(text, payload.get("media", "text")).to_dict()
     suggestion = parse_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"])
     shots, kept = keep_manual_dialogue(suggestion["shots"], payload["director"].get("shots", ""))
     suggestion["shots"] = shots

@@ -6,14 +6,32 @@ import { connectedProvider, readContexts } from "./ng_read.js";
 import { providerRestoreValues, configureProviderType, restoreProviderFields } from "./ng_provider_restore.js";
 import { attachProgress } from "./ng_studio_progress.js";
 import { compactContextInputs } from "./ng_connector_slots.js";
+import { icon } from "./ng_icons.js";
 import { buildPanel } from "./ng_ai_panel.js";
 
 const { app } = window.comfyAPI.app, { api } = window.comfyAPI.api;
 
-function shell(node, title, accent, size) {
+function shell(node, title, accent, size, brand) {
   ensureStudioStyle(); node.properties ||= {}; node.color = "#162b45"; node.bgcolor = "#101a2c";
   const root = element("div", "ng-studio-context ng-product-node"); root.style.setProperty("--ng-accent", accent);
-  const header = element("div", "ng-header"); header.append(element("strong", "ng-context-title", title)); root.append(header);
+  const header = element("div", "ng-header");
+  // A branded node shows a logo tile, a two-tone title and a subtitle; the plain ones keep the old
+  // single strong, so the other product nodes do not grow a header they never asked for.
+  if (brand) {
+    const badge = element("div", "ng-brand");
+    badge.append(icon(brand.icon, "ng-brand-mark"));
+    const text = element("div", "ng-brand-text");
+    const heading = element("strong", "ng-brand-title");
+    const [lead, ...rest] = title.split(" ");
+    heading.append(element("span", "ng-brand-lead", [lead, ...rest.slice(0, -1)].join(" ")));
+    heading.append(element("span", "ng-brand-accent", rest[rest.length - 1] || ""));
+    text.append(heading, element("small", "ng-brand-sub", brand.subtitle));
+    badge.append(text);
+    header.append(badge);
+    // No overflow menu: its only job was to hide two hint sentences, and every field now carries
+    // its own explanation. A button in the header that changes the layout is a surprise.
+  } else header.append(element("strong", "ng-context-title", title));
+  root.append(header);
   const widget = node.addDOMWidget("ng_product", "ng_product", root, { serialize: false, hideOnZoom: false });
   widget.computeSize=undefined;
   // Only the minimum width is fixed; the height comes from the panel, which measures its own
@@ -26,7 +44,8 @@ function shell(node, title, accent, size) {
 
 function provider(node) {
   const defaults={...values(node),...node.constructor.ng_provider_defaults};
-  const { root, header, widget } = shell(node, "H3 AI LOADER", "#a77cff", [660, 300]);
+  const { root, header, widget } = shell(node, "H3 AI LOADER", "#a77cff", [660, 300],
+    { icon: "box", subtitle: "Load LLM / AI Model" });
   const panel = buildPanel(node, root, header, widget);
   const removed=node.onRemoved;node.onRemoved=function(...args){panel.dispose();return removed?.apply(this,args);};
   const configured = node.onConfigure; node.onConfigure = function (...args) { const result = configured?.apply(this, args);

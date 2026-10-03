@@ -1,12 +1,83 @@
-"""Local preset and preview routes for the context cards."""
+"""Local preset, preview, provider-description and key routes for the context cards."""
 import asyncio
 
 from aiohttp import web
 from server import PromptServer
 
-from ..adapters import presets, preview_media, waveform
+from ..adapters import keys, models, presets, preview_media, waveform
+from ..core import providers
 from ..core.context_build import item_from_widgets
 from ..core.presets import ContextPreset, widget_values
+
+
+def key_root(request):
+    """Where the keys live. Same place as the context presets: the requesting ComfyUI user's own
+    folder, which is outside every workflow file and outside anything that gets shared."""
+    return PromptServer.instance.user_manager.get_request_user_filepath(request, "minimax_h3_ng/api_keys")
+
+
+@PromptServer.instance.routes.get("/ng/providers")
+async def list_providers(request):
+    """The single list the panel builds its dropdowns and its field visibility from.
+
+    Answers from the registry and nothing else: no network, no key, nothing the user typed. If
+    the panel had to know an address or a field name on its own, that would be the second place
+    to correct when a provider changes, and the two would drift.
+    """
+    return web.json_response(providers.describe())
+
+
+@PromptServer.instance.routes.post("/ng/models")
+async def list_models(request):
+    """Ask the provider which models it serves. Needs network and often a key, which is why it is
+    its own route and not part of /ng/providers.
+
+    The reply says where the names came from (`live`) and carries the key nowhere: the panel
+    receives names, never the secret it was resolved with.
+    """
+    try:
+        data = await request.json()
+        provider = data.get("provider", "")
+        root = key_root(request)
+        key = keys.resolve(root, provider, _fallback_key(data))
+        names, reason = await models.listing(provider, data.get("base_url", ""), key)
+    except (ValueError, KeyError, TypeError) as error:
+        return web.json_response({"ok": False, "models": [], "reason": str(error)}, status=400)
+    return web.json_response({"ok": not reason, "models": names, "reason": reason, "source": "live",
+                            # A listing that worked proves the address, not the key: OpenRouter
+                            # answers /v1/models either way. The panel shows "key untested" rather
+                            # than a green tick the user would read as "the key is good".
+                            "key_checked": providers.key_is_checked_on_listing(provider)})
+
+
+def _fallback_key(data):
+    """The env-var route, so a user who already sets OPENROUTER_API_KEY keeps working unchanged."""
+    import os
+    for name in (data.get("key_env") or "", "OPENROUTER_API_KEY", "OPENAI_API_KEY"):
+        if name and os.environ.get(name):
+            return os.environ[name]
+    return None
+
+
+@PromptServer.instance.routes.get("/ng/keys")
+async def read_keys(request):
+    """Which providers have a key stored. Never the key itself, not even partially."""
+    try:
+        return web.json_response({"ok": True, "keys": keys.describe(key_root(request))})
+    except (OSError, ValueError) as error:
+        return web.json_response({"ok": False, "keys": {}, "reason": str(error)}, status=400)
+
+
+@PromptServer.instance.routes.post("/ng/keys")
+async def write_keys(request):
+    """Store or clear one key. An empty key removes it, which is how a user forgets one."""
+    try:
+        data = await request.json()
+        stored = await asyncio.to_thread(keys.write, key_root(request), data.get("provider", ""),
+                                        data.get("key", ""), data.get("key_env", ""))
+        return web.json_response({"ok": True, "stored": stored, "keys": keys.describe(key_root(request))})
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return web.json_response({"ok": False, "reason": str(error)}, status=400)
 
 
 def preset_root(request):
