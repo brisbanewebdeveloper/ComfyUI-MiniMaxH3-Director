@@ -45,16 +45,20 @@ const SECONDS = { min: 4, max: 15, step: 1, value: 8 };
 
 export function textEditor(node) {
   ensureContextTextStyle();
-  const root=element("div","ng-text-workspace"), editor=section("☷ Text Content","ng-text-editor-panel"), field=control(node,"text","Context text",{multiline:true});
-  const count=element("span","ng-text-count"), preview=element("pre","ng-editor-highlight"),overlay=element("div","ng-editor-overlay");
+  const root=element("div","ng-text-workspace"), editor=section("☷ Text Content","ng-text-editor-panel"), field=control(node,"text","Text content",{multiline:true});
+  // The panel heading above already reads "Text Content". A second label saying "Context text"
+  // directly under it only repeated the same two words one row lower, so the element is kept for
+  // the screen reader and the aria-label, and is not drawn.
+  field.label.classList.add("ng-text-unlabelled");
+  const count=element("span","ng-text-count"), highlight=element("pre","ng-editor-highlight"),overlay=element("div","ng-editor-overlay");
   // Both live inside the editor frame: the count reads as part of the text box, and the grow button has
   // to sit above the textarea to stay clickable, so it shares that stacking context.
   const grow=element("button","ng-text-grow","⤢");
   grow.type="button";grow.title="Bigger editor";grow.setAttribute("aria-label","Bigger editor");grow.setAttribute("aria-pressed","false");
   grow.onclick=()=>{const tall=overlay.classList.toggle("ng-text-tall");grow.setAttribute("aria-pressed",String(tall));};
-  overlay.append(preview,field.field,count,grow);field.label.append(overlay);editor.append(field.label);
+  overlay.append(highlight,field.field,count,grow);field.label.append(overlay);editor.append(field.label);
   field.field.classList.add("ng-highlight-input");field.field.spellcheck=false;
-  field.field.onscroll=()=>{preview.scrollTop=field.field.scrollTop;preview.scrollLeft=field.field.scrollLeft;};
+  field.field.onscroll=()=>{highlight.scrollTop=field.field.scrollTop;highlight.scrollLeft=field.field.scrollLeft;};
   const quick=section("★ Quick Insert","ng-quick-panel");
   for(const [key,label] of CONTENT.text) {
     const kind=KINDS[key]||{};
@@ -92,40 +96,79 @@ export function textEditor(node) {
       const data=await aiAction(comfy().app,comfy().api,"prompt",{note,seconds:secondsValue,preset:preset.value,provider},controller.signal);
       answer.value=data.suggestion?.prompt??"";
       answer.hidden=!answer.value;
+      // A finished build lands in the AI version and the switch flips to it, so the prompt is read
+      // in the editor straight away. The note is stored first, which is what makes going back safe.
+      if(answer.value){node.properties||={};
+        // Only the note side may overwrite the stored note. After the first build the editor shows
+        // the AI version, so a second build would otherwise save that over the note and the switch
+        // would have nothing left to go back to - the one thing it exists for.
+        if(mode!=="ai")node.properties.ng_text_note=note;
+        node.properties.ng_text_ai=answer.value;
+        mode="ai";applyValues(node,{text:answer.value});node.graph?.change();}
     }catch(error){hint.textContent=error.message;answer.value="";answer.hidden=true;}
     finally{busy=false;controller=null;sync();}
   };
   cancel.onclick=()=>controller?.abort();
-  const use=element("button","ng-build-use","Use this prompt");
-  // The note is kept before it is replaced, so the button is undoable without a workflow history.
-  use.onclick=()=>{
-    if(!answered())return;
+  // One switch instead of "Use this prompt" and "Restore my text". Both buttons moved the note back
+  // and forth, could disagree with each other, and "use" overwrote the note it replaced. Here both
+  // versions are kept - the note in ng_text_note, the built prompt in ng_text_ai - and the switch
+  // only decides which one the editor shows and the Director reads. Going back is always possible.
+  const ownText=()=>String(node.properties?.ng_text_note??values(node).text??""),
+    aiText=()=>String(node.properties?.ng_text_ai??"");
+  let mode=aiText()?"ai":"note";
+  const switcher=element("div","ng-text-switch"),
+    noteSide=element("button","ng-text-switch-btn","✎ My note"), aiSide=element("button","ng-text-switch-btn","✨ AI prompt");
+  noteSide.type=aiSide.type="button";
+  noteSide.title="Your own note";aiSide.title="The prompt the AI built from it";
+  // Saving before switching is what makes the switch lossless: whatever is on screen goes back to the
+  // version it belongs to, so edits made in either view survive a trip to the other one.
+  function showMode(next){
+    const current=field.field.value;
     node.properties||={};
-    node.properties.ng_text_note=node.properties.ng_text_note||values(node).text||"";
-    applyValues(node,{text:answer.value});node.graph?.change();
-    hint.textContent="Prompt written to the note. Your original text is kept in this card.";answer.value="";answer.hidden=true;sync();
-  };
-  const restore=element("button","ng-build-restore","Restore my text");
-  restore.onclick=()=>{
-    const original=node.properties?.ng_text_note;
-    if(original===undefined)return;
-    applyValues(node,{text:original});delete node.properties.ng_text_note;node.graph?.change();
-    hint.textContent="Your own text is back.";sync();
-  };
-  const actions=element("div","ng-build-actions");
-  options.append(preset,seconds,go,cancel);actions.append(use,restore);build.append(options,hint,answer,actions);
+    node.properties[mode==="ai"?"ng_text_ai":"ng_text_note"]=current;
+    mode=next;
+    const shown=mode==="ai"?aiText():ownText();
+    if(shown!==current){applyValues(node,{text:shown});node.graph?.change();}
+    // The AI prompt is the model's wording, not a note the user is drafting, so it is shown
+    // read-only. Switching to My note hands editing back rather than writing over the answer.
+    field.field.readOnly=mode==="ai";
+    sync();
+  }
+  noteSide.onclick=()=>showMode("note");aiSide.onclick=()=>showMode("ai");
+  switcher.append(noteSide,aiSide);
+  // The Build panel holds only the three settings the request is made with; its button lives here so
+  // the whole request stays in one row.
+  options.append(preset,seconds,go,cancel);build.append(options,hint);
+  // The finished prompt is shown under the note, not inside the Build panel: the panel above holds
+  // the three settings the request is made with, and the answer is the one thing the user reads
+  // next to the sentence it will replace.
+  const previewPanel=section("✦ Preview","ng-text-preview-panel"), analysisHost=element("div","ng-text-preview-analysis"),
+    placeholder=element("small","ng-muted","The result appears here. Analyze the note, or build a prompt from it.");
+  previewPanel.append(switcher,analysisHost,answer,placeholder);
   let busy=false,controller=null;
   // The answer is read defensively: a rebuilt panel can sync once before its textarea exists, and a
   // card that cannot render its own button state is worse than one missing an update.
   const answered=()=>String(answer.value??"").trim();
   function syncBuild() {
     const provider=contextProvider(node);
-    go.disabled=busy||!provider;cancel.hidden=!busy;use.disabled=busy||!answered();
-    restore.hidden=node.properties?.ng_text_note===undefined;
+    go.disabled=busy||!provider;cancel.hidden=!busy;
     answer.hidden=!answered();
+    // The AI view is only offered once there is something to switch to. Before the first build it
+    // would be an empty text field pretending to be an answer.
+    aiSide.disabled=!aiText()||busy;
+    switcher.dataset.mode=mode;
+    noteSide.setAttribute("aria-pressed",String(mode==="note"));aiSide.setAttribute("aria-pressed",String(mode==="ai"));
+    // The hint only earns its row while a request is in flight or has just failed; otherwise the
+    // preview window shows the answer or the placeholder, never both.
+    hint.hidden=!hint.textContent;
+    placeholder.hidden=busy||!!hint.textContent||!!answered()||!!analysisHost.textContent;
   }
-  const main=element("div","ng-text-main"),sidebar=element("div","ng-text-sidebar");
-  main.append(editor,build,quick);root.append(main,sidebar);
+  // Left column: the note, and directly under it the finished prompt. Right column, top to bottom:
+  // Preset, Build H3 Prompt, Quick Insert - the order the card is read in.
+  const main=element("div","ng-text-main"),sidebar=element("div","ng-text-sidebar"),presetSlot=element("div","ng-text-preset-slot");
+  main.append(editor,previewPanel);sidebar.append(presetSlot,build,quick);root.append(main,sidebar);
+  // Starts on the AI view only if a previous build is still stored, matching how the switch reads.
+  field.field.readOnly=mode==="ai";
   function sync() {
     const entries=relatedContexts(node),previous=node.properties?.ng_context_names||{},current=values(node).text||"";
     const renamed=renameReferences(current,previous,entries);
@@ -136,7 +179,7 @@ export function textEditor(node) {
     field.sync();const text=values(node).text||"";
     count.textContent=`${text.length} / ${CHARACTER_LIMIT}`;
     count.dataset.over=String(text.length>CHARACTER_LIMIT);
-    preview.replaceChildren();
+    highlight.replaceChildren();
     const parts=text.split(/(\[[^\]\n]+\])/u);
     for(const part of parts){const placeholder=/^\[/.test(part);
       const span=element("span",placeholder?"ng-template-placeholder":"");
@@ -145,13 +188,13 @@ export function textEditor(node) {
         // stays neutral rather than being assigned a colour that would claim a meaning it does not have.
         const key=part.slice(1,-1).trim();
         if(KINDS[key]){span.dataset.kind=key;span.dataset.tone=KINDS[key].tone;}}
-      else renderReferences(span,part,entries,element);preview.append(span);}
-    preview.append(element("span","","\n"));
-    preview.title="A bracket marks a part of the video. Write what belongs there, or let Build prompt fill it in. @Name refers to a connected context.";
+      else renderReferences(span,part,entries,element);highlight.append(span);}
+    highlight.append(element("span","","\n"));
+    highlight.title="A bracket marks a part of the video. Write what belongs there, or let Build prompt fill it in. @Name refers to a connected context.";
     // The build panel reads the same state this function writes, so it is refreshed with it rather
     // than only when its own buttons are clicked - connecting an AI provider has to enable the
     // button, and that happens without any interaction here.
     syncBuild();
   }
-  sync();return {root,sidebar,sync};
+  sync();return {root,sidebar,presetSlot,analysisHost,sync};
 }

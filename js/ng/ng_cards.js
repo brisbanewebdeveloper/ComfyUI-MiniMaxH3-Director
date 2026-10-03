@@ -26,8 +26,19 @@ function attach(node,media) {
   assignColor();
   const root=element("div","ng-studio-context"), header=element("div","ng-header"), titles=element("div");
   root.dataset.media=media;
-  const title=element("strong","ng-context-title",`${ICONS[media]} H3 CONTEXT ${media.toUpperCase()}`), nameText=element("div","ng-context-name");
-  const analyzed=element("span","ng-ai-badge"), toggle=element("button","","Details");titles.append(title,nameText);header.append(titles,analyzed,toggle);
+  // The Text card gets the rounded tile the reference and the AI Loader node use for their mark,
+  // instead of a bare letter typed into the title. The other cards keep their plain glyph.
+  const badge=element("span","ng-context-badge",ICONS[media]), titleText=`H3 CONTEXT ${media.toUpperCase()}`;
+  const title=element("strong","ng-context-title",media==="text"?titleText:`${ICONS[media]} ${titleText}`), nameText=element("div","ng-context-name");
+  const analyzed=element("span","ng-ai-badge"), toggle=element("button","","Details");
+  if(media==="text")titles.append(badge,title);else titles.append(title);
+  titles.append(nameText);
+  // The Text card has no compact form: its whole surface is the note and the prompt built from it,
+  // and a collapsed card would only hide the note the user came to write. Analyze moves up into the
+  // header so the note is the first thing under the title, with no result box above it.
+  const headerTools=element("div","ng-context-tools");
+  if(media==="text"){toggle.remove();header.append(titles,headerTools);analyzed.remove();}
+  else header.append(titles,analyzed,toggle);
   const caption=element("div","ng-context-caption"), details=element("div","ng-context-details"), status=element("div","ng-status");
   const fields=[], components=[], top=element("div","ng-context-top"), lower=element("div","ng-context-bottom");
   const source=section(media==="audio"?"♫ Audio Track":"Source"), file=media==="text"?null:control(node,media,"Input file");
@@ -36,13 +47,13 @@ function attach(node,media) {
       if(widget)widget.callback?.();else status.textContent="Use ComfyUI's file upload action.";};source.append(upload);}
   const name=control(node,"name","Name"), description=control(node,"description","Description",{multiline:true});fields.push(name,description);
   const content=rolePanel(node,media,"content"), usage=rolePanel(node,media,"usage");components.push(content,usage);
-  let preview=null,editor=null;
+  let preview=null,editor=null,analysisHost=null;
   const analysisPanel=section("✨ Preview / Analysis"),footer=element("div","ng-context-footer");
   const relations=assetPanel(node);if(relations){components.push(relations);footer.append(relations.root);}
   // A text note is not a medium, so it has no role to assign. The image, video and audio cards keep
   // their "Use As" panel, where a role says what the model should do with that file; a note already
   // says what it means, and a second set of roles to pick just competed with the text itself.
-  if(media==="text") {editor=textEditor(node);components.push(editor);editor.sidebar.append(analysisPanel);top.append(editor.root);}
+  if(media==="text") {editor=textEditor(node);components.push(editor);analysisHost=editor.analysisHost;top.append(editor.root);}
   else {preview=mediaEditor(node,media,api);source.append(preview.metadata);
     content.root.append(analysisPanel);
     if(media==="audio"){top.append(preview.root);lower.append(content.root,usage.root,preview.settings);}
@@ -76,15 +87,30 @@ function attach(node,media) {
   auto.onclick=()=>{applyValues(node,{color:""});assignColor();update();};custom.oninput=()=>applyValues(node,{color:custom.value});colorPanel.append(color.label,auto,custom);
   const advanced=element("details");advanced.append(element("summary","","Description / Identity"),description.label);
   const id=control(node,"context_id","Context ID");fields.push(id);advanced.append(id.label,colorPanel);
-  if(media==="text"){advanced.append(content.root);editor.sidebar.append(presets.root);if(relations)editor.sidebar.append(relations.root);details.append(name.label,top,advanced,status);}
+  // Nothing but the note and the prompt it produces is kept on the Text card. Description and
+  // Context ID only earn their row when prompts are stored and read back by that ID; here the
+  // preset is stored whole and the note is the prompt, so both fields had nothing to say.
+  // Context Color stays: it is the one thing the H3 Director reads back, so the card can be told
+  // apart from the note it came from.
+  if(media==="text"){advanced.remove();
+    editor.presetSlot.append(presets.root);
+    // Subject assignment stays, because a note scoped to a Subject is read by the Director
+    // (`_scope_text`). It goes last and collapsed, so the three panels above keep the order the
+    // card is read in and the note is not pushed down by a control most notes never touch.
+    if(relations)details.append(name.label,top,colorPanel,status,relations.root);
+    else details.append(name.label,top,colorPanel,status);}
   else {footer.append(source,presets.root);details.append(name.label,top,lower,footer,advanced,status);}
-  const analysis=attachAnalysis(node,media,analysisPanel,status);
+  const analysis=attachAnalysis(node,media,analysisPanel,status,
+    media==="text"?{analyze:headerTools,output:analysisHost}:undefined);
   root.append(header,caption,details);
   function expand(value) {
-    root.dataset.expanded=String(value);
-    node.properties.ng_context_expanded=value;details.hidden=!value;caption.hidden=value;toggle.textContent=value?"Compact":"Details";
-    const sizes={image:[820,790],video:[820,760],audio:[1120,880],text:[1280,860]};
-    node.setSize(value?sizes[media]:[380,210]);node.setDirtyCanvas?.(true,true);
+    // The Text card is always open: expand() is called on configure and from the toggle, and the
+    // toggle is gone, so the card must not be able to end up collapsed with no way back.
+    const open=media==="text"?true:value;
+    root.dataset.expanded=String(open);
+    node.properties.ng_context_expanded=open;details.hidden=!open;caption.hidden=open;toggle.textContent=open?"Compact":"Details";
+    const sizes={image:[820,790],video:[820,760],audio:[1120,880],text:[1180,820]};
+    node.setSize(open?sizes[media]:[380,210]);node.setDirtyCanvas?.(true,true);
   }
   toggle.onclick=()=>{expand(!node.properties.ng_context_expanded);node.graph?.change();};
   hideNative(node,(node.widgets||[]).map((widget)=>widget.name));
@@ -105,7 +131,11 @@ function attach(node,media) {
     const accent=/^#[0-9a-f]{6}$/i.test(now.color)?now.color:FAMILY[node.comfyClass].color;root.style.setProperty("--ng-accent",accent);custom.value=accent;
     nameText.textContent=now.name||"New "+media+" context";
     caption.textContent=`${selectedRoles(node,"content").join(" + ")||media} · ${selectedRoles(node,"usage").join(" + ")} · Preserve ${now.preserve}`;
-    const analyzedCurrent=node.properties.ng_analysis?.fingerprint===analysisFingerprint(media,now);analyzed.textContent=analyzedCurrent?"✨ Analyzed":"Manual";
+    // The Text card has no badge in its header, so the analyzed state is written into the Analyze
+    // button itself: it is the only place on that card that reports what the card knows.
+    const analyzedCurrent=node.properties.ng_analysis?.fingerprint===analysisFingerprint(media,now);
+    if(media==="text")analysis.analyze.textContent=analyzedCurrent?"✨ Analyzed":"✨ Analyze";
+    else analyzed.textContent=analyzedCurrent?"✨ Analyzed":"Manual";
     fields.forEach((field)=>field.sync());components.forEach((component)=>component.sync());analysis.sync();preview?.refresh();
     }catch(error){status.textContent=`Check context settings: ${error.message}`;caption.textContent=status.textContent;analyzed.textContent="Check settings";}
   }

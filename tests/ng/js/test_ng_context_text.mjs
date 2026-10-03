@@ -26,14 +26,22 @@ const allKinds=quoted(contextSource.slice(contextSource.indexOf("CONTENT_KINDS =
   contextSource.indexOf(")\n#",contextSource.indexOf("CONTENT_KINDS = ("))));
 
 class Element {
-  constructor(tag){this.tag=tag;this.children=[];this.style={};this.classList={add:()=>{}};this.dataset={};
+  constructor(tag){this.tag=tag;this.children=[];this.style={};this.classList={add:()=>{}};this.dataset={};this.attributes={};
+    this.hidden=false;this.disabled=false;
     // A textarea/input carries a value in the browser; the build panel writes one and reads it back.
     // Without it here the panel would silently look empty, which is exactly the failure the suite
     // is meant to catch rather than paper over.
-    if(tag==="textarea"||tag==="input")this.value="";}
+    if(tag==="textarea"||tag==="input")this.value="";
+    // textContent and the attribute store are real, not stubs: the note/AI switch states itself
+    // through aria-pressed and through its own label, and a stub that dropped both would let a
+    // switch that never updates pass.
+    this._text="";}
   append(...nodes){this.children.push(...nodes);}
   replaceChildren(...nodes){this.children=[...nodes];}
-  setAttribute(){}
+  setAttribute(name,value){this.attributes[name]=String(value);}
+  getAttribute(name){return name in this.attributes?this.attributes[name]:null;}
+  get textContent(){return this._text;}
+  set textContent(value){this._text=String(value);}
   all(){return [this,...this.children.flatMap(child=>child.all())];}
 }
 globalThis.document={createElement:tag=>new Element(tag),dispatchEvent:()=>{},getElementById:()=>null,head:new Element("head")};
@@ -207,20 +215,31 @@ for(const [given,expected] of [["1","4"],["99","15"],["abc","8"],["12","12"]]){
   length.value=given;await go.onclick();
   assert.equal(length.value,expected,`a typed length of ${given} is clamped to ${expected}`);
 }
-// Building writes a proposal, not the note: the user's own text survives until they say otherwise.
-assert.equal(styled.widgets.find(widget=>widget.name==="text").value,"[character] walks. [unknown_kind] stays.",
-  "building never overwrites the note by itself");
+// A finished build lands in the AI version and flips the switch to it. The note is not thrown away:
+// it is kept, so the switch can bring it back. This replaces "Use this prompt" / "Restore my text",
+// which both moved the same text back and forth and disagreed about whether the note still existed.
+assert.equal(styled.widgets.find(widget=>widget.name==="text").value,sent.prompt,
+  "the built prompt is what the editor shows");
+assert.equal(styled.properties.ng_text_note,"[character] walks. [unknown_kind] stays.",
+  "the note is kept, so the switch can go back");
+assert.equal(styled.properties.ng_text_ai,sent.prompt,"the built prompt is kept as its own version");
 const answer=card.root.all().find(node=>node.className==="ng-build-answer");
 assert.equal(answer.value,sent.prompt,`the answer lands in the box the user reads first (hint: ${card.root.all().find(node=>node.tagName==="small")?.textContent})`);
+
+const switcher=card.root.all().find(node=>node.className==="ng-text-switch");
+assert.ok(switcher,"one switch chooses between the note and the built prompt");
+const noteSide=card.root.all().find(node=>node.className==="ng-text-switch-btn"&&node.textContent.includes("My note"));
+const aiSide=card.root.all().find(node=>node.className==="ng-text-switch-btn"&&node.textContent.includes("AI prompt"));
+assert.equal(switcher.dataset.mode,"ai","the switch starts on the version the build produced");
+assert.equal(aiSide.getAttribute("aria-pressed"),"true","the shown side is the pressed one");
+assert.equal(noteSide.getAttribute("aria-pressed"),"false","the hidden side is not pressed");
+// Going back has to restore the note exactly, not an empty string left behind by the swap.
+noteSide.onclick();
+assert.equal(switcher.dataset.mode,"note","the switch moves to the note");
 assert.equal(styled.widgets.find(widget=>widget.name==="text").value,"[character] walks. [unknown_kind] stays.",
-  "the note is still untouched while the answer waits");
-const use=card.root.all().find(node=>node.className==="ng-build-use");
-use.onclick();
-assert.equal(styled.widgets.find(widget=>widget.name==="text").value,sent.prompt,"Use this prompt writes the answer");
-assert.equal(styled.properties.ng_text_note,"[character] walks. [unknown_kind] stays.","the original text is kept");
-const restore=card.root.all().find(node=>node.className==="ng-build-restore");
-restore.onclick();
-assert.equal(styled.widgets.find(widget=>widget.name==="text").value,"[character] walks. [unknown_kind] stays.",
-  "the original text comes back");
-assert.equal(styled.properties.ng_text_note,undefined,"and the backup is cleared, so Restore disappears");
-console.log("Context text card: real H3 kinds incl. sound, one AI button, proposal before overwrite");
+  "the note comes back through the switch");
+assert.equal(noteSide.getAttribute("aria-pressed"),"true","the note is now the pressed side");
+// And forth again, so neither direction can be a one-way street.
+aiSide.onclick();
+assert.equal(styled.widgets.find(widget=>widget.name==="text").value,sent.prompt,"and back to the built prompt");
+console.log("Context text card: real H3 kinds incl. sound, one AI button, a lossless note/AI switch");

@@ -10,14 +10,26 @@ const { app } = window.comfyAPI.app;
 
 const FIELD_LABELS = { description: "Description", content: "Content", usage: "Use as" };
 
-export function attachAnalysis(node, media, root, status) {
+export function attachAnalysis(node, media, root, status, options={}) {
   const tools=element("div","ng-tools"), analyze=element("button","","✨ Analyze"), apply=element("button","","Apply suggestion");
   const output=element("div","ng-suggestion"), availability=element("small","ng-muted"),cancel=element("button","","Cancel AI");
+  // The Text card hands over two hosts: its button goes up into the header, and everything the
+  // request produces goes down into the preview panel under the note. `host` is where the answer
+  // belongs - the picker, the reason, Apply and the text itself. Without this line the whole
+  // result was appended to `root`, which for the Text card is the panel that is never mounted, so
+  // a completed analysis was written into a detached element and never appeared on screen.
+  const host=options.output||root;
   // The reason a medium cannot be analysed belongs here, on the card that holds it - not on the
   // provider dropdown, where the user has to go looking for why their picture refuses to analyse.
   // The sentence comes from the registry and names the alternative that needs no provider at all.
   const refusal=element("small","ng-refusal");
-  tools.append(analyze,apply,cancel);root.append(availability,refusal,tools,output);
+  // The Text card keeps its action in the header and its result in the preview panel below the
+  // editor, so the button and the read-out are handed two separate hosts. Every other card passes
+  // no hosts and keeps the single row it has always had - no other card moves.
+  if(options.analyze){
+    const startTools=element("div","ng-tools");startTools.append(analyze,cancel);options.analyze.append(startTools);
+    tools.append(apply);host.append(availability,refusal,tools,output);
+  } else {tools.append(analyze,apply,cancel);host.append(availability,refusal,tools,output);}
   let suggestion=null,snapshot=null,providerSnapshot=null,busy=false,controller=null;
   let picker=null,reason=null,ticks=new Set();
   const fingerprint=()=>JSON.stringify([values(node),contextProvider(node)]);
@@ -59,7 +71,7 @@ export function attachAnalysis(node, media, root, status) {
     const provider=contextProvider(node);if(!provider)return;
     busy=true;suggestion=null;providerSnapshot=provider;snapshot=fingerprint();controller=new AbortController();sync();output.textContent="Analyzing…";
     try{const data=await aiAction(app,api,"analyze",{media,widgets:values(node),provider},controller.signal);suggestion=data.suggestion;
-      output.textContent="";picker?.remove();picker=null;buildPicker();root.append(picker);
+      output.textContent="";picker?.remove();picker=null;buildPicker();host.append(picker);
     }catch(error){output.textContent=error.message;}finally{busy=false;sync();}
   };
   apply.onclick=()=>{
@@ -72,5 +84,5 @@ export function attachAnalysis(node, media, root, status) {
   };
   cancel.onclick=()=>controller?.abort();
   const connected=node.onConnectionsChange;node.onConnectionsChange=function(...args){const result=connected?.apply(this,args);queueMicrotask(sync);return result;};
-  sync();return {sync,dispose(){controller?.abort();}};
+  sync();return {sync,analyze,dispose(){controller?.abort();}};
 }

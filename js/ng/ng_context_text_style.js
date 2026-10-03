@@ -9,10 +9,49 @@
 // (inputs, sections, buttons) without editing the sheet the other nodes depend on.
 const CSS = `
 .ng-studio-context[data-media=text] .ng-context-top { display:block; }
-.ng-studio-context[data-media=text] .ng-text-workspace { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(155px,.85fr) minmax(230px,1.1fr); gap:12px; }
+.ng-studio-context[data-media=text] .ng-text-workspace { display:grid; grid-template-columns:minmax(0,2.4fr) minmax(240px,.9fr); gap:12px; align-items:start; }
 .ng-studio-context[data-media=text] .ng-text-main, .ng-studio-context[data-media=text] .ng-text-sidebar { display:flex; flex-direction:column; gap:12px; min-width:0; }
-.ng-studio-context[data-media=text] .ng-text-workspace > .ng-section:nth-child(n+3) { grid-column:auto; }
+/* The rounded mark from the reference and the AI Loader node. It sits in the header as its own tile
+   instead of inside the title text, so "T" reads as the card's sign and the title reads as words. */
+.ng-studio-context[data-media=text] .ng-header > div:first-child { display:flex; align-items:center; gap:11px; flex-wrap:wrap; }
+.ng-studio-context[data-media=text] .ng-context-badge { display:flex; align-items:center; justify-content:center; flex:none;
+  width:44px; height:44px; border-radius:11px; border:1px solid #3d7ee0; background:#12233f; color:#6ea8f5;
+  font:700 25px/1 Inter,system-ui,sans-serif; }
+.ng-studio-context[data-media=text] .ng-context-title { font-size:22px; }
+.ng-studio-context[data-media=text] .ng-context-tools { display:flex; align-items:center; gap:6px; margin-left:auto; }
+/* Analyze now lives in the header, so it wears the amber pill the reference shows there. */
+.ng-studio-context[data-media=text] .ng-context-tools .ng-tools button { border:1px solid #7a5a1c; color:#f6d26e;
+  background:#2a2110; border-radius:8px; padding:6px 11px; font-size:12px; }
+/* The name sits above the two columns, framed by the parentheses of the reference. */
+.ng-studio-context[data-media=text] .ng-context-details > .ng-field:first-child { display:flex; align-items:center; gap:4px; }
+.ng-studio-context[data-media=text] .ng-context-details > .ng-field:first-child .ng-field-label { display:none; }
+.ng-studio-context[data-media=text] .ng-context-details > .ng-field:first-child::before { content:"("; color:#7fb4f0; font-size:17px; }
+.ng-studio-context[data-media=text] .ng-context-details > .ng-field:first-child::after { content:")"; color:#7fb4f0; font-size:17px; }
+.ng-studio-context[data-media=text] .ng-context-details > .ng-field:first-child input { text-align:center; }
 .ng-studio-context[data-media=text] .ng-text-workspace textarea { min-height:250px; font:14px/1.6 ui-monospace,monospace; }
+/* The duplicate "Context text" label: the panel heading right above already names this field. The
+   element stays in the DOM so the screen reader still announces it; only the drawn text is dropped. */
+.ng-studio-context[data-media=text] .ng-text-unlabelled > .ng-field-label { display:none; }
+/* The preview window under the note. It is where the AI result lands, so it stays quiet and empty
+   until there is something to show. */
+.ng-studio-context[data-media=text] .ng-text-preview-panel .ng-build-answer { margin-top:0; }
+.ng-studio-context[data-media=text] .ng-text-preview-analysis:empty { display:none; }
+ /* The switch that replaces "Use this prompt" / "Restore my text". It sits at the top of the preview
+    panel and reads as one control with two positions, so the chosen side is the only state shown. */
+ .ng-studio-context[data-media=text] .ng-text-switch { display:inline-flex; gap:2px; padding:3px; margin-bottom:8px;
+   background:#0d1526; border:1px solid #24344f; border-radius:9px; }
+ .ng-studio-context[data-media=text] .ng-text-switch-btn { border:0; background:transparent; color:#8fa8c6;
+   font-size:11px; font-weight:600; padding:6px 12px; border-radius:7px; cursor:pointer; }
+ .ng-studio-context[data-media=text] .ng-text-switch-btn:hover:not(:disabled) { color:#dbe7f7; background:#1b2942; }
+ .ng-studio-context[data-media=text] .ng-text-switch[data-mode=note] .ng-text-switch-btn:first-child,
+ .ng-studio-context[data-media=text] .ng-text-switch[data-mode=ai] .ng-text-switch-btn:last-child { background:#243b5e; color:#eaf2ff; }
+ .ng-studio-context[data-media=text] .ng-text-switch-btn:disabled { opacity:.4; cursor:default; }
+ /* The AI version is read-only, so the textarea says so instead of silently swallowing typing. */
+ .ng-studio-context[data-media=text] .ng-text-editor-panel textarea[readonly] { background:#131f36; color:#cfe0f5; }
+.ng-studio-context[data-media=text] .ng-text-preview-analysis .ng-suggestion { border-left:3px solid #f59e0b;
+  padding:8px 10px; background:#1a1405; color:#f0e2c0; border-radius:0 8px 8px 0; }
+.ng-studio-context[data-media=text] .ng-text-preview-analysis .ng-tools { margin:0; }
+.ng-studio-context[data-media=text] .ng-text-preview-analysis .ng-tools button { font-size:11px; padding:5px 8px; }
 /* Every panel of the Text card is a filled box on the dark canvas, so the three columns read as three
    separate areas the way the reference does. Scoped here, the other cards keep their shared look. */
 .ng-studio-context[data-media=text] .ng-text-workspace .ng-section { background:#0b1626; border:1px solid #1d3557; border-radius:10px; margin:0; padding:10px 12px; }
@@ -61,22 +100,19 @@ const CSS = `
 .ng-studio-context[data-media=text] .ng-build-answer { width:100%; min-height:150px; margin-top:8px;
   font:12px/1.55 ui-monospace,monospace; background:#060d17; border:1px solid #24406b; border-radius:8px; padding:9px 10px; }
 .ng-studio-context[data-media=text] .ng-build-answer[hidden] { display:none; }
-.ng-studio-context[data-media=text] .ng-build-actions { display:flex; gap:6px; margin-top:8px; }
-.ng-studio-context[data-media=text] .ng-build-use { background:#1c4f3f; border-color:#2a7a5f; color:#d6f5e6; }
-/* Use As on the right reads as a list of radios rather than a stack of small checkboxes. */
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-option-row { display:flex; align-items:center; gap:9px; padding:5px 7px; font-size:12px; border-radius:7px; }
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-option-row input { width:15px; height:15px; accent-color:#4a9eff; }
-/* The analysis result is a quote: an orange rule on the left, like the reference's Preview block. */
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-suggestion { border-left:3px solid #f59e0b; padding:8px 10px; background:#1a1405; color:#f0e2c0; border-radius:0 8px 8px 0; }
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-suggestion:empty { display:none; }
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-tools { display:flex; gap:4px; flex-wrap:wrap; }
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-tools button { font-size:11px; padding:5px 6px; }
+
+/* Use As is gone from this card, and with it the sidebar radios it styled. */
 /* Preset: Save and Save As are the purple primary actions, Load stays a quiet secondary button.
-   The analysis panel above also uses .ng-tools, so the row is picked out by the preset name field
-   that only it has - a button index would also repaint the neighbouring panel's Cancel button. */
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-tools:has(> input) button { background:#5b3bbf; border-color:#7c5be0; color:#fff; }
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-tools:has(> input) button:last-child { background:#0d1c30; border-color:#24406b; color:#9fb6d4; }
-.ng-studio-context[data-media=text] .ng-text-sidebar .ng-muted { font-size:11px; }
+   The Build panel above also uses .ng-tools, so the row is picked out by the preset name field
+   that only it has - a button index would also repaint the Build panel's Cancel button. */
+.ng-studio-context[data-media=text] .ng-text-preset-slot .ng-tools:has(> input) button { background:#5b3bbf; border-color:#7c5be0; color:#fff; }
+.ng-studio-context[data-media=text] .ng-text-preset-slot .ng-tools:has(> input) button:last-child { background:#0d1c30; border-color:#24406b; color:#9fb6d4; }
+.ng-studio-context[data-media=text] .ng-text-preset-slot .ng-muted { font-size:11px; }
+/* Context Color is the one setting the H3 Director reads back, so it gets its own full-width row
+   under the two columns instead of being folded away with an identity that is no longer shown. */
+.ng-studio-context[data-media=text] .ng-context-details > .ng-section:last-of-type .ng-field { flex-direction:row; align-items:center; gap:8px; }
+.ng-studio-context[data-media=text] .ng-context-details > .ng-section:last-of-type .ng-field-label { min-width:150px; }
+.ng-studio-context[data-media=text] .ng-context-details > .ng-section:last-of-type input[type=color] { width:42px; height:30px; padding:2px; flex:none; }
 /* A bracket token is coloured by its kind; an unknown name keeps the neutral placeholder colour so it
    never looks like a field that exists. */
 .ng-studio-context[data-media=text] .ng-template-placeholder { color:#e2b887; }
