@@ -6,7 +6,7 @@ const { app } = window.comfyAPI.app;
 
 // The mode is workflow state on the node, so a reload keeps the same choice. It gates what the AI may start.
 function modeBar(node, state) {
-  const bar=element("div","ng-modebar");
+  const bar=element("div","ng-assistbar");
   for(const mode of MODES){
     const button=element("button","",mode[0].toUpperCase()+mode.slice(1));button.dataset.mode=mode;
     button.title={manual:"You type every field; no AI request is sent.",
@@ -29,6 +29,7 @@ export function directionTools(node,api) {
   root.append(bar,auto,apply,cancel,status,preview);
   function fingerprint(){return JSON.stringify([readPayload(node),connectedProvider(node)]);}
   function sync(){
+    state.mode=node.properties.ng_assist_mode||"assist";
     const provider=connectedProvider(node);
     // Manual never starts a scene proposal; only Auto does, and only with a connected loader.
     auto.disabled=!canAutoDirect(state.mode,provider,state.busy);

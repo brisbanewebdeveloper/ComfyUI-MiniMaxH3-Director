@@ -68,14 +68,15 @@ See [connections and continuity contract](NG-external-sampling.md).
 | H3 Render Sequence | Expanded native List loop, sampler and collector; outputs VIDEO, IMAGE, AUDIO and notes |
 
 Native port types, names and colors come from ComfyUI. Context identity colors affect the cards and references.
-The existing technical nodes remain available under **MiniMax H3 / NG / Expert**, including NG Chunk Planner,
+The existing technical nodes remain available under **MiniMax H3 / NG / Technical**, including NG Chunk Planner,
 NG Chunk Conditioning, NG Collect, NG Chunk Sequence and NG Studio Laboratory. Saved IDs remain valid.
 
 ## Editing the project
 
-**Simple** presents the essential idea, settings and generation controls. **Guided** adds the scene editor, contexts and timelines.
-**Expert** exposes additional generation settings. The compiled prompts and manual override are expandable in Guided/Expert.
-Switching modes changes presentation, not render settings.
+The Director uses one interface. Idea, project settings, contexts, scenes and generation stay available.
+Duration, target chunk length, aspect ratio, width/height, seed, steps, sampler and scheduler are directly editable.
+Continuity, sound/model settings and the Output Inspector have individual expandable panels.
+Manual/Assist/Auto controls AI actions only. Old workflow view settings are discarded on load; saved node sizes remain.
 
 Leave scenes empty to describe the whole project with the idea. Use **+ Shot** to add a timed scene, edit its action/dialogue and times,
 then shorten its end before adding another. Drag the story bar or its edges to change timing. The separate generation track shows render chunks.

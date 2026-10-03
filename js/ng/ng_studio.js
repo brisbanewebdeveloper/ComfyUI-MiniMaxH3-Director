@@ -21,21 +21,11 @@ const RATIOS = { "16:9":[1024,576], "9:16":[576,1024], "3:2":[1152,768], "2:3":[
 
 function attach(node) {
   ensureStudioStyle(); node.properties ||= {};
+  delete node.properties.ng_view_mode;
   node.color = "#172a48"; node.bgcolor = "#101a2c";
   const root = element("div", "ng-studio");
   const header = element("div", "ng-header"), status = element("span", "ng-ai-badge", "AI off · manual");
   header.append(element("strong", "", "🎬 H3 DIRECTOR"), status);
-  const toolbar = element("div", "ng-toolbar"), buttons = [];
-  function mode(value) {
-    node.properties.ng_view_mode = value; root.dataset.mode = value;
-    buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mode === value)));
-    node.setSize([value==="simple"?650:1100,value==="simple"?660:value==="expert"?1100:980]);
-    node.setDirtyCanvas(true, true);
-  }
-  for (const name of ["simple", "guided", "expert"]) {
-    const button = element("button", "", name[0].toUpperCase()+name.slice(1)); button.dataset.mode = name;
-    button.onclick = () => { mode(name); node.graph?.change(); }; buttons.push(button); toolbar.append(button);
-  }
   const create = section("☀ Idea / Prompt"), idea = control(node,"idea","Describe your video",{multiline:true});
   idea.field.placeholder = "A woman enters an abandoned space station…"; create.append(idea.label);
   const referencePreview=element("div","ng-text-highlight");create.append(referencePreview);
@@ -44,41 +34,45 @@ function attach(node) {
   const ratio = element("select"); ratio.setAttribute("aria-label","Aspect ratio");
   for (const name of [...Object.keys(RATIOS), "Custom"]) { const option=element("option","",name);option.value=name;ratio.append(option); }
   ratio.onchange = () => { if (RATIOS[ratio.value]) { const [width,height]=RATIOS[ratio.value]; applyValues(node,{width,height}); node.graph?.change(); } };
-  const chunk=control(node,"chunk_seconds","Chunk Length · 0 = Auto",{number:true,step:"0.5"});chunk.label.classList.add("ng-guided");
+  const chunk=control(node,"chunk_seconds","Chunk Length · 0 = Auto",{number:true,step:"0.5"});
   const settings=section("⚙ Project Settings"), fps=element("div","ng-field");fps.append(element("span","ng-field-label","FPS"),element("span","ng-generation-card","24 · H3 native"));
   const style=control(node,"style","Style");ratioLabel.append(ratio);row.append(duration.label,chunk.label,ratioLabel,fps);
   if(node.widgets.some((widget)=>widget.name==="style"))row.append(style.label);settings.append(row);
+  const resolution=element("div","ng-row"),width=control(node,"width","Width",{number:true}),height=control(node,"height","Height",{number:true});
+  resolution.append(width.label,height.label);settings.append(resolution);
   const context = section("Context"), contextList=element("div","ng-context-list");
   const batch=element("div","ng-tools"),batchButton=element("button","ng-secondary","✨ Analyze all contexts"),batchCancel=element("button","","Cancel AI");
   const batchStatus=element("small","ng-muted");batch.append(batchButton,batchCancel,batchStatus);
   context.append(batch,contextList);
   const story=storyEditor(node);
   const direction=directionTools(node,api);create.append(direction.root);
-  const audio=element("details","ng-guided");audio.append(element("summary","","♫ Audio · Voice / Music / SFX"));const audioTracks=element("div");audio.append(audioTracks);
+  const audio=element("details","ng-audio-details");audio.append(element("summary","","♫ Audio · Voice / Music / SFX"));const audioTracks=element("div");audio.append(audioTracks);
   const generation=section("Generation"), summary=element("div","ng-plan-summary","Planning…"), warnings=element("div");
   const generationCards=element("div","ng-generation-cards"),renderStatus=element("span","ng-status","Checking plan…");
   const preview=element("img","ng-live-preview");preview.alt="Live H3 sampling preview";preview.hidden=true;
-  generation.append(generationCards,summary,renderStatus,preview,warnings);
+  const sampling=element("div","ng-row ng-sampling-settings");
+  const fields=[idea,duration,chunk,style,width,height];
+  for(const [name,label] of [["seed","Seed"],["steps","Steps"],["sampler_name","Sampler"],["scheduler","Scheduler"]]){
+    const field=control(node,name,label,{number:["seed","steps"].includes(name)});fields.push(field);sampling.append(field.label);
+  }
+  generation.append(sampling,generationCards,summary,renderStatus,preview,warnings);
   const progress=attachProgress(node,api,renderStatus,preview,()=>projectRenderIds(node));
-  const expert=element("details","ng-expert");expert.append(element("summary","","Advanced generation settings"));
-  const fields=[idea,duration,chunk,style];
-  for (const [name,label] of [["chunk_seconds","Chunk seconds · 0 = Auto"],["width","Width"],["height","Height"],
-                            ["mode","H3 mode"],["continuity","Continuity"],["pin_frames","Pinned frames"],
-                            ["soundscape","Soundscape"],["music","Music"],["seed","Seed"],["steps","Steps"],
-                            ["sampler_name","Sampler"],["scheduler","Scheduler"],["shift_video","Video shift"],["shift_audio","Audio shift"]]) {
-    const field=control(node,name,label,{number:["chunk_seconds","width","height","seed","steps","shift_video","shift_audio"].includes(name)});
-    fields.push(field);expert.append(field.label);
+  const advanced=element("details","ng-generation-details");advanced.append(element("summary","","Continuity, sound and model settings"));
+  for (const [name,label] of [["mode","H3 mode"],["continuity","Continuity"],["pin_frames","Pinned frames"],
+                            ["soundscape","Soundscape"],["music","Music"],["shift_video","Video shift"],["shift_audio","Audio shift"]]) {
+    const field=control(node,name,label,{number:["shift_video","shift_audio"].includes(name)});
+    fields.push(field);advanced.append(field.label);
   }
   const outputInspector=inspector(node);
   const actions=element("div","ng-actions"), generate=element("button","ng-button","Generate video");
   const hint=element("span","ng-muted","Context Connector → Director → Director Output → Render Sequence → Save Video");
   generate.onclick=()=>app.queuePrompt(0,1);generation.append(generate);actions.append(hint);
   const creation=element("div","ng-creation-grid");creation.append(create,settings);
-  root.append(header,toolbar,creation,context,story.root,generation,outputInspector.root,audio,expert,actions);
+  root.append(header,creation,context,story.root,generation,outputInspector.root,audio,advanced,actions);
   hideNative(node,(node.widgets || []).map((widget)=>widget.name));
   const dom=node.addDOMWidget("ng_studio","ng_studio",root,{serialize:false,hideOnZoom:false});
   dom.computeSize=undefined;
-  dom.computeLayoutSize=()=>({minHeight:root.dataset.mode==="simple"?450:root.dataset.mode==="expert"?900:760,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});
+  dom.computeLayoutSize=()=>({minHeight:760,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});
   let timer=null, serial=0, removed=false;
   async function runBatch() {
     const provider=connectedProvider(node);
@@ -163,10 +157,10 @@ function attach(node) {
   const connected=node.onConnectionsChange;
   node.onConnectionsChange=function(...args){const result=connected?.apply(this,args);schedule();return result;};
   const configured=node.onConfigure;
-  node.onConfigure=function(...args){const result=configured?.apply(this,args);fields.forEach((field)=>field.sync());story.rebuild();mode(node.properties.ng_view_mode||"guided");schedule();return result;};
+  node.onConfigure=function(...args){const result=configured?.apply(this,args);delete node.properties.ng_view_mode;fields.forEach((field)=>field.sync());story.rebuild();direction.sync();schedule();return result;};
   const originalRemoved=node.onRemoved;
   node.onRemoved=function(...args){removed=true;serial++;clearTimeout(timer);studios.delete(schedule);progress.dispose();direction.dispose();batchController?.abort();return originalRemoved?.apply(this,args);};
-  studios.add(schedule);mode(node.properties.ng_view_mode||"guided");schedule();
+  node.setSize([880,980]);studios.add(schedule);schedule();
 }
 
 app.registerExtension({name:"mmxd.ng.director_studio",nodeCreated(node){if(["NGH3Director","NGDirectorStudio"].includes(node.comfyClass))attach(node);},loadedGraphNode(){studios.forEach((schedule)=>schedule());}});

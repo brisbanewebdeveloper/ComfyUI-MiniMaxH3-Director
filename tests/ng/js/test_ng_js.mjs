@@ -218,18 +218,6 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   assert.equal(card.widgets[0].value, "new");
   assert.equal(card.widgets[1].value, "lock");
   assert.equal(calls, 1);
-  const { attachModes } = await load("ng_modes.js");
-  const node = { properties: { ng_view_mode: "expert" } };
-  const container = new FakeElement("div"), plan = new FakeElement("div");
-  attachModes(node, container, plan);
-  assert.equal(plan.dataset.mode, "expert");
-  const buttons = container.children[0].children;
-  buttons[0].onclick();
-  assert.equal(plan.dataset.mode, "simple");
-  assert.equal(buttons[0].attributes["aria-pressed"], "true");
-  node.properties.ng_view_mode = "guided";
-  node.onConfigure();
-  assert.equal(plan.dataset.mode, "guided");
 }
 
 // Exercise the real product extension's configure hook with both running backend schemas.

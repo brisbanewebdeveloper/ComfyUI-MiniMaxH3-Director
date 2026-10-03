@@ -11,7 +11,7 @@ from .context_nodes import CATEGORY
 class NGAIRequest(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGAIRequest", display_name="H3 AI Request", category=CATEGORY + "/Expert",
+        return io.Schema(node_id="NGAIRequest", display_name="H3 AI Request", category=CATEGORY + "/Technical",
                          is_output_node=True, enable_expand=True,
                          inputs=[NGAI.Input("ai_provider"), io.Combo.Input("action", options=["analyze", "direct", "prompt"]),
                                  io.String.Input("request_json", default="{}")], outputs=[io.String.Output()])
@@ -25,7 +25,7 @@ class NGAIRequest(io.ComfyNode):
 class NGAIReadMedia(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGAIReadMedia", display_name="H3 AI Media", category=CATEGORY + "/Expert",
+        return io.Schema(node_id="NGAIReadMedia", display_name="H3 AI Media", category=CATEGORY + "/Technical",
                          inputs=[io.Combo.Input("media", options=["image", "video", "audio"]), io.String.Input("source")],
                          outputs=[io.Image.Output(), io.Audio.Output()])
 
@@ -41,7 +41,7 @@ class NGAIReadMedia(io.ComfyNode):
 class NGAIResult(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGAIResult", display_name="H3 AI Suggestion", category=CATEGORY + "/Expert",
+        return io.Schema(node_id="NGAIResult", display_name="H3 AI Suggestion", category=CATEGORY + "/Technical",
                          is_output_node=True,
                          inputs=[io.String.Input("text", force_input=True), io.String.Input("action"), io.String.Input("request_json")],
                          outputs=[io.String.Output()])

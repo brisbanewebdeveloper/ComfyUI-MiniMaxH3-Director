@@ -55,7 +55,7 @@ function chunkRow(chunk) {
   const detail = chunk.head_frames ? `  (sampled ${chunk.sampled_frames}, head ${chunk.head_frames})` : "";
   row.append(el("summary", "", head), el("div", "ng-dim", `${chunk.delivered_frames} frames${detail}, ${chunk.mode}, ${chunk.refs.length} reference(s)`));
   if (chunk.refs.length) row.append(el("div", "ng-dim", refList(chunk.refs)));
-  row.append(el("pre", "ng-expert", chunk.prompt));
+  row.append(el("pre", "ng-compiled-prompt", chunk.prompt));
   return row;
 }
 

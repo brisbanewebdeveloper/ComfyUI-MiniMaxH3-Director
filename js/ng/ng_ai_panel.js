@@ -185,7 +185,7 @@ export function buildPanel(node, root, header, widget) {
   settings.append(capabilityRow, tuningRow, seedRow);
   body.append(settings);
 
-  const advanced = element("details", "ng-expert ng-advanced");
+  const advanced = element("details", "ng-advanced");
   const advancedHead = element("summary", "ng-advanced-head");
   advancedHead.append(icon("sliders", "ng-advanced-icon"),
     element("span", "ng-advanced-title", "ADVANCED"), element("span", "ng-advanced-note", "(optional)"),

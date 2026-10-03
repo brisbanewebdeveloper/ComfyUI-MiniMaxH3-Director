@@ -2,7 +2,9 @@
 
 ## 1.0.0 (unreleased)
 
-Development remains incomplete after the specification/reference audit. Native CLIP assistance now has real-model and browser evidence; full AI controls/analysis, native media inputs, subject/asset mapping, remaining reference layouts and Last Frame continuity still require work. Existing test/render records describe their tested scope, not complete product acceptance.
+Development remains incomplete. Structured shots, protected fields, audio timeline placement/mixing, remaining layouts and continuity/quality acceptance still require work. Existing test/render records describe their tested scope, not complete product acceptance.
+
+- E42: one Director interface with directly editable duration, chunk target, resolution and sampling controls. Obsolete view properties are discarded on load; node sizes and render inputs are preserved. Technical nodes retain their IDs under NG/Technical. Fixed saved AI action choices showing the state from node creation instead.
 
 - Native CLIP/Disk assistant jobs reuse ComfyUI Generate Text, model management and targeted queue cancellation. Four source cards have real execution paths; no AI request during connection/load/render.
 - Separate Audio/Text layouts, real @Context editor highlighting, stable persisted context colors and compiler Output Inspector with Raw Context, budget, views and Override/Rebuild.
@@ -41,7 +43,7 @@ The original timeline Director remains Legacy with its existing node ID and beha
 
 - Nine product nodes: H3 AI Loader, Context Connector, Director, Director Output, Context Image/Video/Audio/Text and Render Sequence.
 - Connector collects native lazy MODEL/CLIP/VAE links and dynamically growing Context groups. Output exposes native sampler values and a separate complete sequence.
-- Director has Simple/Guided/Expert views, idea/settings, media context cards, editable scene cards, separate story/render timelines, generation summary and expandable prompt/audio/advanced panels.
+- Director has one interface, idea/settings, media context cards, editable scene cards, separate story/render timelines, generation summary and expandable prompt/audio/advanced panels.
 - Generate queues the connected workflow. Sequence expands native StartLoop/List, conditioning, SamplerCustomAdvanced, EndLoop and collection, with native preview/progress/interruption.
 - Four compact Context cards open full media workspaces. Image supports multiple content/usage roles and property preservation; timed guides condition the relevant chunk.
   Video has playback/source ranges, motion/camera guidance, last-source-frame continuation and optional paired audio.
@@ -50,7 +52,7 @@ The original timeline Director remains Legacy with its existing node ID and beha
 - Context identity, roles, preservation, timing and colors survive versioned local presets and workflow serialization. Recognized references follow a renamed persistent context.
 - Separate optional AI provider: explicit context Analyze/Apply and timed Auto Direct/Apply proposals. Environment-variable credentials; no request on load/connect/render.
 - Existing chunk/continuity/planner implementation is reused, including audio lock, shot-aware boundaries, frame-grid and long-chain warnings.
-  Technical IDs remain under NG/Expert; old Context data without new fields remain readable.
+  Technical IDs remain under NG/Technical; old Context data without new fields remain readable.
 - Three normal product workflows and updated [guide](docs/NG.md) and [validation record](docs/NG-validation.md).
   186 NG checks (185 passed, one Windows symlink skip), 98.01% executable core-line coverage; Legacy 371/371 and 74/74.
 

@@ -389,8 +389,7 @@
       ],
       "properties": {
         "cnr_id": "minimaxh3-director",
-        "Node name for S&R": "NGDirector",
-        "ng_view_mode": "guided"
+        "Node name for S&R": "NGDirector"
       },
       "widgets_values": [
         "A character in a quiet sanctuary.",

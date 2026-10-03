@@ -26,11 +26,9 @@ const CSS = `
 .ng-card .ng-media-preview { white-space: pre-wrap; max-height: 130px; overflow: auto; }
 .ng-card label { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
 .ng-card .ng-suggestion { white-space: pre-wrap; border-left: 2px solid #b294db; padding: 6px; margin: 4px 0; }
-.ng-modebar { display: flex; gap: 6px; margin-bottom: 6px; }
-.ng-modebar button { padding: 3px 8px; border-radius: 4px; cursor: pointer; }
-.ng-modebar button[aria-pressed=true] { background: #2f5d8c; color: white; }
-.ng-plan[data-mode=simple] .ng-expert, .ng-plan[data-mode=guided] .ng-expert { display: none; }
-.ng-plan[data-mode=simple] .ng-chunks { display: none; }
+.ng-assistbar { display: flex; gap: 6px; margin-bottom: 6px; }
+.ng-assistbar button { padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+.ng-assistbar button[aria-pressed=true] { background: #2f5d8c; color: white; }
 `;
 
 let injected = false;

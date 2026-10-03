@@ -4,7 +4,7 @@ import { renderCompiled } from "./ng_references.js";
 import { contextColor } from "./ng_identity.js";
 
 export function inspector(node) {
-  const root=element("details","ng-expert"),summary=element("summary","","Output Inspector"),tools=element("div","ng-tools");
+  const root=element("details","ng-output-inspector"),summary=element("summary","","Output Inspector"),tools=element("div","ng-tools");
   const view=element("select"),prompts=element("div"),raw=element("details"),rawText=element("pre"),budget=element("div","ng-muted");
   view.setAttribute("aria-label","Prompt highlighting");for(const [value,label] of [["context","Context Colors"],["plain","Plain Text"],["syntax","H3 Syntax"]]){
     const option=element("option","",label);option.value=value;view.append(option);}

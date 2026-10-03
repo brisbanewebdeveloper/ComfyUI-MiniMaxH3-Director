@@ -47,7 +47,7 @@ export function rolePanel(node, media, type) {
 }
 
 export function preservePanel(node) {
-  const root=section("♢ Preserve"), controls=[],expert=element("details");expert.append(element("summary","","Expert · Face / Hair / Body / Style / Lighting / Composition"));
+  const root=section("♢ Preserve"), controls=[],expert=element("details");expert.append(element("summary","","Face / Hair / Body / Style / Lighting / Composition"));
   for(const [key,label] of [["identity","Identity"],["outfit","Outfit"],["pose","Pose"],["background","Background"],
     ["face","Face"],["hair","Hair"],["body","Body Shape"],["style","Style"],["lighting","Lighting"],["composition","Composition"]]) {
     const row=element("div","ng-preserve-row"), buttons=element("div","ng-segments");row.append(element("span","",label),buttons);

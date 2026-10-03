@@ -33,12 +33,19 @@ class Registration(unittest.TestCase):
         for node_id, name in expected.items():
             self.assertEqual(self.pack.NODE_DISPLAY_NAME_MAPPINGS[node_id], name, node_id)
 
+    def test_technical_nodes_keep_ids_in_one_named_category(self):
+        technical = ("NGDirector", "NGChunkConditioning", "NGCollect", "NGDirectorStudio", "NGRenderSequence",
+                     "NGChunkNoise", "NGProjectChunks", "NGAIRequest", "NGAIReadMedia", "NGAIResult")
+        for node_id in technical:
+            schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
+            self.assertEqual(schema.category, "MiniMax H3/NG/Technical", node_id)
+
     def test_schemas_have_unique_input_ids_and_a_category(self):
         for node_id in NG_IDS:
             schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
             ids = [i.id for i in schema.inputs]
             self.assertEqual(len(ids), len(set(ids)), node_id)
-            category = "MiniMax H3/NG/Expert" if node_id in ("NGDirector", "NGChunkConditioning", "NGCollect") else "MiniMax H3/NG"
+            category = "MiniMax H3/NG/Technical" if node_id in ("NGDirector", "NGChunkConditioning", "NGCollect") else "MiniMax H3/NG"
             self.assertEqual(schema.category, category)
 
     def test_loop_nodes_take_and_give_what_the_loop_needs(self):

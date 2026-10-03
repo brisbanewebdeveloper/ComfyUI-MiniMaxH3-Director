@@ -12,7 +12,7 @@ class NGDirectorStudio(io.ComfyNode):
     def define_schema(cls):
         planning = NGDirector.define_schema().inputs[:-1]
         contexts = io.Autogrow.TemplatePrefix(input=NGContext.Input("context", raw_link=True), prefix="context_", min=0, max=15)
-        return io.Schema(node_id="NGDirectorStudio", display_name="NG Studio Laboratory", category=CATEGORY + "/Expert",
+        return io.Schema(node_id="NGDirectorStudio", display_name="NG Studio Laboratory", category=CATEGORY + "/Technical",
                          description="Write your idea, connect contexts and H3 models, then Run. Plans and renders the entire project with native progress, preview and interrupt.",
                          inputs=[*model_inputs(), *planning, io.Autogrow.Input("contexts", template=contexts, optional=True), *sampling_inputs()],
                          outputs=[*render_outputs(), io.String.Output(display_name="plan"), io.String.Output(display_name="plan_warnings")],

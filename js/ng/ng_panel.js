@@ -2,7 +2,6 @@
 import { ensureStyle } from "./ng_style.js";
 import { isContextNode, readPayload } from "./ng_read.js";
 import { renderPlan } from "./ng_view.js";
-import { attachModes } from "./ng_modes.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -59,10 +58,16 @@ function attach(node) {
   ensureStyle();
   const root = document.createElement("div");
   root.className = "ng-plan";
-  const container = document.createElement("div");
-  attachModes(node, container, root);
-  container.append(root);
-  const widget = node.addDOMWidget("ng_plan", "ng_plan", container, { serialize: false, hideOnZoom: false });
+  node.properties ||= {};
+  delete node.properties.ng_view_mode;
+  const configured = node.onConfigure;
+  node.onConfigure = function (...args) {
+    const result = configured?.apply(this, args);
+    delete node.properties.ng_view_mode;
+    schedule(panel);
+    return result;
+  };
+  const widget = node.addDOMWidget("ng_plan", "ng_plan", root, { serialize: false, hideOnZoom: false });
   widget.computeSize = (width) => [width, 260];
   const panel = { node, root, timer: null, serial: 0 };
   panels.set(node, panel);

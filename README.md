@@ -47,11 +47,11 @@ see the exact prompt the model will receive while you are still editing it.
 
 ## NG: videos of any length
 
-**Development status: incomplete.** Native CLIP assistance, media-specific layouts and the compiler inspector have advanced after the requirements audit. Full AI controls/analysis, native context media inputs, subject/asset relationships, remaining layout work and Last Frame continuity still require implementation and acceptance. Published 0.3.2 is unchanged.
+**Development status: incomplete.** One Director interface, native CLIP assistance, media cards and the compiler inspector are available. Structured shots with explicit media bindings and protected fields, timeline placement/mixing of audio, remaining layout work and continuity/quality acceptance remain open. Context cards load media files directly. Published 0.3.2 is unchanged.
 
 **H3 Director NG** now has its own connected product workflow: **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
 Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text contexts describe your references;
-the Director provides Simple/Guided/Expert views, editable scene cards, separate story/chunk timelines and a generation summary.
+the Director provides one interface, editable scene cards, separate story/chunk timelines and a generation summary.
 An optional **H3 AI Loader** enables explicit Analyze/Apply and Auto Direct/Apply through a generative CLIP connection, an installed encoder from disk, or a running local/compatible API provider. [Native AI setup](docs/NG-native-ai.md) explains the separate assistant encoder.
 
 Open **`example_workflows/H3 Director NG - text studio.json`** for the complete render path, **`H3 Director NG - image and voice.json`**
@@ -60,7 +60,7 @@ Select your own installed model files and reference media as needed. Native port
 
 The four Context nodes have compact cards and detailed media workspaces: previews, roles, preservation, source ranges and presets. The Text card is a plain text-to-video note: quick insertion over the real H3 fields, and one AI button that rewrites whatever you wrote, in any language, into the English prompt block H3 expects.
 Rendering expands native ComfyUI loops/samplers, preserving preview, progress and Stop. The original timeline Director below remains **Legacy**.
-Technical chunk/laboratory nodes are available under NG/Expert and keep their saved IDs.
+Technical chunk/laboratory nodes are available under NG/Technical and keep their saved IDs.
 
 Read [the NG guide](docs/NG.md) and [validation/quality limits](docs/NG-validation.md).
 The local 1.0.0 version is unreleased; published 0.3.2 is unchanged. Functional tests do not guarantee invisible seams or unchanged audio.

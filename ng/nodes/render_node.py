@@ -41,7 +41,7 @@ def split_render_inputs(values):
 class NGRenderSequence(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGRenderSequence", display_name="NG Chunk Sequence", category=CATEGORY + "/Expert",
+        return io.Schema(node_id="NGRenderSequence", display_name="NG Chunk Sequence", category=CATEGORY + "/Technical",
                          description="Connect the Director's chunks and your models. Renders and joins the entire sequence using native sampling, previews and interrupt.",
                          inputs=[NGChunk.Input("chunks", raw_link=True), *model_inputs(), *sampling_inputs()],
                          outputs=render_outputs(), enable_expand=True)
@@ -56,7 +56,7 @@ class NGRenderSequence(io.ComfyNode):
 class NGChunkNoise(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGChunkNoise", display_name="NG Chunk Noise", category=CATEGORY + "/Expert",
+        return io.Schema(node_id="NGChunkNoise", display_name="NG Chunk Noise", category=CATEGORY + "/Technical",
                          inputs=[NGChunk.Input("chunk"), io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff)],
                          outputs=[io.Noise.Output()])
 

@@ -407,8 +407,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "NGDirectorStudio",
-        "ng_view_mode": "guided"
+        "Node name for S&R": "NGDirectorStudio"
       },
       "widgets_values": [
         "A baker kneads dough at a wooden table in warm daylight.",

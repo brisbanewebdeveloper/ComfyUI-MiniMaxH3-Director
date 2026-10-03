@@ -75,7 +75,7 @@ function connector(node) {
 function output(node) {
   const {root,widget}=shell(node,"➜ H3 DIRECTOR OUTPUT","#e981ed",[440,335]);
   root.append(element("p","ng-muted","Director.chunks → Start Loop. Connect its list_item and current_iteration_value here. Native outputs → your sampler; seed → RandomNoise. Sequence → H3 Render Sequence for the simple path."));
-  const advanced=element("details");advanced.append(element("summary","","Expert · chunk and model settings"));
+  const advanced=element("details");advanced.append(element("summary","","Chunk and model settings"));
   const field=control(node,"chunk_index","Single chunk index · ignored when loop_chunk is connected",{number:true});
   const shift=control(node,"apply_sigma_shift","Apply Director sigma shifts · disable for an externally shifted model",{boolean:true});
   advanced.append(field.label,shift.label);root.append(advanced);

@@ -9,9 +9,6 @@ const CSS = `
 .ng-studio .ng-header { position:sticky; top:-14px; z-index:3; background:#202329; padding:8px 0; flex-wrap:wrap; }
 .ng-studio .ng-header .ng-button { font-size:12px; padding:6px 8px; }
 .ng-studio .ng-status { color:#a7b4c3; font-size:11px; }
-.ng-studio .ng-toolbar { display:flex; gap:4px; margin:12px 0; padding:3px; background:#161a20; border-radius:7px; }
-.ng-studio .ng-toolbar button { flex:1; border:0; background:transparent; color:#a8b2c0; padding:6px; border-radius:5px; cursor:pointer; }
-.ng-studio .ng-toolbar button[aria-pressed=true] { background:#35454f; color:#e5f1f0; }
 .ng-section { margin:12px 0; padding-top:10px; border-top:1px solid var(--ng-line,#3b424b); }
 .ng-section-title { font-size:11px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; margin:0 0 9px; color:#adbac7; }
 .ng-field { display:flex; flex-direction:column; gap:4px; margin:7px 0; flex:1; min-width:0; }
@@ -52,8 +49,6 @@ const CSS = `
 .ng-studio pre { font:11px/1.5 monospace; white-space:pre-wrap; color:#c3d2df; }
 .ng-studio .ng-live-preview { display:block; max-height:130px; max-width:100%; border-radius:6px; margin:7px auto; }
 .ng-studio .ng-live-preview[hidden] { display:none; }
-.ng-studio[data-mode=simple] .ng-guided, .ng-studio[data-mode=simple] .ng-expert,
-.ng-studio[data-mode=guided] .ng-expert { display:none; }
 .ng-studio-context { --ng-accent:#73aaa8; box-sizing:border-box; width:100%; height:100%; overflow:auto; background:#20252c;
   color:#e4e8ed; border:1px solid #444e5b; border-radius:9px; padding:11px; font:12px/1.45 Inter,system-ui,sans-serif; }
 .ng-studio-context .ng-context-title { font-weight:600; font-size:14px; }
@@ -80,8 +75,6 @@ const CSS = `
 .ng-studio-context[data-expanded=false] .ng-ai-badge { font-size:10px; padding:3px 5px; }
 .ng-studio-context[data-expanded=false] button { font-size:11px; padding:4px 6px; }
 .ng-ai-badge { border:1px solid #c99735; color:#f6d26e; background:#40321355; border-radius:12px; padding:6px 10px; font-size:12px; white-space:nowrap; }
-.ng-studio .ng-toolbar { background:#0a1628; border:1px solid #294a6c; }
-.ng-studio .ng-toolbar button[aria-pressed=true], .ng-segments button[aria-pressed=true] { background:linear-gradient(#1592ff,#0063dc); color:#fff; border-color:#49c6ff; box-shadow:0 0 9px #087dff60; }
 .ng-section { border:1px solid var(--ng-line,#284260); border-radius:10px; padding:12px; margin:10px 0; background:linear-gradient(120deg,#10243b80,#0b162480); }
 .ng-section-title { color:#99d4ff; font-size:13px; letter-spacing:.03em; }
 .ng-studio input,.ng-studio textarea,.ng-studio select,.ng-studio-context input,.ng-studio-context textarea,.ng-studio-context select { background:#0a1627; border-color:#2a4c71; border-radius:8px; }
@@ -127,7 +120,6 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-generation-cards { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 .ng-generation-card { flex:1; min-width:140px; padding:11px; border:1px solid #285174; border-radius:9px; background:#10263b; }
 .ng-generation-card strong { display:block; font-size:14px; } .ng-generation-card small { color:#8fabca; }
-.ng-studio[data-mode=guided] details.ng-expert { display:block; }
 .ng-subtitle { display:block; margin:-6px 0 4px; color:#9aa6bb; font-size:12px; }
 .ng-source-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .ng-source-card { display:flex; align-items:center; gap:9px; text-align:left; cursor:pointer;
@@ -187,13 +179,15 @@ img.ng-source-preview { cursor:zoom-in; }
    workspace, so its rules cannot reach the image, video, audio or product cards that share this sheet. */
 .ng-context-footer .ng-tools { gap:5px; }
 .ng-context-footer .ng-tools input,.ng-context-footer .ng-tools select { flex-basis:100%; }
-.ng-studio { font-size:13px; padding:12px; }
+.ng-studio { font-size:13px; padding:12px; container-type:inline-size; }
+.ng-studio .ng-sampling-settings { flex-wrap:wrap; }
+.ng-studio .ng-sampling-settings > .ng-field { flex:1 1 130px; }
+@container (max-width:740px) { .ng-studio .ng-creation-grid { grid-template-columns:minmax(0,1fr); } }
 .ng-studio .ng-header strong { font-size:21px; }
 .ng-studio .ng-section { padding:10px; margin:7px 0; }
-.ng-creation-grid { display:grid; grid-template-columns:1.35fr 1fr; gap:10px; }
+.ng-creation-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:10px; }
 .ng-creation-grid .ng-row { flex-wrap:wrap; }
 .ng-creation-grid .ng-row > * { flex:1 1 100px; }
-.ng-studio[data-mode=simple] .ng-creation-grid { display:block; }
 .ng-studio .ng-context-chip { min-width:100px; width:125px; padding:6px; }
 .ng-studio .ng-context-chip img,.ng-studio .ng-context-chip video { height:48px; }
 .ng-studio .ng-plan-summary { font-size:11px; padding:3px; margin:3px; background:transparent; }
@@ -209,7 +203,7 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-audio-track > audio { flex:0 1 180px; }
 .ng-studio .ng-tools { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .ng-studio .ng-tools select { width:auto; }
-.ng-studio > details.ng-expert > .ng-field { display:inline-flex; width:calc(33.333% - 10px); margin-right:8px; }
+.ng-studio > details.ng-generation-details > .ng-field { display:inline-flex; width:calc(33.333% - 10px); margin-right:8px; }
 .ng-product-node .ng-header { padding:8px; gap:6px; }
  /* The accent frame around the whole panel is dropped for the product nodes: the four sections are
     ordered and titled, so a frame around them costs a border and padding without adding meaning.
@@ -222,8 +216,8 @@ img.ng-source-preview { cursor:zoom-in; }
   .ng-field-picker { display:flex; flex-direction:column; gap:4px; margin:7px 0; padding:7px; border-left:2px solid #a88abd; }
   .ng-field-row { display:flex; align-items:flex-start; gap:6px; font-size:12px; cursor:pointer; }
   .ng-field-row span { white-space:pre-wrap; word-break:break-word; }
-  .ng-direction-tools .ng-modebar { display:flex; gap:5px; margin:6px 0; }
-  .ng-direction-tools .ng-modebar button[aria-pressed=true] { background:#2f4a63; border-color:#7fb2dd; color:#eaf4ff; }
+  .ng-direction-tools .ng-assistbar { display:flex; gap:5px; margin:6px 0; }
+  .ng-direction-tools .ng-assistbar button[aria-pressed=true] { background:#2f4a63; border-color:#7fb2dd; color:#eaf4ff; }
 /* Product nodes: the AI Loader's branded header, icon tiles and framed sections. Kept separate from
    the studio rules above so the context cards keep the compact density they were tuned for. */
 .ng-icon { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }

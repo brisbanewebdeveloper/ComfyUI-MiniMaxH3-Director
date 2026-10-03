@@ -324,7 +324,7 @@ Installed `qwen3vl_4b_bf16.safetensors`, native CLIPLoader type `stable_diffusio
 - 186 NG checks: 185 passed, one Windows symlink-permission skip. Ordinary path containment checks pass.
 - 98.01% executable core-line coverage from the standard-library trace runner; line coverage does not establish render quality.
 - Legacy compiler 371/371 and nodes 74/74 rerun successfully. No Legacy behavior tests removed.
-- Existing registration tests now assert the exact requested H3 Context display names and NG/Expert categories; all functional checks remain.
+- Existing registration tests now assert the exact requested H3 Context display names and NG/Technical categories; all functional checks remain.
 - Native output types, raw+lazy model links, closed expanded graphs, roles/Preserve/preset round trips, source ranges,
   timed guide placement, paired-video audio numbering and provider/Auto-Direct validation have new checks.
 - Frontend logic checks include Connector traversal/provider-field whitelist, stable-ID rename, references, story editing and downstream progress.
@@ -429,3 +429,11 @@ mode, identity and colour after workflow reload. Reload does not call the provid
 
 Full histories, event traces, scripts, contact sheets and exact local output paths are kept in the supplied development folder
 `_notes/NG/experiments/e13_*`. The local mock fixture is reproducible with `e13_mock_provider.py`; it is not an installed provider.
+## E42 — One Director interface (2026-10-04)
+
+Obsolete workflow views are discarded, while render/story inputs and saved sizes remain.
+Main settings stay editable without expanding details. AI action choices now match the loaded workflow.
+The new frontend test checks real extension hooks with a DOM stand-in; registration tests check all ten technical IDs.
+NG: 475 checks, 474 passed/one existing Windows skip. Legacy: 374/374 and 74/74; all six frontend suites passed.
+An isolated ComfyUI browser session verified manual edits, two shots, compiler preview, mouse resize and Save/Reload.
+No new GPU render or quality acceptance was performed for this frontend change.

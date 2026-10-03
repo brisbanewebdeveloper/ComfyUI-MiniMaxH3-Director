@@ -6,7 +6,7 @@ import { renderReferences } from "./ng_references.js";
 import { contextColor } from "./ng_identity.js";
 
 export function storyEditor(node) {
-  const root = section("Scene", "ng-guided");
+  const root = section("Scene", "ng-story-section");
   const cards = element("div", "ng-shot-cards");
   const timeline = element("div", "ng-story-timeline");
   const chunks = element("div", "ng-generation-track");

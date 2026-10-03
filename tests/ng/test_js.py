@@ -26,6 +26,10 @@ class Frontend(unittest.TestCase):
         result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_context_text.mjs")], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_studio_workflow_reload_and_controls(self):
+        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_studio.mjs")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -362,8 +362,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "NGH3Director",
-        "ng_view_mode": "guided"
+        "Node name for S&R": "NGH3Director"
       },
       "widgets_values": [
         "A baker kneads dough in a warm bakery.",

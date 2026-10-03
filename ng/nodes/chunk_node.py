@@ -29,7 +29,7 @@ class NGChunkConditioning(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="NGChunkConditioning", display_name="NG Chunk Conditioning", category=CATEGORY + "/Expert",
+            node_id="NGChunkConditioning", display_name="NG Chunk Conditioning", category=CATEGORY + "/Technical",
             description="Inside the loop: prompt, references and the pinned tail of the previous chunk for one chunk. Wire the sampler after it.",
             inputs=[
                 NGChunk.Input("chunk", tooltip="The loop's list_item."),
@@ -90,7 +90,7 @@ class NGCollect(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="NGCollect", display_name="NG Collect", category=CATEGORY + "/Expert", is_input_list=True,
+            node_id="NGCollect", display_name="NG Collect", category=CATEGORY + "/Technical", is_input_list=True,
             description="After the loop: decode every chunk, cut off the pinned heads and join picture and sound into one video.",
             inputs=[io.Latent.Input("latents", tooltip="End Loop output (accumulate on)."), NGChunk.Input("chunks", tooltip="The Director's chunks."),
                     io.Vae.Input("vae"), io.Vae.Input("audio_vae")],
