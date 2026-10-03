@@ -54,10 +54,22 @@ class ProductNodes(unittest.TestCase):
         self.assertEqual(inputs["clip"].io_type, "CLIP")
         self.assertEqual(inputs["vae"].io_type, "VAE")
         self.assertEqual(inputs["ai_provider"].io_type, "NG_AI_PROVIDER")
-        self.assertEqual(len(self.nodes["NGH3Director"].GET_SCHEMA().outputs), 1)
+        director_outputs = self.nodes["NGH3Director"].GET_SCHEMA().outputs
+        self.assertEqual([value.io_type for value in director_outputs], ["NG_DIRECTOR_RESULT", "NG_CHUNK"])
+        self.assertTrue(director_outputs[1].is_output_list)
         outputs = self.nodes["NGDirectorOutput"].GET_SCHEMA().outputs
         self.assertEqual([value.io_type for value in outputs],
-                         ["MODEL", "CONDITIONING", "CONDITIONING", "LATENT", "FLOAT", "INT", "INT", "STRING", "NG_DIRECTOR_RESULT"])
+                         ["MODEL", "CONDITIONING", "CONDITIONING", "LATENT", "FLOAT", "INT", "INT", "STRING", "NG_DIRECTOR_RESULT", "INT"])
+
+    def test_media_contexts_load_files_directly_without_external_media_ports(self):
+        for media in ("image", "video", "audio"):
+            schema = self.nodes["NGContext" + media.title()].GET_SCHEMA()
+            inputs = {value.id:value for value in schema.inputs}
+            self.assertEqual(inputs[media].io_type, "COMBO")
+            self.assertIsNotNone(inputs[media].upload)
+            self.assertFalse({"IMAGE", "VIDEO", "AUDIO"} & {value.io_type for value in schema.inputs})
+            self.assertNotIn("source_revision", inputs)
+        self.assertNotIn("NGHTTPContextAnalysis", self.nodes)
 
     def test_context_groups_reject_wrong_media_and_models_are_not_evaluated(self):
         packet = self.packet()

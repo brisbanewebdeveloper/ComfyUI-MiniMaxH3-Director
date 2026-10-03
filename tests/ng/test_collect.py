@@ -61,6 +61,29 @@ class Collect(unittest.TestCase):
             self.assertEqual(int(audio["waveform"][0, 0, sample].item()), chunk.index)
             edge += chunk.delivered_frames
 
+    def test_audio_rounding_is_applied_once_to_the_whole_sequence(self):
+        # Three 107-frame clips each round up at 32 kHz; six 158-frame clips each round down.
+        for total, target in ((288, 120), (960, 160)):
+            plan = chunks.plan_chunks(total, target, chunks.ContinuityPlan("none", 22, 24))
+            frames, audio, issues = self.run_collect(plan)
+            self.assertEqual(audio["waveform"].shape[-1], round(frames.shape[0] / 24 * RATE))
+            self.assertEqual(issues, ())
+
+    def test_each_chunk_keeps_its_picture_and_sound_when_decoders_reuse_buffers(self):
+        plan = chunks.plan_chunks(288, 120, chunks.ContinuityPlan("none", 22, 24))
+        size = plan.chunks[0].sampled_frames
+        picture_buffer = torch.empty(size, 4, 4, 3)
+        sound_buffer = torch.empty(1, 2, round(size / 24 * RATE))
+        def picture(video):
+            return picture_buffer.fill_(float(video.flatten()[0]))
+        def sound(audio):
+            return {"waveform": sound_buffer.fill_(float(audio.flatten()[0])), "sample_rate": RATE}
+        returned = [fake_latent(c.sampled_frames, c.index) for c in plan.chunks]
+        frames, audio, _ = collect.collect_chunks(returned, plan, picture, sound)
+        for chunk in plan.chunks:
+            self.assertEqual(float(frames[chunk.story_start_f, 0, 0, 0]), chunk.index)
+            self.assertEqual(float(audio["waveform"][0, 0, round(chunk.story_start_f / 24 * RATE)]), chunk.index)
+
     def test_overlong_sound_is_cut_and_short_sound_is_padded_and_reported(self):
         plan = self.plan()
         frames, audio, issues = self.run_collect(plan, extra_samples=300)

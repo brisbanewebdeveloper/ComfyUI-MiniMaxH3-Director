@@ -14,6 +14,14 @@ Development remains incomplete after the specification/reference audit. Native C
 - E20: 221 NG tests (220 pass/one Windows skip), core line trace 98.25%, Legacy 371/371 + 74/74. First run-time check against a live ComfyUI: 27 NG nodes registered and the `/ng/analyze_all` route answering for real. The panels themselves are still unseen and no render run was done, so R4 is not accepted.
 - One First Frame and one Last Frame per chunk. Two Last Frames used to send two images to the model's single slot; now only the first is sent and the warning names the ignored ones. Frame guides are matched by role, so two cards on the same picture no longer swap each other's role.
 - E21: 231 NG tests (230 pass/one Windows skip), core line trace 98.48%, Legacy 371/371 + 74/74, verified against a live ComfyUI in seven cases. No render run was done, so R6 is implemented but not accepted.
+- One media file may be used by several context cards. Each card keeps its own identity, source window and role instead of
+  adopting the first card that used the file. Prompt labels follow the order the media reach the model, and a video with a
+  soundtrack is declared as `<Audio N> is the soundtrack of <Video N>` before a subject's own voice. `@Name` resolves to the
+  label of that specific card.
+- E29: 253 NG tests (252 pass/one Windows skip), core line trace 98.66%, Legacy 371/371 + 74/74. Four actual H3 GPU runs with
+  file-loaded contexts: mixed, two sampler stages, duplicate files on several cards and Render Sequence, 97-154 s, each 294 frames
+  and 392000 audio samples at 32 kHz with exact video/audio pins. Three failures were reproduced before the fix. Functional and
+  mapping evidence only; listening, seam quality and long-chain identity are not measured.
 - Last Frame verified by a real render with the installed int8 FL2VA model: over a 4-second run the output ends 2.19 mean pixel difference from the target picture (start 37.30), while the same run without any context ends at 93.44. The model follows the frame. First Frame, interruption and the continuity-mode comparison are still unmeasured.
 
 **H3 Director NG: a connected Director interface with reusable media contexts.** Local development; no push, tag or publication.

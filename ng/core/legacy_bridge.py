@@ -29,10 +29,14 @@ class Mapping:
     frame to the first-frame card.
     """
 
-    def __init__(self, slot_items, by_source, anchor_items=None):
+    def __init__(self, slot_items, by_source, anchor_items=None, voice_items=None):
         self.slot_items = tuple(slot_items)   # context id per legacy subject slot (slot number - 1)
         self.by_source = dict(by_source)      # file path -> context id (first item wins)
         self.anchor_items = dict(anchor_items or {})   # source path -> context id of the card holding that frame role
+        self.voice_items = dict(voice_items or {})     # 1-based subject slot -> voice context id
+
+    def media_id(self, seg, source):
+        return seg.get("ng_item") or self.voice_items.get(seg.get("voice_slot")) or self.by_source.get(source, "")
 
     def anchor_id(self, role, source):
         found = self.anchor_items.get((role, source))
@@ -136,7 +140,7 @@ def _audio_segments(context, chunk, voices):
             if not length:
                 continue
         segments.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": start, "length": length,
-                         "trimStart": trim, "retention": _AUDIO_RETENTION[usage]})
+                         "trimStart": trim, "retention": _AUDIO_RETENTION[usage], "ng_item": item.id})
     return segments
 
 
@@ -146,7 +150,8 @@ def _motion_segments(context):
         if item.source and set(item.effective_usage) & {"motion", "camera", "structure"}:
             length = int(round(((item.options.end_s or item.length_s or 5.0) - item.options.start_s) * 24))
             out.append({"type": "video", "videoFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,
-                        "trimStart": int(round(item.options.start_s * 24)), "retention": _RETENTION[item.preserve]})
+                        "trimStart": int(round(item.options.start_s * 24)), "retention": _RETENTION[item.preserve],
+                        "ng_item": item.id, "paired_audio": item.options.video_audio == "reference"})
     return out
 
 
@@ -221,4 +226,5 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str):
         for role, key in (("first_frame", plan.ROLE_FIRST), ("last_frame", plan.ROLE_LAST)):
             if role in item.effective_usage:
                 anchors.setdefault((key, item.source), item.id)
-    return tdata, Mapping([s.id for s in subjects], by_source, anchors), extra_voice_issues(extra_voices)
+    voice_items = {number: voices[s.id].id for number, s in enumerate(subjects, 1) if s.id in voices}
+    return tdata, Mapping([s.id for s in subjects], by_source, anchors, voice_items), extra_voice_issues(extra_voices)

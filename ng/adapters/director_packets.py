@@ -5,7 +5,7 @@ from comfy_execution.graph_utils import GraphBuilder
 
 from ..core.analysis import ProviderConfig
 from .ai_provider import NativeAIProvider
-from ..core.project import jobs
+from ..core.project import ChunkJob, jobs
 from .render_graph import render_sequence
 
 
@@ -43,19 +43,27 @@ class DirectorResult:
     settings: RenderSettings
 
 
-def prepare_output(result, chunk_index, previous=None):
-    chunks = jobs(result.project)
-    if not 0 <= chunk_index < len(chunks):
-        raise ValueError("Choose a chunk from 0 to %d." % (len(chunks) - 1))
+def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_sigma_shift=True, seed=None):
+    if loop_chunk is None:
+        chunks = jobs(result.project)
+        if not 0 <= chunk_index < len(chunks):
+            raise ValueError("Choose a chunk from 0 to %d." % (len(chunks) - 1))
+        job = chunks[chunk_index]
+    else:
+        job = loop_chunk[0] if isinstance(loop_chunk, list) else loop_chunk
+        if not isinstance(job, ChunkJob) or job.project is not result.project:
+            raise ValueError("Connect the current chunk to Start Loop's list_item from the same Director's chunks.")
     graph = GraphBuilder()
     inputs = result.inputs.links()
     inputs = {name: value for name, value in inputs.items() if value is not None}
-    conditioning = graph.node("NGChunkConditioning", "conditioning", chunk=chunks[chunk_index], previous=previous,
-                              **inputs, shift_video=result.settings.shift_video, shift_audio=result.settings.shift_audio)
+    conditioning = graph.node("NGChunkConditioning", "conditioning", chunk=job, previous=previous,
+                              **inputs, shift_video=result.settings.shift_video, shift_audio=result.settings.shift_audio,
+                              apply_sigma_shift=apply_sigma_shift)
     negative = graph.node("ConditioningZeroOut", "negative", conditioning=conditioning.out(1))
     context = result.project.context
+    chunk_seed = (int(result.settings.seed if seed is None else seed) + job.index) % (2**64)
     outputs = (conditioning.out(0), conditioning.out(1), negative.out(0), conditioning.out(2),
-               24.0, context.width, context.height, conditioning.out(3), result)
+               24.0, context.width, context.height, conditioning.out(3), result, chunk_seed)
     return graph.finalize(), outputs
 
 

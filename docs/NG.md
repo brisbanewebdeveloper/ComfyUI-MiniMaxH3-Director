@@ -1,5 +1,10 @@
 # H3 Director NG
 
+Context Image, Video and Audio select/upload files directly in their own cards. Additional native media inputs on these
+context nodes are intentionally omitted, following the current product decision. Native sampler/model ports remain available.
+One file may be used by several cards: every card keeps its own name, source window and role, and the prompt labels follow the
+order the media reach the model, so a video with a soundtrack is numbered before a subject's own voice.
+
 NG is an unfinished Director interface in this pack. The requirements audit found missing AI, context and reference-layout work. It separates reusable media contexts, model connections, story editing and rendering.
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
 The local 1.0.0 development version is unreleased; the published version remains 0.3.2.
@@ -31,19 +36,26 @@ For a character and voice, open **H3 Director NG - image and voice.json**, selec
 and connect the H3 Ref2VA model. Set distinct context names; `@Mage` refers to the image named Mage, and the voice's Speaker field names Mage.
 
 For an existing sampler graph, open **H3 Director NG - native sampler.json**. Director Output supplies native `MODEL`, positive/negative
-`CONDITIONING`, `LATENT`, `FLOAT` fps, `INT` width/height and `STRING` prompt. The example uses H3's usual BasicGuider without CFG;
-negative is ZeroOut of positive, not a recommendation to change H3's sampling guidance.
+`CONDITIONING`, `LATENT`, `FLOAT` fps, `INT` width/height and `STRING` prompt. The example uses BasicGuider, whose internal CFG is 1;
+negative is ZeroOut of positive. Editable loop examples use the native CFGGuider with an explicit CFG 1.
 **Chunk index** selects one prepared chunk. A continuation requires the previous chunk's raw latent on `previous`.
-These outputs describe one chunk; **sequence** carries the whole project to Render Sequence.
+These native sampler outputs describe one chunk; **sequence** carries the whole project to Render Sequence.
+The Director's **chunks** supplies the complete list for an editable native loop; Output's **seed** supplies the current chunk seed.
 
-## The nine product nodes
+For a complete sequence with editable samplers, use **H3 Director NG - native chunk loop.json** or
+**H3 Director NG - two sampler chunk loop.json**. Director's **chunks** starts the loop. A single **H3 Director Output** inside it prepares
+the current conditioning, initial AV latent and deterministic seed, using the previous completed AV latent. Use native RandomNoise.
+One or two native samplers repeat for every chunk. Native LoRA, Sigma Shift, guidance and schedules stay accessible.
+See [connections and continuity contract](NG-external-sampling.md).
+
+## Product nodes
 
 | Node | Responsibility |
 |---|---|
 | H3 AI Loader | Optional local/API provider configuration; a separate `NG_AI_PROVIDER`, not a diffusion MODEL |
 | H3 Context Connector | Native model/CLIP/VAE ports, optional AI and four dynamically growing Context groups |
-| H3 Director | Idea, settings, contexts, scene cards, story/chunk timelines, generation summary and prompt inspector |
-| H3 Director Output | Native single-chunk sampler outputs plus complete sequence packet |
+| H3 Director | Idea, settings, contexts, scene cards, story/chunk timelines, generation summary, prompt inspector and complete chunk list |
+| H3 Director Output | Current chunk's native sampler values and seed, plus complete sequence packet for the simple render path |
 | H3 Context Image | Image source, content roles, usages, property preservation, preview and presets |
 | H3 Context Video | Video player, source range, motion/camera/continuation usages and optional paired audio |
 | H3 Context Audio | Player/waveform, source selection, speaker, voice/copy/lock usages and presets |

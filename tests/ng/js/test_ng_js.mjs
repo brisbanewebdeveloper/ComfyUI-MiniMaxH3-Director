@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace
 const load = (name) => import(pathToFileURL(path.join(root, name)).href);
 
 class FakeElement {
-  constructor(tag) { this.tag = tag; this.children = []; this.className = ""; this.textContent = ""; this.style = {}; this.title = ""; this.dataset = {}; this.attributes = {}; }
+  constructor(tag) { this.tag = tag; this.children = []; this.className = ""; this.textContent = ""; this.style = {setProperty: () => {}}; this.title = ""; this.dataset = {}; this.attributes = {}; }
   setAttribute(key, value) { this.attributes[key] = value; }
   append(...nodes) { this.children.push(...nodes); }
   replaceChildren(...nodes) { this.children = [...nodes]; }
@@ -16,7 +16,8 @@ class FakeElement {
   find(className) { return [this, ...this.children.flatMap((c) => c.all?.() ?? [])].filter((n) => n.className.split(" ").includes(className)); }
   all() { return [this, ...this.children.flatMap((c) => c.all())]; }
 }
-globalThis.document = { createElement: (tag) => new FakeElement(tag), dispatchEvent: () => {} };
+globalThis.document = { createElement: (tag) => new FakeElement(tag), dispatchEvent: () => {},
+  getElementById: () => null, head: new FakeElement("head") };
 globalThis.CustomEvent = class { constructor(type) { this.type = type; } };
 
 const { readContexts, readPayload, isContextNode } = await load("ng_read.js");
@@ -175,6 +176,38 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   node.properties.ng_view_mode = "guided";
   node.onConfigure();
   assert.equal(plan.dataset.mode, "guided");
+}
+
+// Exercise the real product extension's configure hook with both running backend schemas.
+{
+  let extension;
+  globalThis.window = {comfyAPI: {app: {app: {registerExtension: (value) => {extension = value;}}}, api: {api: {}}}};
+  await load("ng_product_nodes.js");
+  function outputNode(shiftValue) {
+    const output = node("NGDirectorOutput", {chunk_index: 0,
+      ...(shiftValue === undefined ? {} : {apply_sigma_shift: shiftValue})});
+    output.size = [440, 370];
+    output.setSize = (size) => {output.size = size;};
+    output.addDOMWidget = (name, type, element, options) => {
+      const widget = {name, type, element, options}; output.widgets.push(widget); return widget;
+    };
+    extension.nodeCreated(output);
+    return output;
+  }
+  const oldBackend = outputNode();
+  assert.doesNotThrow(() => oldBackend.onConfigure({widgets_values: [0, ""]}),
+    "New UI must load workflows while the running backend still lacks apply_sigma_shift");
+  assert.equal(oldBackend.widgets.some((entry) => entry.name === "apply_sigma_shift"), false,
+    "Never fabricate a setting the backend cannot execute");
+  const current = outputNode(false);
+  current.onConfigure({widgets_values: [0, false]});
+  assert.equal(current.widgets.find((entry) => entry.name === "apply_sigma_shift").value, false,
+    "An explicitly disabled shift must survive reload");
+  current.onConfigure({widgets_values: [0, ""]});
+  assert.equal(current.widgets.find((entry) => entry.name === "apply_sigma_shift").value, true,
+    "Old saved DOM placeholders migrate to the backend's default shift");
+  current.onConfigure({widgets_values: [0, true]});
+  assert.equal(current.widgets.find((entry) => entry.name === "apply_sigma_shift").value, true);
 }
 
 console.log("ng js: all checks passed");

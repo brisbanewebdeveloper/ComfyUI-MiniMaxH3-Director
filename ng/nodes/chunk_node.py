@@ -4,7 +4,7 @@ import logging
 from comfy_api.latest import io
 
 from ...minimax_core import audio_nodes, core
-from ..adapters import chunk_builder, collect
+from ..adapters import chunk_builder, collect, latents
 from ..adapters.media import MediaError
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
@@ -41,6 +41,8 @@ class NGChunkConditioning(io.ComfyNode):
                 io.Float.Input("shift_video", default=12.0, min=0.01, max=100.0, step=0.01, advanced=True),
                 io.Float.Input("shift_audio", default=3.0, min=0.01, max=100.0, step=0.01, advanced=True),
                 io.Combo.Input("ref_image_size", options=["match", "max"], default="match", advanced=True),
+                io.Boolean.Input("apply_sigma_shift", default=True, optional=True, advanced=True,
+                                 tooltip="Disable to keep the connected model's existing H3 sampling shifts."),
             ],
             outputs=[io.Model.Output(display_name="model"), io.Conditioning.Output(display_name="positive"), io.Latent.Output(display_name="latent"),
                      io.String.Output(display_name="prompt")],
@@ -60,8 +62,13 @@ class NGChunkConditioning(io.ComfyNode):
 
     @classmethod
     def execute(cls, chunk, clip, vae, audio_vae=None, model_fl2va=None, model_ref2va=None, previous=None,
-                shift_video=12.0, shift_audio=3.0, ref_image_size="match"):
-        job, mm = _job(chunk), core()
+                shift_video=12.0, shift_audio=3.0, ref_image_size="match", apply_sigma_shift=True):
+        job = _job(chunk)
+        if job.chunk.head_frames:
+            if previous is None:
+                raise ValueError("Chunk %d needs the previous full AV latent; connect Start Loop's current_iteration_value to previous." % (job.index + 1))
+            latents.validate_chunk(previous, job.project.plan.chunks[job.index - 1].sampled_frames, "Previous chunk")
+        mm = core()
         wanted, other = (model_ref2va, model_fl2va) if job.compiled.mode == "ref2va" else (model_fl2va, model_ref2va)
         model = wanted if wanted is not None else other
         if model is None:
@@ -72,8 +79,10 @@ class NGChunkConditioning(io.ComfyNode):
             built = chunk_builder.build_chunk(job, clip, vae, audio_vae=audio_vae, previous=previous, ref_image_size=ref_image_size, mm=mm)
         except MediaError as error:
             raise ValueError("NG chunk %d: %s" % (job.index + 1, error)) from error
-        shifted = mm.MiniMaxH3SigmaShift.execute(model=model, shift_video=float(shift_video), shift_audio=float(shift_audio))
-        return io.NodeOutput(getattr(shifted, "args", shifted)[0], built.positive, built.latent, job.compiled.prompt)
+        if apply_sigma_shift:
+            shifted = mm.MiniMaxH3SigmaShift.execute(model=model, shift_video=float(shift_video), shift_audio=float(shift_audio))
+            model = getattr(shifted, "args", shifted)[0]
+        return io.NodeOutput(model, built.positive, built.latent, job.compiled.prompt)
 
 
 class NGCollect(io.ComfyNode):
@@ -90,6 +99,8 @@ class NGCollect(io.ComfyNode):
     @classmethod
     def execute(cls, latents, chunks, vae, audio_vae):
         project = chunks[0].project
+        if [job.index for job in chunks] != list(range(len(project.plan.chunks))) or any(job.project is not project for job in chunks):
+            raise ValueError("Connect the complete, ordered Project Chunks list from the same Director to Collect.")
         decode_audio = audio_nodes().vae_decode_audio
         frames, sound, issues = collect.collect_chunks(
             latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}))

@@ -529,8 +529,15 @@ def build_subject_definitions(subject_slots, ref_image_slots, ref_video_segs,
     # That is the only way to reach the guide's own shapes, which name things this node
     # cannot infer: "<Audio 1> is the voice-timbre reference for <Subject 1> (S1)", or
     # "<Video 1> is the source video for the target video edit".
+    paired_count = 0
     for i, seg in enumerate(ref_video_segs):
         label = "<Video %d>" % (i + 1)
+        if seg.get("paired_audio"):
+            paired_count += 1
+            audio_label = "<Audio %d>" % paired_count
+            lines.append("%s is the soundtrack of %s: follow its sound and timing." % (audio_label, label))
+            labels.append({"label": audio_label, "kind": "audio", "audio": True, "marker": "reference", "note": "",
+                           "where": "soundtrack of %s" % label})
         lines.append(_declaration(
             label, seg.get("refDesc"),
             "%s is a reference video: follow its motion and camera work." % label))
@@ -539,7 +546,7 @@ def build_subject_definitions(subject_slots, ref_image_slots, ref_video_segs,
                        "note": (seg.get("refNote") or "").strip(),
                        "where": "motion and camera work"})
     for i, seg in enumerate(ref_audio_segs):
-        label = "<Audio %d>" % (i + 1)
+        label = "<Audio %d>" % (paired_count + i + 1)
         marker = sanitize_retention(seg.get("retention"), audio=True)
         copied = marker in ("fully_copy", "partially_copy")
         # A clip can name the subject whose voice it carries, which is the one thing a
@@ -624,6 +631,8 @@ def task_type_prefix(ref_image_slots, ref_video_segs, ref_audio_segs, override=N
             types.add(TASK_REFERENCE)
     if ref_video_segs:
         types.add(TASK_REFERENCE)
+        if any(seg.get("paired_audio") for seg in ref_video_segs):
+            types.add(TASK_AUDIO_REFERENCE)
     for seg in ref_audio_segs:
         types.add(TASK_AUDIO_REUSE
                   if sanitize_retention(seg.get("retention"), audio=True)
@@ -1662,7 +1671,8 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
         # correlation 0.17), and with nothing but these two lines added it was the clip
         # (0.98). The guide says as much: "state its copy or reference relationship ... in the
         # section that matches the audible layer". Written text still wins.
-        copied = [("<Audio %d>" % (i + 1),
+        paired_count = sum(bool(seg.get("paired_audio")) for seg in ref_video_segs)
+        copied = [("<Audio %d>" % (paired_count + i + 1),
                    sanitize_retention(seg.get("retention"), audio=True))
                   for i, seg in enumerate(ref_audio_segs)
                   if sanitize_retention(seg.get("retention"), audio=True)

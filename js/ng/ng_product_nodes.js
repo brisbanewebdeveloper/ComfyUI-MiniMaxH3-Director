@@ -53,10 +53,19 @@ function connector(node) {
 }
 function output(node) {
   const {root,widget}=shell(node,"➜ H3 DIRECTOR OUTPUT","#e981ed",[440,335]);
-  root.append(element("p","ng-muted","Native outputs → your sampler. Sequence → H3 Render Sequence for the whole project."));
-  const advanced=element("details");advanced.append(element("summary","","Expert · chunk selection"));const field=control(node,"chunk_index","Chunk index · starts at 0",{number:true});advanced.append(field.label);root.append(advanced);
-  hideNative(node,["chunk_index"]);widget.computeLayoutSize=()=>({minHeight:110,maxHeight:180,minWidth:0});node.setSize([440,335]);
-  const configured=node.onConfigure;node.onConfigure=function(...args){const result=configured?.apply(this,args);field.sync();return result;};
+  root.append(element("p","ng-muted","Director.chunks → Start Loop. Connect its list_item and current_iteration_value here. Native outputs → your sampler; seed → RandomNoise. Sequence → H3 Render Sequence for the simple path."));
+  const advanced=element("details");advanced.append(element("summary","","Expert · chunk and model settings"));
+  const field=control(node,"chunk_index","Single chunk index · ignored when loop_chunk is connected",{number:true});
+  const shift=control(node,"apply_sigma_shift","Apply Director sigma shifts · disable for an externally shifted model",{boolean:true});
+  advanced.append(field.label,shift.label);root.append(advanced);
+  hideNative(node,["chunk_index","apply_sigma_shift"]);widget.computeLayoutSize=()=>({minHeight:140,maxHeight:270,minWidth:0});node.setSize([440,370]);
+  const configured=node.onConfigure;node.onConfigure=function(...args){const result=configured?.apply(this,args);
+    // Older saved nodes have a trailing empty DOM-widget value where the new checkbox sits.
+    const saved=args[0]?.widgets_values;
+    // JS can refresh before the Python server restarts: the older schema has no checkbox.
+    const shiftWidget=node.widgets?.find((entry)=>entry.name==="apply_sigma_shift");
+    if(shiftWidget&&Array.isArray(saved)&&typeof saved[1]!=="boolean")shiftWidget.value=true;
+    field.sync();shift.sync();return result;};
 }
 function render(node) {
   const {root,header,widget}=shell(node,"▶ H3 RENDER SEQUENCE","#5ba9ff",[480,245]),status=element("span","ng-ai-badge","Awaiting sequence"),preview=element("img","ng-live-preview");preview.hidden=true;preview.alt="Live sampling preview";

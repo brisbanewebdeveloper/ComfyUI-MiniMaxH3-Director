@@ -18,7 +18,7 @@ def check_context(context):
         if item.media != "text" and item.source:
             key = item.source
             if key in sources:
-                issues.append(Issue("source_shared", "Shares a file with %s; reference labels for that file use the first item."
+                issues.append(Issue("source_shared", "Shares a file with %s; each card keeps its own role and source selection."
                                     % sources[key], item.name))
             sources.setdefault(key, item.name)
         if item.media == "audio" and len(item.effective_usage) > 1:

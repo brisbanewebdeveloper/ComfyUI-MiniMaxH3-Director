@@ -11,6 +11,7 @@ from .chunks import Chunk, ContinuityPlan
 from .context import DirectorContext, check_item
 from .issues import Issue
 from .legacy_bridge import build_timeline, decide_mode
+from .media_labels import resolve_media_mentions
 
 KINDS = ("picture", "video", "audio", "lock", "first_frame", "last_frame", "keyframe", "continue_video")
 
@@ -72,7 +73,7 @@ def _picture_refs(result, mapping):
             refs.append(MediaRef("picture", ctx, slot["image"].get("name", "")))
         elif slot["source"] == "timeline":
             source = slot["event"]["seg"].get("imageFile", "")
-            refs.append(MediaRef("picture", mapping.by_source.get(source, ""), source))
+            refs.append(MediaRef("picture", mapping.media_id(slot["event"]["seg"], source), source))
     return refs
 
 
@@ -97,7 +98,7 @@ def _anchor_refs(result, mapping):
 
 def _timed(kind, seg, key, mapping):
     source = seg.get(key, "")
-    return MediaRef(kind, mapping.by_source.get(source, ""), source, int(seg.get("start", 0)) if kind == "lock" else 0,
+    return MediaRef(kind, mapping.media_id(seg, source), source, int(seg.get("start", 0)) if kind == "lock" else 0,
                     int(seg.get("length", 0)), int(seg.get("trimStart", 0)))
 
 
@@ -158,6 +159,7 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
                                 prepend_text=context.prepend_text, prompt_format="minimax")
     refs = _selected_audio(context, _media_refs(result, mapping)) + _scene_guides(context, chunk)
-    return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or result["prompt"], refs=tuple(refs),
+    prompt = resolve_media_mentions(result["prompt"], context, refs)
+    return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or prompt, refs=tuple(refs),
                          issues=tuple(voice_notes) + tuple(_issues(context, chunk, result, continuity)))
 

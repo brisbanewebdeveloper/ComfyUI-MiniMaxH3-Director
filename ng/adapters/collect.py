@@ -24,14 +24,17 @@ def collect_chunks(chunk_latents, plan, decode_video, decode_audio):
         raise ValueError("the plan has %d chunks but %d were generated" % (len(plan.chunks), len(chunk_latents)))
     pictures, waves, issues, rate = [], [], [], None
     for latent, chunk in zip(chunk_latents, plan.chunks):
-        video, audio = latents.split_av(latent)
-        frames = decode_video(video)
+        video, audio = latents.validate_chunk(latent, chunk.sampled_frames, "Chunk %d" % (chunk.index + 1))
+        # Keep owned outputs across subsequent VAE calls, including decoders that reuse their buffers.
+        frames = decode_video(video).clone()
         decoded = decode_audio(audio)
-        wave, rate = decoded["waveform"], int(decoded["sample_rate"])
+        wave, rate = decoded["waveform"].clone(), int(decoded["sample_rate"])
         if frames.shape[0] != chunk.sampled_frames:
             raise ValueError("chunk %d decoded to %d frames but the plan sampled %d" % (chunk.index + 1, frames.shape[0], chunk.sampled_frames))
         frames, wave = latents.trim_head(frames, wave, rate, chunk.head_frames, FPS)
-        wave, padded = _pad_to(wave, int(round(frames.shape[0] / float(FPS) * rate)))
+        # Use absolute story boundaries so fractional samples do not accumulate at the joins.
+        samples = round(chunk.story_end_f / float(FPS) * rate) - round(chunk.story_start_f / float(FPS) * rate)
+        wave, padded = _pad_to(wave[..., :samples], samples)
         # up to one audio step (25 ms) short is the grid's normal rounding (E11: 266 samples at 32 kHz = 8 ms), not worth a warning
         if padded > rate / float(AUDIO_HZ):
             issues.append(Issue("audio_short", "the sound of chunk %d was %d samples short and was padded with silence." % (chunk.index + 1, padded)))

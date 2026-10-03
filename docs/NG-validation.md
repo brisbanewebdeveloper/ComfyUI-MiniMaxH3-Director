@@ -3,6 +3,67 @@
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
+## Shared media files keep their own card identity: E29 (2026-10-03)
+
+A file may be reused by several context cards. Each card now keeps its own identity, source window and role instead of
+adopting the first card that pointed at that file. Prompt labels are numbered in the order the media actually reach
+the model: all videos, then the soundtrack of each video that carries audio, then standalone audio cards. A video
+with a soundtrack is declared as `<Audio N> is the soundtrack of <Video N>` and takes that number before a subject's
+voice. `@Name` in idea, shots and text rules resolves to the label of the specific card, so two cards on one video no
+longer swap labels.
+
+Three failures were reproduced first (two video cards on one file lost the second window; the first audio card's trim
+leaked onto a subject's voice; soundtrack and standalone voice both claimed `<Audio 1>`), then fixed and re-measured.
+The old `source_shared` warning no longer describes the old behaviour as intended.
+
+253 NG tests: 252 passed/one existing Windows symlink skip. Legacy 371/371 and 74/74; core line coverage 98.66%;
+Python compile, JS syntax and JS logic checks passed.
+
+Four actual H3 GPU variants on the installed int8 model at 256x256/four Euler steps/CFG 1, twelve seconds in three
+chunks, each with real weights and file-loaded image/video/audio/text contexts: mixed references 122.53 s, two sampler
+stages 97.00 s, duplicate files on several cards 154.33 s, Render Sequence 98.25 s. Every variant delivered 294 frames
+and 392000 audio samples at 32 kHz; every continued chunk matched the previous latent tail exactly for video and audio;
+the duplicate-file run kept both card IDs and their separate windows and declared the soundtrack before the voice.
+
+These are functional and mapping checks at low resolution. Listening, seam quality, long-chain identity and multiple
+seeds remain unmeasured. Full current evidence: local `_notes/NG/23-media-identity.md` and `experiments/e29_*`.
+
+## One Director Output and native RandomNoise: E27 (2026-10-03)
+
+The Director supplies the ordered chunks before the native loop. A single Director Output inside it prepares the current
+MODEL, conditioning, AV latent and seed; Prepare Chunk is removed. RandomNoise and KSampler receive that chunk seed directly.
+Original result/Output slots and the simple Render Sequence path remain available. The two editable loop examples use this topology.
+
+Actual H3 GPU checks passed for one/two native sampling stages, ordinary KSampler, six chunks, Turbo LoRA, Ref2VA, audio lock
+and all continuity modes. Native interrupt and recovery succeeded. The frontend saved, reopened and rendered the two-stage graph;
+its submitted loop body includes Output and RandomNoise and keeps Director/Collect outside. Director.sigma shifts stay disabled
+when an upstream native Sigma Shift is connected.
+
+At 256×256/four Euler steps/CFG 1, six chunks delivered 719 frames and 958667 audio samples at 32 kHz.
+Continued video/audio pins matched the previous latent tails exactly. Fixed-seed one-stage/KSampler/packaged outputs matched
+in the recorded decoded comparison; two stages differed. No upscale or perceptual seam/identity acceptance is established.
+246 NG tests: 245 passed/one existing Windows symlink skip. Legacy 371/371 and 74/74; core line coverage 98.34%; Python/JS checks passed.
+Full current evidence: local `_notes/NG/21-single-director-output.md` and `experiments/e27_*`.
+
+## Historical editable sampling: E26 (2026-10-03)
+
+The E26 topology below was replaced by E27; its measurements remain evidence for that earlier revision.
+
+In E26, Director Output supplied the chunk list directly. Prepare Chunk built current conditioning, AV latent and native noise/seed
+inside one native List loop. Supplied examples contain one or two editable SamplerCustomAdvanced stages; Render Sequence remains available.
+Actual H3 GPU checks passed for these stages, ordinary KSampler, six chunks, Turbo LoRA, Ref2VA, audio lock and all continuity modes.
+Interrupt stops the native job; recovery succeeds without restarting. The frontend saved, reopened and rendered the two-stage graph.
+
+At 256×256/four Euler steps/CFG 1, the six-chunk sample delivered 719 frames and 958667 audio samples at 32 kHz.
+Every continued video/audio pin matched its previous latent tail exactly; source audio lock suppresses the audio pin as intended.
+The fixed-seed one-stage, KSampler and packaged outputs matched in this test; the two-stage result differed.
+Audio lengths now use absolute frame boundaries, and Collect owns decoder outputs across later calls.
+245 NG tests: 244 passed/one Windows symlink skip. Legacy 371/371 and 74/74; core line coverage 98.34%; Python/JS checks passed.
+
+These are functional low-resolution checks, not perceptual seam/identity approval or learned-upscaler validation.
+Exact scripts, histories and failure/method corrections are recorded in the supplied local development notes
+`_notes/NG/20-external-sampling-validation.md` and `experiments/e26_*`.
+
 ## Requirements audit: E17
 
 All nine product nodes were compared again with the original specification, user TXT and nine PNG references. E17 identified missing requirements. E18 implements and tests native CLIP/Disk assistance, distinct Audio/Text layouts, context colors and the compiler inspector. Full analysis/control modes, native media inputs, subject/asset relationships, remaining layouts and Last Frame continuity remain open. Earlier passing suites establish only their tested scope.
