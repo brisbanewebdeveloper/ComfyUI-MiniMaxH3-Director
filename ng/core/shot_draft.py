@@ -37,20 +37,40 @@ def draft_prompt(idea, seconds, meanings, records):
             "Media bindings use schema_version 1, context_id and a supported role, not filenames. "
             "Spoken entries use schema_version 1, speaker_id, voice, language, delivery and text. "
             "Timing is finite seconds in 0..%s, end greater than start; avoid overlaps. "
-            "Use only supplied names for @Name and Context IDs for bindings. Do not claim generation or media analysis has occurred. "
+            "%sUse Context IDs for bindings. Do not claim generation or media analysis has occurred. "
             "Idea: %s\nContexts: %s\nExisting Shots: %s" %
-            (seconds, idea, json.dumps(meanings, ensure_ascii=False), json.dumps(shots, ensure_ascii=False)))
+            (seconds, mention_rule(meanings), idea, json.dumps(meanings, ensure_ascii=False), json.dumps(shots, ensure_ascii=False)))
 
 
-def check_mentions(text, contexts):
+def mention_rule(meanings):
+    """The @names the answer may use, spelled out. With a placeholder ("@Name") in the instructions, Qwen3-VL 4B wrote
+    "@Name" into the user's shots, and the whole proposal was refused for it."""
+    names = [entry["name"] for entry in meanings if entry.get("name")]
+    words = "Leave dialogue empty unless the Idea gives words to speak or sing"
+    if not names:
+        return "There is no Content to mention: write no @ mentions. %s. " % words
+    # No sample line: a sample such as "says: exact words" was copied into the answer word for word.
+    return ("Mention Content only by these exact names: %s. %s; then start the line with the speaker's @name and 'says:'. "
+            % (", ".join("@" + name for name in names), words))
+
+
+def plain_mentions(text, contexts):
+    """An @mention of no supplied Content becomes a plain word instead of discarding the whole proposal; the user
+    reviews a proposal before it changes anything. Returns the text and the names that were not Content."""
     if contexts is None:
-        return
+        return text, []
     names = {entry["widgets"].get("name", "").casefold() for entry in contexts}
     known = sorted((re.escape(name) for name in names if name), key=len, reverse=True)
     pattern = r"@(" + "|".join(known + [r"voice\([^)]*\)", r"ref\d+", r"audio\d+", r"[\w-]+"]) + r")(?![\w])"
-    for name in re.findall(pattern, text, re.IGNORECASE):
-        if name.casefold() not in names and not re.fullmatch(r"voice\([^)]*\)|ref\d+|audio\d+", name, re.I):
-            raise ValueError("Auto Direct referenced an unknown context: @%s." % name)
+    unknown = []
+
+    def keep(match):
+        name = match.group(1)
+        if name.casefold() in names or re.fullmatch(r"voice\([^)]*\)|ref\d+|audio\d+", name, re.I):
+            return match.group(0)
+        unknown.append(name)
+        return name
+    return re.sub(pattern, keep, text, flags=re.IGNORECASE), unknown
 
 
 def keep_inline_words(proposed, original):
@@ -67,8 +87,7 @@ def _field_value(key, value, record, seconds, contexts):
         text = fields.read_str({key: value}, key, "draft.fields").strip()
         if not text:
             raise ValueError("A proposed action must not be empty.")
-        check_mentions(text, contexts)
-        return keep_inline_words(text, record["text"])
+        return keep_inline_words(plain_mentions(text, contexts)[0], record["text"])
     if key == "timing":
         fields.need_dict(value, "draft.timing")
         start = fields.read_number(value, "start", "draft.timing", minimum=0)

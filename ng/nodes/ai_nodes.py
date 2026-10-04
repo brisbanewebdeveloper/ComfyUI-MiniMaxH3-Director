@@ -17,6 +17,10 @@ class NGAIRequest(io.ComfyNode):
                                  io.String.Input("request_json", default="{}")], outputs=[io.String.Output()])
 
     @classmethod
+    def fingerprint_inputs(cls, ai_provider, action, request_json):
+        return float("nan")  # every click is a new request; see NGAIResult
+
+    @classmethod
     def execute(cls, ai_provider, action, request_json):
         expanded, result = native_request(ai_provider, action, request_json)
         return io.NodeOutput(result, expand=expanded)
@@ -59,6 +63,12 @@ class NGAIResult(io.ComfyNode):
                          is_output_node=True,
                          inputs=[io.String.Input("text", force_input=True), io.String.Input("action"), io.String.Input("request_json")],
                          outputs=[io.String.Output()])
+
+    @classmethod
+    def fingerprint_inputs(cls, text, action, request_json):
+        # Asking again with the same card or prompt is a new request: from ComfyUI's cache this node would not run,
+        # send no suggestion, and the Studio reported "finished without a suggestion". Generate Text may stay cached.
+        return float("nan")
 
     @classmethod
     def execute(cls, text, action, request_json):

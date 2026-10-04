@@ -53,7 +53,8 @@ class SceneSuggestion(unittest.TestCase):
         self.assertTrue(any("@Alice says: Hello." in shot.text for shot in parsed))
 
     def test_invalid_times_do_not_change_the_project(self):
-        for change in ({"start_s": 3}, {"end_s": 9}, {"end_s": 4}, {"start_s": float("nan")}, {"action": ""}):
+        # Still refused: a shot that ends before it starts or before the previous one, no number, no action.
+        for change in ({"end_s": 4}, {"end_s": 3}, {"start_s": float("nan")}, {"action": ""}):
             answer = self.answer()
             answer["shots"][1].update(change)
             with self.subTest(change=change), self.assertRaises(ValueError):
@@ -80,13 +81,23 @@ class SceneSuggestion(unittest.TestCase):
         self.assertNotIn("private/file.png", prompt)
         self.assertIn("Do not claim generation", prompt)
 
-    def test_gaps_incomplete_duration_and_unknown_contexts_are_rejected(self):
-        for change in ({"start_s": 5}, {"end_s": 7}):
+    def test_gaps_overlaps_and_a_short_end_are_laid_end_to_end_unknown_mentions_become_words(self):
+        # Qwen3-VL 4B ended a 10 s project at 5 s; the whole proposal used to be thrown away for it.
+        for change in ({"start_s": 5}, {"start_s": 3}, {"end_s": 7}, {"end_s": 9}):
             answer=self.answer();answer["shots"][1].update(change)
-            with self.assertRaises(ValueError):
-                direction.parse_direction(json.dumps(answer),8)
-        with self.assertRaisesRegex(ValueError,"unknown context"):
-            direction.parse_direction(json.dumps(self.answer()),8,[])
+            result = direction.parse_direction(json.dumps(answer),8)
+            self.assertIn("0.000-4.000: @Alice enters.",result["shots"]); self.assertIn("4.000-8.000: @Alice turns.",result["shots"])
+            self.assertTrue(result["timing_adjusted"], change)
+        self.assertNotIn("timing_adjusted", direction.parse_direction(json.dumps(self.answer()),8))
+        one = {"shots": [{"start_s": 0, "end_s": 5, "action": "She sings."}]}
+        self.assertEqual(direction.parse_direction(json.dumps(one), 10)["shots"], "0.000-10.000: She sings.")
+        past = self.answer(); past["shots"][0]["end_s"] = 12
+        filled = direction.parse_direction(json.dumps(past), 8)["shots"]
+        self.assertTrue(filled.startswith("0.000-8.000: @Alice enters.") and "turns" not in filled, "a shot past the end fills it; later ones are dropped")
+        # An @name of no Content no longer throws the whole proposal away; it becomes a plain word and is named.
+        plain = direction.parse_direction(json.dumps(self.answer()),8,[])
+        self.assertIn("Alice enters.",plain["shots"]); self.assertNotIn("@Alice",plain["shots"])
+        self.assertEqual(plain["unknown_mentions"],["Alice"])
         self.assertIn("Alice",direction.parse_direction(json.dumps(self.answer()),8,[{"widgets":{"name":"Alice"}}])["shots"])
 
     def test_context_names_with_spaces_and_prefixes_are_resolved(self):
@@ -94,9 +105,21 @@ class SceneSuggestion(unittest.TestCase):
         answer["shots"][0]["action"] = "@Alice Cooper enters. @Alice follows."
         contexts = [{"widgets": {"name": "Alice"}}, {"widgets": {"name": "Alice Cooper"}}]
         self.assertIn("@Alice Cooper", direction.parse_direction(json.dumps(answer), 8, contexts)["shots"])
-        answer["shots"][0]["action"] = "@AliceX enters."
-        with self.assertRaisesRegex(ValueError, "unknown context"):
-            direction.parse_direction(json.dumps(answer), 8, contexts)
+        answer["shots"][0]["action"] = "@AliceX enters. @Name waves."
+        result = direction.parse_direction(json.dumps(answer), 8, contexts)
+        self.assertIn("AliceX enters. Name waves.", result["shots"])
+        self.assertEqual(result["unknown_mentions"], ["AliceX", "Name"])
+
+    def test_the_prompt_names_the_mentions_it_allows_instead_of_a_placeholder(self):
+        # Qwen3-VL 4B copied the instruction's "@Name" into a real answer for the user's workflow.
+        alice = {"media": "image", "widgets": {"name": "Alice"}}
+        for prompt in (direction.direction_prompt("She walks.", 8, [alice]),
+                       direction.direction_prompt("She walks.", 8, [alice], json.dumps({"format": "h3-director-shots", "schema_version": 1,
+                           "shots": [{"id": "s1", "start": 0, "end": 8, "text": "Walk.", "media": [], "spoken": [], "locked_fields": []}]}))):
+            self.assertNotIn("@Name", prompt)
+            self.assertIn("@Alice", prompt)
+        self.assertIn("write no @ mentions", direction.direction_prompt("She walks.", 8, []))
+        self.assertNotIn("exact words", direction.direction_prompt("She walks.", 8, [alice]), "no sample line to copy")
 
 
 if __name__ == "__main__":

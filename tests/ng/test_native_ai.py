@@ -84,6 +84,14 @@ class NativeAI(unittest.TestCase):
         self.assertEqual(provider.clip, ["encoder", 0])
         self.assertEqual(provider.local_model, "", "the encoder is not read while a clip is connected")
 
+    def test_asking_again_is_never_answered_from_comfyuis_cache(self):
+        # The second "split into shots" with the same prompt reported "The AI job finished without a suggestion":
+        # the cached request and result nodes did not run. NaN never equals itself, so ComfyUI runs them every time.
+        for name, inputs in (("NGAIRequest", dict(ai_provider=None, action="direct", request_json="{}")),
+                             ("NGAIResult", dict(text="{}", action="direct", request_json="{}"))):
+            first, second = (self.nodes[name].fingerprint_inputs(**inputs) for _ in range(2))
+            self.assertNotEqual(first, second, name)
+
     def test_native_ai_packet_reaches_context_and_connector_without_generation(self):
         provider = self.provider()
         text = self.nodes["NGContextText"].execute(text="Slow camera.", name="Camera", description="",

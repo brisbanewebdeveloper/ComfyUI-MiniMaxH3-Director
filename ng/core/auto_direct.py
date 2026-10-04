@@ -3,7 +3,7 @@ import json
 import re
 
 from . import fields
-from .shot_draft import current_records, draft_prompt, parse_draft
+from .shot_draft import current_records, draft_prompt, mention_rule, parse_draft, plain_mentions
 
 # A shot list with action, camera and sung or spoken lines runs past 512 tokens for one 10 s scene, and a JSON
 # answer cut off in the middle is worth nothing. Auto Direct therefore never asks for less than this.
@@ -26,11 +26,10 @@ def direction_prompt(idea, seconds, contexts, current_shots=""):
         return draft_prompt(idea, seconds, meanings, records)
     return ("Create at least one shot from the Idea, even when Contexts is empty. Return only JSON with shots (list of objects containing start_s, end_s, "
             "action, camera, dialogue), soundscape (string), music (string). All times are finite seconds in 0..%s, "
-            "shots are ordered and non-overlapping. Cover the project duration. Use only supplied names for @Name references; "
-            "dialogue may contain '@Name says: exact words'. subject_ids bind assets to Subjects identified by context_id; "
+            "shots are ordered and non-overlapping. Cover the project duration. %ssubject_ids bind assets to Subjects identified by context_id; "
             "keep those meanings instead of inventing independent figures for linked assets. Do not claim generation or media analysis has occurred. "
             "Example structure: {\"shots\":[{\"start_s\":0,\"end_s\":%s,\"action\":\"Describe the idea's action\",\"camera\":\"Static\",\"dialogue\":\"\"}],\"soundscape\":\"Room tone\",\"music\":\"N/A\"}. "
-            "Idea: %s\nContexts: %s" % (seconds, seconds, idea, json.dumps(meanings, ensure_ascii=False)))
+            "Idea: %s\nContexts: %s" % (seconds, mention_rule(meanings), seconds, idea, json.dumps(meanings, ensure_ascii=False)))
 
 
 def keep_manual_dialogue(suggested, current_shots):
@@ -88,33 +87,39 @@ def parse_direction(text, seconds, contexts=None, current_shots=""):
     shots = fields.read_list(data, "shots", "direction")
     if not 1 <= len(shots) <= 64:
         raise ValueError("Auto Direct needs between 1 and 64 shots.")
-    lines, end = [], 0.0
+    lines, end, dropped, adjusted = [], 0.0, [], False
     for number, shot in enumerate(shots):
         path = "direction.shots[%d]" % number
         fields.need_dict(shot, path)
         start = float(fields.read_number(shot, "start_s", path, minimum=0))
         stop = float(fields.read_number(shot, "end_s", path, minimum=0))
-        if abs(start - end) > 0.001 or stop <= start or stop > seconds + 0.001:
-            raise ValueError("Auto Direct returned gaps, overlaps or out-of-range times; try again or edit manually.")
+        if end >= seconds - 0.001:
+            adjusted = True  # the shots before already fill the project
+            break
+        if stop <= start or stop <= end + 0.001:
+            raise ValueError("Auto Direct returned a shot that ends before it starts or before the previous one; try again or edit manually.")
+        # Small models round, leave gaps or stop early (Qwen3-VL 4B ended a 10 s project at 5 s). The shots are laid end
+        # to end over the project instead of discarding the proposal; the user reviews it before it changes anything.
+        placed = seconds if number == len(shots) - 1 else min(stop, seconds)
+        adjusted = adjusted or abs(start - end) > 0.001 or abs(placed - stop) > 0.001
+        start, stop = end, placed
         action = fields.read_str(shot, "action", path).strip()
         camera = fields.read_str(shot, "camera", path, "").strip()
         dialogue = fields.read_str(shot, "dialogue", path, "").strip()
         if not action:
             raise ValueError("Each suggested shot needs an action.")
         body = "\n".join(value for value in (action, "Camera: " + camera if camera else "", dialogue) if value)
-        if contexts is not None:
-            names = {entry["widgets"].get("name", "").casefold() for entry in contexts}
-            known = sorted((re.escape(name) for name in names if name), key=len, reverse=True)
-            pattern = r"@(" + "|".join(known + [r"[\w-]+"]) + r")(?![\w])"
-            for name in re.findall(pattern, body, re.IGNORECASE):
-                if name.casefold() not in names:
-                    raise ValueError("Auto Direct referenced an unknown context: @%s." % name)
+        body, unknown = plain_mentions(body, contexts)
+        dropped += [name for name in unknown if name not in dropped]
         lines.append("%.3f-%.3f: %s" % (start, stop, body))
         end = stop
-    if abs(end - seconds) > 0.001:
-        raise ValueError("Auto Direct must cover the entire project without time gaps.")
-    return {"shots": "\n".join(lines), "soundscape": fields.read_str(data, "soundscape", "direction", ""),
-            "music": fields.read_str(data, "music", "direction", "")}
+    result = {"shots": "\n".join(lines), "soundscape": fields.read_str(data, "soundscape", "direction", ""),
+              "music": fields.read_str(data, "music", "direction", "")}
+    if dropped:
+        result["unknown_mentions"] = dropped
+    if adjusted:
+        result["timing_adjusted"] = True
+    return result
 
 
 def finish_direction(text, seconds, contexts, current_shots):
