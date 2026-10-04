@@ -229,6 +229,9 @@ img.ng-source-preview { cursor:zoom-in; }
   .ng-field-row span { white-space:pre-wrap; word-break:break-word; }
   .ng-direction-tools .ng-assistbar { display:flex; gap:5px; margin:6px 0; }
   .ng-direction-tools .ng-assistbar button[aria-pressed=true] { background:#2f4a63; border-color:#7fb2dd; color:#eaf4ff; }
+  .ng-studio .ng-direction-field { display:flex; gap:7px; align-items:center; margin-top:8px; }
+  .ng-studio .ng-direction-field input { width:auto; }
+  .ng-studio .ng-direction-preview { white-space:pre-wrap; overflow-wrap:anywhere; max-height:180px; overflow:auto; }
 /* Product nodes: the AI Loader's branded header, icon tiles and framed sections. Kept separate from
    the studio rules above so the context cards keep the compact density they were tuned for. */
 .ng-icon { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }

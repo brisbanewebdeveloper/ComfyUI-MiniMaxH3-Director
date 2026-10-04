@@ -6,7 +6,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from ... import minimax_enhance as enhance
 from ... import minimax_media as media
 from ..core.analysis import analysis_prompt, parse_suggestion
-from ..core.auto_direct import direction_prompt, keep_manual_dialogue, parse_direction
+from ..core.auto_direct import direction_prompt, finish_direction
 from ..core.fields import need_dict, read_number, read_str
 from ..core.system_prompts import framed, for_node
 from . import h3_prompt
@@ -19,9 +19,7 @@ def request_prompt(action, payload, config):
         director = need_dict(payload["director"], "director")
         seconds = read_number(director, "project_seconds", "director", minimum=0.1)
         idea = read_str(director, "idea", "director").strip()
-        if not idea:
-            raise ValueError("Write an idea before Auto Direct.")
-        return direction_prompt(idea, seconds, payload["contexts"]), None
+        return direction_prompt(idea, seconds, payload["contexts"], read_str(director, "shots", "director", "")), None
     if action == "prompt":
         # The Text card's own action. It answers with prose that goes straight into the prompt,
         # not with the JSON the other two need, so it carries its own role and no schema framing.
@@ -84,9 +82,5 @@ def parse_result(text, action, request_json):
     if action == "analyze":
         # The medium decides which content roles the answer may name: a picture cannot be dialogue.
         return parse_suggestion(text, payload.get("media", "text")).to_dict()
-    suggestion = parse_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"])
-    shots, kept = keep_manual_dialogue(suggestion["shots"], payload["director"].get("shots", ""))
-    suggestion["shots"] = shots
-    if kept:
-        suggestion["kept_dialogue"] = kept
-    return suggestion
+    return finish_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"],
+                            payload["director"].get("shots", ""))

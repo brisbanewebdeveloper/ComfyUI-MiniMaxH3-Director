@@ -160,7 +160,7 @@ function attach(node) {
   const connected=node.onConnectionsChange;
   node.onConnectionsChange=function(...args){const result=connected?.apply(this,args);schedule();return result;};
   const configured=node.onConfigure;
-  node.onConfigure=function(...args){const result=configured?.apply(this,args);delete node.properties.ng_view_mode;fields.forEach((field)=>field.sync());story.rebuild();direction.sync();schedule();return result;};
+  node.onConfigure=function(...args){const result=configured?.apply(this,args);delete node.properties.ng_view_mode;fields.forEach((field)=>field.sync());story.rebuild();direction.restore();schedule();return result;};
   const originalRemoved=node.onRemoved;
   node.onRemoved=function(...args){removed=true;serial++;clearTimeout(timer);studios.delete(schedule);progress.dispose();direction.dispose();story.dispose();batchController?.abort();return originalRemoved?.apply(this,args);};
   node.setSize([880,980]);studios.add(schedule);schedule();

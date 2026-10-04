@@ -3,13 +3,19 @@ import json
 import re
 
 from . import fields
+from .shot_draft import current_records, draft_prompt, parse_draft
 
 
-def direction_prompt(idea, seconds, contexts):
+def direction_prompt(idea, seconds, contexts, current_shots=""):
     meanings = [{"name": entry["widgets"].get("name", ""), "media": entry["media"],
                  "description": entry["widgets"].get("description", ""), "usage": entry["widgets"].get("usage", ""),
                  "speaker": entry["widgets"].get("speaker", ""), "context_id": entry["widgets"].get("context_id", ""),
                  "subject_ids": entry["widgets"].get("subject_ids", "")} for entry in contexts]
+    records = current_records(current_shots, seconds)
+    if not idea.strip() and not records:
+        raise ValueError("Write an idea or an existing Shot before Auto Direct.")
+    if records:
+        return draft_prompt(idea, seconds, meanings, records)
     return ("Create at least one shot from the Idea, even when Contexts is empty. Return only JSON with shots (list of objects containing start_s, end_s, "
             "action, camera, dialogue), soundscape (string), music (string). All times are finite seconds in 0..%s, "
             "shots are ordered and non-overlapping. Cover the project duration. Use only supplied names for @Name references; "
@@ -54,12 +60,18 @@ def _is_header(line):
     return re.match(r"^\s*(?:\d+:)?\d+(?:\.\d+)?s?\s*(?:-|–|—)\s*(?:\d+:)?\d+(?:\.\d+)?s?\s*(?::|\s)", line)
 
 
-def parse_direction(text, seconds, contexts=None):
+def parse_direction(text, seconds, contexts=None, current_shots=""):
     if not isinstance(text, str):
         raise ValueError("Auto Direct needs a JSON text response.")
     if text.strip().startswith("```"):
         text = "\n".join(text.strip().splitlines()[1:-1])
-    data = fields.need_dict(json.loads(text), "direction")
+    try:
+        data = fields.need_dict(json.loads(text), "direction")
+    except json.JSONDecodeError:
+        raise ValueError("The AI did not return valid JSON. Retry with a generative model.") from None
+    records = current_records(current_shots, seconds)
+    if records:
+        return parse_draft(data, records, seconds, contexts)
     shots = fields.read_list(data, "shots", "direction")
     if not 1 <= len(shots) <= 64:
         raise ValueError("Auto Direct needs between 1 and 64 shots.")
@@ -90,3 +102,12 @@ def parse_direction(text, seconds, contexts=None):
         raise ValueError("Auto Direct must cover the entire project without time gaps.")
     return {"shots": "\n".join(lines), "soundscape": fields.read_str(data, "soundscape", "direction", ""),
             "music": fields.read_str(data, "music", "direction", "")}
+
+
+def finish_direction(text, seconds, contexts, current_shots):
+    suggestion = parse_direction(text, seconds, contexts, current_shots)
+    if suggestion.get("format") != "h3-director-draft":
+        suggestion["shots"], kept = keep_manual_dialogue(suggestion["shots"], current_shots)
+        if kept:
+            suggestion["kept_dialogue"] = kept
+    return suggestion

@@ -63,6 +63,6 @@ export function shotFields(shot, index, entries, commit, rebuild) {
       protectionTitle.textContent=`Protect from AI · ${shot.locked_fields.length} fields`;commit(); };
     label.append(input, element("span", "", key)); protection.append(label);
   }
-  protection.append(element("small", "ng-muted", "Manual edits remain available. Scene AI replacement is blocked while a shot has bindings, dialogue or protected fields."));
+  protection.append(element("small", "ng-muted", "Manual edits remain available. AI Apply skips protected fields; bindings, dialogue and timing require explicit selection."));
   root.append(protection); return root;
 }

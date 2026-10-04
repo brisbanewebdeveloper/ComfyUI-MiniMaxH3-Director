@@ -57,11 +57,12 @@ Old inline dialogue still works. Avoid writing the same line in both places.
 
 `locked_fields` protects `timing`, `text`, `media` and/or `spoken` from AI, while
 manual editing stays possible. `draft` is a separate object and never compiles.
-E43a persists these fields and blocks the old whole-scene Apply when bindings,
-structured dialogue or protected fields are present. This is a preservation
-guard, not the final per-field AI merge: ID-addressed drafts, conflict review and
-selective Apply are still required in E46. Draft objects are not an AI result
-contract yet. Simple scenes still accept the existing AI replacement workflow.
+E46 offers ID-addressed proposals and selected-field Apply for existing Shots,
+including legacy timed text. Unselected fields and protected fields survive;
+own dialogue is preserved. Pending review is separate workflow state, while
+the existing Shot `draft` metadata remains inactive and untouched. See
+[Shot drafts](NG-shot-drafts.md) for validation, conflicts, stale/cancel and reload.
+Scenes without existing Shots still accept the original scene proposal workflow.
 
 The live preview and execution use the same parser/compiler. Chunk serialization
 includes `shot_id`, media, dialogue and locks as additive v1 fields; older saves
@@ -78,6 +79,7 @@ E44 adds mixed media indicators, explicit audio kinds and actual image/input-vid
 previews, with refresh, cancellation and missing-file feedback. See [shot media](NG-shot-media.md).
 E45a adds timeline reorder and honest shared axes. E45b adds Shot audio placement
 and lock mixing. E45c adds actual interior First/Last/Continue guides with native
-conditioning and render checks. ID-addressed AI drafts/Apply and provenance remain
-for the following sections. Existing native sampler and Legacy paths
+conditioning and render checks. E46 adds ID-addressed drafts/Apply with field review,
+protection and request lifecycle checks. Inspector provenance remains for E47.
+Existing native sampler and Legacy paths
 are preserved; the Director as a whole is unfinished.

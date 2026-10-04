@@ -42,6 +42,10 @@ class Frontend(unittest.TestCase):
         result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_timeline.mjs")], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_direction_field_apply_and_request_lifecycle(self):
+        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_direction.mjs")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
