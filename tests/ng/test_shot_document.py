@@ -158,6 +158,13 @@ class Dialogue(unittest.TestCase):
             self.assertIn("<Subject 1> (S1) whispers", result.compiled[0].prompt)
             self.assertIn("<d>[German] Hallo, Welt!</d>", result.compiled[0].prompt)
 
+    def test_a_note_that_belongs_to_a_figure_compiles_in_both_modes(self):
+        alice = context.ContextItem("img1", "Alice", "image", "alice.png", usage=("reference",), content=("character",))
+        note = context.ContextItem("t1", "Notes", "text", "Stay calm.", usage=("rule",), subject_ids=("img1",))
+        for mode, expected in (("fl2va", "For Alice: Stay calm."), ("ref2va", "For <Subject 1>: Stay calm.")):
+            result = project.plan_project(context.DirectorContext(idea="A walk.", project_seconds=4, items=(alice, note), mode=mode), 10, NONE)
+            self.assertIn(expected, result.compiled[0].prompt, mode)
+
     def test_a_manual_prompt_is_text_enough(self):
         empty = context.DirectorContext(shots_text="", project_seconds=8)
         self.assertIn("no_text", {i.code for i in project.plan_project(empty, 10, NONE).issues})

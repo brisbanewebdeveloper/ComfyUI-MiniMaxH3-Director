@@ -33,14 +33,28 @@ def _picture_definitions(prompt, result, mapping, context):
 
 
 def _scope_text(prompt, mapping, context, subjects):
+    """legacy_bridge writes "For @Owner:" before a scoped note; the compiler turned each @Owner into its Subject label,
+    its @refN slot, or (without reference slots, e.g. FL2VA) the plain name. Find whichever spelling is there."""
     for item in context.by_media("text"):
-        if not item.subject_ids:
+        owners = [identity for identity in item.subject_ids if context.item(identity)]
+        if not owners:
             continue
-        original = "For " + " and ".join(subjects.get(identity, "@ref%d" % (mapping.slot_items.index(identity) + 1))
-                                         for identity in item.subject_ids) + ":"
-        retained = [subjects[identity] for identity in item.subject_ids if identity in subjects]
+        def token(identity, plain):
+            if identity in subjects:
+                return subjects[identity]
+            if identity in mapping.slot_items:
+                return "@ref%d" % (mapping.slot_items.index(identity) + 1)
+            return ("" if plain else "@") + context.item(identity).name
+        retained = [subjects[identity] for identity in owners if identity in subjects]
         replacement = "For " + " and ".join(retained) + ":" if retained else "Context guidance:"
-        prompt = prompt.replace(original, replacement, 1)
+        named_only = not any(identity in subjects or identity in mapping.slot_items for identity in owners)
+        for plain in (True, False):
+            original = "For " + " and ".join(token(identity, plain) for identity in owners) + ":"
+            if original in prompt:
+                # Without any reference slot the plain names are the best scope there is ("For Alice:" stays).
+                if not (plain and named_only):
+                    prompt = prompt.replace(original, replacement, 1)
+                break
     return prompt
 
 
@@ -60,7 +74,7 @@ def apply_asset_relations(result, mapping, context, refs):
         if item.media == "image":
             missing = [identity for identity in item.subject_ids if (identity, item.id) not in pairs]
         if missing or (item.media != "text" and item.id not in owned):
-            names = ", ".join(context.item(identity).name for identity in missing)
+            names = ", ".join(context.item(identity).name if context.item(identity) else identity for identity in missing)
             issues.append(Issue("asset_relation_unavailable", "Linked reference is not presented for %s in this chunk. "
                                 "Check mode, source and reference budget; only retained relations are applied."
                                 % (names or "its Subjects"), item.name))
