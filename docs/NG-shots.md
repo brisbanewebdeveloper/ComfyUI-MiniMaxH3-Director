@@ -39,11 +39,11 @@ roles are diagnosed; the first supported role remains the compiler's choice.
 
 First/last-frame and video-continue roles retain the existing project's boundary
 semantics. They do not create conditioning anchors at an arbitrary interior shot
-time. Inapplicable interior bindings report `shot_boundary_role`. Audio copy/lock
-retains its source-window/story-origin semantics; assigning it does not yet move
-the sound to the start of a shot. Late copy/lock assignments report
-`shot_audio_origin`: a short source may end before that chunk and produce no audio
-reference. Audio placement and mixing remain open.
+time. Inapplicable interior bindings report `shot_boundary_role`. Audio Copy/Lock
+separates the selected source window from Shot placement: each binding starts at
+the normalized Shot start and carried chunks advance the source. Locks add before
+encoding; Copy supplies a timed reference instruction. See [Shot audio](NG-shot-audio.md)
+for intervals, clipping, carry priority and the distinction between guidance and a lock.
 
 Spoken entries are separate from action text and media. The existing H3 compiler
 receives their exact words, language and delivery, bound to the Subject owning
@@ -74,6 +74,7 @@ presentation is also checked against the installed native H3 tokenizer.
 This is a three-step, 256-pixel function smoke test, not quality acceptance.
 E44 adds mixed media indicators, explicit audio kinds and actual image/input-video
 previews, with refresh, cancellation and missing-file feedback. See [shot media](NG-shot-media.md).
-ID-addressed AI drafts/Apply, audio placement/mixing and timeline reorder remain
-for E45–E47. Existing native sampler and Legacy paths
+E45a adds timeline reorder and honest shared axes. E45b adds Shot audio placement
+and lock mixing. ID-addressed AI drafts/Apply, interior anchors and provenance remain
+for the following sections. Existing native sampler and Legacy paths
 are preserved; the Director as a whole is unfinished.

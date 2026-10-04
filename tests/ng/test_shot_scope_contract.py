@@ -48,16 +48,17 @@ class OrderedRoles(unittest.TestCase):
 
 
 class NativeFixtureContract(unittest.TestCase):
-    def test_late_short_audio_binding_reports_project_origin_instead_of_silent_placement(self):
+    def test_late_short_audio_binding_is_placed_at_the_shot_start(self):
         records = [shot("first", 0, 10.125, []), shot("late", 10.125, 20, [("sound", "context")])]
         for role in ("copy", "lock"):
             with self.subTest(role=role):
                 sound = context.ContextItem("sound", "Sound", "audio", "short.wav", usage=(role,), length_s=2)
                 result = plan(records, (sound,), 20, 10, chunks.ContinuityPlan())
-                self.assertFalse(result.compiled[1].refs, "the current origin contract must not be disguised as shot placement")
-                warnings = [i for i in result.issues if i.code == "shot_audio_origin"]
-                self.assertTrue(warnings, "a short file can fall entirely before the assigned shot")
-                self.assertEqual(warnings[0].ref, "late")
+                chunk = result.plan.chunks[1]
+                kind = "audio" if role == "copy" else "lock"
+                self.assertEqual([(r.start_f, r.trim_start_f, r.length_f) for r in result.compiled[1].of_kind(kind)],
+                                 [(243 - chunk.story_start_f + chunk.head_frames, 0, 48)])
+                self.assertNotIn("shot_audio_origin", {i.code for i in result.issues})
 
     def test_reference_free_middle_chunk_and_new_subject_label_do_not_leak_previous_scope(self):
         first = shot("opening", 0, 85/24, [("alice", "context"), ("voice_a", "context")])

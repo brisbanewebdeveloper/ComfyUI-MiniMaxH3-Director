@@ -17,16 +17,12 @@ def _add_roles(roles, identity, values):
     roles[identity] = tuple(dict.fromkeys((*roles.get(identity, ()), *values)))
 
 
-def _timing_issues(item, effective, shot, chunk, story_start):
+def _timing_issues(effective, shot, chunk):
     issues = []
     if (("first_frame" in effective and not chunk.is_first) or
             ("last_frame" in effective and not chunk.is_last) or ("continue" in effective and not chunk.is_first)):
         issues.append(Issue("shot_boundary_role", "First/last-frame and continue roles still use project boundaries; "
                             "this binding does not create an interior shot boundary anchor.", shot.shot_id))
-    role = next((value for value in effective if value in USAGE_BY_MEDIA[item.media]), None)
-    if item.media == "audio" and role in ("copy", "lock") and story_start > 0:
-        issues.append(Issue("shot_audio_origin", "Copy/lock audio still follows project time from frame 0; assigning it to "
-                            "this shot does not move it to the shot start. A short source can fall before this chunk.", shot.shot_id))
     return issues
 
 
@@ -34,7 +30,6 @@ def scoped_context(context, chunk):
     records = read_document(context.shots_text)
     if records is None:
         return context, ()
-    starts = {record["id"]: record["start"] for record in records}
     bound = {b["context_id"] for record in records for b in record.get("media", [])}
     bound.update(s["speaker_id"] for record in records for s in record.get("spoken", []) if s.get("speaker_id"))
     selected = {item.id for item in context.items if item.id not in bound}
@@ -56,7 +51,7 @@ def scoped_context(context, chunk):
                                     % (binding.role, item.media), shot.shot_id))
                 _add_roles(roles, item.id, item.effective_usage)
             effective = roles.get(item.id, item.effective_usage)
-            issues.extend(_timing_issues(item, effective, shot, chunk, starts.get(shot.shot_id, 0)))
+            issues.extend(_timing_issues(effective, shot, chunk))
         selected.update(s.speaker_id for s in shot.spoken if context.item(s.speaker_id))
     # A scoped asset still needs its owning Subject; voice samples need the image
     # they speak for. Following only outward dependencies avoids pulling unused takes.

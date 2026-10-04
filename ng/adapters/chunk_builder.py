@@ -1,8 +1,10 @@
 """Turn one planned chunk into model conditioning: load its media, call the Core's H3 nodes, hold locked sound, pin the previous tail."""
 import dataclasses
+import math
 from dataclasses import dataclass
 
 import torch
+import comfy.audio
 
 from ... import minimax_media as legacy
 from ...minimax_core import core
@@ -61,11 +63,12 @@ def _locked_waveform(locks, sampled_frames, sample_rate):
         audio = media.load_audio(ref)
         wave = audio["waveform"]
         if audio["sample_rate"] != sample_rate:
-            wave = torch.nn.functional.interpolate(wave, scale_factor=sample_rate / float(audio["sample_rate"]), mode="linear")
+            wave = comfy.audio.resample(wave, audio["sample_rate"], sample_rate)
         start = int(round(ref.start_f / float(FPS) * sample_rate))
-        piece = wave[..., :max(track.shape[-1] - start, 0)]
-        track[..., start:start + piece.shape[-1]] = piece[:, :2] if piece.shape[1] >= 2 else piece.expand(-1, 2, -1)
-    return {"waveform": track, "sample_rate": sample_rate}
+        size = min(max(track.shape[-1] - start, 0), int(round(ref.length_f / float(FPS) * sample_rate)))
+        piece = wave[..., :size]
+        track[..., start:start + piece.shape[-1]] += piece[:, :2] if piece.shape[1] >= 2 else piece.expand(-1, 2, -1)
+    return {"waveform": track.clamp(-1, 1), "sample_rate": sample_rate}
 
 
 def _hold_locked_audio(mm, latent, locks, sampled_frames, audio_vae):
@@ -90,8 +93,9 @@ def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="m
     locks = compiled.of_kind("lock")
     if locks:
         latent = _hold_locked_audio(mm, latent, locks, job.chunk.sampled_frames, audio_vae)
-        if continuity.mode == "video_audio":
-            continuity = dataclasses.replace(continuity, mode="video")       # the locked sound wins over a pinned sound tail
+        head_steps = math.ceil(job.chunk.head_frames / float(FPS) * mm.AUDIO_LATENT_FPS)
+        if continuity.mode == "video_audio" and any(math.floor(r.start_f / float(FPS) * mm.AUDIO_LATENT_FPS) < head_steps for r in locks):
+            continuity = dataclasses.replace(continuity, mode="video")       # a lock inside the head wins over audio carry
     if not job.chunk.head_frames:
         return BuiltChunk(positive, latent, 0, ())
     positive, trim, dropped = conditioning.pin_previous(positive, latent, previous, continuity)

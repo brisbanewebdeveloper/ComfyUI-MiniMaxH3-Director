@@ -94,7 +94,7 @@ class AudioLockMentions(unittest.TestCase):
         builder, media = module("ng.adapters.chunk_builder"), module("ng.adapters.media")
         lock = audio("Backing", "lock", options=opts.ContextOptions(start_s=2, end_s=7))
         result = plan([lock], idea="A walk.")
-        source = torch.arange(12 * 44100, dtype=torch.float32)[None, None, :] / 44100
+        source = torch.arange(12 * 44100, dtype=torch.float32)[None, None, :] / (12 * 44100)
         mixes = []
         def loaded(ref):
             start = int(ref.trim_start_f / 24 * 44100)
@@ -116,7 +116,7 @@ class AudioLockMentions(unittest.TestCase):
                     self.assertTrue(torch.all(audio_mask[..., :end] == 0))
                     self.assertTrue(torch.all(audio_mask[..., end:] == 1))
                     self.assertTrue(torch.all(video_mask == 1))
-                    self.assertAlmostEqual(float(mixes[-1]["waveform"][0, 0, 0]), int(ref.trim_start_f / 24 * 44100) / 44100, places=5)
+                    self.assertAlmostEqual(float(mixes[-1]["waveform"][0, 0, 0]), int(ref.trim_start_f / 24 * 44100) / (12 * 44100), places=5)
                     self.assertFalse(any("audio_latent" in key for key in keys))
                 else:
                     pins = [key["audio_latent"] for key in keys if "audio_latent" in key]

@@ -103,7 +103,7 @@ def _anchor_refs(result, mapping):
 
 def _timed(kind, seg, key, mapping):
     source = seg.get(key, "")
-    return MediaRef(kind, mapping.media_id(seg, source), source, int(seg.get("start", 0)) if kind == "lock" else 0,
+    return MediaRef(kind, mapping.media_id(seg, source), source, int(seg.get("ng_start", seg.get("start", 0) if kind == "lock" else 0)),
                     int(seg.get("length", 0)), int(seg.get("trimStart", 0)))
 
 

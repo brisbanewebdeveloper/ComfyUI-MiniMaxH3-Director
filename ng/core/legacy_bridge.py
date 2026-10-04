@@ -13,6 +13,7 @@ from .context_options import retention_note
 from .issues import Issue
 from .subjects import subject_groups
 from .shot_bindings import spoken_text
+from .audio_timing import shot_windows, source_window, timed_segments
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
@@ -117,32 +118,23 @@ def _tag_substitutor(slot_items, context):
     return lambda text: replace_mentions(text, names, (item.name for item in context.items))
 
 
-def _window_frames(chunk, item_trim=0):
-    """(start in sampled clip, length, trim into the file) for a medium that follows the story from its first frame."""
-    base = chunk.story_start_f - chunk.head_frames
-    return 0, chunk.sampled_frames, max(0, base) + item_trim
-
-
 def _audio_segments(context, chunk, voices):
     segments = []
     used = {v.id for v in voices.values()}
+    windows = shot_windows(context)
     for item in context.by_media("audio"):
         if item.id in used or not item.source:
             continue
         usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION), None)
         if usage is None:
             continue
-        timed = usage in ("copy", "lock")
-        source_start = int(round(item.options.start_s * 24))
-        source_end = item.options.end_s or item.length_s
-        available = max(0, int(round((source_end - item.options.start_s) * 24))) if source_end else 0
-        start, length, trim = _window_frames(chunk, source_start) if timed else (FAR_AWAY, available or int(max(item.length_s, 2.0) * 24), source_start)
-        if timed and available:
-            length = min(length, max(0, source_start + available - trim))
-            if not length:
-                continue
-        segments.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": start, "length": length,
-                         "trimStart": trim, "retention": _AUDIO_RETENTION[usage], "ng_item": item.id})
+        if usage in ("copy", "lock"):
+            segments.extend(timed_segments(item, chunk, windows, _AUDIO_RETENTION[usage]))
+        else:
+            source_start, available = source_window(item)
+            segments.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": FAR_AWAY,
+                             "length": available if available is not None else 48, "trimStart": source_start,
+                             "retention": _AUDIO_RETENTION[usage], "ng_item": item.id})
     return segments
 
 
