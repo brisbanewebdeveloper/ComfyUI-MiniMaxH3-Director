@@ -65,10 +65,10 @@ def _timed(kind, seg, key, mapping):
                     int(seg.get("length", 0)), int(seg.get("trimStart", 0)))
 
 
-def _media_refs(result, mapping):
+def _media_refs(result, mapping, context):
     refs = _picture_refs(result, mapping)
     refs += [_timed("video", s, "videoFile", mapping) for s in result["ref_video_segs"]]
-    refs += [_timed("audio", s, "audioFile", mapping) for s in result["ref_audio_segs"]]
+    refs += [_selected_audio(context, _timed("audio", s, "audioFile", mapping), s) for s in result["ref_audio_segs"]]
     refs += [_timed("lock", s, "audioFile", mapping) for s in result["lock_audio_segs"]]
     return refs
 
@@ -87,17 +87,15 @@ def _issues(context, chunk, result, continuity):
     return out
 
 
-def _selected_audio(context, refs):
-    selected = []
-    for ref in refs:
-        item = context.item(ref.ctx_id)
-        if ref.kind == "audio" and item:
-            start = max(ref.trim_start_f, int(round(item.options.start_s * limits.FPS)))
-            end = int(round(item.options.end_s * limits.FPS)) if item.options.end_s else 0
-            length = min(ref.length_f, max(0, end - start)) if end else ref.length_f
-            ref = MediaRef(ref.kind, ref.ctx_id, ref.source, ref.start_f, length, start)
-        selected.append(ref)
-    return selected
+def _selected_audio(context, ref, seg):
+    """An audio reference plays the card's selected Start/End range; an audio-lane clip names its own file seconds instead."""
+    item = context.item(ref.ctx_id)
+    if not item or seg.get("ng_in_file"):
+        return ref
+    start = max(ref.trim_start_f, int(round(item.options.start_s * limits.FPS)))
+    end = int(round(item.options.end_s * limits.FPS)) if item.options.end_s else 0
+    length = min(ref.length_f, max(0, end - start)) if end else ref.length_f
+    return MediaRef(ref.kind, ref.ctx_id, ref.source, ref.start_f, length, start)
 
 
 def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: ContinuityPlan) -> CompiledChunk:
@@ -109,7 +107,7 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     tdata, mapping, voice_notes = build_timeline(context, chunk, mode, guides)
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
                                 prepend_text=context.prepend_text, prompt_format="minimax")
-    refs = _selected_audio(context, _media_refs(result, mapping)) + list(guides)
+    refs = _media_refs(result, mapping, context) + list(guides)
     related_prompt, relation_issues = apply_asset_relations(result, mapping, context, refs)
     prompt = resolve_media_mentions(related_prompt, context, refs)
     labels = prompt_labels(result, mapping, context, refs)

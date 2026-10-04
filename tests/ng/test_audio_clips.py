@@ -128,6 +128,14 @@ class Placement(unittest.TestCase):
         result = plan([clip("a1", "song", 2, 6, "lock", offset=10)], seconds=8, items=(trimmed,))
         self.assertEqual(spans(result.compiled[0], "lock"), [(48, 96, 240)], "file second 10, as the Studio shows")
 
+    def test_copy_and_reference_clips_ignore_the_cards_own_selection(self):
+        trimmed = song(options=opts.ContextOptions(start_s=5, end_s=12))
+        for mode in ("copy", "ref"):
+            with self.subTest(mode=mode):
+                result = plan([clip("a1", "song", 2, 6, mode, offset=2)], seconds=8, items=(trimmed,))
+                ref = result.compiled[0].of_kind("audio")[0]
+                self.assertEqual((ref.trim_start_f, ref.length_f), (48, 96), "file seconds 2-6, as the Studio shows")
+
     def test_a_laned_card_is_not_also_sent_globally(self):
         result = plan([clip("a1", "song", 0, 4, "lock")])
         self.assertEqual([bool(c.of_kind("audio")) or bool(c.of_kind("lock")) for c in result.compiled], [True, False])

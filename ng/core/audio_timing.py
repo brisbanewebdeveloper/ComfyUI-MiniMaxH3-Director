@@ -67,7 +67,8 @@ def timed_segments(item, chunk, windows, retention, in_file=False):
             continue
         start, length = first - window_start, last - first
         segment = {"type": "audio", "audioFile": item.source, "fileName": item.name, "start": start, "length": length,
-                   "trimStart": source_start + offset + first - origin, "retention": retention, "ng_item": item.id, "ng_start": start}
+                   "trimStart": source_start + offset + first - origin, "retention": retention, "ng_item": item.id, "ng_start": start,
+                   "ng_in_file": in_file}
         if origins is not None and retention == "fully_copy":
             segment.update(retention="partially_copy", refNote="Copy this selected clip only at %.3f-%.3fs in the target video; "
                            "its first sample starts at %.3fs. Generate the other sound outside this interval."

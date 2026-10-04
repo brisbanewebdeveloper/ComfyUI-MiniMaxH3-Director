@@ -138,7 +138,7 @@ def _lane_references(item, chunk, spans):
         usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION and u not in ("copy", "lock")), "sound_reference")
         if length > 0:
             out.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,
-                        "trimStart": source_start + offset, "retention": _AUDIO_RETENTION[usage], "ng_item": item.id})
+                        "trimStart": source_start + offset, "retention": _AUDIO_RETENTION[usage], "ng_item": item.id, "ng_in_file": True})
     return out[:1]
 
 
