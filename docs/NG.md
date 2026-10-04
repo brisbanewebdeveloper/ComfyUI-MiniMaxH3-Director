@@ -222,7 +222,7 @@ Credentials come from a named server environment variable; workflow files store 
 H3's own conditioning encoder (`qwen3vl_32b_minimax_h3_*`, 50 of 64 layers, no output head) cannot write text; an AI job on it stops at once and says so. Use e.g. `qwen3vl_4b_fp8_scaled` (type stable_diffusion) or Ollama.
 Splitting into shots always allows at least 2048 tokens, because a shot list cut off at a lower **Max tokens** is unusable.
 
-**Analyze** on a Context makes one explicit request; **Apply suggestion** changes description and content choices only.
+**✦ Analyze** on a Context card makes one explicit request; **Accept** fills description, content and "Use as" from the roles the card shows (a Text card: "Use as" only). What each AI function does and which models were tested: [native AI](NG-native-ai.md#what-each-ai-function-does-tested-2026-10-05).
 In the Studio, AI proposals for shots are reviewed before they change anything ([shot drafts](NG-shot-drafts.md)).
 Loading, connecting and rendering never trigger provider requests.
 

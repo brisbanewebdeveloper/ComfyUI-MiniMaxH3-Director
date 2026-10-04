@@ -2,30 +2,37 @@
 
 Use a generative text/vision encoder for assistance. The H3 conditioning CLIP remains a separate connection at the Context Connector.
 
-Open `example_workflows/H3 Director NG - native AI.json` for a minimal Load CLIP → AI Loader → Text Context example. Choose your installed model, then use **Analyze** on the Context. This example needs no H3 diffusion model.
+Open `example_workflows/H3 Director NG - native AI.json` for a minimal Load CLIP → AI Loader → Text Context example. Choose your installed model, then use **✦ Analyze** (on "Use as") or **✦ Build H3 prompt** on the Text card. This example needs no H3 diffusion model.
 
-1. Add **Load CLIP** and choose an installed generative encoder. The development test uses `qwen3vl_4b_bf16.safetensors` with type `stable_diffusion`; choose the loader type appropriate to your model.
-2. Connect CLIP to **H3 AI Loader**, then select **CLIP / Encoder**.
-3. Connect the AI provider to a Context for **Analyze**, or to the Context Connector for the Studio's **AI: split into shots** and **AI: suggest / improve text**. Contexts can inherit one unambiguous downstream Connector provider.
-4. Run the explicit action, review the answer, then Apply. **Cancel AI** stops this action. A successful native source badge names the tested action and medium.
+1. Add **Load CLIP** and choose an installed generative encoder (`qwen3vl_4b_bf16`, type `stable_diffusion`, is the tested choice).
+2. Connect CLIP to **H3 AI Loader** and select **CLIP / Encoder**. Without Load CLIP, choose the installed encoder on the same card; it is loaded only inside the AI job.
+3. Connect the AI Loader to a Context card, or to the Context Connector for the Studio and every card behind it.
+4. Run the action, read the suggestion, then **Accept** or **Discard**. **Cancel** stops a running action and leaves nothing in the queue.
 
-Alternatively select **Local → disk**, an installed text encoder and its native loader type. This creates the CLIPLoader only inside the AI job. **Local → server**, **API** and **Custom** retain compatible HTTP transports. No credentials or model weights enter the saved workflow.
+**Local** (Ollama, LM Studio, llama.cpp, custom) and **API** (OpenAI, Anthropic, Gemini, OpenRouter, custom) use HTTP. API keys are set on the AI Loader and kept in ComfyUI's user settings, never in the workflow. Without a key the request is refused and the card says where to set it.
 
-Connecting or restoring nodes loads no assistant model. Rendering creates no assistant request. Native AI actions queue only the AI Loader's upstream graph and native Generate Text; ComfyUI handles model memory and interruption. Native timeout, token limit and declared image/audio capabilities are effective settings. Server-only keep-alive and environment-key fields are hidden for native sources.
+Connecting or restoring nodes loads no assistant model. Rendering creates no assistant request. Native AI actions queue only the AI Loader's upstream graph and Generate Text; every click runs again (no cached "finished without a suggestion").
 
-Images are bounded to 1024×1024 for native analysis. Video analysis uses three ordered stills from at most the first 15 seconds; it cannot observe full motion. Audio analysis uses at most 15 seconds and requires an encoder accepting ComfyUI AUDIO. Selecting a capability cannot add support to an incompatible model.
+Images are bounded for analysis. Video analysis uses three ordered stills from at most the first 15 seconds; it cannot observe full motion. Audio analysis needs a model that accepts audio and **Audio** switched on at the AI Loader; Qwen3-VL cannot hear, and the Ollama transport sends no audio. If Vision or Audio is off, the card says so instead of guessing.
 
-**Choose a generative model.** The H3 conditioning encoder (`qwen3vl_32b_minimax_h3_nvfp4_awq`) is not one: in E46 it needed about 589 s on 16 GB and answered with commas instead of JSON, so the Studio reports a timeout or an invalid answer. The tested working choice is a Qwen3VL 4B file (`qwen3vl_4b_bf16` / `qwen3vl_4b_fp8_scaled`). A slow model needs a higher **Timeout** on the AI Loader (default 120 s); the Studio shows the elapsed time against it while waiting.
+**Choose a generative model.** H3's conditioning encoder (`qwen3vl_32b_minimax_h3_*`, 50 of 64 layers, no output head) cannot write text; an AI job on it stops at once and says so. **Ollama:** check that the model really sees pictures. `huihui_ai/gemma-4-abliterated:e4b` is listed as vision-capable, but in this installation it answered "I cannot see the image" directly and invented descriptions through the card; `qwen3.5:9b` described the same picture correctly. For text, gemma e4b works well.
 
-Replies must satisfy the JSON schema. A shot split requires at least one shot, ordered continuous coverage of the entire duration and only connected @Context names. Invalid answers cannot be applied. Editing the context, project or AI source invalidates pending Apply.
+## What each AI function does (tested 2026-10-05)
 
-Analysis on a Context card proposes a description, a supported content choice, an optional usage and a short reason. A suggested role the medium does not offer is reported instead of being mapped to something else.
+| Where | Action | Result | Tested with |
+|---|---|---|---|
+| Image card | ✦ Analyze → Accept | description, content (e.g. Character), Use as (e.g. Reference) | Qwen3-VL 4B (CLIP and installed), Ollama qwen3.5:9b |
+| Video card | ✦ Analyze → Accept | description of the three stills as one, content (e.g. Character motion), Use as | Qwen3-VL 4B, Ollama qwen3.5:9b |
+| Audio card | ✦ Analyze | with a model that hears: description, content, Use as; otherwise a clear refusal | refusal checked with Qwen3-VL 4B and Ollama |
+| Text card | ✦ Analyze → Accept | Use as (Character, Camera rule, Constraint, …); a Text card has no description field | Qwen3-VL 4B, Ollama gemma e4b |
+| Text card | ✦ Build H3 prompt (global / storyboard) | the note in any language becomes the English H3 block under "AI prompt"; the note stays under "My note". An answer without a description is refused | Qwen3-VL 4B, Ollama gemma e4b |
+| Studio | AI: split into shots → Accept | dashed proposal; Accept replaces the shots and sets ambience/music | Qwen3-VL 4B, Ollama gemma e4b |
+| Studio | AI: improve text → Accept | a new text for the selected shot | Qwen3-VL 4B, Ollama gemma e4b |
+| Enhance Prompt (Legacy) | run the node | global or storyboard block from idea and pictures | Ollama qwen3.5:9b |
 
-In the Studio, **AI: split into shots** shows the proposal as dashed shots; **Accept** replaces the shots and sets the proposed ambience and music, **Discard** changes nothing. Audio lanes are never touched. **AI: suggest / improve text** shows a text for the selected shot with Accept/Discard. Dialogue you typed yourself is kept. While the AI works, a status at the bottom of the Studio shows the elapsed time and **Cancel**; a failure stays there until dismissed.
+What a small model really answers is accepted where it can be: a role the card cannot hold is named and left out, a video answered per still becomes one description, a role written as a key is read as the role, gaps or a short end in a shot split are laid end to end over the project (with a note), an `@word` that is no Content becomes a plain word, and in a proposal with one bad extra field the rest is kept. **Your own dialogue always wins**: in a split, the lines you wrote take the place of what the AI wrote for that speaker. Every such repair is named in the suggestion or the Studio's notice; nothing changes until you accept.
 
-*Historical (before the Studio, 2026-10-04):* the Director had Manual/Assist/Auto modes, per-field checkboxes on Apply and **Analyze all contexts**. These controls are not in the Studio; the `/ng/analyze_all` route still exists.
-
-The native path is verified with one installed model (Qwen3VL 4B). Nothing here is a guarantee about other encoders or output quality.
+The answers' quality depends on the model. Qwen3-VL 4B follows the format but writes thin texts and sometimes repeats the request instead of answering (the card says so; ask again). Nothing here is a guarantee about other models.
 
 ## Several voices for one figure
 

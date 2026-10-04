@@ -2,6 +2,14 @@
 
 ## 1.0.0 (unreleased)
 
+**Every AI function checked with real models** (2026-10-05): Context cards, Text card, Studio and the Legacy Enhance node, with Qwen3-VL 4B (Load CLIP and installed encoder) and Ollama.
+
+- The Text card has ✦ Analyze ("Use as" from the note); Build H3 prompt over CLIP reaches the card; a Text card's native analysis gets its own role prompt.
+- Analyze asks for "Use as" from the roles the card shows, each with its meaning, instead of free prose that no card could hold.
+- Small-model answers are repaired instead of refused where possible (per-still video answer, role as key, unfitting content role, bad extra draft field), and each repair is named.
+- Your own dialogue wins in a shot split; a built prompt with no description is refused; an echoed request, a missing key, Vision/Audio off and the H3 encoder are named plainly.
+- Measured: `gemma-4-abliterated:e4b` cannot see pictures in Ollama here (it invents them); `qwen3.5:9b` can.
+
 **Director sampling settings at the Output** (2026-10-05): H3 Director Output gains steps, cfg, sampler_name, scheduler, sampler and sigmas (appended, older links keep their slots), so an external KSampler or SamplerCustomAdvanced runs with the Studio's settings. sampler_name and scheduler connect to the classic KSampler as well as to KSamplerSelect/BasicScheduler.
 
 **The Studio is the Director node** (2026-10-05): the compact Director with **Open Studio** is gone.
