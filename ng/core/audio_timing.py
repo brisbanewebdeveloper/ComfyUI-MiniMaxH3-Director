@@ -11,6 +11,12 @@ def source_window(item):
     return start, max(0, seconds_to_frames(min(ends)) - start) if ends else None
 
 
+def file_window(item):
+    """An audio-lane clip's offset is a second in the file itself (the Studio's "From second in file"), not within the
+    card's selected range; only the end of the file limits it."""
+    return 0, seconds_to_frames(item.length_s) if item.length_s > 0 else None
+
+
 def shot_windows(context):
     """{context id: [(story start, story end, source offset)]} for Shot bindings; None for timed text."""
     if read_document(context.shots_text) is None:
@@ -34,18 +40,22 @@ def clip_windows(context, modes):
 
 
 def clip_issues(context):
-    """Nothing is cut silently: a clip past the project's end is named."""
+    """Nothing is cut silently: a clip past the project's end, or one whose offset lies past its file's end, is named."""
     issues = []
     for clip in read_audio_clips(context.shots_text):
-        if clip.start >= context.project_seconds:
+        item = context.item(clip.context_id)
+        if item is not None and item.length_s > 0 and clip.offset >= item.length_s:
+            issues.append(Issue("audio_clip_past_file", "starts at %.2fs in the file, but the file is only %.2fs long; it plays nothing."
+                                % (clip.offset, item.length_s), clip.id))
+        elif clip.start >= context.project_seconds:
             issues.append(Issue("audio_clip_after_end", "starts after the project ends and is not played.", clip.id))
         elif clip.end > context.project_seconds:
             issues.append(Issue("audio_clip_clipped", "runs past the project end and stops at %.2fs." % context.project_seconds, clip.id))
     return issues
 
 
-def timed_segments(item, chunk, windows, retention):
-    source_start, available = source_window(item)
+def timed_segments(item, chunk, windows, retention, in_file=False):
+    source_start, available = file_window(item) if in_file else source_window(item)
     window_start = chunk.story_start_f - chunk.head_frames
     origins = windows.get(item.id) if windows is not None else None
     spans = origins if origins is not None else [(0, chunk.story_end_f, 0)]

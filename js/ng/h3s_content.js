@@ -9,6 +9,12 @@ const USAGE = { reference: "Reference", first_frame: "First frame", last_frame: 
   scene: "Scene", dialogue: "Dialogue", constraint: "Constraint", instruction: "Instruction" };
 const BARS = [8, 14, 22, 12, 30, 18, 26, 10, 34];
 
+// The card's own selected source range (Start/End on the Context card), in seconds of the file; end 0 = file end.
+function selection(widgets) {
+  try { const options = JSON.parse(widgets.context_options || "{}"); return [Number(options.start_s) || 0, Number(options.end_s) || 0]; }
+  catch { return [0, 0]; }
+}
+
 function usageOf(widgets, media) {
   let usage = [widgets.usage];
   if (widgets.usage_roles) try { usage = JSON.parse(widgets.usage_roles); } catch { usage = [widgets.usage]; }
@@ -29,7 +35,7 @@ export function contentEntries(raw, colorOf) {
   return raw.map((entry) => {
     const usage = usageOf(entry.widgets, entry.media);
     return { id: contextId(entry.widgets, entry.media), media: entry.media, name: entry.widgets.name || KIND[entry.media],
-      source: entry.widgets[entry.media] || "", color: colorOf(entry), bg: BG[entry.media], kind: KIND[entry.media], usage,
+      source: entry.widgets[entry.media] || "", selection: selection(entry.widgets), color: colorOf(entry), bg: BG[entry.media], kind: KIND[entry.media], usage,
       role: usage.map((value) => USAGE[value] || value).join(", "), raw: entry };
   });
 }

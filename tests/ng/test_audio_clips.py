@@ -118,6 +118,16 @@ class Placement(unittest.TestCase):
         self.assertEqual(spans(result.compiled[0], "lock"), [(0, 72, 0)])
         self.assertEqual(len(result.compiled[0].of_kind("audio")), 1, "the shot binding's reference reaches the chunk once")
 
+    def test_an_offset_past_the_file_end_is_named(self):
+        result = plan([clip("a1", "song", 0, 4, "lock", offset=75)], seconds=8)
+        self.assertIn(("audio_clip_past_file", "a1"), {(i.code, i.ref) for i in result.issues})
+        self.assertFalse(result.compiled[0].of_kind("lock"))
+
+    def test_the_offset_is_a_second_in_the_file_not_in_the_cards_selection(self):
+        trimmed = song(options=opts.ContextOptions(start_s=5, end_s=40))
+        result = plan([clip("a1", "song", 2, 6, "lock", offset=10)], seconds=8, items=(trimmed,))
+        self.assertEqual(spans(result.compiled[0], "lock"), [(48, 96, 240)], "file second 10, as the Studio shows")
+
     def test_a_laned_card_is_not_also_sent_globally(self):
         result = plan([clip("a1", "song", 0, 4, "lock")])
         self.assertEqual([bool(c.of_kind("audio")) or bool(c.of_kind("lock")) for c in result.compiled], [True, False])

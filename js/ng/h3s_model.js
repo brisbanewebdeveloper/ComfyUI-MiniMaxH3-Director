@@ -10,6 +10,15 @@ export const PART_COLORS = [["#4FB8C4", "#12272B"], ["#E58A5C", "#2C1C14"], ["#9
   ["#CFC05A", "#272514"], ["#6FBF73", "#16271A"], ["#E07A9B", "#2C1520"]];
 
 export const r1 = (value) => Math.round(value * 10) / 10;
+// Mouse and number edits snap to the 0.1 s grid, but never past a bound: a neighbour's edge may be off the grid
+// (imported or older data), and rounding after clamping used to push a shot over it.
+// Returns null when no value fits (lo > hi, e.g. an imported shot already shorter than MIN_LENGTH): the edit is refused.
+export function snapWithin(value, lo, hi) {
+  if (lo > hi + 1e-9) return null;
+  const snapped = r1(value);
+  return snapped < lo ? lo : snapped > hi ? hi : snapped;
+}
+const exact = (value) => Math.round(value * 1e6) / 1e6;
 export function fmt(seconds) {
   const value = r1(seconds);
   return `${Number.isInteger(value) ? value : value.toFixed(1)} s`;
@@ -62,8 +71,8 @@ export function editSpoken(lines, index, change) {
 export const addSpoken = (lines) => [...lines, { ...SPOKEN, language: lines.at(-1)?.language || "English" }];
 export const removeSpoken = (lines, index) => lines.filter((_line, at) => at !== index);
 
-export function newClip(contextId, lane, start, end) {
-  return { schema_version: 1, id: uid("clip"), context_id: contextId, start, end, offset: 0, mode: "ref", lane };
+export function newClip(contextId, lane, start, end, mode = "ref") {
+  return { schema_version: 1, id: uid("clip"), context_id: contextId, start, end, offset: 0, mode, lane };
 }
 
 export const newLane = () => uid("lane");
@@ -83,8 +92,8 @@ export function gapAt(items, sec, total) {
 export function placeAt(items, sec, total, length) {
   const gap = gapAt(items, sec, total);
   if (!gap || gap.next - gap.prev < MIN_LENGTH) return null;
-  const start = r1(Math.max(gap.prev, Math.min(sec, gap.next - MIN_LENGTH)));
-  return { start, end: r1(Math.min(start + length, gap.next)) };
+  const start = snapWithin(sec, gap.prev, gap.next - MIN_LENGTH);
+  return { start, end: snapWithin(start + length, start + MIN_LENGTH, gap.next) };
 }
 
 // "+ Shot": a 4 s shot in free room after `afterId` (or the last shot), else in the first free room of the project,
@@ -100,7 +109,7 @@ export function addShotAt(items, afterId, total, length = 4) {
   }
   const wide = [anchor, ...list].find((item) => item && item.end - item.start >= 2 * MIN_LENGTH);
   if (!wide) return null;
-  const middle = r1((wide.start + wide.end) / 2), shot = newShot(middle, wide.end);
+  const middle = snapWithin((wide.start + wide.end) / 2, wide.start + MIN_LENGTH, wide.end - MIN_LENGTH), shot = newShot(middle, wide.end);
   return { shots: [...items.map((item) => (item.id === wide.id ? { ...item, end: middle } : item)), shot], id: shot.id, split: wide.id };
 }
 
@@ -115,17 +124,19 @@ export function dragTo(items, drag, delta, total) {
   const ds = r1(delta), length = drag.end - drag.start;
   let start = drag.start, end = drag.end, target = null;
   if (drag.mode === "move" && drag.reorder) {
-    start = r1(Math.max(0, Math.min(drag.start + ds, total - length)));
-    end = r1(start + length);
+    start = snapWithin(drag.start + ds, 0, total - length) ?? drag.start;
+    end = exact(start + length);
     // Like a sortable list: the leading edge passing another shot's middle puts the carried shot on its far side.
     const others = sorted(items.filter((item) => item.id !== drag.id)), edge = ds > 0 ? end : start;
     if (others.some((item) => start < item.end && end > item.start))
       target = others.filter((item) => (item.start + item.end) / 2 < edge).length;
   } else {
     const room = neighbours(items, drag.id, total);
-    if (drag.mode === "move") { start = r1(Math.max(room.prev, Math.min(drag.start + ds, room.next - length))); end = r1(start + length); }
-    else if (drag.mode === "left") start = r1(Math.max(room.prev, Math.min(drag.start + ds, drag.end - MIN_LENGTH)));
-    else end = r1(Math.max(drag.start + MIN_LENGTH, Math.min(drag.end + ds, room.next)));
+    if (drag.mode === "move") {
+      start = snapWithin(drag.start + ds, room.prev, room.next - length) ?? drag.start;
+      end = start === drag.start ? drag.end : Math.min(exact(start + length), room.next);
+    } else if (drag.mode === "left") start = snapWithin(drag.start + ds, room.prev, drag.end - MIN_LENGTH) ?? drag.start;
+    else end = snapWithin(drag.end + ds, drag.start + MIN_LENGTH, room.next) ?? drag.end;
   }
   return { items: items.map((item) => (item.id === drag.id ? { ...item, start, end } : item)), target };
 }
@@ -138,7 +149,7 @@ export function reorder(items, id, target, layout) {
   const gaps = layout.map((item, index) => (index ? item.start - layout[index - 1].end : item.start));
   let time = gaps[0];
   const placed = new Map(order.map((key, index) => {
-    const length = byId.get(key).end - byId.get(key).start, at = { start: r1(time), end: r1(time + length) };
+    const length = byId.get(key).end - byId.get(key).start, at = { start: exact(time), end: exact(time + length) };
     time += length + (gaps[index + 1] || 0);
     return [key, at];
   }));

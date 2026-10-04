@@ -12,6 +12,12 @@ function failure(error, provider) {
   return { text: `AI failed: ${error.message}${slow}`, error: true };
 }
 
+// What an answer was asked about. If any of it changed while the AI worked, the answer no longer fits and is dropped.
+function basis(node) {
+  const now = values(node);
+  return JSON.stringify([now.idea, now.shots, now.project_seconds, now.mode, readContexts(node), connectedProvider(node)]);
+}
+
 export function studioAI(S, app, api, done) {
   let controller = null, serial = 0;
 
@@ -21,11 +27,17 @@ export function studioAI(S, app, api, done) {
     controller = new AbortController();
     const mine = ++serial;
     S.busy = kind; S.aiStarted = Date.now(); S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; done();
+    const before = basis(S.node);
     try {
       const payload = { director: { ...values(S.node), shots: shots === null ? "" : writeProject({ shots, audio: [], lanes: [] }) },
         contexts: readContexts(S.node), provider, mode: "auto" };
       const data = await aiAction(app, api, "direct", payload, controller.signal);
-      return mine === serial ? data.suggestion : null;
+      if (mine !== serial) return null;
+      if (basis(S.node) !== before) {
+        S.notice = { text: "The project changed while the AI was working, so its answer no longer fits and was discarded. Ask again.", error: false };
+        return null;
+      }
+      return data.suggestion;
     } catch (error) {
       if (mine === serial) S.notice = failure(error, provider);
       return null;
@@ -47,8 +59,10 @@ export function studioAI(S, app, api, done) {
     async suggest(shotId) {
       const suggestion = await run("suggest", S.shots);
       if (!suggestion) return;
-      const texts = (suggestion.patches || []).filter((patch) => typeof patch.fields?.text === "string" && patch.fields.text.trim());
-      for (const patch of texts) S.suggestions[patch.shot_id] = patch.fields.text.trim();
+      // A stored text lock (locked_fields) still protects a shot from AI text, even without a lock control in the Studio.
+      const open = new Map(S.shots.filter((shot) => !(shot.locked_fields || []).includes("text")).map((shot) => [shot.id, shot.text]));
+      const texts = (suggestion.patches || []).filter((patch) => open.has(patch.shot_id) && typeof patch.fields?.text === "string" && patch.fields.text.trim());
+      for (const patch of texts) { S.suggestions[patch.shot_id] = patch.fields.text.trim(); (S.suggestionBase ||= {})[patch.shot_id] = open.get(patch.shot_id); }
       if (!S.suggestions[shotId]) S.notice = { text: "The AI answered, but suggested no new text for this shot.", error: true };
       done();
     },

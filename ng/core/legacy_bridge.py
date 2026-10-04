@@ -14,7 +14,7 @@ from .issues import Issue
 from .subjects import subject_groups
 from .shot_bindings import spoken_text
 from .shot_document import has_shots
-from .audio_timing import clip_windows, shot_windows, source_window, timed_segments
+from .audio_timing import clip_windows, file_window, shot_windows, source_window, timed_segments
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
@@ -129,7 +129,7 @@ def _plain_substitutor(subjects, context):
 def _lane_references(item, chunk, spans):
     """A reference clip is not placed in the soundtrack; it is sent once to every chunk whose window it touches."""
     window_start = chunk.story_start_f - chunk.head_frames
-    source_start, available = source_window(item)
+    source_start, available = file_window(item)
     out = []
     for origin, end, offset in spans:
         if end <= window_start or origin >= chunk.story_end_f:
@@ -165,12 +165,17 @@ def _audio_segments(context, chunk, voices):
     windows = shot_windows(context)
     lanes = {mode: clip_windows(context, (mode,)) for mode in ("lock", "copy", "ref")}
     for item in context.by_media("audio"):
-        if item.id in used or not item.source:
+        if not item.source:
+            continue
+        if item.id in used:
+            for mode in ("lock", "copy"):
+                if item.id in lanes[mode]:
+                    segments.extend(timed_segments(item, chunk, lanes[mode], _AUDIO_RETENTION[mode], in_file=True))
             continue
         if any(item.id in spans for spans in lanes.values()):
             for mode in ("lock", "copy"):
                 if item.id in lanes[mode]:
-                    segments.extend(timed_segments(item, chunk, lanes[mode], _AUDIO_RETENTION[mode]))
+                    segments.extend(timed_segments(item, chunk, lanes[mode], _AUDIO_RETENTION[mode], in_file=True))
             references = _lane_references(item, chunk, lanes["ref"].get(item.id, ()))
             segments.extend(references + _shot_bound(item, chunk, windows, {m for m in ("lock", "copy") if item.id in lanes[m]}, not references))
             continue

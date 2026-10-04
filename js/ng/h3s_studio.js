@@ -2,7 +2,7 @@
 // loading and queueing stay ComfyUI's; the shot document keeps shots, audio clips and lanes in the shots widget.
 import { h, icon } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, trimToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -38,7 +38,7 @@ export function openStudio(node, app, api) {
   const page = h("div", { class: "h3s-page" });
   root.append(page);
   const S = { node, root, selected: null, ghosts: [], ghostSound: null, suggestions: {}, plan: null, planError: "", promptOpen: false,
-    sizeOpen: false, furtherOpen: false, busy: "", toast: "", notice: null, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
+    sizeOpen: false, furtherOpen: false, busy: "", toast: "", notice: null, suggestionBase: {}, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
   load(S);
   let timer = null, serial = 0, toastTimer = null, tick = null, closed = false;
   const status = h("span", { class: "h3s-lbl" }), live = h("img", { class: "h3s-live", hidden: true, alt: "Live preview" });
@@ -104,8 +104,8 @@ export function openStudio(node, app, api) {
   function timed(item, items, key, value) {
     const [prev, next] = room(items, item.id);
     if (!Number.isFinite(value)) return item;
-    return key === "start" ? { ...item, start: r1(Math.max(prev, Math.min(value, item.end - MIN_LENGTH))) }
-      : { ...item, end: r1(Math.min(next, Math.max(value, item.start + MIN_LENGTH))) };
+    return key === "start" ? { ...item, start: snapWithin(value, prev, item.end - MIN_LENGTH) ?? item.start }
+      : { ...item, end: snapWithin(value, item.start + MIN_LENGTH, next) ?? item.end };
   }
 
   const actions = {
@@ -152,10 +152,13 @@ export function openStudio(node, app, api) {
     newClip(lane, sec, id) {
       const entry = S.byId.get(id);
       if (!entry || entry.media !== "audio") { if (id) flash("Only audio Content goes on the audio lanes."); return; }
-      const length = Math.min(S.lengths.get(id) || 8, S.values.project_seconds);
+      // A new clip plays the card's selected range: its offset is the selection start, in seconds of the file.
+      const [from, to] = entry.selection || [0, 0], end = to || S.lengths.get(id) || from + 8;
+      const length = Math.min(Math.max(end - from, MIN_LENGTH), S.values.project_seconds);
       const at = placeAt(S.audio.filter((clip) => clip.lane === lane), sec, S.values.project_seconds, length);
       if (!at) { flash("There is no room on this audio lane there."); return; }
-      const clip = newClip(id, lane, at.start, at.end);
+      // First / last frame mode can only take sound as a lock; a reference clip would not reach the model.
+      const clip = { ...newClip(id, lane, at.start, at.end, S.values.mode === "fl2va" ? "lock" : "ref"), offset: from };
       setItems("clip", [...S.audio, clip], clip.id);
     },
     addLane(id) {
@@ -212,13 +215,19 @@ export function openStudio(node, app, api) {
     },
     toggle(key) { S[key] = !S[key]; render(); },
     setShotTime(id, key, value) { const shot = S.shots.find((entry) => entry.id === id); patchShot(id, timed(shot, S.shots, key, value)); },
-    setShotText(id, text) { patchShot(id, { text }, false); },
+    // A manual edit makes a pending AI text for this shot outdated.
+    setShotText(id, text) { if (S.suggestions[id] !== undefined) { delete S.suggestions[id]; patchShot(id, { text }); } else patchShot(id, { text }, false); },
     deleteShot(id) { S.shots = S.shots.filter((shot) => shot.id !== id); S.selected = null; delete S.suggestions[id]; save(); render(); },
     setSpoken(id, index, change, rerender = true) { patchShot(id, { spoken: editSpoken(S.shots.find((entry) => entry.id === id).spoken, index, change) }, rerender); },
     addSpoken(id) { patchShot(id, { spoken: addSpoken(S.shots.find((entry) => entry.id === id).spoken) }); },
     removeSpoken(id, index) { patchShot(id, { spoken: removeSpoken(S.shots.find((entry) => entry.id === id).spoken, index) }); },
     suggest: (id) => ai.suggest(id),
-    acceptSuggestion(id) { const text = S.suggestions[id]; delete S.suggestions[id]; patchShot(id, { text }); },
+    acceptSuggestion(id) {
+      const text = S.suggestions[id], shot = S.shots.find((entry) => entry.id === id);
+      delete S.suggestions[id];
+      if (text === undefined || !shot || shot.text !== S.suggestionBase[id] || (shot.locked_fields || []).includes("text")) { render(); return; }
+      patchShot(id, { text });
+    },
     dropSuggestion(id) { delete S.suggestions[id]; render(); },
     cancelAI: () => ai.cancel(),
     splitPrompt: () => ai.split(),

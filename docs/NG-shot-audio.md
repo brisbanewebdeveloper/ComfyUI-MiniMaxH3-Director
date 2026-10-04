@@ -44,6 +44,9 @@ falls into its window (including the pinned head), with the source trim advanced
 continues across the seam. A clip that runs past the project end is cut there and reported; one that starts after the end is not played and
 reported. Past the end of its file a clip simply has no more sound.
 `ref` clips are sent once as a reference to every part they touch. In FL2VA only `lock` is offered.
+The offset is a second of the file itself, independent of the card's own Start/End; a clip dropped on a lane starts
+at the card's Start and runs for its selected length. An offset past the end of the file plays nothing and is reported
+(`audio_clip_past_file`). A Subject's voice card keeps its lane locks and copies; its voice reference is sent as before.
 A document without `audio` behaves exactly as before.
 The same audio card may lie on a lane and be bound to shots: both play. The lane clip keeps its own clock and mode;
 each shot binding starts the card's source at its shot, with the card's own role (lock, copy or a reference sent once).
