@@ -51,7 +51,7 @@ see the exact prompt the model will receive while you are still editing it.
 
 **H3 Director NG** renders videos of any length as several H3 parts that continue into each other:
 **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
-Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text Context nodes hold your references.
+Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text Context nodes hold your references as full cards in the graph: what the material is, its default role, what to keep and which figure it belongs to.
 
 The Director node stays small in the graph: a prompt, duration, render-part length, resolution and **Open Studio**.
 The full-screen **Studio** holds everything else on one page without inner scrolling:

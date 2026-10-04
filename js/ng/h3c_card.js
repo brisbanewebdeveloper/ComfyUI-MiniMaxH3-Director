@@ -1,0 +1,294 @@
+// The four H3 Context nodes as full cards in the graph (design: Context-Nodes v1). The node's own widgets stay
+// the saved values; the card draws them, redraws on change and grows the node to its content so cards never overlap.
+import { h } from "./h3s_dom.js";
+import { ensureCardStyle } from "./h3c_style.js";
+import { studioUses, TEMPLATES } from "./h3c_model.js";
+import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box } from "./h3c_parts.js";
+import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
+import { textBody } from "./h3c_text.js";
+import { values, applyValues, newContextId, analysisFingerprint, request } from "./ng_widgets.js";
+import { contextOptions, setOptions, selectedRoles } from "./ng_context_controls.js";
+import { hideNative } from "./ng_editor_fields.js";
+import { contextProvider, relatedContexts } from "./ng_read.js";
+import { downstreamNodes } from "./ng_graph.js";
+import { aiAction } from "./ng_ai_request.js";
+import { offeredFields, applyChanges, reasonLine } from "./ng_assist.js";
+import { autoColor } from "./ng_identity.js";
+import { FAMILY } from "./ng_context.js";
+import { assetChoices, assetSubjects, restoreAssetWidget } from "./ng_asset_relations.js";
+import { subjectChoices } from "./ng_subjects.js";
+import { renameReferences } from "./ng_references.js";
+
+const { app } = window.comfyAPI.app;
+const { api } = window.comfyAPI.api;
+const MEDIA = { NGContextImage: "image", NGContextVideo: "video", NGContextAudio: "audio", NGContextText: "text" };
+const WIDTH = { image: 660, video: 660, audio: 700, text: 780 };
+
+function speakerBox(S, actions) {
+  const choose = h("select", { class: "h3c-in", "aria-label": "Whose voice", onchange: (event) => actions.set("speaker", event.target.value) },
+    h("option", { value: "" }, "— nobody (narrator)"), S.speakers.map((entry) => h("option", { value: entry.id }, entry.name)));
+  choose.value = S.values.speaker || "";
+  return box("Whose voice", choose, h("span", { class: "h3c-hint" }, "Only needed for “Voice”. Who speaks a line is set per shot in the Studio."));
+}
+
+function layout(S, actions) {
+  const two = (...children) => h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" } }, ...children);
+  const parts = [topRow(S, actions)];
+  if (S.media === "image") parts.push(h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1.15fr) minmax(0,1fr)" } }, imageBlock(S), contentBox(S, actions)),
+    suggestionBox(S, actions), h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1.25fr)" } }, usageBox(S, actions), keepBox(S, actions)),
+    two(ownerBox(S, actions, `Independent: this picture is a figure of its own; write @${S.values.name || "Name"} in the Studio.`), descriptionBox(S, actions)));
+  if (S.media === "video") parts.push(videoBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), suggestionBox(S, actions),
+    two(videoSoundBox(S, actions), ownerBox(S, actions, "E.g. a walk cycle for a figure.")), descriptionBox(S, actions));
+  if (S.media === "audio") parts.push(audioBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), suggestionBox(S, actions),
+    two(speakerBox(S, actions), listenBox(S, actions)), descriptionBox(S, actions));
+  if (S.media === "text") parts.push(...textBody(S, actions));
+  parts.push(presetRow(S, actions), usesLine(S));
+  return parts.filter(Boolean);
+}
+
+function attach(node, media) {
+  ensureCardStyle();
+  node.properties ||= {};
+  for (const key of ["ng_context_expanded"]) delete node.properties[key];
+  const identity = () => node.widgets?.find((widget) => widget.name === "context_id");
+  const colorWidget = () => node.widgets?.find((widget) => widget.name === "color");
+  function assignColor(force = false) {
+    if (!colorWidget() || (colorWidget().value && !force)) return;
+    const used = (node.graph?._nodes || []).filter((other) => other !== node).map((other) => values(other).color);
+    colorWidget().value = autoColor(media, identity()?.value, used);
+  }
+  if (identity() && !identity().value) identity().value = newContextId();
+  assignColor();
+  node.properties.ng_preview_settings ||= { volume: 1, fade_in: 0, fade_out: 0 };
+
+  const root = h("div", { class: "h3c", dataset: { media } });
+  const S = { media, node, els: {}, files: [], presets: [], presetName: node.properties.ng_preset_name || "", suggestion: null, busy: false,
+    envelope: null, waveError: "", dragging: false, pending: false, textMode: node.properties.ng_text_view || (node.properties.ng_text_ai ? "ai" : "note"),
+    build: { block: "global", seconds: 8 }, status: "", statusWarn: false, listen: node.properties.ng_preview_settings };
+  if (media === "image") { S.els.image = new Image(); S.els.image.onload = () => schedule(); }
+  if (media === "video") { S.els.video = h("video", { controls: true, preload: "metadata", muted: false }); S.els.video.onloadedmetadata = () => schedule(); }
+  if (media === "audio") { S.els.audio = h("audio", { preload: "metadata" }); wirePlayback(S, () => schedule()); }
+  let source = null, controller = null, removed = false, timer = null;
+
+  const say = (text, warn = false) => { S.status = text; S.statusWarn = warn; render(); };
+  const directors = () => downstreamNodes(node).filter((entry) => entry.comfyClass === "NGH3Director").map((entry) => values(entry));
+
+  function load() {
+    S.values = values(node);
+    S.opts = contextOptions(node);
+    S.content = selectedRoles(node, "content");
+    S.usage = selectedRoles(node, "usage")[0] || S.values.usage;
+    S.ai = Boolean(contextProvider(node));
+    S.analyzed = node.properties.ng_analysis?.fingerprint === analysisFingerprint(media, S.values);
+    const linked = directors();
+    S.mode = linked.find((entry) => entry.mode && entry.mode !== "auto")?.mode || "auto";
+    S.uses = studioUses(S.values.context_id || "", S.values.name || "", linked);
+    const entries = relatedContexts(node), current = assetSubjects({ widgets: S.values });
+    S.owners = { current, choices: assetChoices(entries, current, S.values.context_id) };
+    S.speakers = subjectChoices(entries, S.values.speaker || "");
+    S.files = (node.widgets?.find((widget) => widget.name === media)?.options?.values || []).slice();
+    if (S.values[media] && !S.files.includes(S.values[media])) S.files.unshift(S.values[media]);
+    S.accent = /^#[0-9a-f]{6}$/i.test(S.values.color || "") ? S.values.color : FAMILY[node.comfyClass].color;
+    S.hasAiText = Boolean(node.properties.ng_text_ai);
+    if (media !== "text") refreshSource();
+  }
+
+  // A new file: new preview, and for sound a new waveform.
+  function refreshSource() {
+    const now = S.values[media] || "";
+    if (now === source) return;
+    source = now; S.envelope = null; S.waveError = "";
+    if (!now) return;
+    const url = mediaURL(now, api);
+    if (media === "image") S.els.image.src = url;
+    if (media === "video") S.els.video.src = url;
+    if (media === "audio") {
+      S.els.audio.src = url;
+      request(api, "/ng/waveform?" + new URLSearchParams({ source: now }))
+        .then((data) => { if (source === now) { S.envelope = data; schedule(); } })
+        .catch((error) => { if (source === now) { S.waveError = error.message; schedule(); } });
+    }
+  }
+
+  async function refreshPresets() {
+    try { S.presets = (await request(api, "/ng/presets?media=" + media)).names; } catch (error) { S.presets = []; S.status = error.message; }
+    schedule();
+  }
+
+  const writeRoles = (type, list) => applyValues(node, { [type + "_roles"]: JSON.stringify(list), [type]: list[0] || values(node)[type] });
+  const actions = {
+    set(name, value, redraw = true) { applyValues(node, { [name]: value }); node.graph?.change?.(); if (!redraw) S.values = values(node); },
+    upload() {
+      const widget = node.widgets?.find((entry) => entry.name === "upload" || entry.name === "choose file to upload");
+      if (widget?.callback) widget.callback(); else say("Use ComfyUI's file upload for this node type.", true);
+    },
+    toggleContent(key) { const list = S.content.includes(key) ? S.content.filter((value) => value !== key) : [...S.content, key]; writeRoles("content", list); },
+    pickUsage(key) { writeRoles("usage", [key]); },
+    setKeep(key, level) { setOptions(node, { preserve: { ...contextOptions(node).preserve, [key]: level } }); },
+    setOptions(changes) { setOptions(node, changes); },
+    setRange(start, end) { setOptions(node, { start_s: start, end_s: end }); },
+    setOwner(id) { applyValues(node, { subject_ids: JSON.stringify(id ? [id] : []) }); node.graph?.change?.(); },
+    setListen(key, value) { node.properties.ng_preview_settings[key] = value; S.listen = node.properties.ng_preview_settings; render(); },
+    beginPointer() { S.dragging = true; },
+    endPointer() { S.dragging = false; if (S.pending) render(); },
+    autoColor() { assignColor(true); applyValues(node, { color: colorWidget()?.value || "" }); },
+    presetName(value) { S.presetName = value; },
+    async savePreset() {
+      try {
+        const data = await request(api, "/ng/presets", { media, name: S.presetName, widgets: values(node) });
+        node.properties.ng_preset_name = S.presetName = data.name;
+        say(`Saved preset “${data.name}”. Saving the same name again replaces it.`); refreshPresets();
+      } catch (error) { say(error.message, true); }
+    },
+    async loadPreset(name) {
+      if (!name) return;
+      try {
+        const data = await request(api, "/ng/preset?" + new URLSearchParams({ media, name }));
+        applyValues(node, data.widgets); node.properties.ng_preset_name = S.presetName = name; say(`Loaded preset “${name}”.`);
+      } catch (error) { say(error.message, true); }
+    },
+    async analyze() {
+      const provider = contextProvider(node);
+      if (!provider || S.busy) return;
+      S.busy = true; S.suggestion = null; controller = new AbortController(); say("");
+      const before = JSON.stringify(values(node));
+      try {
+        const data = await aiAction(app, api, "analyze", { media, widgets: values(node), provider }, controller.signal);
+        if (JSON.stringify(values(node)) !== before) { say("The card changed while the AI was looking; its answer was discarded. Analyze again.", true); return; }
+        const fields = offeredFields(data.suggestion);
+        S.suggestion = Object.keys(fields).length ? { raw: data.suggestion, fields, why: reasonLine(data.suggestion), basis: before, model: provider.model } : null;
+        if (!S.suggestion) say("The AI answered, but suggested nothing new.", true);
+      } catch (error) { say(error.message === "AI action cancelled." ? "AI cancelled, nothing changed." : `AI failed: ${error.message}`, error.message !== "AI action cancelled."); }
+      finally { S.busy = false; controller = null; render(); }
+    },
+    accept() {
+      const suggestion = S.suggestion; S.suggestion = null;
+      if (!suggestion || JSON.stringify(values(node)) !== suggestion.basis) { say("The card changed after the AI answered; analyze again.", true); return; }
+      applyValues(node, applyChanges(suggestion.raw, Object.keys(suggestion.fields)));
+      node.properties.ng_analysis = { fingerprint: analysisFingerprint(media, values(node)), model: suggestion.model };
+      node.graph?.change?.(); say("Accepted the AI suggestion.");
+    },
+    discard() { S.suggestion = null; render(); },
+    cancel() { controller?.abort(); },
+    // Text card: the note and the built prompt are both kept; the switch decides which one the Director reads.
+    setNote(text) {
+      node.properties[S.textMode === "ai" ? "ng_text_ai" : "ng_text_note"] = text;
+      applyValues(node, { text }); S.values = values(node);
+    },
+    textView(next) {
+      node.properties[S.textMode === "ai" ? "ng_text_ai" : "ng_text_note"] = values(node).text || "";
+      S.textMode = node.properties.ng_text_view = next;
+      applyValues(node, { text: String((next === "ai" ? node.properties.ng_text_ai : node.properties.ng_text_note) ?? "") }); node.graph?.change?.();
+    },
+    insert(key) {
+      const editor = S.els.editor, text = values(node).text || "", at = editor?.selectionStart ?? text.length, end = editor?.selectionEnd ?? at, token = `[${key}]`;
+      actions.setNote(text.slice(0, at) + token + text.slice(end)); render();
+      queueMicrotask(() => { S.els.editor?.focus(); S.els.editor?.setSelectionRange(at, at + token.length); });
+    },
+    useTemplate(name) { const text = values(node).text || "", body = TEMPLATES[name] || ""; actions.setNote(text.trim() ? `${text}\n${body}` : body); render(); },
+    buildOption(key, value) { S.build[key] = value; },
+    async build() {
+      const provider = contextProvider(node), note = String(node.properties.ng_text_note ?? values(node).text ?? "").trim();
+      if (!provider || S.busy) return;
+      if (!note) { say("Write the note first, in any language.", true); return; }
+      S.busy = true; controller = new AbortController(); say("");
+      try {
+        const seconds = Math.min(15, Math.max(4, Number(S.build.seconds) || 8));
+        const data = await aiAction(app, api, "prompt", { note, seconds, preset: S.build.block, provider }, controller.signal);
+        const prompt = data.suggestion?.prompt || "";
+        if (!prompt) { say("The AI answered without a prompt.", true); return; }
+        if (S.textMode !== "ai") node.properties.ng_text_note = values(node).text || "";
+        node.properties.ng_text_ai = prompt; S.textMode = node.properties.ng_text_view = "ai";
+        applyValues(node, { text: prompt }); node.graph?.change?.(); say("Built the English H3 prompt. Your note is kept under “My note”.");
+      } catch (error) { say(error.message === "AI action cancelled." ? "AI cancelled, nothing changed." : `AI failed: ${error.message}`, error.message !== "AI action cancelled."); }
+      finally { S.busy = false; controller = null; render(); }
+    },
+  };
+
+  // Redraw everything; the field being typed in gets its focus and caret back by its place among the fields.
+  function render() {
+    if (removed) return;
+    if (S.dragging) { S.pending = true; return; }
+    S.pending = false;
+    load();
+    const fields = () => [...root.querySelectorAll("input,textarea,select")];
+    const active = document.activeElement, before = fields(), index = before.indexOf(active);
+    const caret = index >= 0 && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
+    root.style.setProperty("--h3c-accent", S.accent);
+    root.replaceChildren(...layout(S, actions));
+    const after = fields(), next = index >= 0 && after.length === before.length ? after[index] : null;
+    if (next && next.tagName === active.tagName) { next.focus({ preventScroll: true }); if (caret && next.setSelectionRange) try { next.setSelectionRange(...caret); } catch {} }
+    fit();
+  }
+  function schedule() { clearTimeout(timer); timer = setTimeout(render, 40); }
+
+  // The node is as tall as its card, so the DOM never spills over the nodes below it. ComfyUI hides DOM widgets of
+  // nodes outside the view; a hidden card measures 0, so only a visible card is measured, again whenever it resizes.
+  let measured = { image: 800, video: 820, audio: 820, text: 740 }[media];
+  function fit() {
+    requestAnimationFrame(() => {
+      const height = root.scrollHeight;
+      if (removed || !root.isConnected || height < 120) return;
+      measured = Math.ceil(height) + 8;
+      const size = node.computeSize?.() || [WIDTH[media], measured];
+      const width = Math.max(node.size?.[0] || 0, WIDTH[media]);
+      if (!node.size || Math.abs(node.size[1] - size[1]) > 2 || node.size[0] < WIDTH[media]) node.setSize([width, size[1]]);
+      node.setDirtyCanvas?.(true, true);
+    });
+  }
+  const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
+  watcher?.observe(root);
+
+  const names = () => (node.widgets || []).filter((widget) => widget !== dom).map((widget) => widget.name);
+  const dom = node.addDOMWidget("h3c_card", "h3c_card", root, { serialize: false, hideOnZoom: false });
+  dom.computeSize = undefined;
+  dom.computeLayoutSize = () => ({ minHeight: measured, maxHeight: measured, minWidth: WIDTH[media] - 20 });
+  hideNative(node, names());
+  // Upload previews and players arrive after nodeCreated; they are hidden as they come.
+  for (const method of ["addWidget", "addCustomWidget"]) {
+    const original = node[method];
+    if (!original) continue;
+    node[method] = function (...args) { const result = original.apply(this, args); hideNative(node, names()); return result; };
+  }
+  node.color = "#192842"; node.bgcolor = "#101a2c";
+  for (const widget of node.widgets || []) {
+    if (widget === dom) continue;
+    const previous = widget.callback;
+    widget.callback = function (...args) { const result = previous?.apply(this, args); schedule(); return result; };
+  }
+  const configured = node.onConfigure;
+  node.onConfigure = function (...args) {
+    const result = configured?.apply(this, args);
+    restoreAssetWidget(node);
+    // Old workflows end after ID/colour; browser upload widgets must not fill newly added JSON fields.
+    const saved = args[0]?.widgets_values;
+    if (Array.isArray(saved) && saved.length <= (media === "audio" ? 9 : 8))
+      for (const widget of node.widgets || []) if (["content_roles", "usage_roles", "context_options"].includes(widget.name)) widget.value = "";
+    if (identity() && !identity().value) identity().value = newContextId();
+    assignColor(); delete node.properties.ng_context_expanded;
+    S.presetName = node.properties.ng_preset_name || ""; S.listen = node.properties.ng_preview_settings ||= { volume: 1, fade_in: 0, fade_out: 0 };
+    S.textMode = node.properties.ng_text_view || (node.properties.ng_text_ai ? "ai" : "note");
+    schedule(); return result;
+  };
+  const connected = node.onConnectionsChange;
+  node.onConnectionsChange = function (...args) { const result = connected?.apply(this, args); schedule(); return result; };
+  // A renamed Context keeps the @Name mentions in this note.
+  const followRenames = () => {
+    if (media !== "text") return;
+    const entries = relatedContexts(node), now = values(node).text || "", renamed = renameReferences(now, node.properties.ng_context_names || {}, entries);
+    node.properties.ng_context_names = Object.fromEntries(entries.filter((entry) => entry.widgets.context_id && entry.widgets.name).map((entry) => [entry.widgets.context_id, entry.widgets.name]));
+    if (renamed !== now) applyValues(node, { text: renamed });
+  };
+  const outside = () => { followRenames(); schedule(); };
+  document.addEventListener("ng-context-changed", outside);
+  const gone = node.onRemoved;
+  node.onRemoved = function (...args) {
+    removed = true; clearTimeout(timer); controller?.abort(); watcher?.disconnect(); S.els.audio?.pause(); S.els.video?.pause?.();
+    document.removeEventListener("ng-context-changed", outside); return gone?.apply(this, args);
+  };
+  node.setSize([WIDTH[media], node.size?.[1] || 600]);
+  refreshPresets(); render();
+}
+
+
+app.registerExtension({ name: "mmxd.ng.context_cards", nodeCreated(node) { if (MEDIA[node.comfyClass]) attach(node, MEDIA[node.comfyClass]); } });

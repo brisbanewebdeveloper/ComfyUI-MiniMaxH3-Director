@@ -32,6 +32,14 @@ class ShotGuides(unittest.TestCase):
         found = [(chunk, ref) for chunk, compiled in zip(result.plan.chunks, result.compiled) for ref in compiled.refs]
         self.assertEqual([(r.kind, r.start_f, r.trim_start_f, r.length_f) for c, r in found], [("continue_video", 59, 120, 24)])
 
+    def test_a_keyframe_bound_to_a_shot_guides_its_start_unless_the_card_names_a_time(self):
+        records = [shot("k", 4, 6, [("a", "keyframe")])]
+        result = plan(records, (image("a", usage=("keyframe",)),), 10, 10)
+        self.assertEqual([(r.kind, r.ctx_id, r.start_f) for r in result.compiled[0].refs], [("keyframe", "a", 96)], "placed in the Studio = the shot's start")
+        timed = image("a", usage=("keyframe",), options=opts.ContextOptions(anchor_s=7))
+        result = plan(records, (timed,), 10, 10)
+        self.assertEqual([r.start_f for r in result.compiled[0].refs], [168], "an older card's own time still wins")
+
     def test_repeated_first_frame_binding_produces_two_distinct_guides(self):
         records = [shot("one", 1, 3, [("a", "first_frame")]), shot("two", 7, 9, [("a", "first_frame")])]
         result = plan(records, (image("a"),), 10, 10)

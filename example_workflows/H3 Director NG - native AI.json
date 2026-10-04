@@ -92,8 +92,8 @@
         0
       ],
       "size": [
-        1280,
-        860
+        780,
+        760
       ],
       "flags": {},
       "order": 5,
@@ -113,8 +113,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "NGContextText",
-        "ng_context_expanded": true
+        "Node name for S&R": "NGContextText"
       },
       "widgets_values": [
         "Keep the camera static and maintain warm lighting.",

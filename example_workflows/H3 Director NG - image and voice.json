@@ -185,11 +185,11 @@
       "type": "NGContextText",
       "pos": [
         0,
-        800
+        960
       ],
       "size": [
-        440,
-        260
+        780,
+        760
       ],
       "flags": {},
       "order": 5,
@@ -245,11 +245,11 @@
       "type": "NGContextImage",
       "pos": [
         0,
-        1040
+        1780
       ],
       "size": [
-        440,
-        260
+        660,
+        830
       ],
       "flags": {},
       "order": 6,
@@ -305,11 +305,11 @@
       "type": "NGContextAudio",
       "pos": [
         0,
-        1250
+        2670
       ],
       "size": [
-        440,
-        260
+        700,
+        850
       ],
       "flags": {},
       "order": 7,

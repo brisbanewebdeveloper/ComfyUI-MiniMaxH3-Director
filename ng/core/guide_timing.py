@@ -42,8 +42,9 @@ def _global_guides(context, chunk, bound):
 def _bound_ref(item, role, shot, chunk, mode):
     if item.media == "image" and role in ("first_frame", "last_frame"):
         frame = shot.start_f if role == "first_frame" else shot.end_f - 1
-    elif item.media == "image" and role in ("keyframe", "storyboard") and item.options.anchor_s >= 0:
-        frame = seconds_to_frames(item.options.anchor_s)
+    elif item.media == "image" and role in ("keyframe", "storyboard"):
+        # Placed on a shot in the Studio, a keyframe guides that shot's start; a time stored on an older card still wins.
+        frame = seconds_to_frames(item.options.anchor_s) if item.options.anchor_s >= 0 else shot.start_f
     elif item.media == "video" and role == "continue":
         frame = shot.start_f
     else:

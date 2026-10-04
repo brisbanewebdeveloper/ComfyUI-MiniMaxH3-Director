@@ -185,11 +185,11 @@
       "type": "NGContextText",
       "pos": [
         0,
-        800
+        960
       ],
       "size": [
-        440,
-        260
+        780,
+        760
       ],
       "flags": {},
       "order": 5,

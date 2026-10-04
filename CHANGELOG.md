@@ -2,6 +2,13 @@
 
 ## 1.0.0 (unreleased)
 
+**Context cards** (2026-10-04): the four Context nodes are rebuilt as full cards in the graph after the accepted design v1.
+
+- Each card shows name, file with Upload, what is in it (with Analyze → Accept/Discard), the default role with a hint that knows the Director's mode, what to keep, which figure it belongs to, preset and colour, and where the Studio uses it.
+- Video: part of the file chosen by dragging across a strip; Audio: selection by dragging in the waveform, listening controls for playback only; Text: My note / AI prompt, Build H3 prompt, quick insert, templates.
+- The node grows with its card, so cards no longer spill over their neighbours; example workflows are spaced for full cards.
+- A keyframe or storyboard picture dropped on a shot in the Studio now guides that shot's start; before, it needed a time typed on the card.
+
 **Studio fixes after first use** (2026-10-04):
 
 - The Studio is in English.

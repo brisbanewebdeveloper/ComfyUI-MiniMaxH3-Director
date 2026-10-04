@@ -140,10 +140,10 @@ This is the compiler's real output, refreshed live while you edit.
 | H3 Context Connector | Native model/CLIP/VAE ports, optional AI and four dynamically growing Context groups |
 | H3 Director | Compact node with prompt and summary; opens the Studio; outputs the project result and the chunk list |
 | H3 Director Output | Current chunk's native sampler values and seed, plus complete sequence packet for the simple render path |
-| H3 Context Image | Image source, content roles, usages, property preservation, preview and presets |
-| H3 Context Video | Video player, source range, motion/camera/continuation usages and optional paired audio |
-| H3 Context Audio | Player/waveform, source selection, speaker, voice/copy/lock usages and presets |
-| H3 Context Text | Text editor with quick insertion, one AI button that turns the note into an English prompt block, presets |
+| H3 Context Image | Full card: picture, what is in it, default role, what to keep, figure link, description, preset |
+| H3 Context Video | Full card: player, part of the file, motion/camera/continue roles, its own sound |
+| H3 Context Audio | Full card: waveform with selection, voice/copy/lock roles, whose voice, listening controls |
+| H3 Context Text | Full card: note, quick insert, templates, role, Build H3 prompt with My note / AI prompt |
 | H3 Render Sequence | Expanded native List loop, sampler and collector; outputs VIDEO, IMAGE, AUDIO and notes |
 
 The technical nodes remain available under **MiniMax H3 / NG / Technical** (NG Chunk Planner, NG Chunk Conditioning,
@@ -162,38 +162,49 @@ The style choice adds prompt instructions; it does not load a different model.
 
 In First / last frame mode the prompt carries no `@refN` tags: mentions become plain names and a spoken line becomes `@voice(Name) says:`.
 
-## Context workspaces
+## Context cards
 
-New contexts start compact. **Details** opens their media workspace, and **Compact** closes it.
-Select an input file or use **Browse / Upload**. Files are resolved within ComfyUI's input directory; input subfolders are supported.
-Missing files stop rendering by name. Absolute paths, traversal and escaping symlinks are rejected.
+Each Context node is a full card in the graph (Image, Video, Audio, Text). The card says **what** the material is and
+**who** it belongs to; **when** and **how long** it plays is set in the Studio (shots and audio lanes). The node grows with
+its card, so cards never overlap their neighbours.
 
-**Detected Content** describes the medium, independently of **Use As**, which determines its role in generation.
-Image Preserve controls for Identity, Outfit, Pose and Background are compiled into retention instructions;
-they guide H3 rather than enforce exact pixel preservation.
-First/Last Frame anchor the project; Keyframe/Storyboard condition only the chunk containing their time.
-Guide time is sampled on H3's latent grid, so subframe precision and a smooth transition are not guaranteed.
+- **Top row:** name (`@Name` in the Studio), the file from ComfyUI's input folder with **Upload**, and whether the AI has
+  analysed it. Files resolve inside the input directory; missing files stop rendering by name.
+- **What is in it:** the content kinds of this medium. **✦ Analyze** asks the connected AI; its suggestion is shown with
+  **Accept / Discard** and changes nothing until accepted.
+- **Use as (default):** the role the card has unless a shot or lane clip in the Studio says otherwise. The hint under it
+  knows the Director's mode and warns when a role does nothing there (e.g. a reference picture in First / last frame mode).
+- **In the Studio:** where the connected Director uses the card (shots, spoken lines, audio lanes, `@Name` in the text);
+  a card bound to no shot is part of every render part.
+- **Preset** (save / load) and **Color** at the bottom.
 
-Video uses native playback and source start/end fields. Motion/Camera/Whole Structure send references and prompt guidance;
-they do not promise exact motion copying. **Continue From Video** uses the final frame of the selected source interval as a starting guide.
-**Audio Track** can ignore the video sound or send it as the paired audio reference.
+**Image:** preview, **Keep in the video** (identity, outfit, pose, background — guidance for H3, not pixel-exact),
+**Belongs to** (an outfit or pose picture presented together with a figure; empty = the picture is a figure of its own)
+and a description. First / last frame open or end the video, or the shot the picture is dropped on in the Studio.
+Keyframe and storyboard guide the start of the shot they are dropped on; a time stored on an older card still wins.
+Guide time is sampled on H3's latent grid.
 
-Audio shows a waveform, draggable selection and zoom. Start/End select the source used for generation; zero End means file end.
-Speaker can be a character name or persistent context ID. Voice guides timbre, Copy asks H3 to reuse sound, and Lock pins encoded
-source audio while video is generated. The audio VAE and output codec can change the waveform even with Lock.
-Preview Volume/Fades affect playback only, as labeled.
+**Video:** player and **Part of the file to use** (drag across the strip). Motion / camera / whole structure send references
+and prompt guidance, not exact copies; **Continue from video** starts from the last frame of the chosen part.
+**Its own sound** ignores the soundtrack or sends it along as the paired audio reference.
 
-One file may be used by several cards: every card keeps its own name, source window and role. Prompt labels follow the
-order the media reach the model, so a video with a soundtrack is numbered before a subject's own voice.
-Renaming a context updates its `@Name` mentions in the prompt and shots through its stable ID.
+**Audio:** play button and waveform; drag in it to choose the part of the file. **Whose voice** names the figure for the
+Voice role. **Listen here** (volume, fades) only affects playback on the card. Voice guides timbre, Copy asks H3 to reuse
+sound, Lock pins encoded source audio; the audio VAE and codec can still change the waveform.
 
-## Assign assets to Subjects
+**Text:** the note the Director reads, with **Quick insert** brackets, templates and the role. **✦ Build H3 prompt**
+rewrites the note (any language) into the English block H3 expects; **My note / AI prompt** switches which one the
+Director reads, and both are kept.
 
-An independent reference image defines a Subject. In Image, Video or Text, use **Subject assignment** to link
-the card to one or more connected Subjects, for example an outfit image and a motion video to Alice.
-Audio uses the existing **Speaker / Voice** selector. The compiler presents linked assets within the same Subject;
-`@Outfit` names its Picture, while `@Alice` names the Subject. An image shared by two Subjects consumes two reference slots.
-Invalid or unavailable relations produce warnings and keep the material.
+One file may be used by several cards: every card keeps its own name, part of the file and role. Prompt labels follow the
+order the media reach the model. Renaming a card updates its `@Name` mentions through its stable ID.
+
+## Figures and their assets
+
+An independent reference picture is a figure (Subject). **Belongs to** on an image, video or text card links that asset
+to a figure, for example an outfit picture and a walk-cycle video to Alice; audio uses **Whose voice**. The compiler
+presents linked assets with their figure; `@Outfit` names its picture, `@Alice` the figure. Older workflows that linked one
+asset to several figures keep that until the choice is changed on the card.
 
 ## Presets
 
