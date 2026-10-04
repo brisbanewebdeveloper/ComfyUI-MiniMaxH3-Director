@@ -215,6 +215,8 @@ function attach(node, media) {
     const active = document.activeElement, before = fields(), index = before.indexOf(active);
     const caret = index >= 0 && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
     root.style.setProperty("--h3c-accent", S.accent);
+    // One dark frame for every card; the medium shows in the card itself. ng_context.js colours titles by medium after us.
+    node.color = "#192842"; node.bgcolor = "#101a2c";
     root.replaceChildren(...layout(S, actions));
     const after = fields(), next = index >= 0 && after.length === before.length ? after[index] : null;
     if (next && next.tagName === active.tagName) { next.focus({ preventScroll: true }); if (caret && next.setSelectionRange) try { next.setSelectionRange(...caret); } catch {} }
@@ -250,7 +252,6 @@ function attach(node, media) {
     if (!original) continue;
     node[method] = function (...args) { const result = original.apply(this, args); hideNative(node, names()); return result; };
   }
-  node.color = "#192842"; node.bgcolor = "#101a2c";
   for (const widget of node.widgets || []) {
     if (widget === dom) continue;
     const previous = widget.callback;

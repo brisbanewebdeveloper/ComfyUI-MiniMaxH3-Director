@@ -204,6 +204,16 @@ class ThroughTheNode(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(options["top_k"], 7)
         self.assertEqual(options["seed"], 99)
 
+    def test_clip_source_ignores_a_stale_http_address(self):
+        """A connected CLIP is used directly; the HTTP fields left from another card must not stop it (user workflow 2026-10-04)."""
+        adapter = module("ng.adapters.ai_provider")
+        clip = object()
+        provider = adapter.provider_from_values("clip", clip, self.values(provider="custom", base_url="custom", api_key_env="NOPE"))
+        self.assertIs(provider.clip, clip)
+        self.assertEqual(provider.config.base_url, "")
+        with self.assertRaises(ValueError):
+            adapter.provider_from_values("local", None, self.values(base_url="custom"))
+
     def test_the_node_refuses_a_source_the_panel_no_longer_offers(self):
         adapter = module("ng.adapters.ai_provider")
         with self.assertRaises(ValueError):

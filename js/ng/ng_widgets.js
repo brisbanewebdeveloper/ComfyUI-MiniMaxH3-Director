@@ -40,6 +40,9 @@ export function applyValues(node, changes) {
   noteChange();
 }
 
+// An AI Loader address that is no HTTP(S) URL (left over or shifted in an older workflow) is cleared, so the provider's own address is used.
+export const clearedAddress = (address) => (address && !/^https?:\/\/[^\s/?#]+/i.test(String(address)) ? { base_url: "" } : {});
+
 export function element(tag, className = "", text) {
   const node = document.createElement(tag);
   node.className = className;
@@ -51,6 +54,6 @@ export async function request(api, path, payload, signal) {
   const options = payload ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal } : {signal};
   const response = await api.fetchApi(path, options);
   const data = await response.json();
-  if (!data.ok) throw new Error(data.error || "The request failed.");
+  if (!data.ok) throw new Error(data.error || data.reason || "The request failed.");
   return data;
 }

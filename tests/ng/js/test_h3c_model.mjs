@@ -46,4 +46,13 @@ import * as model from "../../../js/ng/h3c_model.js";
   assert.deepEqual(model.studioUses("m", "Ma", [{ shots: doc, idea: "" }]).includes("@Ma in the text"), false, "@Mage is not a mention of Ma");
 }
 
+// AI Loader: an address that is no HTTP(S) URL is dropped when the source card changes (user workflow had "custom").
+{
+  const { clearedAddress } = await import("../../../js/ng/ng_widgets.js");
+  assert.deepEqual(clearedAddress("custom"), { base_url: "" });
+  assert.deepEqual(clearedAddress("http://127.0.0.1:11434"), {});
+  assert.deepEqual(clearedAddress("https://openrouter.ai/api/v1"), {});
+  assert.deepEqual(clearedAddress(""), {});
+}
+
 console.log("h3c model ok");

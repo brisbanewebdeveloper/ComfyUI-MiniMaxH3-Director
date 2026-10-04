@@ -23,6 +23,9 @@ def provider_from_values(source, clip, values):
     legacy_backend = values.pop("local_backend", "")
     if source == "local" and legacy_backend == "disk":
         source = "clip"
+    if source == "clip":
+        # The encoder runs inside ComfyUI: an address or key left from an HTTP card is not used and must not stop it.
+        values = {**values, "base_url": "", "api_key_env": ""}
     config = ProviderConfig.from_dict({"schema_version": ProviderConfig.SCHEMA_VERSION, **values})
     if source == "clip":
         if clip is not None:

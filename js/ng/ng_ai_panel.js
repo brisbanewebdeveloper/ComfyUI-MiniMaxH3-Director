@@ -1,5 +1,5 @@
 // Each AI source has a real execution path; native sources use ComfyUI's queue and loaders.
-import { element, values, applyValues, request, nativeAIFingerprint } from "./ng_widgets.js";
+import { element, values, applyValues, request, nativeAIFingerprint, clearedAddress } from "./ng_widgets.js";
 import { control, hideNative, section, actionButton, secretControl } from "./ng_editor_fields.js";
 import { icon } from "./ng_icons.js";
 import { upstreamNode } from "./ng_read.js";
@@ -441,8 +441,8 @@ export function buildPanel(node, root, header, widget) {
     cards.replaceChildren();
     for (const entry of SOURCES()) {
       cards.append(sourceCard(entry, (picked) => {
-        // The CLIP card has no provider, so it must not overwrite a previously chosen one.
-        applyValues(node, { source: picked.id, ...(picked.providers[0] ? { provider: picked.providers[0] } : {}) });
+        // The CLIP card has no provider, so it must not overwrite a previously chosen one; a stale address is dropped.
+        applyValues(node, { source: picked.id, ...(picked.providers[0] ? { provider: picked.providers[0] } : {}), ...clearedAddress(values(node).base_url) });
         sync();
         fit(true);
         app.graph?.change();

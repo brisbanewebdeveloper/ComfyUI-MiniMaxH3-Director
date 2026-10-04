@@ -22,18 +22,10 @@ app.registerExtension({
   },
 });
 
-// One colour family per medium, as the design asks: pictures blue, clips orange, sounds violet, notes teal.
+// One accent per medium for the cards (h3c_card.js): pictures blue, clips orange, sounds violet, notes teal.
 export const FAMILY = {
   NGContextImage: { color: "#28baff", bgcolor: "#101a2c" },
   NGContextVideo: { color: "#e8b274", bgcolor: "#101a2c" },
   NGContextAudio: { color: "#aa7cff", bgcolor: "#101a2c" },
   NGContextText: { color: "#7acdbb", bgcolor: "#101a2c" },
 };
-
-app.registerExtension({
-  name: "mmxd.ng.context_colors",
-  nodeCreated(node) {
-    const family = FAMILY[node.comfyClass];
-    if (family) Object.assign(node, family);
-  },
-});
