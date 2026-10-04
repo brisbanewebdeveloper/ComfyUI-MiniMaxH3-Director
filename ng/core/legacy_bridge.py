@@ -13,7 +13,8 @@ from .context_options import retention_note
 from .issues import Issue
 from .subjects import subject_groups
 from .shot_bindings import spoken_text
-from .audio_timing import shot_windows, source_window, timed_segments
+from .shot_document import has_shots
+from .audio_timing import clip_windows, shot_windows, source_window, timed_segments
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
@@ -110,12 +111,35 @@ def _tag_substitutor(slot_items, context):
     return lambda text: replace_mentions(text, names, (item.name for item in context.items))
 
 
+def _lane_references(item, chunk, spans):
+    """A reference clip is not placed in the soundtrack; it is sent once to every chunk whose window it touches."""
+    window_start = chunk.story_start_f - chunk.head_frames
+    source_start, available = source_window(item)
+    out = []
+    for origin, end, offset in spans:
+        if end <= window_start or origin >= chunk.story_end_f:
+            continue
+        length = end - origin if available is None else min(end - origin, available - offset)
+        usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION and u not in ("copy", "lock")), "sound_reference")
+        if length > 0:
+            out.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,
+                        "trimStart": source_start + offset, "retention": _AUDIO_RETENTION[usage], "ng_item": item.id})
+    return out[:1]
+
+
 def _audio_segments(context, chunk, voices):
     segments = []
     used = {v.id for v in voices.values()}
     windows = shot_windows(context)
+    lanes = {mode: clip_windows(context, (mode,)) for mode in ("lock", "copy", "ref")}
     for item in context.by_media("audio"):
         if item.id in used or not item.source:
+            continue
+        if any(item.id in spans for spans in lanes.values()):
+            for mode in ("lock", "copy"):
+                if item.id in lanes[mode]:
+                    segments.extend(timed_segments(item, chunk, lanes[mode], _AUDIO_RETENTION[mode]))
+            segments.extend(_lane_references(item, chunk, lanes["ref"].get(item.id, ())))
             continue
         usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION), None)
         if usage is None:
@@ -167,7 +191,7 @@ def _anchor_segments(context, chunk, guides):
 
 
 def _global_prompt(context):
-    parts = [context.idea.strip()] if context.shots_text.strip() else []
+    parts = [context.idea.strip()] if has_shots(context.shots_text) else []
     if context.style and context.style != "None":
         parts.append("Visual style: %s." % context.style)
     for item in context.by_media("text"):
@@ -194,7 +218,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
     voices, extra_voices = _voices_by_speaker(context)
     substitute = _tag_substitutor([s.id for s in subjects], context)
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
-                 "prompt": _shot_text(s, substitute, automatic=not context.shots_text.strip(), context=context)}
+                 "prompt": _shot_text(s, substitute, automatic=not has_shots(context.shots_text), context=context)}
                 for s in chunk.shots]
     segments += _anchor_segments(context, chunk, guides)
     ref_on = mode == "ref2va"

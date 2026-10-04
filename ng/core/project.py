@@ -13,7 +13,8 @@ from .context_checks import check_context, check_guide_times
 from .issues import Issue
 from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
-from .shot_document import read_document
+from .shot_document import has_shots, read_document
+from .audio_timing import clip_issues
 
 CANVAS_MULTIPLE = 32
 
@@ -109,14 +110,14 @@ def _prepare(context):
 def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan) -> ProjectPlan:
     context, issues = _prepare(context)
     total = frames.seconds_to_frames(context.project_seconds)
-    if context.shots_text.strip():
+    if has_shots(context.shots_text):
         shots, shot_issues = parse_shots(context.shots_text, total)
     else:
         shots, shot_issues = auto_shots(context.idea, total), ()
     chunk_frames = frames.seconds_to_frames(chunk_seconds or limits.DEFAULT_CHUNK_SECONDS)
     plan = plan_chunks(total, chunk_frames, continuity, shots)
     compiled = tuple(compile_chunk(context, chunk, continuity) for chunk in plan.chunks)
-    issues = list(issues) + list(shot_issues) + list(plan.issues) + check_guide_times(context, plan.total_frames)
+    issues = list(issues) + list(shot_issues) + list(plan.issues) + check_guide_times(context, plan.total_frames) + clip_issues(context)
     for one in compiled:
         issues.extend(one.issues)       # the same problem repeats per chunk; _merge lists it once
     return ProjectPlan(context=context, plan=plan, compiled=compiled, issues=_merge(issues, len(plan.chunks)))

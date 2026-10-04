@@ -11,6 +11,7 @@ from .issues import SchemaError
 
 FORMAT = "h3-director-shots"
 LOCK_FIELDS = ("timing", "text", "media", "spoken")
+CLIP_MODES = ("lock", "copy", "ref")
 
 
 @dataclass(frozen=True)
@@ -60,8 +61,37 @@ class SpokenLine:
         return cls(**values)
 
 
-def read_document(text):
-    """None means legacy timed text. Invalid structured data is never downgraded."""
+@dataclass(frozen=True)
+class AudioClip:
+    """Sound placed on a Studio audio lane: its own story range and source offset, independent of Shots."""
+    id: str
+    context_id: str
+    start: float
+    end: float
+    offset: float = 0.0
+    mode: str = "ref"
+    lane: str = ""
+    SCHEMA_VERSION = 1
+
+    def to_dict(self):
+        return {"schema_version": 1, "id": self.id, "context_id": self.context_id, "start": self.start, "end": self.end,
+                "offset": self.offset, "mode": self.mode, "lane": self.lane}
+
+    @classmethod
+    def from_dict(cls, data, path="clip"):
+        fields.need_dict(data, path)
+        fields.check_version(data, path, 1)
+        identity, context_id = fields.read_str(data, "id", path), fields.read_str(data, "context_id", path)
+        if not identity.strip() or not context_id.strip():
+            raise SchemaError(path, "id and context_id must not be empty")
+        start, end = fields.read_number(data, "start", path, minimum=0), fields.read_number(data, "end", path, minimum=0)
+        if end <= start:
+            raise SchemaError(path + ".end", "must be after start")
+        return cls(identity, context_id, float(start), float(end), float(fields.read_number(data, "offset", path, 0.0, minimum=0)),
+                   fields.read_choice(data, "mode", path, CLIP_MODES, "ref"), fields.read_str(data, "lane", path, ""))
+
+
+def _load(text):
     if not text.lstrip().startswith("{"):
         return None
     try:
@@ -72,6 +102,29 @@ def read_document(text):
     if data.get("format") != FORMAT:
         raise SchemaError("shots.format", "expected " + FORMAT)
     fields.check_version(data, "shots", 1)
+    return data
+
+
+def read_audio_clips(text):
+    """Audio lane clips of a structured document; () for timed text or a document without lanes."""
+    data = _load(text)
+    clips = tuple(AudioClip.from_dict(c, "shots.audio[%d]" % i) for i, c in enumerate(fields.read_list(data or {}, "audio", "shots")))
+    if len({clip.id for clip in clips}) != len(clips):
+        raise SchemaError("shots.audio", "clip ids must be unique")
+    return clips
+
+
+def has_shots(text):
+    """Whether the user wrote Shots. A document that only holds audio clips leaves the Prompt to carry the video."""
+    data = _load(text)
+    return bool(text.strip()) if data is None else bool(fields.read_list(data, "shots", "shots"))
+
+
+def read_document(text):
+    """None means legacy timed text. Invalid structured data is never downgraded."""
+    data = _load(text)
+    if data is None:
+        return None
     records = fields.read_list(data, "shots", "shots")
     seen = set()
     for index, record in enumerate(records):
@@ -103,4 +156,5 @@ def metadata(record, path="shot"):
 
 def bound_media_ids(text):
     records = read_document(text)
-    return {binding["context_id"] for record in records or () for binding in record.get("media", [])}
+    bound = {binding["context_id"] for record in records or () for binding in record.get("media", [])}
+    return bound | {clip.context_id for clip in read_audio_clips(text)}

@@ -8,7 +8,8 @@ from dataclasses import replace
 
 from .context import USAGE_BY_MEDIA
 from .issues import Issue
-from .shot_document import read_document
+from .frames import seconds_to_frames
+from .shot_document import read_audio_clips, read_document
 from .subjects import subject_groups
 from .context_checks import check_context
 
@@ -17,14 +18,35 @@ def _add_roles(roles, identity, values):
     roles[identity] = tuple(dict.fromkeys((*roles.get(identity, ()), *values)))
 
 
+def _select_clips(context, chunk, clips, selected, roles, issues):
+    """Audio-lane clips take part in the chunks whose sampled window they touch, with their own mode as role."""
+    window_start, end = chunk.story_start_f - chunk.head_frames, chunk.story_end_f
+    for clip in clips:
+        item = context.item(clip.context_id)
+        if item is None or item.media != "audio":
+            issues.append(Issue("audio_clip_unknown", "Audio clip '%s' names a context that is not a connected audio card; "
+                                "reconnect it or remove the clip." % clip.context_id, clip.id))
+            continue
+        if seconds_to_frames(clip.start) >= end or seconds_to_frames(clip.end) <= window_start:
+            continue
+        selected.add(item.id)
+        if clip.mode in ("lock", "copy"):
+            _add_roles(roles, item.id, (clip.mode,))
+        else:
+            _add_roles(roles, item.id, tuple(u for u in item.effective_usage if u not in ("lock", "copy")) or ("sound_reference",))
+
+
 def scoped_context(context, chunk):
     records = read_document(context.shots_text)
     if records is None:
         return context, ()
     bound = {b["context_id"] for record in records for b in record.get("media", [])}
     bound.update(s["speaker_id"] for record in records for s in record.get("spoken", []) if s.get("speaker_id"))
+    clips = read_audio_clips(context.shots_text)
+    bound.update(clip.context_id for clip in clips)
     selected = {item.id for item in context.items if item.id not in bound}
     roles, issues = {}, []
+    _select_clips(context, chunk, clips, selected, roles, issues)
     for shot in chunk.shots:
         for binding in shot.media:
             item = context.item(binding.context_id)

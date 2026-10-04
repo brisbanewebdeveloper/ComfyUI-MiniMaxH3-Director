@@ -1,7 +1,8 @@
-"""Intersect selected source audio with normalized Shot and sampled-chunk time."""
+"""Intersect selected source audio with normalized Shot, audio-lane and sampled-chunk time."""
 from .frames import seconds_to_frames
+from .issues import Issue
 from .shots import parse_shots
-from .shot_document import read_document
+from .shot_document import read_audio_clips, read_document
 
 
 def source_window(item):
@@ -11,30 +12,52 @@ def source_window(item):
 
 
 def shot_windows(context):
+    """{context id: [(story start, story end, source offset)]} for Shot bindings; None for timed text."""
     if read_document(context.shots_text) is None:
         return None
     shots, _ = parse_shots(context.shots_text, seconds_to_frames(context.project_seconds))
     windows = {}
     for shot in shots:
         for identity in dict.fromkeys(binding.context_id for binding in shot.media):
-            windows.setdefault(identity, []).append((shot.start_f, shot.end_f))
+            windows.setdefault(identity, []).append((shot.start_f, shot.end_f, 0))
     return windows
+
+
+def clip_windows(context, modes):
+    """The same spans for audio-lane clips of the given modes, clipped to the project's end."""
+    total, windows = seconds_to_frames(context.project_seconds), {}
+    for clip in sorted(read_audio_clips(context.shots_text), key=lambda c: c.start):
+        start, end = seconds_to_frames(clip.start), min(seconds_to_frames(clip.end), total)
+        if clip.mode in modes and end > start:
+            windows.setdefault(clip.context_id, []).append((start, end, seconds_to_frames(clip.offset)))
+    return windows
+
+
+def clip_issues(context):
+    """Nothing is cut silently: a clip past the project's end is named."""
+    issues = []
+    for clip in read_audio_clips(context.shots_text):
+        if clip.start >= context.project_seconds:
+            issues.append(Issue("audio_clip_after_end", "starts after the project ends and is not played.", clip.id))
+        elif clip.end > context.project_seconds:
+            issues.append(Issue("audio_clip_clipped", "runs past the project end and stops at %.2fs." % context.project_seconds, clip.id))
+    return issues
 
 
 def timed_segments(item, chunk, windows, retention):
     source_start, available = source_window(item)
     window_start = chunk.story_start_f - chunk.head_frames
     origins = windows.get(item.id) if windows is not None else None
-    spans = origins if origins is not None else [(0, chunk.story_end_f)]
+    spans = origins if origins is not None else [(0, chunk.story_end_f, 0)]
     out = []
-    for origin, end in spans:
+    for origin, end, offset in spans:
         first = max(origin, window_start)
-        last = min(end, chunk.story_end_f, origin + available if available is not None else end)
+        last = min(end, chunk.story_end_f, origin + available - offset if available is not None else end)
         if last <= first:
             continue
         start, length = first - window_start, last - first
         segment = {"type": "audio", "audioFile": item.source, "fileName": item.name, "start": start, "length": length,
-                   "trimStart": source_start + first - origin, "retention": retention, "ng_item": item.id, "ng_start": start}
+                   "trimStart": source_start + offset + first - origin, "retention": retention, "ng_item": item.id, "ng_start": start}
         if origins is not None and retention == "fully_copy":
             segment.update(retention="partially_copy", refNote="Copy this selected clip only at %.3f-%.3fs in the target video; "
                            "its first sample starts at %.3fs. Generate the other sound outside this interval."
