@@ -17,6 +17,13 @@ export function h(tag, props = {}, ...children) {
   return node;
 }
 
+// Keys pressed inside a Studio or card in the graph stay there: with the node selected, Delete or Backspace on one of its
+// buttons removed the whole node. Ctrl/Cmd shortcuts (save, queue) still reach ComfyUI.
+export function keepKeys(element) {
+  element.addEventListener("keydown", (event) => { if (!event.ctrlKey && !event.metaKey) event.stopPropagation(); });
+  element.addEventListener("keyup", (event) => { if (!event.ctrlKey && !event.metaKey) event.stopPropagation(); });
+}
+
 const PATHS = {
   back: "M15 18l-6-6 6-6", plus: "M12 5v14M5 12h14", close: "M6 6l12 12M18 6L6 18", play: "M7 4v16l13-8z",
   doc: "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5",

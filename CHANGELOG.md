@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**The Studio is the Director node** (2026-10-05): the compact Director with **Open Studio** is gone.
+
+- The whole Studio is the node's face in the graph and the node is as tall as its content; **Full screen** lifts the same Studio over the window and Esc puts it back.
+- Directors saved by the compact node, and Context nodes saved before the full cards, grow once on load; the nodes right of and below them move along so nothing overlaps.
+- Keys pressed inside the Studio or a Context card stay there: with the node selected, Delete or Backspace on one of its buttons removed the whole node. Ctrl/Cmd shortcuts still work.
+
 **Context cards** (2026-10-04): the four Context nodes are rebuilt as full cards in the graph after the accepted design v1.
 
 - Each card shows name, file with Upload, what is in it (with Analyze → Accept/Discard), the default role with a hint that knows the Director's mode, what to keep, which figure it belongs to, preset and colour, and where the Studio uses it.

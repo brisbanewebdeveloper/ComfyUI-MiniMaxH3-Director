@@ -53,8 +53,8 @@ see the exact prompt the model will receive while you are still editing it.
 **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
 Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text Context nodes hold your references as full cards in the graph: what the material is, its default role, what to keep and which figure it belongs to.
 
-The Director node stays small in the graph: a prompt, duration, render-part length, resolution and **Open Studio**.
-The full-screen **Studio** holds everything else on one page without inner scrolling:
+The Director node **is** the **Studio**, right in the graph (with **Full screen** for more room). It holds everything on one page
+without inner scrolling:
 
 - **Prompt** for the whole video, optionally split into timed shots by AI (proposals shown dashed until you accept them).
 - **Content** cards from the connected Context nodes, dragged onto the timeline or onto a shot.

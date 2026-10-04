@@ -1,6 +1,6 @@
 // The four H3 Context nodes as full cards in the graph (design: Context-Nodes v1). The node's own widgets stay
 // the saved values; the card draws them, redraws on change and grows the node to its content so cards never overlap.
-import { h } from "./h3s_dom.js";
+import { h, keepKeys } from "./h3s_dom.js";
 import { ensureCardStyle } from "./h3c_style.js";
 import { studioUses, TEMPLATES, usableFields } from "./h3c_model.js";
 import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box } from "./h3c_parts.js";
@@ -18,6 +18,7 @@ import { FAMILY } from "./ng_context.js";
 import { assetChoices, assetSubjects, restoreAssetWidget } from "./ng_asset_relations.js";
 import { subjectChoices } from "./ng_subjects.js";
 import { followNoteRenames, knownNames } from "./ng_references.js";
+import { noteGrowth } from "./ng_layout.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -62,6 +63,7 @@ function attach(node, media) {
   node.properties.ng_preview_settings ||= { volume: 1, fade_in: 0, fade_out: 0 };
 
   const root = h("div", { class: "h3c", dataset: { media } });
+  keepKeys(root);
   const S = { media, node, els: {}, files: [], presets: [], presetName: node.properties.ng_preset_name || "", suggestion: null, busy: false,
     envelope: null, waveError: "", dragging: false, pending: false, textMode: node.properties.ng_text_view || (node.properties.ng_text_ai ? "ai" : "note"),
     build: { block: "global", seconds: 8 }, status: "", statusWarn: false, listen: node.properties.ng_preview_settings };
@@ -268,6 +270,8 @@ function attach(node, media) {
       for (const widget of node.widgets || []) if (["content_roles", "usage_roles", "context_options"].includes(widget.name)) widget.value = "";
     if (identity() && !identity().value) identity().value = newContextId();
     assignColor(); delete node.properties.ng_context_expanded;
+    // Saved by the former, narrower Context node: the card needs the room once, and the nodes around it move along.
+    if (node.size?.[0] < WIDTH[media] - 20) { noteGrowth(node, [...node.size]); node.setSize([WIDTH[media], Math.max(node.size[1], measured)]); }
     S.presetName = node.properties.ng_preset_name || ""; S.listen = node.properties.ng_preview_settings ||= { volume: 1, fade_in: 0, fade_out: 0 };
     S.textMode = node.properties.ng_text_view || (node.properties.ng_text_ai ? "ai" : "note");
     schedule(); return result;

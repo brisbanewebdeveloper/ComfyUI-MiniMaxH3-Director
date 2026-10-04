@@ -1,20 +1,20 @@
-// The H3 Director in the graph: small, with the Prompt, the main settings, a mini timeline and the way into the Studio.
-import { h, icon } from "./h3s_dom.js";
+// The H3 Director in the graph is the Studio itself: the node's face is the whole Studio, as tall as its content.
+// "Full screen" in its header lifts the same Studio over the window; there is no second, compact view.
+import { h } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, fmt, sorted, partColor } from "./h3s_model.js";
-import { isAuto } from "./h3s_canvas.js";
+import { readProject, writeProject } from "./h3s_model.js";
 import { openStudio, closeStudio } from "./h3s_studio.js";
-import { values, applyValues, request } from "./ng_widgets.js";
-import { readPayload, readContexts, connectedProvider } from "./ng_read.js";
+import { values, applyValues } from "./ng_widgets.js";
+import { readContexts } from "./ng_read.js";
 import { renameReferences } from "./ng_references.js";
-import { projectRenderIds } from "./ng_graph.js";
-import { attachProgress } from "./ng_studio_progress.js";
 import { hideNative } from "./ng_editor_fields.js";
+import { noteGrowth } from "./ng_layout.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
-const nodes = new Set();
-const MODES = { fl2va: "FL2VA", ref2va: "Ref2VA", auto: "Auto" };
+const nodes = new Map(); // follow renames -> full refresh, per Director node
+// Below this width the Studio stacks its side panel under the timeline; the default leaves room for both side by side.
+const MIN_WIDTH = 900, WIDTH = 1400, HEIGHT = 1150;
 // Widgets added after the first NG workflows were saved. Those workflows carry one empty trailing value from the former
 // in-node editor, which lands on the first new widget; anything that is not a valid value falls back to the default.
 const LATER = { turbo: false, turbo_lora_fl2va: "none", turbo_lora_ref2va: "none", resize_method: "crop", ref_image_size: "match" };
@@ -50,75 +50,58 @@ function attach(node) {
   node.properties ||= {};
   for (const key of ["ng_view_mode", "ng_selected_shot_id"]) delete node.properties[key];
   node.color = "#172a48"; node.bgcolor = "#101a2c";
-  const root = h("div", { class: "h3n" });
-  const prompt = h("textarea", { rows: 3, placeholder: "Describe your video …", "aria-label": "Prompt",
-    oninput: (event) => { applyValues(node, { idea: event.target.value }); node.graph?.change?.(); } });
-  const body = h("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } });
-  const status = h("span", { style: { fontSize: "12px", color: "#B9D8FF" } }), preview = h("img", { hidden: true, alt: "Live preview",
-    style: { maxWidth: "100%", borderRadius: "6px" } });
-  const progress = attachProgress(node, api, status, preview, () => projectRenderIds(node));
-  root.append(h("span", { style: { fontSize: "12px", color: "#9AA4B5" } }, "Prompt"), prompt, body,
-    h("button", { class: "h3n-open", onclick: () => openStudio(node, app, api) }, icon("expand"), "Open Studio"), status, preview);
+  const host = h("div", { class: "h3s-host" });
   hideNative(node, (node.widgets || []).map((widget) => widget.name));
-  const dom = node.addDOMWidget("h3_director", "h3_director", root, { serialize: false, hideOnZoom: false });
+  const dom = node.addDOMWidget("h3_director", "h3_director", host, { serialize: false, hideOnZoom: false });
+  // The node is as tall as its Studio, so the DOM never spills over the nodes below it. ComfyUI hides DOM widgets of
+  // nodes outside the view; a hidden Studio measures 0, so only a visible one is measured, again whenever it resizes.
+  let measured = 900, removed = false;
   dom.computeSize = undefined;
-  dom.computeLayoutSize = () => ({ minHeight: 330, maxHeight: Number.MAX_SAFE_INTEGER, minWidth: 0 });
-  let plan = null, timer = null, serial = 0, removed = false;
-
-  function render() {
-    const v = values(node), project = readProject(v.shots || ""), seconds = Number(v.project_seconds) || 1;
-    if (document.activeElement !== prompt) prompt.value = v.idea || "";
-    const tile = (label, value) => h("div", { class: "h3n-tile" }, h("div", { style: { fontSize: "11px", color: "#9AA4B5" } }, label), h("div", { style: { fontWeight: 600 } }, value));
-    const size = isAuto(v.width, v.height) ? (plan ? `${plan.width}×${plan.height}` : "from picture") : `${v.width}×${v.height}`;
-    const shots = sorted(project.shots).map((shot, index) => h("span", { style: { left: `${shot.start / seconds * 100}%`, width: `${(shot.end - shot.start) / seconds * 100}%` },
-      title: shot.text }, `Shot ${index + 1}`));
-    const parts = (plan?.chunks || []).map((chunk) => h("span", { style: { left: `${chunk.start_s / Math.max(seconds, plan.total_s) * 100}%`,
-      width: `calc(${(chunk.end_s - chunk.start_s) / Math.max(seconds, plan.total_s) * 100}% - 2px)`, background: partColor(chunk.index)[0] } }));
-    const ai = Boolean(connectedProvider(node)), issues = plan?.issues?.length || 0;
-    body.replaceChildren(...[
-      h("div", { class: "h3n-tiles" }, tile("Duration", fmt(Number(v.project_seconds))), tile("Render part", Number(v.chunk_seconds) ? fmt(Number(v.chunk_seconds)) : "Auto"), tile("Resolution", size)),
-      h("span", { style: { fontSize: "12px", color: "#9AA4B5" } }, project.error ? "Shot data invalid, check it in the Studio"
-        : `${project.shots.length || "No"} shot${project.shots.length === 1 ? "" : "s"} · ${plan ? plan.chunks.length : "?"} render part${plan?.chunks.length === 1 ? "" : "s"} · ${project.lanes.length} audio lane${project.lanes.length === 1 ? "" : "s"}`),
-      h("div", { class: "h3n-mini" }, shots.length ? shots : h("span", { style: { left: "0", width: "100%", background: "transparent", border: 0, color: "#7F8A9C" } }, "The prompt carries the whole video")),
-      h("div", { class: "h3n-parts" }, parts),
-      h("div", { style: { display: "flex", justifyContent: "space-between", gap: "8px", fontSize: "12px", color: "#9AA4B5" } },
-        h("span", {}, `${MODES[v.mode] || v.mode}${v.turbo ? " · Turbo" : ""} · 24 FPS · ${v.steps} Steps`),
-        h("span", { style: { color: ai ? "#A9E8C2" : "#9AA4B5" } }, ai ? "AI connected" : "AI off")),
-      issues ? h("span", { style: { fontSize: "12px", color: "#F2B98A" } }, `${issues} note${issues === 1 ? "" : "s"} · in the Studio under “Show prompts”`) : null].filter(Boolean));
+  dom.computeLayoutSize = () => ({ minHeight: measured, maxHeight: measured, minWidth: MIN_WIDTH - 20 });
+  const studio = openStudio(node, app, api, host);
+  function fit() {
+    requestAnimationFrame(() => {
+      if (removed || !host.isConnected || studio.root.parentNode !== host) return;
+      const height = studio.root.scrollHeight;
+      if (height < 200) return;
+      measured = Math.ceil(height) + 8;
+      const size = node.computeSize?.() || [WIDTH, measured], width = Math.max(node.size?.[0] || 0, MIN_WIDTH);
+      if (!node.size || Math.abs(node.size[1] - size[1]) > 2 || node.size[0] < MIN_WIDTH) node.setSize([width, size[1]]);
+      node.setDirtyCanvas?.(true, true);
+    });
   }
-  function schedule() {
-    clearTimeout(timer); const mine = ++serial;
-    followRenames(node); render();
-    timer = setTimeout(async () => {
-      try { plan = await request(api, "/ng/plan", readPayload(node)); } catch { plan = null; }
-      if (!removed && mine === serial) render();
-    }, 300);
-  }
+  const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
+  watcher?.observe(studio.root);
+  // The Studio writes the widgets itself and hears outside changes on its own; the node keeps @Name mentions in step.
+  const follow = () => followRenames(node);
+  const refresh = () => { followRenames(node); studio.refresh(); fit(); };
   for (const widget of node.widgets || []) {
     if (widget === dom) continue;
     const original = widget.callback;
-    widget.callback = function (...args) { const result = original?.apply(this, args); schedule(); return result; };
+    widget.callback = function (...args) { const result = original?.apply(this, args); follow(); return result; };
   }
   const connected = node.onConnectionsChange;
-  node.onConnectionsChange = function (...args) { const result = connected?.apply(this, args); schedule(); return result; };
+  node.onConnectionsChange = function (...args) { const result = connected?.apply(this, args); refresh(); return result; };
   const configured = node.onConfigure;
   node.onConfigure = function (...args) {
     const result = configured?.apply(this, args);
     for (const key of ["ng_view_mode", "ng_selected_shot_id"]) delete node.properties[key];
     repairLaterWidgets(node);
-    schedule(); return result;
+    // Saved by the former compact node: the Studio needs the room once, and the nodes around it move along.
+    if (node.size?.[0] < MIN_WIDTH) { noteGrowth(node, [...node.size]); node.setSize([WIDTH, Math.max(node.size[1], HEIGHT)]); }
+    refresh(); return result;
   };
   const gone = node.onRemoved;
   node.onRemoved = function (...args) {
-    removed = true; clearTimeout(timer); nodes.delete(schedule); progress.dispose(); closeStudio(node); return gone?.apply(this, args);
+    removed = true; watcher?.disconnect(); nodes.delete(follow); closeStudio(node); return gone?.apply(this, args);
   };
-  node.setSize([440, 470]);
-  nodes.add(schedule); schedule();
+  node.setSize([WIDTH, measured]);
+  nodes.set(follow, refresh); follow();
 }
 
 app.registerExtension({
   name: "mmxd.ng.director_studio",
   nodeCreated(node) { if (["NGH3Director", "NGDirectorStudio"].includes(node.comfyClass)) attach(node); },
-  loadedGraphNode() { nodes.forEach((schedule) => schedule()); },
+  loadedGraphNode() { nodes.forEach((refresh) => refresh()); },
 });
-document.addEventListener("ng-context-changed", () => nodes.forEach((schedule) => schedule()));
+document.addEventListener("ng-context-changed", () => nodes.forEach((_refresh, follow) => follow()));

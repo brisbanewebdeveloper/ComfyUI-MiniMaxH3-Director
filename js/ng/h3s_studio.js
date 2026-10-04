@@ -1,6 +1,6 @@
-// The full-screen Studio over the graph. It reads and writes the Director node's own widgets, so saving,
-// loading and queueing stay ComfyUI's; the shot document keeps shots, audio clips and lanes in the shots widget.
-import { h, icon } from "./h3s_dom.js";
+// The Studio: the H3 Director node's face in the graph (host given), or over the whole window. It reads and writes the
+// node's own widgets, so saving, loading and queueing stay ComfyUI's; the shot document keeps shots, clips and lanes.
+import { h, icon, keepKeys } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
 import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
@@ -17,7 +17,7 @@ import { attachProgress } from "./ng_studio_progress.js";
 
 const STALE = { text: "The project changed after the AI answered, so its suggestion no longer fits and was discarded. Ask again.", error: false };
 const COMBOS = ["sampler_name", "scheduler", "turbo_lora_fl2va", "turbo_lora_ref2va"];
-const open = new Map();
+const open = new Map(); // node -> Studio; a node's id is not final while it is being created
 
 function load(S) {
   S.values = values(S.node);
@@ -32,10 +32,12 @@ function load(S) {
   Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes });
 }
 
-export function openStudio(node, app, api) {
-  if (open.has(node.id)) { open.get(node.id).root.focus(); return; }
+// With a host the Studio lives in it (the node); "Full screen" lifts the same Studio over the window and Esc puts it back.
+export function openStudio(node, app, api, host = null) {
+  if (open.has(node)) { open.get(node).root.focus(); return open.get(node); }
   ensureStudioStyle();
-  const root = h("div", { class: "h3s", tabindex: "-1", role: "dialog", "aria-label": "H3 Director Studio" });
+  let full = !host;
+  const root = h("div", { class: full ? "h3s full" : "h3s", tabindex: "-1", role: full ? "dialog" : "region", "aria-label": "H3 Director Studio" });
   const page = h("div", { class: "h3s-page" });
   root.append(page);
   const S = { node, root, selected: null, ghosts: [], ghostSound: null, suggestions: {}, plan: null, planError: "", promptOpen: false,
@@ -251,12 +253,20 @@ export function openStudio(node, app, api) {
     thumb,
   };
 
+  function setFull(on) {
+    if (!host || on === full) return;
+    full = on; root.classList.toggle("full", on); root.setAttribute("role", on ? "dialog" : "region");
+    (on ? document.body : host).append(root);
+    render(); if (on) root.focus();
+  }
   function header() {
     const ready = hasRenderPath(node);
-    return h("header", { class: "h3s-head" },
-      h("button", { class: "h3s-btn ghost", onclick: close, title: "Back to the graph (Esc)" }, icon("back"), "Back to graph"),
-      h("span", { style: { width: "1px", height: "24px", background: "#2A3342" } }),
-      h("span", { class: "h3s-title" }, "H3 Director"), h("span", { class: "h3s-muted" }, "Studio"),
+    const back = host ? h("button", { class: "h3s-btn ghost", onclick: () => setFull(!full), title: full ? "Back into the graph (Esc)" : "Use the whole window" },
+      icon(full ? "back" : "expand"), full ? "Back to graph" : "Full screen")
+      : h("button", { class: "h3s-btn ghost", onclick: close, title: "Back to the graph (Esc)" }, icon("back"), "Back to graph");
+    return h("header", { class: "h3s-head" }, back,
+      ...(full ? [h("span", { style: { width: "1px", height: "24px", background: "#2A3342" } }),
+        h("span", { class: "h3s-title" }, "H3 Director"), h("span", { class: "h3s-muted" }, "Studio")] : []),
       h("span", { class: "h3s-grow" }), status, live,
       h("span", { class: "h3s-row", style: { gap: "6px" }, title: "Green when an H3 AI Loader is connected to the Context Connector" },
         h("span", { class: "h3s-swatch", style: { background: S.ai ? "#5BD08A" : "#6B7383", borderRadius: "50%" } }), S.ai ? "AI connected" : "AI off"),
@@ -312,17 +322,22 @@ export function openStudio(node, app, api) {
   function close() {
     closed = true; clearTimeout(timer); clearTimeout(toastTimer); clearInterval(tick); ai.dispose(); progress.dispose();
     document.removeEventListener("ng-context-changed", outside);
-    open.delete(node.id); root.remove();
-    document.dispatchEvent(new CustomEvent("ng-context-changed"));
+    open.delete(node); root.remove();
+    if (!host) document.dispatchEvent(new CustomEvent("ng-context-changed"));
   }
   // Changes from elsewhere (a Context node edited, a link changed) reach an open Studio, but not its own writes.
   function outside() { if (!echo) refresh(); }
-  root.onkeydown = (event) => { if (event.key === "Escape" && !event.target.closest?.("select")) { event.stopPropagation(); close(); } };
+  root.onkeydown = (event) => {
+    if (event.key !== "Escape" || event.target.closest?.("select") || !full) return;
+    event.stopPropagation(); if (host) setFull(false); else close();
+  };
   document.addEventListener("ng-context-changed", outside);
-  document.body.append(root);
-  open.set(node.id, { root, close, refresh });
-  render(); schedulePlan(); root.focus();
-  return { close, refresh };
+  if (host) keepKeys(root); // in the graph and lifted to full screen alike
+  (host || document.body).append(root);
+  const handle = { root, close, refresh, setFull };
+  open.set(node, handle);
+  render(); schedulePlan(); if (full) root.focus();
+  return handle;
 }
 
-export function closeStudio(node) { open.get(node.id)?.close(); }
+export function closeStudio(node) { open.get(node)?.close(); }

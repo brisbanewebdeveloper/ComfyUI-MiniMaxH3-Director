@@ -1,12 +1,15 @@
-// The Studio's own stylesheet. Every rule is under .h3s / .h3n, so nothing here reaches the Context or product nodes.
+// The Studio's own stylesheet. Every rule is under .h3s, so nothing here reaches the Context or product nodes.
+// .h3s is the Studio as the Director node's face in the graph; .h3s.full is the same Studio over the whole window.
 const CSS = `
-.h3s{position:fixed;inset:0;z-index:2000;overflow:auto;background:#0E1117;color:#E6EAF2;font:14px/1.4 "IBM Plex Sans","Segoe UI",system-ui,sans-serif}
+.h3s{position:relative;container-type:inline-size;background:#0E1117;color:#E6EAF2;font:14px/1.4 "IBM Plex Sans","Segoe UI",system-ui,sans-serif;border-radius:0 0 8px 8px}
+.h3s.full{position:fixed;inset:0;z-index:2000;overflow:auto;border-radius:0}
 .h3s *{box-sizing:border-box}
 .h3s{user-select:none}
 .h3s input,.h3s textarea,.h3s pre{user-select:text}
 .h3s button,.h3s select,.h3s input,.h3s textarea{font:inherit;color:#E6EAF2}
 .h3s-page{min-height:100%;display:flex;flex-direction:column}
-.h3s-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid #222A37;background:#121620;position:sticky;top:0;z-index:5}
+.h3s-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid #222A37;background:#121620}
+.h3s.full .h3s-head{position:sticky;top:0;z-index:5}
 .h3s-title{font-weight:700;font-size:17px}
 .h3s-muted,.h3s-lbl{color:#9AA4B5}
 .h3s-lbl{font-size:12px;letter-spacing:.02em}
@@ -27,14 +30,15 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-field{display:flex;flex-direction:column;gap:4px}
 .h3s-toast{margin:12px 20px 0;padding:10px 14px;border-radius:8px;background:#1D2A1F;border:1px solid #3C6B44;color:#CDEFD3}
 .h3s-beyond{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(154,164,181,.10) 0 6px,transparent 6px 12px);border-left:1px dashed #6B7383;pointer-events:auto}
-.h3s-float{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:8px;width:max-content;max-width:min(760px,calc(100vw - 32px))}
+.h3s-float{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:8px;width:max-content;max-width:min(760px,calc(100% - 32px))}
+.h3s.full .h3s-float{position:fixed;top:auto;bottom:20px;max-width:min(760px,calc(100vw - 32px))}
 .h3s-float>*{margin:0;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
 .h3s-float .h3s-toast.error{background:#2E1A16;border-color:#8A4B3A;color:#F6D2C7}
 .h3s-float .h3s-toast.busy{background:#1F1A33;border-color:#4B3F78;color:#E1D8FF}
 .h3s-body{flex:1 1 auto;display:flex;gap:12px;padding:12px 16px;align-items:flex-start}
 .h3s-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:12px}
 .h3s-side{flex:0 0 360px;min-width:0;display:flex;flex-direction:column;gap:12px}
-@media (max-width:960px){.h3s-body{flex-direction:column;align-items:stretch}.h3s-side{flex:1 1 auto}}
+@container (max-width:960px){.h3s-body{flex-direction:column;align-items:stretch}.h3s-side{flex:1 1 auto}}
 .h3s-card{background:#161B24;border:1px solid #222A37;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .h3s-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .h3s-strong{font-weight:600}
@@ -100,17 +104,6 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-warn{color:#F2B98A}
 .h3s-issues{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#F2B98A}
 .h3s-live{max-width:260px;max-height:150px;border-radius:8px;border:1px solid #2A3342}
-.h3n{display:flex;flex-direction:column;gap:10px;padding:8px 10px 10px;color:#E6EAF2;font:13px/1.4 "IBM Plex Sans","Segoe UI",system-ui,sans-serif}
-.h3n *{box-sizing:border-box}
-.h3n-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.h3n-tile{border:1px solid #2E3848;border-radius:8px;padding:6px 10px;background:#0E1117}
-.h3n-mini{position:relative;height:30px;border-radius:6px;background:#0E1117;border:1px solid #222A37}
-.h3n-mini span{position:absolute;top:4px;bottom:4px;border-radius:5px;background:#1F2B3F;border:1px solid #3A475D;font-size:11px;padding:0 6px;display:flex;align-items:center;overflow:hidden;white-space:nowrap}
-.h3n-parts{position:relative;height:8px}
-.h3n-parts span{position:absolute;top:0;bottom:0;border-radius:4px}
-.h3n-open{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border-radius:8px;background:#2B3A55;border:1px solid #4A6290;color:#E6EAF2;font-weight:600;cursor:pointer}
-.h3n-open:hover{background:#34476A}
-.h3n textarea{width:100%;background:#0E1117;border:1px solid #2E3848;border-radius:8px;color:#D3DAE6;padding:8px 10px;font:inherit;resize:vertical}
 `;
 
 export function ensureStudioStyle() {

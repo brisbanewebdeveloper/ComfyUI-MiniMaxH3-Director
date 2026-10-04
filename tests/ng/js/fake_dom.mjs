@@ -12,9 +12,18 @@ class FakeElement extends FakeNode {
     const self = this;
     this.classList = { add: (c) => { if (!self.classList.contains(c)) self.className = `${self.className} ${c}`.trim(); },
       remove: (c) => { self.className = self.className.split(" ").filter((x) => x && x !== c).join(" "); },
-      contains: (c) => self.className.split(" ").includes(c) };
+      contains: (c) => self.className.split(" ").includes(c),
+      toggle: (c, on = !self.classList.contains(c)) => { if (on) self.classList.add(c); else self.classList.remove(c); return on; } };
   }
-  append(...nodes) { for (const node of nodes) this.children.push(typeof node === "string" ? new FakeText(node) : node); }
+  // Like the real DOM, appending an element that already has a parent moves it.
+  append(...nodes) {
+    for (const node of nodes) {
+      const child = typeof node === "string" ? new FakeText(node) : node;
+      if (child.parentNode && child.parentNode !== this) child.parentNode.children = child.parentNode.children.filter((entry) => entry !== child);
+      child.parentNode = this; this.children.push(child);
+    }
+  }
+  remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((entry) => entry !== this); this.parentNode = null; }
   replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
   setAttribute(key, value) { this.attributes[key] = String(value); }
   getAttribute(key) { return this.attributes[key]; }
@@ -29,6 +38,10 @@ class FakeElement extends FakeNode {
   getBoundingClientRect() { return { left: 0, x: 0, width: 1000, top: 0, y: 0, height: 40 }; }
   setPointerCapture() {}
   closest() { return null; }
+  addEventListener(type, listener) { ((this.listeners ||= {})[type] ||= []).push(listener); }
+  removeEventListener(type, listener) { this.listeners?.[type] && (this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener)); }
+  // Calls this element's listeners for one event (no bubbling in this fake).
+  fire(type, event) { for (const listener of this.listeners?.[type] || []) listener(event); }
 }
 
 export function installDom() {

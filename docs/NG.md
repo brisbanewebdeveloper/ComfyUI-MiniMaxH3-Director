@@ -17,7 +17,7 @@ replace model selections if your installation differs. No models or reference me
 MODEL / CLIP / video VAE / audio VAE ─┐
 Image / Video / Audio / Text contexts ├→ H3 Context Connector
 H3 AI Loader (optional) ─────────────┘          ↓
-                                         H3 Director  ── Open Studio ──▶ full-screen Studio
+                                         H3 Director  (the Studio is the node)
                                               ↓
                                       H3 Director Output
                                               ↓ sequence
@@ -31,17 +31,17 @@ and connect the H3 Ref2VA model. Give each context a distinct name; `@Mage` refe
 
 ## The Director node
 
-In the graph the Director stays small: a **Prompt** field, tiles for duration, render-part length and resolution,
-a mini timeline of the shots and render parts, a one-line summary (mode, Turbo, steps, whether an AI provider is connected,
-number of plan warnings) and **Open Studio**. Render progress and the live preview appear under it.
+The Director node **is** the Studio: the whole Studio described below is the node's face in the graph, and the node is as tall as
+its content. The Studio writes the node's own widgets, so ComfyUI's unsaved-changes marker and Save/Reload include every edit.
+Keys pressed inside it stay there (Delete on one of its buttons does not delete the node); Ctrl/Cmd shortcuts still reach ComfyUI.
 
-Everything else is edited in the Studio. Studio and node write the same widgets, so a value changed in one is shown in the other,
-and ComfyUI's unsaved-changes marker and Save/Reload include Studio edits.
+A Director saved by the former compact node (440 px wide) grows once when the workflow is loaded, and the nodes to the right
+of it and below it move along so nothing overlaps; the same happens for Context nodes saved before they became full cards.
 
 ## The Studio
 
-The Studio is a full-screen view over the graph. **Esc** or **Back to graph** closes it. It has no inner scroll areas; on a small
-window the page scrolls as a whole. **Generate** queues the connected workflow, exactly like ComfyUI's Queue button.
+**Full screen** in the Studio's header lifts the same Studio over the whole window; **Esc** or **Back to graph** puts it back
+into the node. It has no inner scroll areas. Below about 960 px of width the side panel moves under the timeline. **Generate** queues the connected workflow, exactly like ComfyUI's Queue button.
 
 ### Prompt and Content
 
@@ -138,7 +138,7 @@ This is the compiler's real output, refreshed live while you edit.
 |---|---|
 | H3 AI Loader | Optional local/API provider configuration; a separate `NG_AI_PROVIDER`, not a diffusion MODEL |
 | H3 Context Connector | Native model/CLIP/VAE ports, optional AI and four dynamically growing Context groups |
-| H3 Director | Compact node with prompt and summary; opens the Studio; outputs the project result and the chunk list |
+| H3 Director | The Studio itself in the graph (Full screen on demand); outputs the project result and the chunk list |
 | H3 Director Output | Current chunk's native sampler values and seed, plus complete sequence packet for the simple render path |
 | H3 Context Image | Full card: picture, what is in it, default role, what to keep, figure link, description, preset |
 | H3 Context Video | Full card: player, part of the file, motion/camera/continue roles, its own sound |
