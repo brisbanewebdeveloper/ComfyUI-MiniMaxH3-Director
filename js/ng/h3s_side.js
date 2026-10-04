@@ -40,8 +40,20 @@ function speakers(S) {
   return [["", "Narrator (no character)"], ...subjects.map((entry) => [entry.id, entry.name])];
 }
 
+// Every spoken line of the shot; with none yet, one empty editor whose first input creates the line.
+function spokenLines(S, actions, shot) {
+  const lines = shot.spoken.length ? shot.spoken : [{ text: "", speaker_id: "", language: "English" }];
+  return lines.map((line, index) => h("div", { class: "h3s-spoken", style: { display: "flex", flexDirection: "column", gap: "6px" } },
+    h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto", gap: "8px" } },
+      select(speakers(S), line.speaker_id, (value) => actions.setSpoken(shot.id, index, { speaker_id: value }), { "aria-label": `Speaker of line ${index + 1}` }),
+      select(LANGUAGES, line.language, (value) => actions.setSpoken(shot.id, index, { language: value }), { "aria-label": `Language of line ${index + 1}` }),
+      shot.spoken.length ? h("button", { class: "h3s-btn ghost small", title: "Remove this line", "aria-label": `Remove line ${index + 1}`,
+        onclick: () => actions.removeSpoken(shot.id, index) }, icon("close", 14)) : h("span")),
+    h("input", { class: "h3s-in", type: "text", value: line.text, placeholder: "Line that is spoken", "aria-label": `Spoken line ${index + 1}`,
+      oninput: (event) => actions.setSpoken(shot.id, index, { text: event.target.value.replace(/[\r\n]+/g, " ") }, false) })));
+}
+
 function shotPanel(S, actions, shot) {
-  const spoken = shot.spoken[0] || { schema_version: 1, text: "", speaker_id: "", voice: "a narrator", language: "English", delivery: "says" };
   const suggestion = S.suggestions[shot.id];
   const chunks = (S.plan?.chunks || []).filter((chunk) => chunk.shots.some((entry) => entry.shot_id === shot.id)).map((chunk) => `Render part ${chunk.index + 1}`);
   const media = shot.media.map((binding) => [binding, S.byId.get(binding.context_id)]);
@@ -69,13 +81,9 @@ function shotPanel(S, actions, shot) {
         h("span", { class: "h3s-strong" }, entry?.name || "Not connected"), h("span", { class: "h3s-lbl" }, entry ? `${entry.kind} · ${entry.role}` : binding.context_id),
         h("span", { class: "h3s-grow" }), h("button", { class: "h3s-btn ghost small", title: "Remove from shot", "aria-label": "Remove from shot",
           onclick: () => actions.unassign(shot.id, binding.context_id) }, icon("close", 14))))),
-    h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } }, h("span", { class: "h3s-lbl" }, "Spoken (optional, used word for word)"),
-      h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "8px" } },
-        select(speakers(S), spoken.speaker_id, (value) => actions.setSpoken(shot.id, { speaker_id: value }), { "aria-label": "Speaker" }),
-        select(LANGUAGES, spoken.language, (value) => actions.setSpoken(shot.id, { language: value }), { "aria-label": "Language" })),
-      h("input", { class: "h3s-in", type: "text", value: spoken.text, placeholder: "Line that is spoken", "aria-label": "Spoken line",
-        oninput: (event) => actions.setSpoken(shot.id, { text: event.target.value.replace(/[\r\n]+/g, " ") }, false) }),
-      shot.spoken.length > 1 ? h("span", { class: "h3s-lbl" }, `${shot.spoken.length - 1} further spoken line(s) are kept unchanged.`) : null),
+    h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, h("span", { class: "h3s-lbl" }, "Spoken (optional, used word for word, in this order)"),
+      spokenLines(S, actions, shot),
+      shot.spoken.length ? h("button", { class: "h3s-btn small", style: { alignSelf: "flex-start" }, onclick: () => actions.addSpoken(shot.id) }, icon("plus", 14), "Spoken line") : null),
     h("span", { class: "h3s-lbl" }, `In: ${chunks.join(", ") || "–"}`));
 }
 

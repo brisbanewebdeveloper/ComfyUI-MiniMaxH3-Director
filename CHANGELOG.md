@@ -2,16 +2,24 @@
 
 ## 1.0.0 (unreleased)
 
+**Studio fixes after first use** (2026-10-04):
+
+- The Studio is in English.
+- AI progress and failures were shown at the top of the page and scrolled out of sight, so a slow model or its timeout looked like nothing happened. They now float at the bottom of the window with the elapsed time, Cancel and a persistent error.
+- **+ Shot** refused to add a shot once the last shot reached the project end (always after Whole prompt = one shot); it now uses any free room or halves the selected shot.
+- Every spoken line of a shot is editable, with + Spoken line and remove; before, only the first was.
+- A lost pointer capture ends a drag like a release.
+
 **Studio** (2026-10-04): the Director's in-node editor is replaced by a full-screen Studio, built from the accepted clickable prototype.
 
-- The Director node is small: prompt, duration, render-part length, resolution, a mini timeline, a summary and **Studio öffnen**. The Studio holds prompt, Content cards, timeline, mode, shot/clip panel, settings bar and a per-part prompt drawer on one page without inner scrolling; Esc returns to the graph.
+- The Director node is small: prompt, duration, render-part length, resolution, a mini timeline, a summary and **Open Studio**. The Studio holds prompt, Content cards, timeline, mode, shot/clip panel, settings bar and a per-part prompt drawer on one page without inner scrolling; Esc returns to the graph.
 - Shots move and resize on a 0.1 s grid and are reordered by dragging one over another. Content is dragged onto the timeline (new shot), onto a shot (assign) or onto an audio lane.
 - **Audio lane clips**: free lanes added with +, clips with their own story range, an offset into the file and lock/copy/reference use. A lane clip continues across shots and render parts instead of restarting per shot; stored in the shot document's new `audio` list, older documents unchanged.
-- **Arbeitsweise** FL2VA or Ref2VA for the whole project, and **Turbo**: `LoraLoaderModelOnly` with the H3 turbo LoRA of the chosen mode and 4 steps; off is 20 steps. CFG stays 1 (BasicGuider, as in every official H3 template). LoRA preselection only accepts H3/MiniMax turbo files.
-- Resolution as in the Legacy Director: Native/Fast/1920×1088 presets, aspect ratio and megapixels, width/height 0 = from the first picture by H3's own canvas rule, **Bilder einpassen** (crop, stretch, pad, pad green) and reference image size, passed through to chunk conditioning.
-- AI in the Studio: **KI: in Shots aufteilen** shows dashed proposals with Übernehmen/Verwerfen; **KI: Text vorschlagen/verbessern** per shot. Nothing changes without accepting; disabled with a reason when no AI Loader is connected.
-- Fixed: Start-/Endbild prompts contained `@refN` tags without any references (now plain names and `@voice(Name) says:`); older NG workflows shifted an empty trailing value into the new Turbo widget (repaired on load, examples updated); Studio edits were not marked as unsaved changes in ComfyUI.
-- Removed: the old shot cards, story/generation tracks, inspector and direction review modules. Not carried over: **Analyze all contexts** and the raw Director-Context JSON view; only the first spoken line of a shot is editable.
+- **Mode** FL2VA or Ref2VA for the whole project, and **Turbo**: `LoraLoaderModelOnly` with the H3 turbo LoRA of the chosen mode and 4 steps; off is 20 steps. CFG stays 1 (BasicGuider, as in every official H3 template). LoRA preselection only accepts H3/MiniMax turbo files.
+- Resolution as in the Legacy Director: Native/Fast/1920×1088 presets, aspect ratio and megapixels, width/height 0 = from the first picture by H3's own canvas rule, **Fit pictures** (crop, stretch, pad, pad green) and reference image size, passed through to chunk conditioning.
+- AI in the Studio: **AI: split into shots** shows dashed proposals with Accept/Discard; **AI: suggest/improve text** per shot. Nothing changes without accepting; disabled with a reason when no AI Loader is connected.
+- Fixed: First / last frame prompts contained `@refN` tags without any references (now plain names and `@voice(Name) says:`); older NG workflows shifted an empty trailing value into the new Turbo widget (repaired on load, examples updated); Studio edits were not marked as unsaved changes in ComfyUI.
+- Removed: the old shot cards, story/generation tracks, inspector and direction review modules. Not carried over: **Analyze all contexts** and the raw Director-Context JSON view.
 - 559 NG tests (one Windows skip), Legacy 374/374 + 74/74, all frontend suites. Browser run in a separate ComfyUI instance with real mouse input, Save/Reload and AI over a mock provider. GPU: FL2VA Turbo with a locked song clip over two parts (envelope correlation 0.97 at the intended place, lag 1.00 s, 0.97 on both sides of the seam) and Ref2VA Turbo with a consistent figure across both parts. No listening or quality assessment.
 
 Earlier 1.0.0 work, in order of development:

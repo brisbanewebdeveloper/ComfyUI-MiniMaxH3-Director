@@ -53,18 +53,18 @@ see the exact prompt the model will receive while you are still editing it.
 **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
 Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text Context nodes hold your references.
 
-The Director node stays small in the graph: a prompt, duration, render-part length, resolution and **Studio öffnen**.
+The Director node stays small in the graph: a prompt, duration, render-part length, resolution and **Open Studio**.
 The full-screen **Studio** holds everything else on one page without inner scrolling:
 
 - **Prompt** for the whole video, optionally split into timed shots by AI (proposals shown dashed until you accept them).
 - **Content** cards from the connected Context nodes, dragged onto the timeline or onto a shot.
 - A **timeline** on a 0.1 s grid: shots you move, resize and reorder by mouse; free **audio lanes** whose clips run across shots
   and render parts (with an offset into the file); and the coloured render parts the planner will run.
-- **Arbeitsweise** (Start-/Endbild FL2VA or Referenzen Ref2VA) and **Turbo** (H3 turbo LoRA, 4 steps; off = 20 steps; CFG stays 1).
+- **Mode** (First / last frame FL2VA or References Ref2VA) and **Turbo** (H3 turbo LoRA, 4 steps; off = 20 steps; CFG stays 1).
 - A settings bar with resolution as in the Legacy Director (presets, from first picture, aspect/megapixels, fitting, reference size),
   seed, steps, sampler and scheduler, and a drawer showing the real prompt of each render part.
 
-The Studio's labels are German. An optional **H3 AI Loader** (generative CLIP, an installed encoder from disk, or a local/compatible API)
+An optional **H3 AI Loader** (generative CLIP, an installed encoder from disk, or a local/compatible API)
 enables Context analysis and the Studio's AI buttons; everything works without it. [Native AI setup](docs/NG-native-ai.md) explains the separate assistant encoder.
 
 Open **`example_workflows/H3 Director NG - text studio.json`** for the complete render path, **`H3 Director NG - image and voice.json`**

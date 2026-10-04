@@ -125,4 +125,20 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   }
 }
 
+// Several spoken lines per shot: each one is edited on its own, order and the untouched lines stay.
+{
+  const a = { schema_version: 1, text: "Hello.", speaker_id: "mage", voice: "a narrator", language: "German", delivery: "says" };
+  const b = { schema_version: 1, text: "Hi.", speaker_id: "", voice: "a calm man", language: "English", delivery: "whispers" };
+  let lines = model.editSpoken([a, b], 1, { text: "Hi there." });
+  assert.deepEqual(lines, [a, { ...b, text: "Hi there." }], "the second line changes alone, its voice and delivery stay");
+  lines = model.addSpoken(lines);
+  assert.equal(lines.length, 3);
+  assert.equal(lines[2].language, "English", "a new line takes the previous line's language");
+  lines = model.editSpoken(lines, 2, { text: "Bye.", speaker_id: "mage" });
+  assert.deepEqual(model.removeSpoken(lines, 0).map((line) => line.text), ["Hi there.", "Bye."]);
+  assert.deepEqual(model.editSpoken([], 0, { text: "First." }).map((line) => [line.text, line.language]), [["First.", "English"]], "the first input creates the line");
+  assert.deepEqual(model.editSpoken([a], 0, { text: "", speaker_id: "" }), [], "clearing the only line leaves the shot without dialogue");
+  assert.equal(model.editSpoken([a, b], 0, { text: "", speaker_id: "" }).length, 2, "an emptied line among others stays until removed");
+}
+
 console.log("h3s model ok");

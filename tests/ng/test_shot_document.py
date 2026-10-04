@@ -158,6 +158,14 @@ class Dialogue(unittest.TestCase):
             self.assertIn("<Subject 1> (S1) whispers", result.compiled[0].prompt)
             self.assertIn("<d>[German] Hallo, Welt!</d>", result.compiled[0].prompt)
 
+    def test_several_lines_compile_in_order_and_empty_ones_are_skipped(self):
+        one = record("one", end=8); one["spoken"] = [spoken("Erste Zeile."), spoken(""), spoken("Second line.", speaker="a")]
+        one["spoken"][2]["language"] = "English"
+        result = plan(document(one), (context.ContextItem("a", "Alice", "image", "a.png", content=("character",)),), seconds=8)
+        prompt = result.compiled[0].prompt
+        self.assertLess(prompt.index("<d>[German] Erste Zeile.</d>"), prompt.index("<d>[English] Second line.</d>"))
+        self.assertEqual(prompt.count("<d>"), 2)
+
     def test_unknown_speaker_retains_verbatim_line_with_warning(self):
         one = record("one", end=8); one["spoken"] = [spoken(speaker="gone")]
         result = plan(document(one), seconds=8)

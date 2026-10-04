@@ -2,7 +2,7 @@
 // loading and queueing stay ComfyUI's; the shot document keeps shots, audio clips and lanes in the shots widget.
 import { h, icon } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, sorted, clipToFit, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, editSpoken, addSpoken, removeSpoken, sorted, clipToFit, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -200,12 +200,9 @@ export function openStudio(node, app, api) {
     setShotTime(id, key, value) { const shot = S.shots.find((entry) => entry.id === id); patchShot(id, timed(shot, S.shots, key, value)); },
     setShotText(id, text) { patchShot(id, { text }, false); },
     deleteShot(id) { S.shots = S.shots.filter((shot) => shot.id !== id); S.selected = null; delete S.suggestions[id]; save(); render(); },
-    setSpoken(id, change, rerender = true) {
-      const shot = S.shots.find((entry) => entry.id === id);
-      const first = { schema_version: 1, text: "", speaker_id: "", voice: "a narrator", language: "English", delivery: "says", ...shot.spoken[0], ...change };
-      const keep = first.text.trim() || first.speaker_id ? [first] : [];
-      patchShot(id, { spoken: [...keep, ...shot.spoken.slice(1)] }, rerender);
-    },
+    setSpoken(id, index, change, rerender = true) { patchShot(id, { spoken: editSpoken(S.shots.find((entry) => entry.id === id).spoken, index, change) }, rerender); },
+    addSpoken(id) { patchShot(id, { spoken: addSpoken(S.shots.find((entry) => entry.id === id).spoken) }); },
+    removeSpoken(id, index) { patchShot(id, { spoken: removeSpoken(S.shots.find((entry) => entry.id === id).spoken, index) }); },
     suggest: (id) => ai.suggest(id),
     acceptSuggestion(id) { const text = S.suggestions[id]; delete S.suggestions[id]; patchShot(id, { text }); },
     dropSuggestion(id) { delete S.suggestions[id]; render(); },

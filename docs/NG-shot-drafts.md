@@ -1,7 +1,7 @@
 # Shot AI drafts and selective Apply
 
-> **Studio (2026-10-04):** the Studio shows AI proposals as dashed shots (**KI: in Shots aufteilen**) or as a
-> suggestion in the shot panel (**KI: Text vorschlagen / verbessern**) with Übernehmen/Verwerfen, both over the same
+> **Studio (2026-10-04):** the Studio shows AI proposals as dashed shots (**AI: split into shots**) or as a
+> suggestion in the shot panel (**AI: suggest / improve text**) with Accept/Discard, both over the same
 > `/ng/direct` route. The field-by-field review list described below is no longer shown; stored `locked_fields`
 > still protect fields in the draft contract.
 

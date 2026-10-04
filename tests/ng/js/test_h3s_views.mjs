@@ -86,6 +86,25 @@ function recorder() {
   assert.equal(panel.button("AI: improve text").disabled, true, "no AI suggestion without a loader");
 }
 
+// Every spoken line of a shot has its own editor and remove button.
+{
+  const { actions, calls } = recorder();
+  const two = [{ schema_version: 1, text: "Hello.", speaker_id: "mage", language: "German" }, { schema_version: 1, text: "Hi.", speaker_id: "", language: "English" }];
+  const base = state({ selected: { kind: "shot", id: "a" } });
+  base.shots = base.shots.map((shot) => (shot.id === "a" ? { ...shot, spoken: two } : shot));
+  const [, panel] = sideView(base, actions);
+  const inputs = panel.byTag("input").filter((node) => node.attributes["aria-label"]?.startsWith("Spoken line"));
+  assert.deepEqual(inputs.map((node) => node.value), ["Hello.", "Hi."]);
+  inputs[1].oninput({ target: { value: "Hi there." } });
+  assert.deepEqual(calls.at(-1), ["setSpoken", "a", 1, { text: "Hi there." }, false]);
+  panel.find((node) => node.attributes["aria-label"] === "Remove line 1")[0].onclick();
+  assert.deepEqual(calls.at(-1), ["removeSpoken", "a", 0]);
+  panel.button("Spoken line").onclick();
+  assert.deepEqual(calls.at(-1), ["addSpoken", "a"]);
+  const [, empty] = sideView(state({ selected: { kind: "shot", id: "b" } }), actions);
+  assert.equal(empty.button("Spoken line"), undefined, "without dialogue there is one empty editor and no add button");
+}
+
 // Footer and drawer.
 {
   const { actions } = recorder();

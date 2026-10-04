@@ -6,8 +6,6 @@ Connector), story editing (the **Studio**) and rendering (native ComfyUI samplin
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
 The local 1.0.0 development version is unreleased; the published version remains 0.3.2.
 
-The Studio's labels are German, matching the reference design; this guide quotes them with an English
-explanation.
 
 ## Start with a connected workflow
 
@@ -19,7 +17,7 @@ replace model selections if your installation differs. No models or reference me
 MODEL / CLIP / video VAE / audio VAE ─┐
 Image / Video / Audio / Text contexts ├→ H3 Context Connector
 H3 AI Loader (optional) ─────────────┘          ↓
-                                         H3 Director  ── Studio öffnen ──▶ full-screen Studio
+                                         H3 Director  ── Open Studio ──▶ full-screen Studio
                                               ↓
                                       H3 Director Output
                                               ↓ sequence
@@ -35,28 +33,28 @@ and connect the H3 Ref2VA model. Give each context a distinct name; `@Mage` refe
 
 In the graph the Director stays small: a **Prompt** field, tiles for duration, render-part length and resolution,
 a mini timeline of the shots and render parts, a one-line summary (mode, Turbo, steps, whether an AI provider is connected,
-number of plan warnings) and **Studio öffnen** (open Studio). Render progress and the live preview appear under it.
+number of plan warnings) and **Open Studio**. Render progress and the live preview appear under it.
 
 Everything else is edited in the Studio. Studio and node write the same widgets, so a value changed in one is shown in the other,
 and ComfyUI's unsaved-changes marker and Save/Reload include Studio edits.
 
 ## The Studio
 
-The Studio is a full-screen view over the graph. **Esc** or **Zurück zum Graph** closes it. It has no inner scroll areas; on a small
-window the page scrolls as a whole. **Generieren** queues the connected workflow, exactly like ComfyUI's Queue button.
+The Studio is a full-screen view over the graph. **Esc** or **Back to graph** closes it. It has no inner scroll areas; on a small
+window the page scrolls as a whole. **Generate** queues the connected workflow, exactly like ComfyUI's Queue button.
 
 ### Prompt and Content
 
 **Prompt** describes the whole video. Without shots, the prompt alone carries the project: a text-only video needs nothing else.
 
-- **KI: in Shots aufteilen** asks the optional AI provider to split the prompt into timed shots. The proposal appears as dashed
-  shots on the timeline; **Übernehmen** (accept) replaces the current shots, **Verwerfen** (discard) leaves everything unchanged.
+- **AI: split into shots** asks the optional AI provider to split the prompt into timed shots. The proposal appears as dashed
+  shots on the timeline; **Accept** replaces the current shots, **Discard** leaves everything unchanged.
   Audio lanes are never touched by a proposal.
-- **Ganzer Prompt = ein Shot** turns the prompt into one shot spanning the project.
+- **Whole prompt = one shot** turns the prompt into one shot spanning the project.
 
 **Content** shows one card per Context node connected to the Context Connector, in its context colour, plus a plain **Text-Shot** card.
 Drag a card onto the empty timeline to create a shot with it, onto a shot (or click it while a shot is selected) to assign it,
-or an audio card onto an audio lane. Cards the current mode cannot use are dimmed (for example a video in Start-/Endbild mode).
+or an audio card onto an audio lane. Cards the current mode cannot use are dimmed (for example a video in First / last frame mode).
 Files are chosen in the Context nodes themselves, not in the Studio.
 
 ### Timeline
@@ -64,24 +62,25 @@ Files are chosen in the Context nodes themselves, not in the Studio.
 All tracks share one time axis on a **0.1 s grid**.
 
 - **Shots**: drag a shot to move it, drag its edges to change start or end. Drag a shot over another and release to reorder;
-  the others close up behind it while gaps stay where they were. A click selects the shot. **+ Shot** adds a text shot after the last one.
+  the others close up behind it while gaps stay where they were. A click selects the shot. **+ Shot** adds a 4 s text shot in free room after the selected (or last) shot, else in any free room;
+  on a full timeline it halves the selected shot and says so.
 - **Audio lanes** run independently of the shots, so a song placed on a lane plays continuously across shots and render parts
-  instead of restarting per shot. **+ Tonspur** (or the empty drop zone) adds a lane; drop audio Content on it, move the clip,
-  trim it at its edges. A clip has its own story range and **Ab Sekunde im File** (start offset in the file).
+  instead of restarting per shot. **+ Audio lane** (or the empty drop zone) adds a lane; drop audio Content on it, move the clip,
+  trim it at its edges. A clip has its own story range and **From second in file** (start offset in the file).
   An empty lane can be removed. There are no fixed lanes for voice, music or effects.
 - **Render parts** show how the planner splits the project into H3 runs (about 10 s by default), each in its own colour.
   A part's tooltip shows its frames and the frames carried over from the previous part.
 
-### Right column: Arbeitsweise and the selected item
+### Right column: Mode and the selected item
 
-**Arbeitsweise** (mode) is the central choice and applies to the whole project:
+**Mode** is the central choice and applies to the whole project:
 
 | Choice | H3 model | Uses |
 |---|---|---|
-| **Start- / Endbild** (FL2VA) | first/last-frame model | first and last frame, keyframes, sound |
-| **Referenzen** (Ref2VA) | reference model | figures, places, videos and voices as references |
+| **First / last frame** (FL2VA) | first/last-frame model | first and last frame, keyframes, sound |
+| **References** (Ref2VA) | reference model | figures, places, videos and voices as references |
 
-Older workflows saved with `auto` keep it and show it as automatic; it is also selectable under **Weitere Einstellungen**.
+Older workflows saved with `auto` keep it and show it as automatic; it is also selectable under **More settings**.
 
 **Turbo** switches between 20 steps and 4 steps with the H3 turbo LoRA. Each mode has its own LoRA selection, preselected from installed
 files whose name contains `turbo` and `h3` or `minimax`. If Turbo is on without a LoRA, the Studio picks an installed one, or warns when none is found.
@@ -89,34 +88,37 @@ CFG stays 1 in both cases: every official H3 template uses BasicGuider.
 
 Below it is the panel of the selected item:
 
-- **Shot**: start/end, **Was passiert?** (what happens), the Content assigned to this shot, and one spoken line with
-  **Wer spricht** (speaker or narrator) and **Sprache** (language). **KI: Text vorschlagen / verbessern** asks the provider for this
-  shot's text; the suggestion is shown with **Übernehmen** / **Verwerfen** and changes nothing until accepted.
+- **Shot**: start/end, **What happens?**, the Content assigned to this shot, and its spoken lines in order, each with
+  speaker (or narrator), language and text; **+ Spoken line** adds one, × removes one. **AI: suggest / improve text** asks the
+  provider for this shot's text; the suggestion is shown with **Accept** / **Discard** and changes nothing until accepted.
   The panel lists the render parts the shot falls into.
 - **Audio clip**: start/end on the story, the offset in the file and how H3 uses it:
-  **Genau so übernehmen** (lock: encoded source audio is pinned), **Möglichst übernehmen** (copy: H3 is asked to reuse the sound) or
-  **Nur als Vorbild** (reference: mood, voice, style). In Start-/Endbild mode H3 can only take a clip as lock.
+  **Lock exactly** (encoded source audio is pinned), **Copy as closely as possible** (H3 is asked to reuse the sound) or
+  **Reference only** (mood, voice, style). In First / last frame mode H3 can only take a clip as lock.
 
 ### Settings bar
 
 The bar under the timeline has two rows that are always visible:
 
-- **Video**: duration, render-part length (Auto = about 10 s), resolution preset, width/height, **Bildgröße** fold-out, FPS (H3 is 24 fps).
-- **Sampling**: seed with random toggle, steps, sampler, scheduler, **Weitere Einstellungen** fold-out.
+- **Video**: duration, render-part length (Auto = about 10 s), resolution preset, width/height, **Picture size** fold-out, FPS (H3 is 24 fps).
+- **Sampling**: seed with random toggle, steps, sampler, scheduler, **More settings** fold-out.
 
-Resolution follows the Legacy Director: presets **Nativ** (short side 768), **Schnell** (short side 480) and **Über nativ** (1920×1088), **Aus erstem Bild (H3 wählt)**,
-and custom sizes on H3's /32 grid. The **Bildgröße** fold-out has aspect ratio, megapixels, **Bilder einpassen** (crop, stretch, pad,
-pad green) and **Referenzbilder** (reference image size; *Wie Video* is fastest).
+Resolution follows the Legacy Director: presets **Native** (short side 768), **Fast** (short side 480) and **Above native** (1920×1088), **From first picture (H3 chooses)**,
+and custom sizes on H3's /32 grid. The **Picture size** fold-out has aspect ratio, megapixels, **Fit pictures** (crop, stretch, pad,
+pad green) and **Reference images** (*Like video* is fastest).
 With width and height 0, the size comes from the first frame picture, or else from the first image, using H3's rule
 (short side 768, area at most 768·1344, multiples of 32); without any picture it falls back to 1344×768 and says so.
 
-**Weitere Einstellungen** contains continuity between render parts (picture and sound / picture only / hard cuts), the overlap,
+**More settings** contains continuity between render parts (picture and sound / picture only / hard cuts), the overlap,
 ambient sound, music, style and the video/audio sigma shifts.
 
 ### Prompts per render part
 
-**Prompt ansehen** opens a drawer at the bottom with the actual prompt each render part receives, coloured like its part,
-its reference budget (pictures/videos/audio used of H3's limits) and all plan warnings with a German heading.
+**Show prompts** opens a drawer at the bottom with the actual prompt each render part receives, coloured like its part,
+its reference budget (pictures/videos/audio used of H3's limits) and all plan warnings with a short heading.
+
+While an AI action runs, a status at the bottom of the window shows the elapsed time against the AI Loader's timeout and
+**Cancel**. Failures stay there until dismissed; short confirmations disappear by themselves.
 This is the compiler's real output, refreshed live while you edit.
 
 ## Rendering paths
@@ -158,7 +160,7 @@ H3 renders at **24 fps** on its `17k + 5` frame grid. The plan reports the real 
 One resolution applies to the whole project. `chunk_seconds = 0` selects the planner's 10-second target; H3's trained chunk range is 4–15 seconds.
 The style choice adds prompt instructions; it does not load a different model.
 
-In Start-/Endbild mode the prompt carries no `@refN` tags: mentions become plain names and a spoken line becomes `@voice(Name) says:`.
+In First / last frame mode the prompt carries no `@refN` tags: mentions become plain names and a spoken line becomes `@voice(Name) says:`.
 
 ## Context workspaces
 
@@ -224,5 +226,4 @@ assessment have not been established.
 ## Not in the Studio (yet)
 
 - The old inspector's **Analyze all contexts** and raw Director-Context JSON view.
-- Only the first spoken line of a shot is editable in the shot panel; further lines from older data are kept.
 - Adaptive continuity/crossfades, Subjects without an image and a relationship graph remain further work.

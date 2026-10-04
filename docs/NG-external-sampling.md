@@ -60,8 +60,10 @@ number of a separate card named `Rain`. Missing sources and omitted guides keep 
 Lock card names use descriptive prose in the H3 prompt, with a card warning: a lock has no numbered `<Audio N>`
 reference. Paired video soundtracks and voice references keep their own native numbers. An ended lock is reported
 for that chunk and contributes no further source audio.
-Multiple locks keep separate source selections. Where they overlap, the later card replaces the earlier audio;
-after its end, the longer source remains. This is not additive track mixing or a separate story-time placement.
+Multiple locks keep separate source selections. Each is placed at its story position (a shot binding starts at its
+shot, an audio lane clip at its own start with its file offset), and overlapping locks are added before the audio VAE
+encode and clamped to [-1, 1]. A lane clip continues across chunks; a shot binding restarts its source at every bound
+shot. See [shot audio placement](NG-shot-audio.md) for the full contract.
 
 Missing, trimmed or wrong-format continuity returns fail with an actionable error. Direct video pins require the previous
 and new chunk at the same resolution. End Loop can separately carry a base-resolution latent while collecting a final-stage
