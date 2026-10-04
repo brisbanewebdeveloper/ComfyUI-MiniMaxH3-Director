@@ -113,7 +113,8 @@ export function wirePlayback(S, redraw) {
     const start = S.opts.start_s || 0, end = S.opts.end_s || audio.duration, settings = S.listen;
     if (audio.currentTime >= end) { audio.pause(); audio.currentTime = start; return; }
     const fadeIn = settings.fade_in ? Math.min(1, Math.max(0, (audio.currentTime - start) / settings.fade_in)) : 1;
-    const fadeOut = settings.fade_out ? Math.min(1, Math.max(0, (end - audio.currentTime) / settings.fade_out)) : 1;
+    // While a new file loads the browser reports timeupdate before it knows the duration (NaN).
+    const fadeOut = settings.fade_out && Number.isFinite(end) ? Math.min(1, Math.max(0, (end - audio.currentTime) / settings.fade_out)) : 1;
     audio.volume = Math.max(0, Math.min(1, settings.volume * Math.min(fadeIn, fadeOut)));
   };
 }

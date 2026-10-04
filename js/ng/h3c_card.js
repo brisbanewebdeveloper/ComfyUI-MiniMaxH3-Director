@@ -17,7 +17,7 @@ import { autoColor } from "./ng_identity.js";
 import { FAMILY } from "./ng_context.js";
 import { assetChoices, assetSubjects, restoreAssetWidget } from "./ng_asset_relations.js";
 import { subjectChoices } from "./ng_subjects.js";
-import { renameReferences } from "./ng_references.js";
+import { followNoteRenames, knownNames } from "./ng_references.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -80,6 +80,7 @@ function attach(node, media) {
     S.usage = selectedRoles(node, "usage")[0] || S.values.usage;
     S.ai = Boolean(contextProvider(node));
     S.analyzed = node.properties.ng_analysis?.fingerprint === analysisFingerprint(media, S.values);
+    if (media === "text") node.properties.ng_context_names = knownNames(node.properties.ng_context_names, relatedContexts(node));
     const linked = directors();
     S.mode = linked.find((entry) => entry.mode && entry.mode !== "auto")?.mode || "auto";
     S.uses = studioUses(S.values.context_id || "", S.values.name || "", linked);
@@ -276,8 +277,7 @@ function attach(node, media) {
   // A renamed Context keeps the @Name mentions in this note.
   const followRenames = () => {
     if (media !== "text") return;
-    const entries = relatedContexts(node), now = values(node).text || "", renamed = renameReferences(now, node.properties.ng_context_names || {}, entries);
-    node.properties.ng_context_names = Object.fromEntries(entries.filter((entry) => entry.widgets.context_id && entry.widgets.name).map((entry) => [entry.widgets.context_id, entry.widgets.name]));
+    const now = values(node).text || "", renamed = followNoteRenames(node.properties, now, relatedContexts(node));
     if (renamed !== now) applyValues(node, { text: renamed });
   };
   const outside = () => { followRenames(); schedule(); };

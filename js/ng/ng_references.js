@@ -15,6 +15,21 @@ export function renameReferences(text,previous,entries) {
   return text.replace(pattern,(match,name)=>replacements.has(caseFold(name))?"@"+replacements.get(caseFold(name)):match);
 }
 
+// Names are remembered as soon as a Context is seen, not only after a first change: a rename needs the old name.
+export function knownNames(previous,entries) {
+  const names={...(previous||{})};
+  for(const entry of entries)if(entry.widgets.context_id&&entry.widgets.name&&!(entry.widgets.context_id in names))names[entry.widgets.context_id]=entry.widgets.name;
+  return names;
+}
+
+// A Text card keeps its note and its built prompt; a rename reaches the shown text and both kept versions.
+export function followNoteRenames(properties,text,entries) {
+  const previous=properties.ng_context_names||{};
+  for(const key of ["ng_text_note","ng_text_ai"])if(typeof properties[key]==="string")properties[key]=renameReferences(properties[key],previous,entries);
+  properties.ng_context_names=Object.fromEntries(entries.filter((entry)=>entry.widgets.context_id&&entry.widgets.name).map((entry)=>[entry.widgets.context_id,entry.widgets.name]));
+  return renameReferences(text,previous,entries);
+}
+
 export function referenceParts(text,entries) {
   const names=new Map();
   const originals=[];

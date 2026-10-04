@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {referenceParts,renameReferences,compiledParts} from "../../../js/ng/ng_references.js";
+import {referenceParts,renameReferences,compiledParts,knownNames,followNoteRenames} from "../../../js/ng/ng_references.js";
 import {caseFold} from "../../../js/ng/ng_casefold.js";
 import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
@@ -21,6 +21,18 @@ const checks=[
   ["rename casefold aliases by stable ID",()=>{
     assert.equal(renameReferences("@STRASSE greets @Strassex and @ctx_old.",{figure:"Straße"},[card("figure","Alice")]),
       "@Alice greets @Strassex and @ctx_old.");
+  }],
+  ["a Text card's first rename is not lost and reaches both kept texts (BUG-031)",()=>{
+    // The card remembers names when it draws, before any change event: the first rename needs the old name.
+    const properties={ng_context_names:knownNames(undefined,[card("ctx_alice","Alice")]),
+      ng_text_note:"Hier ist @Alice im Wald.",ng_text_ai:"Encounter with @Alice under the trees.",ng_text_view:"ai"};
+    const shown=followNoteRenames(properties,"Encounter with @Alice under the trees.",[card("ctx_alice","Bob")]);
+    assert.equal(shown,"Encounter with @Bob under the trees.");
+    assert.equal(properties.ng_text_note,"Hier ist @Bob im Wald.","the hidden note follows too");
+    assert.equal(properties.ng_text_ai,"Encounter with @Bob under the trees.");
+    assert.deepEqual(properties.ng_context_names,{ctx_alice:"Bob"});
+    // A name already remembered is not overwritten by drawing, or a rename in between would be lost.
+    assert.deepEqual(knownNames({ctx_alice:"Alice"},[card("ctx_alice","Bob"),card("ctx_x","X")]),{ctx_alice:"Alice",ctx_x:"X"});
   }],
   ["canonical soundtrack and voice labels",()=>{
     const labels={"<Video 1>":"video","<Audio 1>":"video","<Audio 2>":"voice"};
