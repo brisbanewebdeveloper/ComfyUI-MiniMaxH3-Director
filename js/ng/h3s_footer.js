@@ -54,7 +54,9 @@ export function footerView(S, actions) {
   const toggle = (key, label, iconName) => h("button", { class: "h3s-btn", "aria-expanded": String(S[key]), onclick: () => actions.toggle(key) },
     h("span", { style: { display: "inline-flex", transform: `rotate(${S[key] ? 90 : 0}deg)` } }, icon(iconName)), label);
   const plan = S.plan, size = isAuto(v.width, v.height) ? (plan ? `${plan.width}×${plan.height} aus Bild` : "Größe aus Bild") : `${v.width}×${v.height}`;
+  const row = (title, ...children) => h("div", { class: "h3s-foot-row" }, h("span", { class: "h3s-foot-title" }, title), ...children);
   return h("footer", { class: "h3s-foot" },
+    row("Video",
     field("Dauer", select(durations, String(v.project_seconds), (value) => actions.setDuration(Number(value)))),
     field("Render-Teil", select(parts, String(v.chunk_seconds), (value) => actions.setWidget("chunk_seconds", Number(value)))),
     field("Auflösung", select(presets, presetValue(v.width, v.height), actions.setPreset, { style: { maxWidth: "240px" } })),
@@ -62,7 +64,9 @@ export function footerView(S, actions) {
     field("Höhe", number(isAuto(v.width, v.height) ? "" : v.height, (value) => actions.setSize("height", value), { step: "32", min: "0", placeholder: "auto", style: { width: "88px" } })),
     toggle("sizeOpen", "Bildgröße", "chevron"),
     field("FPS", h("span", { class: "h3s-in h3s-muted", style: { display: "flex", alignItems: "center" }, title: "H3 arbeitet nativ mit 24 FPS" }, "24 · H3")),
-    h("span", { style: { width: "1px", alignSelf: "stretch", background: "#2A3342" } }),
+    h("span", { class: "h3s-grow" }),
+    h("span", { class: "h3s-strong" }, `${fmt(v.project_seconds)} · ${S.shots.length} Shots · ${plan ? plan.chunks.length : "?"} Render-Teil${plan?.chunks.length === 1 ? "" : "e"} · ${size}`)),
+    row("Sampling",
     field("Seed", h("span", { class: "h3s-row", style: { gap: "6px", flexWrap: "nowrap" } }, number(v.seed, (value) => actions.setWidget("seed", value), { style: { width: "130px" } }),
       h("button", { class: "h3s-btn", title: "Zufälliger Seed", "aria-label": "Zufälliger Seed", onclick: () => actions.setWidget("seed", Math.floor(Math.random() * 1e9)) }, icon("dice")))),
     field("Steps", number(v.steps, (value) => actions.setWidget("steps", Math.max(1, Math.min(100, Math.round(value) || 1))), { min: "1", max: "100", style: { width: "80px" } })),
@@ -70,9 +74,7 @@ export function footerView(S, actions) {
     field("Scheduler", select(scheduler, v.scheduler, (value) => actions.setWidget("scheduler", value))),
     toggle("furtherOpen", "Weitere Einstellungen", "chevron"),
     h("span", { class: "h3s-grow" }),
-    h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" } },
-      h("span", { class: "h3s-strong" }, `${fmt(v.project_seconds)} · ${S.shots.length} Shots · ${plan ? plan.chunks.length : "?"} Render-Teil${plan?.chunks.length === 1 ? "" : "e"}`),
-      h("span", { class: "h3s-lbl" }, `${v.mode === "fl2va" ? "FL2VA" : v.mode === "ref2va" ? "Ref2VA" : "Auto"}${v.turbo ? " Turbo" : ""} · ${size} · 24 FPS · ${v.steps} Steps · CFG 1 · ${v.sampler_name}`)),
+    h("span", { class: "h3s-lbl" }, `${v.mode === "fl2va" ? "FL2VA" : v.mode === "ref2va" ? "Ref2VA" : "Auto"}${v.turbo ? " Turbo" : ""} · 24 FPS · ${v.steps} Steps · CFG 1 · ${v.sampler_name}`)),
     S.sizeOpen ? sizeMore(S, actions) : null,
     S.furtherOpen ? furtherMore(S, actions) : null);
 }
