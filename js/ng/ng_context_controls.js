@@ -8,7 +8,7 @@ import { section } from "./ng_editor_fields.js";
 export const CONTENT = {
   image: [["character","Character"],["face","Face / Identity"],["outfit","Outfit"],["pose","Pose"],["environment","Environment"],["style","Style"]],
   video: [["motion","Character Motion"],["camera_motion","Camera Motion"],["environment","Environment"],["shot_rhythm","Shot Rhythm"],["identity","Character Identity"]],
-  audio: [["voice","Voice"],["music","Music"],["ambience","Ambience"],["sound_effect","Sound Effect"]],
+  audio: [["voice","Voice"],["singing","Singing"],["music","Music"],["ambience","Ambience"],["sound_effect","Sound Effect"]],
   text: [["shot","Shot / Action"],["dialogue","Dialogue"],["voice","Voice"],["ambience","Ambience / Soundscape"],["music","Music"],["sound_effect","Sound Effect"],
          ["camera_motion","Camera"],["character","Character"],["outfit","Outfit"],["environment","Environment"],["lighting","Lighting"],["style","Style"],["rules","Constraint"]],
 };

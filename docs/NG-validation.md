@@ -524,3 +524,46 @@ Audio placement/mixing and arbitrary interior first/last/continue anchors remain
 explicit E45 work. E44 media indicators, E46 selective AI Apply and E47 provenance
 remain open. The user server is preserved; own server/junction cleanup is recorded
 in the section note. No push, tag, release or completion claim.
+
+## E44 — Shot media indicators and input previews (2026-10-04)
+
+Mixed shots now show all explicitly assigned, mentioned or speaker-bound Context
+media, with distinct icons, Context colors and identity/role tooltips. Action and
+structured dialogue have separate marks. Audio classification is explicit metadata:
+Singing is additive to the existing content choices, with no acoustic detection claim.
+The actual compiler Inspector remains the authority for conditioning.
+
+The local preview adapter decodes only the first input-video frame. AI video
+analysis retains its separate multi-frame sampler. Shot previews share requests
+by file, refresh overwritten filenames, abort retired sources and ignore stale
+responses. Updating the marks retains a focused action textarea. Preview bytes
+never enter shot storage or the saved workflow.
+
+NG: 507 checks, 506 passed/one existing Windows skip. Legacy: 374/374 + 74/74.
+All eight frontend suites, compileall, layering/size guards and git diff checks passed.
+Before implementation, two Python assertions failed (Singing absent; preview used
+the AI frame sampler), and the new JS test failed because the media module was absent.
+Existing behavioral tests were not relaxed. Additional tests cover mixed audio,
+Unicode mention boundaries, disconnected IDs, decoder errors, focused edits,
+shared I/O, retry, source replacement races and node disposal.
+
+A private CPU server at 8200 verified actual image/video loading, mouse assignment
+and removal, a second entirely manual shot, Refresh previews and Save/Reload.
+Stored shot data and DOM identity/color/preview observations match after reload;
+both displayed image hashes match the endpoint payloads. An independent PyAV
+decode confirms the video payload is frame zero. A missing file returns HTTP 400
+with actionable feedback. Director width and scrollWidth are both 843 px.
+
+Evidence: `_notes/NG/experiments/e44_*`, especially `e44_verified.json`, browser
+saved/reload JSON, image hashes, screenshot, saved workflow and red/green logs.
+The fixture clone produced four native input-replacement console messages;
+ComfyUI initialization produced two early graph-access messages. These are retained
+in the browser log, so this is not a clean-console claim. The resulting Context
+connections and persisted values were verified. Two initial Legacy commands used
+the wrong `tests/` path; corrected root script runs passed and both logs remain.
+
+Own server 8200/PID 36764 and its browser tab are closed; user server 8189/PID 21188
+is preserved, with empty queues observed. No GPU render was needed for this preview
+change. Visual design, output quality and the overall product remain unaccepted.
+E45 audio placement/mixing, interior anchors and timeline work, E46 selective AI
+Apply, and E47 provenance remain open. Contract: [NG-shot-media.md](NG-shot-media.md).

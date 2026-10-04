@@ -2,9 +2,8 @@ import { element, applyValues, values } from "./ng_widgets.js";
 import { section, control } from "./ng_editor_fields.js";
 import { readStory, writeStory, moveShot, createShot } from "./ng_story_model.js";
 import { shotFields } from "./ng_shot_fields.js";
-import { mediaURL } from "./ng_media_editor.js";
+import { shotMedia, shotMediaView } from "./ng_shot_media.js";
 import { renderReferences } from "./ng_references.js";
-import { contextColor } from "./ng_identity.js";
 
 export function storyEditor(node) {
   const root = section("Scene", "ng-story-section");
@@ -17,13 +16,22 @@ export function storyEditor(node) {
   fallback.append(element("summary", "", "Original / structured shot data"), raw.label);
   const add = element("button", "ng-button", "+ Shot");
   const reset = element("button", "ng-button ng-secondary", "Use idea as one scene");
-  const tools = element("div", "ng-actions"); tools.append(add, reset);
+  const refresh=element("button","ng-button ng-secondary","Refresh previews");
+  const tools = element("div", "ng-actions"); tools.append(add, reset, refresh);
   root.append(cards, tools, element("h4", "ng-track-label", "Story · drag a shot or its edges"),ruler, timeline,
               element("h4", "ng-track-label", "Generation · planned render chunks"), chunks, fallback);
   let shots = [], writing = false, entries = [], api = null;
+  const mediaView=shotMediaView(),mediaTargets=new Map();
+  function drawMedia() {
+    for(const shot of shots){
+      const target=mediaTargets.get(shot.id);if(!target)continue;
+      target.root.replaceChildren(mediaView.render(shot,entries,api));
+      target.card.style.borderColor=shotMedia(shot,entries).find(mark=>mark.entry)?.color||"";
+    }
+  }
   function commit() {
     writing = true; applyValues(node, { shots: writeStory(shots) }); writing = false;
-    node.graph?.change();
+    node.graph?.change();drawMedia();
   }
   function drawTimeline() {
     timeline.replaceChildren();
@@ -34,7 +42,7 @@ export function storyEditor(node) {
       bar.title = `Shot ${index + 1}: ${shot.start.toFixed(2)}–${shot.end.toFixed(2)} s`;
       bar.style.left = `${shot.start / duration * 100}%`;
       bar.style.width = `${(shot.end - shot.start) / duration * 100}%`;
-      const entry=entries.find((entry)=>shot.media.some(binding=>binding.context_id===entry.widgets.context_id)||shot.text.includes("@"+entry.widgets.name));if(entry)bar.style.borderColor=contextColor(entry);
+      const mark=shotMedia(shot,entries).find(mark=>mark.entry);if(mark)bar.style.borderColor=mark.color;
       for (const part of ["start", "end"]) {
         const handle = element("span", "ng-time-handle ng-time-" + part);
         handle.dataset.part = part; bar.append(handle);
@@ -75,18 +83,16 @@ export function storyEditor(node) {
     const text = element("textarea"); text.value = shot.text;
     text.setAttribute("aria-label", `Shot ${index + 1} action and dialogue`);
     const highlighted=element("div","ng-text-highlight");renderReferences(highlighted,shot.text,entries,element);
-    text.oninput = () => { shots[index].text = text.value; renderReferences(highlighted,text.value,entries,element);commit(); };
+    text.oninput = () => { shots[index].text = text.value; renderReferences(highlighted,text.value,entries,element);commit();drawTimeline(); };
     remove.onclick = () => { shots.splice(index, 1); commit(); rebuild(); };
-    const imageContext=entries.find((entry)=>entry.media==="image"&&(shot.media.some(binding=>binding.context_id===entry.widgets.context_id)||shot.text.includes("@"+entry.widgets.name)));
-    if(imageContext&&api){const preview=element("img","ng-shot-thumbnail");preview.src=mediaURL(imageContext.widgets.image,api);preview.alt="Reference preview · not a generated shot";card.append(header,preview);}
-    else card.append(header);
+    const media=element("div","ng-shot-media");mediaTargets.set(shot.id,{root:media,card});card.append(header,media);
     card.append(times,text,highlighted,shotFields(shot,index,entries,commit,rebuild));return card;
   }
   function rebuild() {
     const opened=new Map([...cards.children].map(card=>[card.dataset.shotId,
       [...(card.querySelectorAll?.("details")||[])].filter(detail=>detail.open).map(detail=>detail.className)]));
     const result = readStory(values(node).shots || ""); shots = result.shots;
-    cards.replaceChildren(); add.disabled = !!result.error;
+    cards.replaceChildren();mediaTargets.clear(); add.disabled = !!result.error;
     if (result.error) { cards.append(element("p", "ng-error", result.error)); fallback.open = true; }
     else if (!shots.length) cards.append(element("p", "ng-muted", "Auto scene · your idea describes the whole project. Add shots when you need timing."));
     else shots.forEach((shot, index) => {
@@ -94,7 +100,7 @@ export function storyEditor(node) {
       for(const detail of card.querySelectorAll?.("details")||[])detail.open=opened.get(shot.id)?.includes(detail.className)||false;
       cards.append(card);
     });
-    drawTimeline(); raw.sync();
+    drawMedia();drawTimeline(); raw.sync();
   }
   add.onclick = () => {
     const duration = Number(values(node).project_seconds);
@@ -103,6 +109,7 @@ export function storyEditor(node) {
     shots.push(createShot({ start, end: duration })); commit(); rebuild();
   };
   reset.onclick = () => { shots = []; commit(); rebuild(); };
+  refresh.onclick=()=>{mediaView.refresh();drawMedia();};
   const shotWidget = node.widgets.find((widget) => widget.name === "shots"), previous = shotWidget.callback;
   shotWidget.callback = function (...args) { const result = previous?.apply(this, args); if (!writing) rebuild(); return result; };
   function plan(data) {
@@ -115,6 +122,7 @@ export function storyEditor(node) {
     }
   }
   rebuild();
-  function contexts(next,providerApi){entries=next;api=providerApi;if(!root.contains(document.activeElement))rebuild();}
-  return { root, rebuild, plan, contexts };
+  function contexts(next,providerApi){entries=next;api=providerApi;mediaView.prune(entries);
+    if(!root.contains(document.activeElement))rebuild();else {drawMedia();drawTimeline();}}
+  return { root, rebuild, plan, contexts, dispose(){mediaView.dispose();} };
 }

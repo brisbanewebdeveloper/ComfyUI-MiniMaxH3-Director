@@ -14,7 +14,7 @@ PRESERVE = ("low", "medium", "high")
 
 CONTENT_KINDS = ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style", "pose",
                  "action", "shot", "expression", "lighting", "effect", "composition",
-                 "voice", "dialogue", "music", "ambience", "sound_effect", "camera_motion", "motion", "rules", "shot_rhythm", "identity")
+                 "voice", "dialogue", "singing", "music", "ambience", "sound_effect", "camera_motion", "motion", "rules", "shot_rhythm", "identity")
 # Which content roles each medium can actually hold. A card is one medium, so offering it a role
 # from another medium is not a suggestion - it is a card that can never render. This lived in the
 # node module, which meant the analysis prompt and the parse could not ask what a card really
@@ -23,7 +23,7 @@ CONTENT_BY_MEDIA = {
     "image": ("character", "face", "animal", "object", "outfit", "prop", "environment", "location", "style",
               "pose", "composition"),
     "video": ("motion", "camera_motion", "environment", "shot_rhythm", "identity", "action", "effect", "style"),
-    "audio": ("voice", "dialogue", "music", "ambience", "sound_effect"),
+    "audio": ("voice", "dialogue", "music", "ambience", "sound_effect", "singing"),
     # A text note describes a whole video, so it carries what the video is made of: the shot, the
     # dialogue and - the reason these are here - the sound. overall_soundscape and
     # non_diegetic_music are two of the three fields the model is asked to write, and a note that

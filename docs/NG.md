@@ -20,6 +20,12 @@ no AI/API is required. Protected fields remain manually editable. The old whole-
 blocked for scenes with these bindings/dialogue/protections until selective merging is implemented.
 See the [structured shot contract and current limits](NG-shots.md).
 
+Shot cards show all assigned media kinds with their Context colors and identifying tooltips.
+Images show the input picture; videos show their first input frame. These are reference previews.
+Audio kinds, including **Singing**, are explicit Context choices and require no AI/API.
+Use **Refresh previews** after replacing a file under the same filename. Missing sources keep
+their type indicator and explain the preview failure. See [shot media behavior](NG-shot-media.md).
+
 ## Start with a connected workflow
 
 Use **example_workflows / H3 Director NG - text studio.json** for a complete text-to-video graph.

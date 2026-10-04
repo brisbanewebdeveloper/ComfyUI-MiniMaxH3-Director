@@ -114,6 +114,13 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-context-chip audio { width:130px; height:27px; margin-top:7px; }
 .ng-shot-card { background:#12263c; border-color:#29638e; width:235px; flex-basis:235px; }
 .ng-shot-thumbnail { width:100%; height:70px; object-fit:cover; border-radius:5px; margin:7px 0; }
+.ng-studio .ng-shot-media-marks { display:flex; flex-wrap:wrap; gap:4px; margin:7px 0; }
+.ng-studio .ng-shot-media-mark { display:inline-flex; align-items:center; gap:4px; border:1px solid currentColor; border-radius:4px; padding:2px 4px; font-size:10px; }
+.ng-studio .ng-shot-media-icon { width:13px; height:13px; }
+.ng-studio .ng-shot-gallery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
+.ng-studio .ng-shot-preview { min-width:0; margin:0; }
+.ng-studio .ng-shot-preview .ng-shot-thumbnail { height:64px; object-fit:contain; margin:0; background:#101a2c; }
+.ng-studio .ng-shot-preview figcaption,.ng-studio .ng-shot-preview-status { display:block; font-size:9px; line-height:1.3; color:#a5b0bd; overflow-wrap:anywhere; }
 .ng-story-block { background:linear-gradient(#106cc2,#214e87); border-color:#40b4ff; }
 .ng-audio-track { display:flex; gap:10px; align-items:center; padding:5px 0; font-size:11px; }
 .ng-audio-track span { width:100px; } .ng-audio-track audio { flex:1; height:28px; min-width:0; }

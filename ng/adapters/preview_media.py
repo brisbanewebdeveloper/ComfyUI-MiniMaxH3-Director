@@ -47,6 +47,15 @@ def video_images(source):
         return images
 
 
+def first_video_image(source):
+    with av.open(require_path(source)) as container:
+        if not container.streams.video:
+            raise ValueError("Choose a video with a picture stream.")
+        for frame in container.decode(container.streams.video[0]):
+            return jpeg(frame.to_image())
+    raise ValueError("The video could not be decoded.")
+
+
 def audio_samples(source):
     with av.open(require_path(source)) as container:
         if not container.streams.audio:
@@ -84,7 +93,7 @@ def preview(media, source):
         with Image.open(require_path(source)) as image:
             return {"thumbnail": "data:image/jpeg;base64," + jpeg(image)}
     if media == "video":
-        return {"thumbnail": "data:image/jpeg;base64," + video_images(source)[0], "sampled_seconds": PREVIEW_SECONDS}
+        return {"thumbnail": "data:image/jpeg;base64," + first_video_image(source), "frame_index": 0}
     if media == "audio":
         samples = audio_samples(source).astype(np.float32) / 32768
         peaks = [float(np.max(np.abs(part))) if len(part) else 0.0 for part in np.array_split(samples, 80)]

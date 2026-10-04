@@ -72,6 +72,8 @@ reference/Subject labels, exact prompt equality, AV shapes, per-chunk seeds and
 copied carry-conditioning tails are observed. Scoped video/soundtrack/source-window
 presentation is also checked against the installed native H3 tokenizer.
 This is a three-step, 256-pixel function smoke test, not quality acceptance.
-ID-addressed AI drafts/Apply, audio placement/mixing, richer media previews and
-timeline reorder remain for E44–E47. Existing native sampler and Legacy paths
+E44 adds mixed media indicators, explicit audio kinds and actual image/input-video
+previews, with refresh, cancellation and missing-file feedback. See [shot media](NG-shot-media.md).
+ID-addressed AI drafts/Apply, audio placement/mixing and timeline reorder remain
+for E45–E47. Existing native sampler and Legacy paths
 are preserved; the Director as a whole is unfinished.
