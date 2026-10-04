@@ -8,10 +8,11 @@ const CLIP_MODES = [["lock", "Lock exactly (the sound stays fixed)"], ["copy", "
 
 function modeCard(S, actions) {
   const mode = S.values.mode, decided = S.plan?.mode;
-  const seg = (value, title, text) => h("button", { class: mode === value ? "h3s-seg on" : "h3s-seg", onclick: () => actions.setWidget("mode", value),
-    "aria-pressed": String(mode === value) }, h("span", { class: "h3s-strong" }, title), h("span", { class: "h3s-lbl" }, text));
-  const hint = mode === "fl2va" ? "One picture becomes the first, one the last frame of a render part; sound comes from the audio lanes. Videos and references are not used."
-    : mode === "ref2va" ? "H3 takes up to 9 images, 3 videos and 3 audio sources as references, e.g. for a character, place, camera and voice."
+  // The node's own mode widget is hidden, so the chosen side clicked again is the way back to Automatic.
+  const seg = (value, title, text) => h("button", { class: mode === value ? "h3s-seg on" : "h3s-seg", onclick: () => actions.setWidget("mode", S.values.mode === value ? "auto" : value),
+    "aria-pressed": String(mode === value), title: mode === value ? "Click again for Automatic" : "" }, h("span", { class: "h3s-strong" }, title), h("span", { class: "h3s-lbl" }, text));
+  const hint = mode === "fl2va" ? "One picture becomes the first, one the last frame of a render part; sound comes from the audio lanes. Videos and references are not used. Click it again for Automatic."
+    : mode === "ref2va" ? "H3 takes up to 9 images, 3 videos and 3 audio sources as references, e.g. for a character, place, camera and voice. Click it again for Automatic."
       : `Automatic: ${decided === "ref2va" ? "References" : "First/last frame"}, depending on the Content. Click one side to fix it.`;
   const turbo = Boolean(S.values.turbo);
   const loras = [];

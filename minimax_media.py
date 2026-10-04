@@ -589,7 +589,7 @@ def strip_thinking(text):
 
 async def vlm_generate(images_b64, prompt, provider, base_url, model,
                        system_prompt=None, timeout=120, keep_alive=0, max_tokens=None,
-                       api_key=None, auth="bearer"):
+                       api_key=None, auth="bearer", sampling=None):
     """One vision-model round-trip, shared by the Analyze endpoint and the Enhance node.
 
     Kept provider-shaped rather than generic on purpose: Ollama takes raw base64 in an
@@ -602,6 +602,9 @@ async def vlm_generate(images_b64, prompt, provider, base_url, model,
     `api_key` goes out as a bearer token on both paths — hosted Ollama and reverse proxies
     in front of a local server want one too, and an absent key sends no header at all.
     `auth` names the registry provider's scheme, so Claude gets `x-api-key` instead.
+
+    `sampling` is the provider-shaped part from ng.core.providers.provider_payload (temperature, top_p, seed, ...;
+    under "options" for Ollama). An explicit `max_tokens` wins over the one inside it.
 
     Raises VLMError with a user-facing message; returns the answer with any thinking
     preamble removed.
@@ -623,10 +626,13 @@ async def vlm_generate(images_b64, prompt, provider, base_url, model,
                            "think": False}
                 if system_prompt:
                     payload["system"] = system_prompt
+                options = dict((sampling or {}).get("options") or {})
                 if max_tokens:
                     # the only thing that actually stops a small model from rambling;
                     # asking for a word count in the prompt does not
-                    payload["options"] = {"num_predict": int(max_tokens)}
+                    options["num_predict"] = int(max_tokens)
+                if options:
+                    payload["options"] = options
                 async with session.post("%s/api/generate" % base_url, json=payload,
                                         timeout=timeout) as response:
                     if response.status != 200:
@@ -643,7 +649,8 @@ async def vlm_generate(images_b64, prompt, provider, base_url, model,
                 if system_prompt:
                     messages.append({"role": "system", "content": system_prompt})
                 messages.append({"role": "user", "content": content})
-                payload = {"model": model, "messages": messages,
+                payload = {**{name: value for name, value in (sampling or {}).items() if name not in ("max_tokens", "keep_alive")},
+                           "model": model, "messages": messages,
                            "max_tokens": int(max_tokens) if max_tokens else 2048,
                            "stream": False}
                 async with session.post(chat_completions_url(base_url), json=payload,

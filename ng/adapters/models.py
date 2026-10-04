@@ -66,7 +66,8 @@ async def listing(provider, base_url, api_key=None, timeout=15):
     # shows the address as a placeholder and only writes it into the widget when it is edited, so
     # sending the widget value alone would refuse the providers that work out of the box.
     url = _address(base_url or entry.base_url, entry.models_path)
-    headers = legacy._auth_headers(api_key) or {}
+    # Claude wants x-api-key and a version header, like the analysis itself; a bearer token got HTTP 401.
+    headers = legacy.registry_auth_headers(entry.auth, api_key) or {}
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url, timeout=timeout) as response:

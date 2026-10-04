@@ -145,12 +145,12 @@ def wire(config):
         "temperature": config.temperature, "top_p": config.top_p, "top_k": config.top_k,
         "min_p": config.min_p, "frequency_penalty": config.frequency_penalty,
         "presence_penalty": config.presence_penalty})
-    # provider_payload() nests the sampling knobs under "options" for Ollama, because that is the
-    # wire format, and keeps max_tokens inside them under num_predict. vlm_generate takes its own
-    # arguments flat and builds that nesting itself, so only what it reads as a flat entry is handed
-    # on. timeout_seconds never appears in the payload at all - it belongs to the HTTP client, which
-    # is why it has to be passed separately or the request would fall back to the library default.
+    # provider_payload() nests the sampling knobs under "options" for Ollama, because that is the wire format; it
+    # travels to vlm_generate whole as `sampling`. Only max_tokens, keep_alive and timeout used to be handed on, so
+    # Temperature, Top P/K, Min P, the penalties and a fixed Seed never left ComfyUI. timeout_seconds belongs to the
+    # HTTP client and is passed on its own, or the request would fall back to the library default.
     flat = {name: values[name] for name in ("max_tokens", "keep_alive") if name in values}
     return {"max_tokens": flat.get("max_tokens", config.max_tokens),
             "keep_alive": flat.get("keep_alive", 0),
-            "timeout": config.timeout_seconds}
+            "timeout": config.timeout_seconds,
+            "sampling": values}

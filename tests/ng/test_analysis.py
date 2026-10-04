@@ -389,6 +389,27 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         return {"media": media, "widgets": {"image": "image.png", "audio": "sound.wav", "text": "Keep a slow camera.", "content": "style"},
                 "provider": config.to_dict()}
 
+    async def test_the_sampling_settings_reach_the_request_body(self):
+        # BUG-041: Temperature, Top P/K, Min P and a fixed Seed were computed and dropped; Ollama got only num_predict.
+        knobs = dict(temperature=1.9, top_p=0.5, top_k=100, min_p=0.5, seed=12345, fixed_seed=True)
+        await self.adapter.analyze(self.payload("text", **knobs))
+        body = self.requests[-1][2]
+        self.assertEqual((body["temperature"], body["top_p"], body["seed"]), (1.9, 0.5, 12345), "OpenAI-compatible: flat in the body")
+        ollama = self.payload("text", provider="ollama", base_url=self.url, model="m", **knobs)
+        await self.adapter.analyze(ollama)
+        path, _, body = self.requests[-1]
+        self.assertEqual(path, "/api/generate")
+        self.assertEqual({key: body["options"][key] for key in ("temperature", "top_k", "min_p", "seed")},
+                         {"temperature": 1.9, "top_k": 100, "min_p": 0.5, "seed": 12345}, "Ollama: under options")
+        self.assertEqual(body["options"]["num_predict"], 512)
+        self.answer = json.dumps({"shots": [{"start_s": 0, "end_s": 8, "action": "Alice walks."}]})
+        await module("ng.adapters.auto_direct").direct({"provider": ollama["provider"], "contexts": [],
+                                                          "director": {"idea": "Alice walks.", "project_seconds": 8}})
+        options = self.requests[-1][2]["options"]
+        self.assertEqual((options["temperature"], options["num_predict"]), (1.9, 2048), "the split's own token floor still wins")
+        await self.adapter.analyze(self.payload("text", **(knobs | {"fixed_seed": False})))
+        self.assertNotIn("seed", self.requests[-1][2], "an unticked Fixed seed stays out")
+
     async def test_split_and_build_reach_a_cloud_provider_like_analyze(self):
         # BUG-033/034: both indexed the local-only _PROVIDER_DEFAULTS and failed with KeyError: 'openrouter'.
         provider = self.payload(provider="openrouter")["provider"]

@@ -84,15 +84,17 @@ export function suggestionBox(S, actions) {
 }
 
 export function presetRow(S, actions) {
+  const save = h("button", { class: "h3c-btn", onclick: actions.savePreset, disabled: !S.presetName.trim() }, "Save");
+  // Typing does not redraw the card (the caret would jump), so the button follows the field itself.
   const name = h("input", { class: "h3c-in", style: { flex: "1 1 120px" }, value: S.presetName, placeholder: "Preset name", "aria-label": "Preset name",
-    oninput: (event) => actions.presetName(event.target.value) });
+    oninput: (event) => { actions.presetName(event.target.value); save.disabled = !event.target.value.trim(); } });
   const list = h("select", { class: "h3c-in", style: { flex: "1 1 120px" }, "aria-label": "Saved presets" },
     S.presets.length ? S.presets.map((value) => h("option", { value }, value)) : h("option", { value: "" }, "No presets yet"));
   list.value = S.presets.includes(S.presetName) ? S.presetName : S.presets[0] || "";
   const color = h("input", { type: "color", class: "h3c-swatch", value: S.accent, title: "Context colour", "aria-label": "Context colour",
     oninput: (event) => actions.set("color", event.target.value, false) });
   return h("div", { class: "h3c-row" }, h("span", { class: "h3c-lbl" }, "Preset"), name,
-    h("button", { class: "h3c-btn", onclick: actions.savePreset, disabled: !S.presetName.trim() }, "Save"), list,
+    save, list,
     h("button", { class: "h3c-btn", onclick: () => actions.loadPreset(list.value), disabled: !S.presets.length }, "Load"),
     h("span", { class: "h3c-lbl", style: { marginLeft: "6px" } }, "Color"), color,
     h("button", { class: "h3c-btn", onclick: actions.autoColor, title: "Pick the colour automatically" }, "Auto"));
