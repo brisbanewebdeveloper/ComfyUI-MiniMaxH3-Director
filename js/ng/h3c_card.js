@@ -2,7 +2,7 @@
 // the saved values; the card draws them, redraws on change and grows the node to its content so cards never overlap.
 import { h } from "./h3s_dom.js";
 import { ensureCardStyle } from "./h3c_style.js";
-import { studioUses, TEMPLATES } from "./h3c_model.js";
+import { studioUses, TEMPLATES, usableFields } from "./h3c_model.js";
 import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box } from "./h3c_parts.js";
 import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
@@ -155,7 +155,7 @@ function attach(node, media) {
       try {
         const data = await aiAction(app, api, "analyze", { media, widgets: values(node), provider }, controller.signal);
         if (JSON.stringify(values(node)) !== before) { say("The card changed while the AI was looking; its answer was discarded. Analyze again.", true); return; }
-        const fields = offeredFields(data.suggestion);
+        const fields = usableFields(media, offeredFields(data.suggestion));
         S.suggestion = Object.keys(fields).length ? { raw: data.suggestion, fields, why: reasonLine(data.suggestion), basis: before, model: provider.model } : null;
         if (!S.suggestion) say("The AI answered, but suggested nothing new.", true);
       } catch (error) { say(error.message === "AI action cancelled." ? "AI cancelled, nothing changed." : `AI failed: ${error.message}`, error.message !== "AI action cancelled."); }
@@ -164,7 +164,7 @@ function attach(node, media) {
     accept() {
       const suggestion = S.suggestion; S.suggestion = null;
       if (!suggestion || JSON.stringify(values(node)) !== suggestion.basis) { say("The card changed after the AI answered; analyze again.", true); return; }
-      applyValues(node, applyChanges(suggestion.raw, Object.keys(suggestion.fields)));
+      applyValues(node, applyChanges(suggestion.fields, Object.keys(suggestion.fields)));
       node.properties.ng_analysis = { fingerprint: analysisFingerprint(media, values(node)), model: suggestion.model };
       node.graph?.change?.(); say("Accepted the AI suggestion.");
     },

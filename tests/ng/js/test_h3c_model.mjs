@@ -55,4 +55,13 @@ import * as model from "../../../js/ng/h3c_model.js";
   assert.deepEqual(clearedAddress(""), {});
 }
 
+// An AI suggestion may only write roles the card's medium has; free text ("Establishing shot ...") never reaches a widget.
+{
+  assert.deepEqual(model.usableFields("image", { description: "A man.", content: "face", usage: "Establishing shot for character introduction." }),
+    { description: "A man.", content: "face" });
+  assert.deepEqual(model.usableFields("image", { usage: "Last frame" }), { usage: "last_frame" });
+  assert.deepEqual(model.usableFields("audio", { usage: "lock", content: "voice" }), { usage: "lock", content: "voice" });
+  assert.deepEqual(model.usableFields("image", { content: "voice" }), {}, "a picture cannot be a voice");
+}
+
 console.log("h3c model ok");

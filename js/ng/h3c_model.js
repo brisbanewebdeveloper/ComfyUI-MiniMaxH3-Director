@@ -23,6 +23,21 @@ export const KEEP_LEVELS = { identity: ["low", "medium", "high"], outfit: ["low"
 
 const FRAME_ROLES = ["first_frame", "last_frame", "keyframe", "storyboard"];
 
+// The analysis route keeps `usage` as free text (only the card knows its medium's roles). A suggested role or content
+// kind is kept only when it is one of this medium's keys or labels; anything else is dropped, never written to a widget.
+export function usableFields(media, fields) {
+  const pick = (list, value) => {
+    const wanted = String(value || "").trim().toLowerCase();
+    return (list || []).find(([key, label]) => key === wanted || label.toLowerCase() === wanted || key === wanted.replace(/[\s/-]+/g, "_"))?.[0];
+  };
+  const out = {};
+  if (fields.description) out.description = fields.description;
+  const content = pick(CONTENT[media], fields.content), usage = pick(USAGE[media], fields.usage);
+  if (content) out.content = content;
+  if (usage) out.usage = usage;
+  return out;
+}
+
 // One sentence under "Use as": what the role does in the Director's current mode, and a warning when it does nothing there.
 export function roleHint(media, role, mode) {
   const fl = mode === "fl2va";
