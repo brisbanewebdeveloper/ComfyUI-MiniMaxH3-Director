@@ -16,7 +16,9 @@ export function timelineView(S, actions) {
   const axis = Math.max(S.duration, S.plan?.total_s || 0);
   const pct = (seconds) => `${seconds / axis * 100}%`;
   const info = h("span", { class: "h3s-lbl" }, DEFAULT_HINT);
-  const grid = () => ticks(axis).map((t) => h("span", { class: "h3s-grid", style: { left: pct(t) } }));
+  const beyond = () => axis - S.duration > 0.01 ? h("span", { class: "h3s-beyond", style: { left: pct(S.duration), width: pct(axis - S.duration) },
+    title: `After the project end (${fmt(S.duration)}): H3 renders in fixed frame steps and delivers ${fmt(axis)}. Shots and audio end at ${fmt(S.duration)}.` }) : null;
+  const grid = () => [...ticks(axis).map((t) => h("span", { class: "h3s-grid", style: { left: pct(t) } })), beyond()].filter(Boolean);
   const lane = (name, track) => h("div", { class: "h3s-lane" }, name, track);
 
   function secondsAt(event, track) {

@@ -45,6 +45,8 @@ continues across the seam. A clip that runs past the project end is cut there an
 reported. Past the end of its file a clip simply has no more sound.
 `ref` clips are sent once as a reference to every part they touch. In FL2VA only `lock` is offered.
 A document without `audio` behaves exactly as before.
+The same audio card may lie on a lane and be bound to shots: both play. The lane clip keeps its own clock and mode;
+each shot binding starts the card's source at its shot, with the card's own role (lock, copy or a reference sent once).
 
 Validation: core tests in `tests/ng/test_audio_clips.py`; a GPU run (FL2VA Turbo, two parts, song locked at story
 1–7 s from file second 20) measured envelope correlation 0.97 at the intended place, best lag 1.00 s and 0.97 on

@@ -17,7 +17,8 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   assert.deepEqual(back.lanes, ["lane_a", "lane_b"], "empty lanes are kept");
   assert.equal(back.shots[1].text, "A turn.");
   assert.equal(model.writeProject({ shots: [], audio: [], lanes: [] }), "", "an empty project leaves the Prompt in charge");
-  assert.ok(model.readProject('{"format":"h3-director-shots","schema_version":1,"shots":[],"audio":[{"id":"x"}]}').error);
+  assert.deepEqual(model.readProject('{"format":"h3-director-shots","schema_version":1,"shots":[],"audio":[{"id":"x"}]}').skipped, ["x"],
+    "an invalid clip is named and left out (BUG-002), not an error for the whole document");
 }
 
 // Grid and formatting.
@@ -139,6 +140,26 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   assert.deepEqual(model.editSpoken([], 0, { text: "First." }).map((line) => [line.text, line.language]), [["First.", "English"]], "the first input creates the line");
   assert.deepEqual(model.editSpoken([a], 0, { text: "", speaker_id: "" }), [], "clearing the only line leaves the shot without dialogue");
   assert.equal(model.editSpoken([a, b], 0, { text: "", speaker_id: "" }).length, 2, "an emptied line among others stays until removed");
+}
+
+// BUG-002: one bad audio clip is left out on its own; the shots and the other clips stay editable.
+{
+  const shot = { id: "s1", start: 0, end: 4, text: "Walk.", media: [], spoken: [], locked_fields: [], draft: null };
+  const good = { schema_version: 1, id: "c1", context_id: "song", start: 0, end: 4, offset: 0, mode: "lock", lane: "l1" };
+  const text = JSON.stringify({ format: "h3-director-shots", schema_version: 1, shots: [shot],
+    audio: [good, { ...good, id: "bad", start: 5, end: 2 }, { ...good, start: 6, end: 8 }], audio_lanes: ["l1"] });
+  const project = model.readProject(text);
+  assert.equal(project.error, "");
+  assert.deepEqual([project.shots.map((s) => s.id), project.audio.map((c) => c.id), project.skipped], [["s1"], ["c1"], ["bad", "c1"]]);
+  assert.equal(model.readProject("{ broken").error.length > 0, true, "unreadable JSON is still an error that keeps the original");
+}
+
+// BUG-001: a shorter duration names what it removes and what it only shortens.
+{
+  const items = [{ id: "a", start: 0, end: 6 }, { id: "b", start: 6, end: 12 }, { id: "c", start: 12, end: 20 }];
+  const cut = model.trimToDuration(items, 10);
+  assert.deepEqual([cut.items.map((i) => [i.id, i.end]), cut.removed, cut.shortened], [[["a", 6], ["b", 10]], ["c"], ["b"]]);
+  assert.deepEqual(model.trimToDuration(items, 30), { items, removed: [], shortened: [] });
 }
 
 console.log("h3s model ok");

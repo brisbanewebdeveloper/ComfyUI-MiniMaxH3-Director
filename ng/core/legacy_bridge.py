@@ -142,6 +142,23 @@ def _lane_references(item, chunk, spans):
     return out[:1]
 
 
+def _shot_bound(item, chunk, windows, lane_modes, needs_reference):
+    """A card on an audio lane may also be bound to Shots; those bindings play too, each from the start of its Shot,
+    with the card's own role (the scoped usage also carries the roles its lane clips added)."""
+    if not windows or item.id not in windows:
+        return []
+    usage = [u for u in item.effective_usage if u in _AUDIO_RETENTION]
+    usage = next(iter([u for u in usage if u not in lane_modes] or usage), "sound_reference")
+    if usage in ("copy", "lock"):
+        return timed_segments(item, chunk, {item.id: windows[item.id]}, _AUDIO_RETENTION[usage])
+    window_start = chunk.story_start_f - chunk.head_frames
+    if not needs_reference or not any(start < chunk.story_end_f and end > window_start for start, end, _ in windows[item.id]):
+        return []
+    source_start, available = source_window(item)
+    return [{"type": "audio", "audioFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": available if available is not None else 48,
+             "trimStart": source_start, "retention": _AUDIO_RETENTION[usage], "ng_item": item.id}]
+
+
 def _audio_segments(context, chunk, voices):
     segments = []
     used = {v.id for v in voices.values()}
@@ -154,7 +171,8 @@ def _audio_segments(context, chunk, voices):
             for mode in ("lock", "copy"):
                 if item.id in lanes[mode]:
                     segments.extend(timed_segments(item, chunk, lanes[mode], _AUDIO_RETENTION[mode]))
-            segments.extend(_lane_references(item, chunk, lanes["ref"].get(item.id, ())))
+            references = _lane_references(item, chunk, lanes["ref"].get(item.id, ()))
+            segments.extend(references + _shot_bound(item, chunk, windows, {m for m in ("lock", "copy") if item.id in lanes[m]}, not references))
             continue
         usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION), None)
         if usage is None:

@@ -109,6 +109,15 @@ class Placement(unittest.TestCase):
         self.assertIn(("audio_clip_after_end", "a2"), codes)
         self.assertIn(("audio_clip_unknown", "a3"), codes)
 
+    def test_a_laned_card_bound_to_a_shot_plays_in_both_places(self):
+        bound = {"id": "s1", "start": 5, "end": 8, "text": "She sings.", "media": [{"schema_version": 1, "context_id": "song", "role": "context"}],
+                 "spoken": [], "locked_fields": [], "draft": None}
+        result = plan([clip("a1", "song", 0, 3, "lock")], seconds=8, items=(song(usage=("lock",)),), shots=[bound])
+        self.assertEqual(sorted(spans(result.compiled[0], "lock")), [(0, 72, 0), (120, 72, 0)], "lane clip and shot binding, each on its own clock")
+        result = plan([clip("a1", "song", 0, 3, "lock")], seconds=8, items=(song(),), shots=[bound])
+        self.assertEqual(spans(result.compiled[0], "lock"), [(0, 72, 0)])
+        self.assertEqual(len(result.compiled[0].of_kind("audio")), 1, "the shot binding's reference reaches the chunk once")
+
     def test_a_laned_card_is_not_also_sent_globally(self):
         result = plan([clip("a1", "song", 0, 4, "lock")])
         self.assertEqual([bool(c.of_kind("audio")) or bool(c.of_kind("lock")) for c in result.compiled], [True, False])

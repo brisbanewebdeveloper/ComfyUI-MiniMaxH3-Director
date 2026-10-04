@@ -83,6 +83,8 @@ function shotPanel(S, actions, shot) {
           onclick: () => actions.unassign(shot.id, binding.context_id) }, icon("close", 14))))),
     h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, h("span", { class: "h3s-lbl" }, "Spoken (optional, used word for word, in this order)"),
       spokenLines(S, actions, shot),
+      S.values.mode === "fl2va" ? h("span", { class: "h3s-lbl" }, "First / last frame mode has no character references, so a line is spoken by a described voice, "
+        + "not by a character from a picture. Switch the mode to References to let a character speak.") : null,
       shot.spoken.length ? h("button", { class: "h3s-btn small", style: { alignSelf: "flex-start" }, onclick: () => actions.addSpoken(shot.id) }, icon("plus", 14), "Spoken line") : null),
     h("span", { class: "h3s-lbl" }, `In: ${chunks.join(", ") || "–"}`));
 }

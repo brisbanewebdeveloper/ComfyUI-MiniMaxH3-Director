@@ -15,11 +15,20 @@ function usageOf(widgets, media) {
   return (Array.isArray(usage) ? usage : []).filter(Boolean).length ? usage.filter(Boolean) : [{ image: "reference", video: "motion", audio: "voice", text: "style" }[media]];
 }
 
+// The id ng/core/context_build.py gives a card whose Context ID field is empty: media and a slug of its label.
+export function contextId(widgets, media) {
+  if (widgets.context_id) return String(widgets.context_id);
+  const name = String(widgets.name || "").trim(), source = String(widgets[media] || "");
+  const file = source.replace(" [input]", "").trim().split(/[\\/]/).pop().replace(/\.[^.]*$/, "");
+  const label = name || (media === "text" ? source.slice(0, 24).trim() || "note" : file || media);
+  return `${media}_${label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "item"}`;
+}
+
 // One plain record per connected Context node; the cards, panels and timeline all read these.
 export function contentEntries(raw, colorOf) {
   return raw.map((entry) => {
     const usage = usageOf(entry.widgets, entry.media);
-    return { id: entry.widgets.context_id || entry.widgets.name, media: entry.media, name: entry.widgets.name || KIND[entry.media],
+    return { id: contextId(entry.widgets, entry.media), media: entry.media, name: entry.widgets.name || KIND[entry.media],
       source: entry.widgets[entry.media] || "", color: colorOf(entry), bg: BG[entry.media], kind: KIND[entry.media], usage,
       role: usage.map((value) => USAGE[value] || value).join(", "), raw: entry };
   });

@@ -132,6 +132,31 @@ function recorder() {
   assert.equal(prompt.button("AI: split into shots").disabled, true, "no AI without a loader");
 }
 
+// BUG-003: with an empty Context ID field the Studio uses the id the Python side builds (tests/ng/test_context_ids.py).
+{
+  const { contextId } = await import("../../../js/ng/h3s_content.js");
+  assert.equal(contextId({ context_id: "ctx_1", name: "Mage" }, "image"), "ctx_1");
+  assert.equal(contextId({ context_id: "", name: "Mage Två" }, "image"), "image_mage_tv");
+  assert.equal(contextId({ context_id: "", name: "", image: "people/My Pic.png [input]" }, "image"), "image_my_pic");
+  assert.equal(contextId({ context_id: "", name: "", text: "  Hello, world of H3 and more text here" }, "text"), "text_hello_world_of_h3_and");
+  assert.equal(contextId({ context_id: "", name: "", audio: "" }, "audio"), "audio_audio");
+}
+
+// BUG-009: First / last frame mode explains why no character can speak.
+{
+  const [, panel] = sideView(state({ selected: { kind: "shot", id: "a" }, values: { mode: "fl2va" } }), recorder().actions);
+  assert.ok(panel.innerText.includes("First / last frame mode has no character references"));
+  const [, refs] = sideView(state({ selected: { kind: "shot", id: "a" } }), recorder().actions);
+  assert.ok(!refs.innerText.includes("has no character references"));
+}
+
+// BUG-008: the strip after the project end is marked as the frame grid's extra.
+{
+  const view = timelineView(state({ values: { project_seconds: 10 }, plan: { ...plan, total_s: 10.125 } }), recorder().actions);
+  assert.ok(view.byClass("h3s-beyond").length > 0);
+  assert.ok(!timelineView(state(), recorder().actions).byClass("h3s-beyond").length, "no strip when plan and project end agree");
+}
+
 // Older NG workflows put an empty trailing value on the first widget added later; it falls back to its default.
 {
   globalThis.window = { comfyAPI: { app: { app: { registerExtension() {} } }, api: { api: {} } } };

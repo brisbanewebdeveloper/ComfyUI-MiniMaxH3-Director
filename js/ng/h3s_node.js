@@ -33,7 +33,10 @@ function followRenames(node) {
   const idea = renameReferences(now.idea || "", previous, entries);
   if (idea !== (now.idea || "")) changes.idea = idea;
   const project = readProject(now.shots || "");
-  if (!project.error && project.shots.length) {
+  if (!project.error && !(now.shots || "").trimStart().startsWith("{")) {
+    const text = renameReferences(now.shots || "", previous, entries);
+    if (text !== (now.shots || "")) changes.shots = text;
+  } else if (!project.error && project.shots.length) {
     const shots = project.shots.map((shot) => ({ ...shot, text: renameReferences(shot.text, previous, entries) }));
     if (shots.some((shot, index) => shot.text !== project.shots[index].text)) changes.shots = writeProject({ ...project, shots });
   }

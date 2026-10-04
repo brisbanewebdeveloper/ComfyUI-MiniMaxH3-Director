@@ -22,26 +22,24 @@ function uid(prefix) {
   return `${prefix}_${globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2)}`;
 }
 
-function readClip(clip) {
-  const ok = clip && clip.schema_version === 1 && typeof clip.id === "string" && clip.id && typeof clip.context_id === "string"
+function validClip(clip) {
+  return clip && clip.schema_version === 1 && typeof clip.id === "string" && clip.id && typeof clip.context_id === "string"
     && clip.context_id && [clip.start, clip.end].every((v) => typeof v === "number" && Number.isFinite(v) && v >= 0)
-    && clip.end > clip.start && CLIP_MODES.includes(clip.mode ?? "ref");
-  if (!ok) throw Error("Invalid audio clip.");
-  return { offset: 0, mode: "ref", lane: "", ...clip };
+    && clip.end > clip.start && CLIP_MODES.includes(clip.mode ?? "ref") && (clip.offset === undefined || (Number.isFinite(clip.offset) && clip.offset >= 0));
 }
 
 // shots: the Story editor's records; audio: lane clips; lanes: lane order, including empty lanes.
+// skipped: ids of audio clips that are invalid or repeat an id; they are left out, the rest stays editable.
 export function readProject(text) {
   const story = readStory(text || "");
-  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], error: story.error };
-  try {
-    const data = JSON.parse(text);
-    const audio = (data.audio || []).map(readClip);
-    const lanes = [...new Set([...(data.audio_lanes || []), ...audio.map((clip) => clip.lane)])].filter(Boolean);
-    return { shots: story.shots, audio, lanes, error: "" };
-  } catch (error) {
-    return { shots: [], audio: [], lanes: [], error: `${error.message} Original data retained.` };
+  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], skipped: [], error: story.error };
+  const data = JSON.parse(text), audio = [], skipped = [], seen = new Set();
+  for (const clip of Array.isArray(data.audio) ? data.audio : []) {
+    if (validClip(clip) && !seen.has(clip.id)) { seen.add(clip.id); audio.push({ offset: 0, mode: "ref", lane: "", ...clip }); }
+    else skipped.push(typeof clip?.id === "string" && clip.id ? clip.id : "(no id)");
   }
+  const lanes = [...new Set([...(data.audio_lanes || []), ...audio.map((clip) => clip.lane)])].filter(Boolean);
+  return { shots: story.shots, audio, lanes, skipped, error: "" };
 }
 
 export function writeProject({ shots, audio, lanes }) {
@@ -153,6 +151,13 @@ export function clipParts(clip, chunks) {
     const a = Math.max(clip.start, chunk.start_s), b = Math.min(clip.end, chunk.end_s);
     return { index: chunk.index, story: [a, b], file: [clip.offset + a - clip.start, clip.offset + b - clip.start] };
   });
+}
+
+// A shorter project: what is cut away (ids) and what is only shortened, so the Studio can name it and offer Undo.
+export function trimToDuration(items, total) {
+  const kept = clipToFit(items, total), ids = new Set(kept.map((item) => item.id));
+  return { items: kept, removed: items.filter((item) => !ids.has(item.id)).map((item) => item.id),
+    shortened: kept.filter((item) => item.end < items.find((old) => old.id === item.id).end).map((item) => item.id) };
 }
 
 export function clipToFit(items, total) {

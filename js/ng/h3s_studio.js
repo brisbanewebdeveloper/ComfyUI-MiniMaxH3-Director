@@ -2,7 +2,7 @@
 // loading and queueing stay ComfyUI's; the shot document keeps shots, audio clips and lanes in the shots widget.
 import { h, icon } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, editSpoken, addSpoken, removeSpoken, sorted, clipToFit, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, trimToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -26,6 +26,8 @@ function load(S) {
   S.ai = Boolean(connectedProvider(S.node));
   const project = readProject(S.values.shots || "");
   S.docError = project.error;
+  if (project.skipped?.length) S.notice = { error: true, text: `The saved data has ${project.skipped.length} invalid audio clip(s) (${project.skipped.join(", ")}). `
+    + "They are left out here and removed with your next edit; everything else is kept." };
   Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes });
 }
 
@@ -168,11 +170,23 @@ export function openStudio(node, app, api) {
       const loras = {};
       if (on) for (const [name, kind] of [["turbo_lora_fl2va", "fl2v"], ["turbo_lora_ref2va", "ref2v"]])
         if (S.values[name] === "none" || !S.values[name]) loras[name] = preferredTurboLora(S.options[name], kind);
-      write({ turbo: on, steps: on ? 4 : 20, ...loras }); setWidget("turbo", on);
+      // Turbo needs 4 steps; switching it off brings back the step count used before, not a fixed 20.
+      if (on && !S.values.turbo) node.properties.ng_steps_before_turbo = S.values.steps;
+      const steps = on ? 4 : Number(node.properties.ng_steps_before_turbo) || 20;
+      if (!on) delete node.properties.ng_steps_before_turbo;
+      write({ turbo: on, steps, ...loras }); setWidget("turbo", on);
     },
     setDuration(seconds) {
-      S.shots = clipToFit(S.shots, seconds); S.audio = clipToFit(S.audio, seconds); S.ghosts = [];
-      write({ project_seconds: seconds }); save(); render();
+      const before = { shots: S.shots, audio: S.audio, seconds: S.values.project_seconds, names: labels() };
+      const shots = trimToDuration(S.shots, seconds), audio = trimToDuration(S.audio, seconds);
+      S.shots = shots.items; S.audio = audio.items; S.ghosts = [];
+      write({ project_seconds: seconds }); save();
+      const cut = [shots.removed.length && `removed ${shots.removed.map((id) => before.names.get(id)).join(", ")}`,
+        shots.shortened.length && `shortened ${shots.shortened.map((id) => before.names.get(id)).join(", ")}`,
+        (audio.removed.length || audio.shortened.length) && `cut ${audio.removed.length + audio.shortened.length} audio clip(s)`].filter(Boolean);
+      if (cut.length) S.notice = { text: `Duration ${fmt(seconds)}: ${cut.join("; ")}.`, undo: () => {
+        S.shots = before.shots; S.audio = before.audio; write({ project_seconds: before.seconds }); save(); render(); } };
+      render();
     },
     setPreset(value) {
       if (value === "auto") write({ width: 0, height: 0 });
@@ -235,7 +249,7 @@ export function openStudio(node, app, api) {
       h("span", { class: "h3s-row", style: { gap: "6px" }, title: "Green when an H3 AI Loader is connected to the Context Connector" },
         h("span", { class: "h3s-swatch", style: { background: S.ai ? "#5BD08A" : "#6B7383", borderRadius: "50%" } }), S.ai ? "AI connected" : "AI off"),
       h("button", { class: "h3s-btn", onclick: () => actions.toggle("promptOpen") }, icon("doc"), S.promptOpen ? "Hide prompts" : "Show prompts"),
-      h("button", { class: "h3s-btn go", disabled: !ready, title: ready ? "Queues the connected workflow in ComfyUI" :
+      h("button", { class: "h3s-btn go", disabled: !ready || Boolean(S.planError), title: S.planError ? `The plan failed: ${S.planError}` : ready ? "Queues the connected workflow in ComfyUI" :
         "Connect Director Output to H3 Render Sequence or a sampler and a video output", onclick: generate }, icon("play"), "Generate"));
   }
   function generate() {
@@ -277,7 +291,8 @@ export function openStudio(node, app, api) {
       h("span", {}, S.busy === "split" ? "AI is splitting the prompt into shots …" : "AI is writing a text for this shot …"),
       h("span", { class: "h3s-ai-clock h3s-muted" }, aiClock()), h("button", { class: "h3s-btn ghost small", onclick: actions.cancelAI }, "Cancel")));
     if (S.notice) items.push(h("div", { class: S.notice.error ? "h3s-toast error" : "h3s-toast", role: S.notice.error ? "alert" : "status" },
-      h("span", {}, S.notice.text), h("button", { class: "h3s-btn ghost small", title: "Dismiss", "aria-label": "Dismiss",
+      h("span", {}, S.notice.text), S.notice.undo ? h("button", { class: "h3s-btn small", onclick: () => { const undo = S.notice.undo; S.notice = null; undo(); } }, "Undo") : null,
+      h("button", { class: "h3s-btn ghost small", title: "Dismiss", "aria-label": "Dismiss",
         onclick: () => { S.notice = null; render(); } }, icon("close", 14))));
     if (S.toast) items.push(h("div", { class: "h3s-toast", role: "status" }, S.toast));
     return items.length ? h("div", { class: "h3s-float" }, items) : null;
