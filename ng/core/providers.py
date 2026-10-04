@@ -32,7 +32,7 @@ DEFAULT_SETTINGS = {
 # The help text behind every "?". English, because that is what the node's own tooltips use and
 # what the model sees; one sentence, saying what the field is for and not how it works.
 SETTING_HELP = {
-    "max_tokens": "Upper bound for the answer length. A short description needs few tokens.",
+    "max_tokens": "Upper bound for the answer length. A short description needs few tokens; splitting into shots always allows at least 2048.",
     "seed": "Start value for the model's random choice. The same seed with the same settings usually gives the same answer.",
     "fixed_seed": "Use the seed above. Without this the provider picks a new one every time and the answer changes.",
     "timeout_seconds": "How long one analysis request may take before it is given up.",

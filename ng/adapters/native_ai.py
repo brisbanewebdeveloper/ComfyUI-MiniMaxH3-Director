@@ -6,11 +6,28 @@ from comfy_execution.graph_utils import GraphBuilder
 from ... import minimax_enhance as enhance
 from ... import minimax_media as media
 from ..core.analysis import analysis_prompt, parse_suggestion
-from ..core.auto_direct import direction_prompt, finish_direction
+from ..core.auto_direct import direct_tokens, direction_prompt, finish_direction
 from ..core.fields import need_dict, read_number, read_str
 from ..core.system_prompts import framed, for_node
 from . import h3_prompt
 from .ai_provider import NativeAIProvider
+
+# MiniMax H3's own text encoder is cut to 50 of Qwen3-VL-32B's 64 layers and ships no final norm and no lm_head
+# (ComfyUI says so in Qwen3VL_32BConfig). It turns a prompt into conditioning but cannot write text: a job on it ran
+# about ten minutes and answered with commas. Name it before the job instead of letting it run into the timeout.
+CONDITIONING_ONLY = ("This CLIP is MiniMax H3's conditioning encoder (Qwen3-VL-32B cut to 50 layers, no output head). "
+                     "It cannot write text. Connect a generative model to the AI Loader instead, e.g. Load CLIP with "
+                     "qwen3vl_4b or qwen3vl_8b (type stable_diffusion), or switch the AI Loader to Local (Ollama).")
+
+
+def conditioning_only(clip):
+    """True for a loaded CLIP that is H3's conditioning encoder."""
+    model = getattr(clip, "cond_stage_model", None)
+    return any(kind.__name__ == "MiniMaxH3TEModel" for kind in type(model).__mro__)
+
+
+def conditioning_file(name, model_type):
+    return model_type == "minimax" or "minimax_h3" in name.lower()
 
 
 def request_prompt(action, payload, config):
@@ -52,8 +69,13 @@ def native_request(provider, action, request_json):
     graph = GraphBuilder()
     clip = provider.clip
     if provider.local_model:
+        if conditioning_file(provider.local_model, provider.local_type):
+            raise ValueError(CONDITIONING_ONLY)
         clip = graph.node("CLIPLoader", clip_name=provider.local_model, type=provider.local_type, device="default").out(0)
-    inputs = dict(clip=clip, prompt=prompt, max_length=provider.config.max_tokens,
+    # A connected clip is only a link here; whether it is the conditioning encoder is known once it is loaded.
+    clip = graph.node("NGAICheckEncoder", clip=clip).out(0)
+    max_length = direct_tokens(provider.config.max_tokens) if action == "direct" else provider.config.max_tokens
+    inputs = dict(clip=clip, prompt=prompt, max_length=max_length,
                   sampling_mode="off", thinking=False, use_default_template=True,
                   # The role comes from system_prompts.py and the schema framing from there too, so
                   # the two cannot be edited apart. Auto Direct plans, an Analyze describes: the same

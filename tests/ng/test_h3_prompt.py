@@ -1,3 +1,4 @@
+import asyncio
 import json
 import unittest
 
@@ -110,6 +111,25 @@ class H3PromptAction(unittest.TestCase):
         # goes into the prompt, so the JSON framing would turn it into something to parse back out.
         self.assertIn("Ein Mädchen spielt.", native_ai.request_prompt("prompt", self.answer(), object())[0])
         self.assertNotIn("JSON schema", native_ai.request_prompt("prompt", self.answer(), object())[0])
+
+    def test_the_http_build_takes_the_short_names_the_card_sends(self):
+        # The card sends "global"/"storyboard"; the server once checked only the long names and refused every build.
+        legacy, sent = h3.legacy, []
+        async def generate(images, prompt, provider, url, model, **options):
+            sent.append(options["system_prompt"])
+            return "A girl plays with a red ball."
+        original, legacy.vlm_generate = legacy.vlm_generate, generate
+        try:
+            provider = {"schema_version": 1, "provider": "ollama", "base_url": "", "model": "m", "api_key_env": ""}
+            for preset in ("global", "storyboard", h3.PRESETS[0]):
+                with self.subTest(preset=preset):
+                    answer = asyncio.run(h3.build({"note": "Ein Mädchen spielt.", "seconds": 8, "preset": preset, "provider": provider}))
+                    self.assertIn("red ball", answer["prompt"])
+                    self.assertEqual(sent[-1], h3.enhance.system_for(h3.preset_of(preset), 0))
+            with self.assertRaisesRegex(ValueError, "Choose"):
+                asyncio.run(h3.build({"note": "x", "preset": "typo", "provider": provider}))
+        finally:
+            legacy.vlm_generate = original
 
 
 if __name__ == "__main__":

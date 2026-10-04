@@ -219,6 +219,8 @@ Without an AI connection everything works manually; the Studio's AI buttons are 
 **Local** chooses an installed text encoder or a running Ollama/LM Studio server, **CLIP / Encoder** uses a connected generative
 Load CLIP, **API** and **Custom** use compatible endpoints. See [native AI setup](NG-native-ai.md).
 Credentials come from a named server environment variable; workflow files store the variable name, not the secret.
+H3's own conditioning encoder (`qwen3vl_32b_minimax_h3_*`, 50 of 64 layers, no output head) cannot write text; an AI job on it stops at once and says so. Use e.g. `qwen3vl_4b_fp8_scaled` (type stable_diffusion) or Ollama.
+Splitting into shots always allows at least 2048 tokens, because a shot list cut off at a lower **Max tokens** is unusable.
 
 **Analyze** on a Context makes one explicit request; **Apply suggestion** changes description and content choices only.
 In the Studio, AI proposals for shots are reviewed before they change anything ([shot drafts](NG-shot-drafts.md)).

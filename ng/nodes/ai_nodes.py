@@ -2,7 +2,7 @@
 from comfy_api.latest import io
 
 from ..adapters.ai_media import read_media
-from ..adapters.native_ai import native_request, parse_result
+from ..adapters.native_ai import CONDITIONING_ONLY, conditioning_only, native_request, parse_result
 from ..adapters.probe import file_stamp
 from .provider_node import NGAI
 from .context_nodes import CATEGORY
@@ -20,6 +20,20 @@ class NGAIRequest(io.ComfyNode):
     def execute(cls, ai_provider, action, request_json):
         expanded, result = native_request(ai_provider, action, request_json)
         return io.NodeOutput(result, expand=expanded)
+
+
+class NGAICheckEncoder(io.ComfyNode):
+    """Stops an AI job at once when the connected CLIP cannot generate text."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="NGAICheckEncoder", display_name="H3 AI Encoder Check", category=CATEGORY + "/Technical",
+                         inputs=[io.Clip.Input("clip")], outputs=[io.Clip.Output()])
+
+    @classmethod
+    def execute(cls, clip):
+        if conditioning_only(clip):
+            raise ValueError(CONDITIONING_ONLY)
+        return io.NodeOutput(clip)
 
 
 class NGAIReadMedia(io.ComfyNode):
@@ -51,4 +65,4 @@ class NGAIResult(io.ComfyNode):
         return io.NodeOutput(text, ui={"ng_suggestion": [parse_result(text, action, request_json)]})
 
 
-NODES = [NGAIRequest, NGAIReadMedia, NGAIResult]
+NODES = [NGAIRequest, NGAICheckEncoder, NGAIReadMedia, NGAIResult]

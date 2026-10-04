@@ -1,7 +1,7 @@
 """Explicit Auto Direct uses the existing provider transport and returns a proposal."""
 from ... import minimax_media as legacy
 from ..core.analysis import ProviderConfig
-from ..core.auto_direct import direction_prompt, finish_direction
+from ..core.auto_direct import direct_tokens, direction_prompt, finish_direction
 from ..core.fields import need_dict, read_number, read_list, read_str
 
 
@@ -19,7 +19,7 @@ async def direct(payload):
     url = legacy.normalize_base_url(config.base_url, defaults["url"])
     try:
         answer = await legacy.vlm_generate([], prompt, config.provider, url, config.model or defaults["model"],
-                                          api_key=key, max_tokens=config.max_tokens,
+                                          api_key=key, max_tokens=direct_tokens(config.max_tokens),
                                           timeout=config.timeout_seconds, keep_alive=config.keep_alive)
         return finish_direction(answer, seconds, contexts, current)
     except (ValueError, legacy.VLMError) as error:

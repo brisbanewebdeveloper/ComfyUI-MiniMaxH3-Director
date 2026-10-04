@@ -58,7 +58,9 @@ async def build(payload):
     note = read_str(payload, "note", "request", "")
     seconds = float(read_number(payload, "seconds", "request", DEFAULT_SECONDS, minimum=0.1))
     preset = read_str(payload, "preset", "request", enhance.PRESET_GLOBAL)
-    if preset not in PRESETS:
+    # The card sends the short name ("global"); the enhance node's full name is accepted as well.
+    # Checking only the full names refused every build the card asked for.
+    if preset not in PRESETS and preset not in SHORT:
         raise ValueError("Choose %s or %s." % PRESETS)
     preset = preset_of(preset)
     prompt = note_prompt(note, seconds, preset)

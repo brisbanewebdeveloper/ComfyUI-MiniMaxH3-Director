@@ -5,6 +5,14 @@ import re
 from . import fields
 from .shot_draft import current_records, draft_prompt, parse_draft
 
+# A shot list with action, camera and sung or spoken lines runs past 512 tokens for one 10 s scene, and a JSON
+# answer cut off in the middle is worth nothing. Auto Direct therefore never asks for less than this.
+DIRECT_TOKENS = 2048
+
+
+def direct_tokens(max_tokens):
+    return max(max_tokens, DIRECT_TOKENS)
+
 
 def direction_prompt(idea, seconds, contexts, current_shots=""):
     meanings = [{"name": entry["widgets"].get("name", ""), "media": entry["media"],
@@ -64,10 +72,15 @@ def parse_direction(text, seconds, contexts=None, current_shots=""):
     if not isinstance(text, str):
         raise ValueError("Auto Direct needs a JSON text response.")
     if text.strip().startswith("```"):
-        text = "\n".join(text.strip().splitlines()[1:-1])
+        # A cut-off answer has no closing fence; its last line is content, not the fence.
+        lines = text.strip().splitlines()[1:]
+        text = "\n".join(lines[:-1] if lines and lines[-1].startswith("```") else lines)
     try:
         data = fields.need_dict(json.loads(text), "direction")
     except json.JSONDecodeError:
+        if text.lstrip().startswith("{") and not text.rstrip().endswith("}"):
+            raise ValueError("The AI's answer stopped before its JSON was complete. Raise Max tokens on the AI Loader "
+                             "and try again.") from None
         raise ValueError("The AI did not return valid JSON. Retry with a generative model.") from None
     records = current_records(current_shots, seconds)
     if records:

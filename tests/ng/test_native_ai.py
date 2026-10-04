@@ -33,8 +33,15 @@ class NativeAI(unittest.TestCase):
         self.assertTrue(self.nodes["NGAIRequest"].GET_SCHEMA().enable_expand)
         job = self.nodes["NGAIRequest"].execute(ai_provider=self.provider(), action="analyze", request_json=self.payload())
         kinds = {value["class_type"]: value["inputs"] for value in job.expand.values()}
-        self.assertEqual(kinds["TextGenerate"]["clip"], ["encoder", 0])
+        # Generate Text reads the clip through the encoder check, which reads the connected link.
+        self.assertEqual(kinds["NGAICheckEncoder"]["clip"], ["encoder", 0])
+        check = next(key for key, value in job.expand.items() if value["class_type"] == "NGAICheckEncoder")
+        self.assertEqual(kinds["TextGenerate"]["clip"], [check, 0])
         self.assertEqual(kinds["TextGenerate"]["max_length"], 256)
+        direct = json.dumps({"director": {"idea": "A walk.", "project_seconds": 8}, "contexts": []})
+        job = self.nodes["NGAIRequest"].execute(ai_provider=self.provider(), action="direct", request_json=direct)
+        self.assertEqual(next(v["inputs"]["max_length"] for v in job.expand.values() if v["class_type"] == "TextGenerate"), 2048,
+                         "a shot list needs room; Auto Direct never asks for less than 2048")
         self.assertEqual(kinds["TextGenerate"]["sampling_mode"], "off")
         self.assertIn("Slow camera", kinds["TextGenerate"]["prompt"])
         self.assertIn("NGAIResult", kinds)
@@ -52,6 +59,24 @@ class NativeAI(unittest.TestCase):
         # Neither a clip nor a chosen encoder: the card cannot do anything, and must say so.
         with self.assertRaisesRegex(ValueError, "Connect Load CLIP"):
             self.provider(clip=None, source="clip", local_model="")
+
+    def test_the_h3_conditioning_encoder_is_refused_before_it_runs_into_the_timeout(self):
+        """H3's 32B file has 50 of 64 layers and no output head: it ran ten minutes and wrote commas."""
+        check = self.nodes["NGAICheckEncoder"]
+        minimax = module("ng.adapters.native_ai")
+        class MiniMaxH3TEModel: pass
+        class MiniMaxH3TEModel_(MiniMaxH3TEModel): pass
+        class Qwen3VLModel: pass
+        class Clip:
+            def __init__(self, model): self.cond_stage_model = model
+        h3, qwen = Clip(MiniMaxH3TEModel_()), Clip(Qwen3VLModel())
+        with self.assertRaisesRegex(ValueError, "conditioning encoder.*cannot write text"):
+            check.execute(clip=h3)
+        self.assertIs(check.execute(clip=qwen).args[0], qwen)
+        self.assertTrue(minimax.conditioning_file("MiniMax-H3/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "stable_diffusion"))
+        provider = self.provider(clip=None, local_model="qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors", local_type="minimax")
+        with self.assertRaisesRegex(ValueError, "qwen3vl_4b"):
+            self.nodes["NGAIRequest"].execute(ai_provider=provider, action="prompt", request_json=json.dumps({"note": "x"}))
 
     def test_a_connected_clip_wins_over_a_leftover_model_name(self):
         """Choosing an encoder once and connecting Load CLIP later must not leave two candidates."""

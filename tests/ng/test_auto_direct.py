@@ -62,6 +62,17 @@ class SceneSuggestion(unittest.TestCase):
             with self.assertRaises(ValueError):
                 direction.parse_direction(answer, 8)
 
+    def test_an_answer_cut_off_by_max_tokens_says_so(self):
+        """512 tokens ended a real 10 s shot list mid-sentence; "not valid JSON" sent the user looking for another model."""
+        whole = json.dumps(self.answer())
+        for cut in (whole[:len(whole) // 2], "```json\n" + whole[:-5]):
+            with self.subTest(cut=cut[-20:]), self.assertRaisesRegex(ValueError, "Raise Max tokens"):
+                direction.parse_direction(cut, 8)
+        with self.assertRaisesRegex(ValueError, "generative model"):
+            direction.parse_direction(",,,,,,", 8)
+        self.assertEqual(direction.direct_tokens(512), 2048)
+        self.assertEqual(direction.direct_tokens(4096), 4096)
+
     def test_prompt_sends_meanings_without_local_file_paths_or_credentials(self):
         context = {"media": "image", "widgets": {"name": "Alice", "description": "a woman", "image": "private/file.png", "usage": "reference"}}
         prompt = direction.direction_prompt("She walks.", 8, [context])

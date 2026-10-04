@@ -35,7 +35,7 @@ class Registration(unittest.TestCase):
 
     def test_technical_nodes_keep_ids_in_one_named_category(self):
         technical = ("NGDirector", "NGChunkConditioning", "NGCollect", "NGDirectorStudio", "NGRenderSequence",
-                     "NGChunkNoise", "NGProjectChunks", "NGAIRequest", "NGAIReadMedia", "NGAIResult")
+                     "NGChunkNoise", "NGProjectChunks", "NGAIRequest", "NGAICheckEncoder", "NGAIReadMedia", "NGAIResult")
         for node_id in technical:
             schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
             self.assertEqual(schema.category, "MiniMax H3/NG/Technical", node_id)
