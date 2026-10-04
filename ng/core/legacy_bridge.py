@@ -75,7 +75,7 @@ def _slot(item, voices, images):
     note = retention_note(item.options)
     if len(images) > 1 and not note:
         note = "Preserve the base identity; linked references control only their stated properties."
-    return {"images": [{"name": image.source, "ng_item": image.id} for image in images],
+    return {"images": [{"name": image.source, "fileName": image.name, "ng_item": image.id} for image in images],
             "description": item.description, "shortName": item.name, "kind": _kind(item),
             "retention": _RETENTION[item.preserve], "retentionNote": note,
             "voice": {"audioFile": voice.source, "fileName": voice.name} if voice else None}

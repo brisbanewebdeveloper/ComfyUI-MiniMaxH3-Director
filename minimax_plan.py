@@ -1214,6 +1214,8 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
     raw_slots = tdata.get("subjects")
     if not isinstance(raw_slots, list):
         raw_slots = tdata.get("characters", []) or []
+    # Named below like the clips: a tenth figure or picture used to vanish in silence.
+    dropped_pictures = [info.get("shortName") or info.get("fileName") or "a subject" for info in raw_slots[MAX_SUBJECT_SLOTS:]]
     for info in raw_slots[:MAX_SUBJECT_SLOTS]:
         images_list = info.get("images", []) or []
         legacy_b64 = info.get("imageB64", "")
@@ -1285,11 +1287,10 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
 
     if ref_mode_on:
         for slot_idx, slot in enumerate(subject_slots):
-            if not slot["images"] or len(ref_image_slots) >= MAX_REF_IMAGES:
-                continue
             for img in slot["images"]:
                 if len(ref_image_slots) >= MAX_REF_IMAGES:
-                    break
+                    dropped_pictures.append(img.get("fileName") or slot.get("short_name") or img.get("name") or "a picture")
+                    continue
                 ref_image_slots.append({"source": "char", "slot": slot_idx, "image": img})
 
         # Images arriving through the `ref_images` input used to be numbered and never
@@ -1543,6 +1544,8 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
     for kind, cap, seg in over_cap:
         ref_warnings.append("H3 takes at most %d reference %s clips; '%s' was dropped."
                             % (cap, kind, seg_name(seg)))
+    for name in (dropped_pictures if ref_mode_on else ()):
+        ref_warnings.append("H3 takes at most %d reference pictures; '%s' was dropped." % (MAX_REF_IMAGES, name))
 
     # Parked audio gets no warning: being a reference and not a soundtrack is the whole point
     # of parking it, and a line that fires on every timeline of a kind is how a warnings area

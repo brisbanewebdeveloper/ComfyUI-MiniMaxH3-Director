@@ -80,8 +80,10 @@ def _issues(context, chunk, result, continuity):
            if not (resumed and "has no spoken line" in text)]
     for item in context.items:
         out.extend(check_item(item))
-    # A manual prompt replaces the generated one, so a missing idea or shot text is no gap then.
-    if not context.prompt_override.strip() and not context.idea.strip() and not any(
+    # A manual prompt replaces the generated one, so a missing idea or shot text is no gap then; nor is it when a Text
+    # card of this chunk carries the text (BUG-036: the note was in the prompt while the warning said "bare placeholder").
+    noted = any(item.media == "text" and item.source.strip() for item in context.items)
+    if not context.prompt_override.strip() and not context.idea.strip() and not noted and not any(
             s.text.strip() or any(line.text.strip() for line in s.spoken) for s in chunk.shots):
         out.append(Issue("no_text", "There is no text for this chunk; the prompt falls back to a bare placeholder.", "chunk %d" % (chunk.index + 1)))
     if context.prompt_override.strip():
