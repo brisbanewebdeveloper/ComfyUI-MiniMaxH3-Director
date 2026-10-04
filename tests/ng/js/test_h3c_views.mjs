@@ -25,6 +25,8 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   ticks[2].onclick();
   assert.deepEqual(calls.at(-1), ["toggleContent", "outfit"]);
   assert.equal(parts.contentBox(state({ ai: false }), actions).button("✦ Analyze").disabled, true);
+  parts.contentBox(state({ busy: true }), actions).button("Cancel").onclick();
+  assert.deepEqual(calls.at(-1), ["cancel"], "a running analysis can be cancelled on the card");
 }
 
 // Use as: one choice, and the Director's mode turns a useless choice into a warning.

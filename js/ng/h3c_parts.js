@@ -22,7 +22,8 @@ export function topRow(S, actions) {
 export function contentBox(S, actions) {
   return h("div", { class: "h3c-box" },
     cap("What is in it", h("button", { class: "h3c-btn ai", disabled: !S.ai || S.busy, title: S.ai ? "Ask the AI what this shows; nothing changes until you accept."
-      : "Connect an H3 AI Loader to this card or to the Context Connector.", onclick: actions.analyze }, S.busy ? "Analyzing …" : "✦ Analyze")),
+      : "Connect an H3 AI Loader to this card or to the Context Connector.", onclick: actions.analyze }, S.busy ? "Analyzing …" : "✦ Analyze"),
+      S.busy ? h("button", { class: "h3c-btn", onclick: actions.cancel }, "Cancel") : null),
     CONTENT[S.media].map(([key, label]) => {
       const on = S.content.includes(key);
       return h("button", { class: "h3c-chk", "aria-pressed": String(on), onclick: () => actions.toggleContent(key) },
