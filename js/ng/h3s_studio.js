@@ -8,13 +8,14 @@ import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
 import { sideView } from "./h3s_side.js";
 import { footerView, drawerView } from "./h3s_footer.js";
-import { studioAI } from "./h3s_ai.js";
+import { studioAI, basis as aiBasis } from "./h3s_ai.js";
 import { values, applyValues, request } from "./ng_widgets.js";
 import { readPayload, readContexts, connectedProvider } from "./ng_read.js";
 import { contextColor } from "./ng_identity.js";
 import { hasRenderPath, projectRenderIds } from "./ng_graph.js";
 import { attachProgress } from "./ng_studio_progress.js";
 
+const STALE = { text: "The project changed after the AI answered, so its suggestion no longer fits and was discarded. Ask again.", error: false };
 const COMBOS = ["sampler_name", "scheduler", "turbo_lora_fl2va", "turbo_lora_ref2va"];
 const open = new Map();
 
@@ -225,6 +226,7 @@ export function openStudio(node, app, api) {
     acceptSuggestion(id) {
       const text = S.suggestions[id], shot = S.shots.find((entry) => entry.id === id);
       delete S.suggestions[id];
+      if (S.suggestionBasis !== aiBasis(node, false)) { S.suggestions = {}; S.notice = STALE; render(); return; }
       if (text === undefined || !shot || shot.text !== S.suggestionBase[id] || (shot.locked_fields || []).includes("text")) { render(); return; }
       patchShot(id, { text });
     },
@@ -233,6 +235,7 @@ export function openStudio(node, app, api) {
     splitPrompt: () => ai.split(),
     promptAsShot() { const shot = newShot(0, S.values.project_seconds); shot.text = S.values.idea || ""; S.ghosts = []; setItems("shot", [shot], shot.id); },
     acceptGhosts() {
+      if (S.ghostBasis !== aiBasis(node, true)) { S.ghosts = []; S.ghostSound = null; S.notice = STALE; render(); return; }
       const shots = S.ghosts.map((ghost) => ({ ...newShot(ghost.start, ghost.end), text: ghost.text }));
       const sound = S.ghostSound || {};
       for (const name of ["soundscape", "music"]) if (sound[name]?.trim()) write({ [name]: sound[name].trim() });

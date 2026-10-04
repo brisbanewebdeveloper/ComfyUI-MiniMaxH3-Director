@@ -92,11 +92,11 @@ export function timelineView(S, actions) {
     dropZone(track, (sec, id) => actions.newShot(sec, id));
     if (!S.shots.length && !S.ghosts.length)
       track.append(h("div", { class: "h3s-empty" }, "No shots yet: drag Content here, use “+ Shot” or “Whole prompt = one shot”. Without shots the prompt carries the whole video."));
+    for (const shot of sorted(S.shots)) track.append(shotBlock(shot, track));
     for (const ghost of S.ghosts)
       track.append(h("div", { class: "h3s-shot ghost", style: { left: pct(ghost.start), width: pct(ghost.end - ghost.start) } },
         h("span", { style: { fontSize: "12px", color: "#C9BBFF", fontWeight: 600 } }, `Suggestion · ${span(ghost.start, ghost.end)}`),
         h("span", { class: "h3s-shot-text", style: { color: "#C9BBFF" } }, ghost.text)));
-    for (const shot of sorted(S.shots)) track.append(shotBlock(shot, track));
     return track;
   }
 

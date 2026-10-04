@@ -39,6 +39,24 @@ def clip_windows(context, modes):
     return windows
 
 
+def outside(spans, taken):
+    """The parts of (start, end, offset) spans that no taken (start, end, _) span covers; a later piece keeps its place in the
+    source, so cutting never restarts the sound."""
+    pieces = list(spans)
+    for cut_start, cut_end, _ in taken:
+        kept = []
+        for start, end, offset in pieces:
+            if cut_end <= start or cut_start >= end:
+                kept.append((start, end, offset))
+                continue
+            if start < cut_start:
+                kept.append((start, cut_start, offset))
+            if cut_end < end:
+                kept.append((cut_end, end, offset + cut_end - start))
+        pieces = kept
+    return pieces
+
+
 def clip_issues(context):
     """Nothing is cut silently: a clip past the project's end, or one whose offset lies past its file's end, is named."""
     issues = []

@@ -48,8 +48,9 @@ The offset is a second of the file itself, independent of the card's own Start/E
 at the card's Start and runs for its selected length. An offset past the end of the file plays nothing and is reported
 (`audio_clip_past_file`). A Subject's voice card keeps its lane locks and copies; its voice reference is sent as before.
 A document without `audio` behaves exactly as before.
-The same audio card may lie on a lane and be bound to shots: both play. The lane clip keeps its own clock and mode;
-each shot binding starts the card's source at its shot, with the card's own role (lock, copy or a reference sent once).
+The same audio card may lie on a lane and be bound to shots. Where its lane clips play, they win; for the rest of each
+bound shot the binding plays with the card's own role (lock, copy or a reference sent once), continuing at the place in
+the file its shot has reached, so the same sound is never laid twice over the same time.
 
 Validation: core tests in `tests/ng/test_audio_clips.py`; a GPU run (FL2VA Turbo, two parts, song locked at story
 1–7 s from file second 20) measured envelope correlation 0.97 at the intended place, best lag 1.00 s and 0.97 on

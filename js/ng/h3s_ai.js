@@ -13,9 +13,12 @@ function failure(error, provider) {
 }
 
 // What an answer was asked about. If any of it changed while the AI worked, the answer no longer fits and is dropped.
-function basis(node) {
+// Shots are left out for text proposals: their own shot's text is checked on Accept, and accepting one text must not
+// invalidate the proposals for the other shots.
+export function basis(node, withShots = true) {
   const now = values(node);
-  return JSON.stringify([now.idea, now.shots, now.project_seconds, now.mode, readContexts(node), connectedProvider(node)]);
+  return JSON.stringify([now.idea, withShots ? now.shots : null, now.project_seconds, now.mode, now.soundscape, now.music,
+    readContexts(node), connectedProvider(node)]);
 }
 
 export function studioAI(S, app, api, done) {
@@ -53,6 +56,7 @@ export function studioAI(S, app, api, done) {
       const proposed = clipToFit(readProject(suggestion.shots || "").shots, S.values.project_seconds);
       S.ghosts = proposed.map(({ start, end, text }) => ({ start, end, text }));
       S.ghostSound = { soundscape: suggestion.soundscape || "", music: suggestion.music || "" };
+      S.ghostBasis = basis(S.node, true);
       if (!S.ghosts.length) S.notice = { text: "The AI answered, but proposed no shots. Try again or split by hand.", error: true };
       done();
     },
@@ -63,6 +67,7 @@ export function studioAI(S, app, api, done) {
       const open = new Map(S.shots.filter((shot) => !(shot.locked_fields || []).includes("text")).map((shot) => [shot.id, shot.text]));
       const texts = (suggestion.patches || []).filter((patch) => open.has(patch.shot_id) && typeof patch.fields?.text === "string" && patch.fields.text.trim());
       for (const patch of texts) { S.suggestions[patch.shot_id] = patch.fields.text.trim(); (S.suggestionBase ||= {})[patch.shot_id] = open.get(patch.shot_id); }
+      S.suggestionBasis = basis(S.node, false);
       if (!S.suggestions[shotId]) S.notice = { text: "The AI answered, but suggested no new text for this shot.", error: true };
       done();
     },

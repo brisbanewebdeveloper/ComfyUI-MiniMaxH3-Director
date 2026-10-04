@@ -5,6 +5,8 @@ limits enforced, and it has hundreds of checks behind it. NG reuses it as the pr
 this module is the only door into it. Anything legacy needs that NG does not model is filled with a neutral default here.
 """
 
+import re
+
 from ... import minimax_plan as plan
 from .chunks import Chunk
 from .context import DirectorContext
@@ -14,7 +16,7 @@ from .issues import Issue
 from .subjects import subject_groups
 from .shot_bindings import spoken_text
 from .shot_document import has_shots
-from .audio_timing import clip_windows, file_window, shot_windows, source_window, timed_segments
+from .audio_timing import clip_windows, file_window, outside, shot_windows, source_window, timed_segments
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
 _KIND = {"character": "person", "face": "person", "animal": "animal", "object": "object", "outfit": "clothing", "prop": "prop",
@@ -121,7 +123,11 @@ def _plain_substitutor(subjects, context):
         for line in text.splitlines():
             head, colon, rest = line.partition(":")
             spoken = replace_mentions(head, voices, known) + colon + replace_mentions(rest, names, known)
-            lines.append(spoken if colon and plan.DIALOGUE_RE.match(spoken.strip()) else replace_mentions(line, names, known))
+            # "@Name [German] says: ..." is a spoken line; a sentence before the first colon (e.g. the Prompt followed
+            # by "Visual style: ...") is prose, whatever the colon later in the line belongs to.
+            bare = re.sub("|".join(re.escape("@" + name) for name in sorted(known, key=len, reverse=True)) or "$^", "", head)
+            dialogue = colon and not re.search(r"[.!?]", bare) and plan.DIALOGUE_RE.match(spoken.strip())
+            lines.append(spoken if dialogue else replace_mentions(line, names, known))
         return "\n".join(lines)
     return substitute
 
@@ -142,15 +148,18 @@ def _lane_references(item, chunk, spans):
     return out[:1]
 
 
-def _shot_bound(item, chunk, windows, lane_modes, needs_reference):
-    """A card on an audio lane may also be bound to Shots; those bindings play too, each from the start of its Shot,
-    with the card's own role (the scoped usage also carries the roles its lane clips added)."""
+def _shot_bound(item, chunk, windows, lanes, needs_reference):
+    """A card on an audio lane may also be bound to Shots. Where its lane clips play, they win; elsewhere each Shot binding
+    plays from the start of its Shot, with the card's own role (the scoped usage also carries the roles its lane clips added),
+    so the same sound is never laid twice over the same time."""
     if not windows or item.id not in windows:
         return []
+    lane_modes = {mode for mode in ("lock", "copy") if item.id in lanes[mode]}
     usage = [u for u in item.effective_usage if u in _AUDIO_RETENTION]
     usage = next(iter([u for u in usage if u not in lane_modes] or usage), "sound_reference")
     if usage in ("copy", "lock"):
-        return timed_segments(item, chunk, {item.id: windows[item.id]}, _AUDIO_RETENTION[usage])
+        free = outside(windows[item.id], [span for mode in ("lock", "copy") for span in lanes[mode].get(item.id, ())])
+        return timed_segments(item, chunk, {item.id: free}, _AUDIO_RETENTION[usage])
     window_start = chunk.story_start_f - chunk.head_frames
     if not needs_reference or not any(start < chunk.story_end_f and end > window_start for start, end, _ in windows[item.id]):
         return []
@@ -177,7 +186,7 @@ def _audio_segments(context, chunk, voices):
                 if item.id in lanes[mode]:
                     segments.extend(timed_segments(item, chunk, lanes[mode], _AUDIO_RETENTION[mode], in_file=True))
             references = _lane_references(item, chunk, lanes["ref"].get(item.id, ()))
-            segments.extend(references + _shot_bound(item, chunk, windows, {m for m in ("lock", "copy") if item.id in lanes[m]}, not references))
+            segments.extend(references + _shot_bound(item, chunk, windows, lanes, not references))
             continue
         usage = next((u for u in item.effective_usage if u in _AUDIO_RETENTION), None)
         if usage is None:

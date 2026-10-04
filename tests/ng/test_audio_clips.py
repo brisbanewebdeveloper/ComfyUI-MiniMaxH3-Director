@@ -128,12 +128,20 @@ class Placement(unittest.TestCase):
         result = plan([clip("a1", "song", 2, 6, "lock", offset=10)], seconds=8, items=(trimmed,))
         self.assertEqual(spans(result.compiled[0], "lock"), [(48, 96, 240)], "file second 10, as the Studio shows")
 
+    def test_a_shot_lock_never_doubles_the_lane_lock_of_the_same_card(self):
+        bound = {"id": "s1", "start": 2, "end": 6, "text": "A", "media": [{"schema_version": 1, "context_id": "song", "role": "context"}],
+                 "spoken": [], "locked_fields": [], "draft": None}
+        result = plan([clip("a1", "song", 0, 4, "lock")], seconds=8, items=(song(usage=("lock",)),), shots=[bound])
+        self.assertEqual(sorted(spans(result.compiled[0], "lock")), [(0, 96, 0), (96, 48, 48)],
+                         "lane 0-4 s; the shot (from 2 s) only adds 4-6 s, continuing at file second 2 + 2")
+
     def test_a_shot_copy_role_and_a_lane_lock_both_play_without_a_false_role_warning(self):
         shot = {"id": "s1", "start": 0, "end": 6, "text": "A", "media": [{"schema_version": 1, "context_id": "song", "role": "copy"}],
                 "spoken": [], "locked_fields": [], "draft": None}
         result = plan([clip("c1", "song", 0, 4, "lock")], seconds=8, shots=[shot])
         self.assertEqual(spans(result.compiled[0], "lock"), [(0, 96, 0)])
-        self.assertEqual(spans(result.compiled[0], "audio"), [(0, 144, 0)], "the shot's copy role is placed at its shot")
+        self.assertEqual(spans(result.compiled[0], "audio"), [(96, 48, 96)],
+                         "the lane clip wins where it plays; the shot's copy fills 4-6 s at its own place in the file, never doubled")
         self.assertNotIn("audio_roles", {i.code for i in result.issues})
         two_roles = song(usage=("copy", "music_style"))
         self.assertIn("audio_roles", {i.code for i in plan([clip("c1", "song", 0, 4, "lock")], seconds=8, items=(two_roles,), shots=[shot]).issues},
@@ -163,6 +171,15 @@ class PlainNames(unittest.TestCase):
         self.assertIn("Mage (S1) says, <d>[English] Welcome back, Mage.</d>", prompt)
         reference = project.plan_project(ctx.DirectorContext(**{**director.__dict__, "mode": "ref2va"}), 0, chunks.ContinuityPlan("none"))
         self.assertIn("<Subject 1> looks up.", reference.compiled[0].prompt)
+
+    def test_a_sentence_that_later_contains_a_colon_is_not_a_spoken_line(self):
+        mage = ctx.ContextItem("mage", "Mage", "image", "mage.png", usage=("reference",))
+        director = ctx.DirectorContext(idea="@Mage speaks quietly in a warm sanctuary.", shots_text="0-8: @Mage says: Welcome back.",
+                                       items=(mage,), project_seconds=8, mode="fl2va", style="Cinematic")
+        prompt = project.plan_project(director, 0, chunks.ContinuityPlan("none")).compiled[0].prompt
+        self.assertIn("Mage speaks quietly in a warm sanctuary. Visual style: Cinematic.", prompt, "the style's colon made the Prompt a voice line")
+        self.assertNotIn("@voice(Mage) speaks", prompt)
+        self.assertIn("Mage (S1) says, <d>[English] Welcome back.</d>", prompt)
 
 
 if __name__ == "__main__":
