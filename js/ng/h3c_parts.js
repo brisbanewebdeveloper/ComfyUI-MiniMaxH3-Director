@@ -19,11 +19,14 @@ export function topRow(S, actions) {
     h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, file, h("button", { class: "h3c-btn", onclick: actions.upload }, "Upload")), badge);
 }
 
+// Analyze and, while it runs, Cancel. On media cards it sits on "What is in it"; the Text card has it on "Use as".
+const analyzeTools = (S, actions) => [h("button", { class: "h3c-btn ai", disabled: !S.ai || Boolean(S.busy), title: S.ai ? "Ask the AI what this is; nothing changes until you accept."
+  : "Connect an H3 AI Loader to this card or to the Context Connector.", onclick: actions.analyze }, S.busy === "analyze" ? "Analyzing …" : "✦ Analyze"),
+  S.busy === "analyze" ? h("button", { class: "h3c-btn", onclick: actions.cancel }, "Cancel") : null];
+
 export function contentBox(S, actions) {
   return h("div", { class: "h3c-box" },
-    cap("What is in it", h("button", { class: "h3c-btn ai", disabled: !S.ai || S.busy, title: S.ai ? "Ask the AI what this shows; nothing changes until you accept."
-      : "Connect an H3 AI Loader to this card or to the Context Connector.", onclick: actions.analyze }, S.busy ? "Analyzing …" : "✦ Analyze"),
-      S.busy ? h("button", { class: "h3c-btn", onclick: actions.cancel }, "Cancel") : null),
+    cap("What is in it", ...analyzeTools(S, actions)),
     CONTENT[S.media].map(([key, label]) => {
       const on = S.content.includes(key);
       return h("button", { class: "h3c-chk", "aria-pressed": String(on), onclick: () => actions.toggleContent(key) },
@@ -33,7 +36,7 @@ export function contentBox(S, actions) {
 
 export function usageBox(S, actions, columns = 1) {
   const hint = roleHint(S.media, S.usage, S.mode);
-  return h("div", { class: "h3c-box" }, h("div", { class: "h3c-cap" }, "Use as (default)"),
+  return h("div", { class: "h3c-box" }, S.media === "text" ? cap("Use as (default)", ...analyzeTools(S, actions)) : h("div", { class: "h3c-cap" }, "Use as (default)"),
     h("div", { style: { display: "grid", gridTemplateColumns: `repeat(${columns},minmax(0,1fr))`, gap: "2px 6px" } },
       USAGE[S.media].map(([key, label, note]) => h("button", { class: S.usage === key ? "h3c-radio on" : "h3c-radio", "aria-pressed": String(S.usage === key),
         onclick: () => actions.pickUsage(key) }, h("span", { class: "h3c-rd" }), h("span", { class: "h3c-grow" }, label), note ? h("span", { class: "h3c-lbl" }, note) : null))),
@@ -71,7 +74,9 @@ export function descriptionBox(S, actions) {
 
 export function suggestionBox(S, actions) {
   if (!S.suggestion) return null;
-  const lines = Object.entries(S.suggestion.fields).map(([name, value]) => `${{ description: "Description", content: "Content", usage: "Use as" }[name] || name}: ${value}`);
+  // Roles are shown by the label of the button Accept will press, not by their stored key.
+  const label = (name, value) => ({ content: CONTENT, usage: USAGE }[name]?.[S.media]?.find(([key]) => key === value)?.[1] || value);
+  const lines = Object.entries(S.suggestion.fields).map(([name, value]) => `${{ description: "Description", content: "Content", usage: "Use as" }[name] || name}: ${label(name, value)}`);
   return h("div", { class: "h3c-box h3c-suggest" }, h("span", { class: "h3c-lbl", style: { color: "#C9BBFF" } }, "AI suggestion (nothing changes until you accept)"),
     lines.map((line) => h("span", { style: { color: "#ECE6FF" } }, line)),
     S.suggestion.why ? h("span", { class: "h3c-hint" }, S.suggestion.why) : null,

@@ -25,7 +25,7 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   ticks[2].onclick();
   assert.deepEqual(calls.at(-1), ["toggleContent", "outfit"]);
   assert.equal(parts.contentBox(state({ ai: false }), actions).button("✦ Analyze").disabled, true);
-  parts.contentBox(state({ busy: true }), actions).button("Cancel").onclick();
+  parts.contentBox(state({ busy: "analyze" }), actions).button("Cancel").onclick();
   assert.deepEqual(calls.at(-1), ["cancel"], "a running analysis can be cancelled on the card");
 }
 
@@ -80,6 +80,17 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   const area = aiView.byTag("textarea")[0];
   assert.ok(area.readOnly === true || "readOnly" in area.attributes, "the AI prompt is read-only");
   assert.equal(aiView.button("+ Character").disabled, true);
+  // The Text card analyzes too: Analyze on "Use as", the suggestion with Accept/Discard under it (the docs' native AI example).
+  const all = (S) => ({ find: (test) => textBody(S, actions).flatMap((part) => part.find(test)) });
+  const button = (S, text) => all(S).find((node) => node.tagName === "BUTTON" && node.innerText.startsWith(text))[0];
+  button(S, "✦ Analyze").onclick();
+  assert.deepEqual(calls.at(-1), ["analyze"]);
+  const suggested = state({ media: "text", usage: "style", suggestion: { fields: { usage: "rule" }, why: "It states a rule." }, values: { text: "No cuts." } });
+  button(suggested, "Accept").onclick();
+  assert.deepEqual(calls.at(-1), ["accept"]);
+  const building = state({ media: "text", usage: "style", busy: "build", values: { text: "No cuts." } });
+  assert.equal(button(building, "✦ Analyze").disabled, true, "one AI action at a time");
+  assert.ok(button(building, "Building") && !button(building, "Analyzing"), "only the running action says so");
 }
 
 console.log("h3c views ok");

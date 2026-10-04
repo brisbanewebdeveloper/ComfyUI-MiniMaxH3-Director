@@ -25,13 +25,17 @@ const FRAME_ROLES = ["first_frame", "last_frame", "keyframe", "storyboard"];
 
 // The analysis route keeps `usage` as free text (only the card knows its medium's roles). A suggested role or content
 // kind is kept only when it is one of this medium's keys or labels; anything else is dropped, never written to a widget.
+// What the card can show, sent with an analysis so the AI picks a role from exactly these (ng/core/analysis.py).
+export const offerFor = (media) => ({ content: (CONTENT[media] || []).map(([key]) => key), usage: USAGE[media].map(([key]) => key) });
+
 export function usableFields(media, fields) {
   const pick = (list, value) => {
     const wanted = String(value || "").trim().toLowerCase();
     return (list || []).find(([key, label]) => key === wanted || label.toLowerCase() === wanted || key === wanted.replace(/[\s/-]+/g, "_"))?.[0];
   };
   const out = {};
-  if (fields.description) out.description = fields.description;
+  // A Text card shows no description: its note is the text. What it cannot show is not offered for Accept.
+  if (fields.description && media !== "text") out.description = fields.description;
   const content = pick(CONTENT[media], fields.content), usage = pick(USAGE[media], fields.usage);
   if (content) out.content = content;
   if (usage) out.usage = usage;

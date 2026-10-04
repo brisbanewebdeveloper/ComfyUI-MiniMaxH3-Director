@@ -57,6 +57,9 @@ import * as model from "../../../js/ng/h3c_model.js";
 
 // An AI suggestion may only write roles the card's medium has; free text ("Establishing shot ...") never reaches a widget.
 {
+  assert.deepEqual(model.offerFor("image").usage, ["reference", "first_frame", "last_frame", "keyframe", "storyboard"], "the AI may only pick what the card shows");
+  assert.deepEqual(model.offerFor("text").content, []);
+  assert.deepEqual(model.usableFields("text", { description: "A rule.", usage: "rule" }), { usage: "rule" }, "a Text card has no description to fill");
   assert.deepEqual(model.usableFields("image", { description: "A man.", content: "face", usage: "Establishing shot for character introduction." }),
     { description: "A man.", content: "face" });
   assert.deepEqual(model.usableFields("image", { usage: "Last frame" }), { usage: "last_frame" });

@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 from . import fields
 from . import providers
-from .context import CONTENT_BY_MEDIA, CONTENT_KINDS
+from .context import CONTENT_BY_MEDIA, CONTENT_KINDS, USAGE_BY_MEDIA
 
 # The fields an analysis may fill. Everything else on a card stays the user's own text.
 ANALYSIS_FIELDS = ("description", "content", "usage")
@@ -141,16 +141,45 @@ class AnalysisSuggestion:
         return {name: value for name, value in ((key, getattr(self, key)) for key in ANALYSIS_FIELDS) if value}
 
 
-def analysis_prompt(media, content):
+USAGE_MEANING = {
+    "image": {"reference": "keep this figure or thing recognizable", "first_frame": "the opening picture", "last_frame": "the closing picture",
+              "keyframe": "a picture the video passes through", "storyboard": "a sketch of a moment"},
+    "video": {"motion": "copy how things move", "camera": "copy the camera movement", "continue": "the video goes on from its end",
+              "structure": "copy the whole structure"},
+    "audio": {"voice": "the voice of a figure", "copy": "reuse this sound", "lock": "keep this sound exactly",
+              "music_style": "the style of the music", "rhythm": "the rhythm to follow", "sound_reference": "a sound to imitate"},
+    "text": {"style": "the look or visual direction", "rule": "a rule the video must follow", "character": "describes a person or creature",
+             "world": "background lore of the world", "scene": "what happens in a scene", "camera": "how the camera works",
+             "dialogue": "how lines are spoken", "constraint": "something that must not happen", "instruction": "a general instruction"},
+}
+
+
+def analysis_prompt(media, content, offer=None):
+    """`offer` is what the card can show ({"content": [...], "usage": [...]}); the answer may only pick from it.
+    Asking for usage as free text ("how the director should use it") got prose such as "To capture the emotional
+    depth ...", which no card can hold, so the card's role was never filled by an analysis."""
     scope = {"image": "the image", "video": "three ordered stills from the first 15 seconds of a video; avoid inferring unseen motion",
              "audio": "the first 15 seconds of the audio", "text": "the supplied context text"}
+    offer = offer if isinstance(offer, dict) else {}
     # Offer only the roles this medium can actually hold. Offering the full union is what let a
     # model answer "dialogue" for a picture: the value passed the parse and the card was unusable.
-    allowed = ", ".join(CONTENT_BY_MEDIA[media])
+    kinds = [kind for kind in offer.get("content") or () if kind in CONTENT_BY_MEDIA[media]] or list(CONTENT_BY_MEDIA[media])
+    # A card that shows no content choice (the Text card sends []) is not asked for one: Qwen3-VL 4B put the usage
+    # "constraint" there, and the whole answer was refused.
+    content_part = "" if offer.get("content") == [] else "content (exactly one of: %s), " % ", ".join(kinds)
+    roles = [role for role in offer.get("usage") or () if role in USAGE_BY_MEDIA[media]] or list(USAGE_BY_MEDIA[media])
+    # A Text card's stored content ("rules" by default) is not something its user chose; as a focus it made a 4B model
+    # call a character description a rule. Each role is named with what it means, so a small model can choose.
+    focus = content if media != "text" and content else "observable features"
     return ("Describe %s as a reference for a video director. Focus on %s. Return only JSON with "
-            "description (one concise sentence), content (one of: %s), usage (optional, how the director should use it) "
-            "and why (one short sentence naming the visible reason for that choice). Do not invent facts or rewrite the user's usage."
-            % (scope[media], content or "observable features", allowed))
+            "description (one concise sentence), %susage (exactly one of: %s) "
+            "and why (one short sentence naming the visible reason for that choice). Answer with one object for the whole %s, "
+            "not one per picture. Use the words of the lists exactly. Do not invent facts. Shape: %s"
+            % (scope[media], focus, content_part, "; ".join("%s = %s" % (role, USAGE_MEANING[media][role]) for role in roles),
+               {"image": "picture", "video": "clip", "audio": "sound", "text": "text"}[media],
+               # Qwen3-VL 4B left usage out, or wrote the role as a key ({"constraint": "..."}); a shape to copy helps it.
+               '{"description": "<one sentence>", %s"usage": "<one word from the usage list>", "why": "<one sentence>"}'
+               % ("" if not content_part else '"content": "<one word from the content list>", ')))
 
 
 def parse_suggestion(text, media="text"):
@@ -176,14 +205,31 @@ def parse_suggestion(text, media="text"):
         raise ValueError("The provider's answer was not readable JSON (%s). It may have run out of "
                          "Max tokens before answering; try more tokens or another model." % error.msg) from error
     fields.need_dict(data, "analysis")
-    description = fields.read_str(data, "description", "analysis").strip()
-    content = data.get("content")
+    if "description" not in data:
+        # Qwen3-VL 4B answered a video per still ({"stills": [{...}, {...}, {...}]}) instead of one object for the clip.
+        # The descriptions are kept in order; the roles and the reason come from the first still.
+        lists = [value for value in data.values() if isinstance(value, list) and value and all(isinstance(item, dict) for item in value)]
+        if len(lists) == 1 and all(isinstance(item.get("description"), str) for item in lists[0]):
+            data = {**lists[0][0], "description": " ".join(item["description"].strip() for item in lists[0])}
+    usage = fields.read_str(data, "usage", "analysis", "").strip()
+    if not usage:
+        # The role written as a key, as Qwen3-VL 4B did: {"constraint": "Never show any text ..."}.
+        keyed = [key for key in data if key in USAGE_BY_MEDIA.get(media, ())]
+        if len(keyed) == 1:
+            usage = keyed[0]
+            if "description" not in data and isinstance(data[usage], str):
+                data = {**data, "description": data[usage]}
+    description = fields.read_str(data, "description", "analysis", "" if media == "text" else None).strip()
+    content, left_out = data.get("content"), ""
     if content is not None and content not in allowed:
-        raise ValueError("A %s card cannot be %s. Choose one of: %s." % (media, content, ", ".join(allowed)))
-    if not description or len(description) > 2000:
+        # Named and left out, not mapped to something else and not a reason to throw the description away.
+        left_out = "Content “%s” does not fit this %s card and was left out." % (content, media)
+        content = None
+    # A Text card shows no description (its note is the text), so there only the role matters.
+    if (not description and media != "text") or len(description) > 2000:
         raise ValueError("Analysis needs a description of 1 to 2000 characters; try again or describe it manually.")
     why = fields.read_str(data, "why", "analysis", "").strip()
     if len(why) > 600:
         raise ValueError("The reason is longer than 600 characters; ask again or write it yourself.")
-    return AnalysisSuggestion(description=description, content=content,
-                              usage=fields.read_str(data, "usage", "analysis", "").strip(), why=why)
+    why = " ".join(part for part in (why, left_out) if part)
+    return AnalysisSuggestion(description=description, content=content, usage=usage, why=why)

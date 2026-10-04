@@ -52,10 +52,12 @@ def request_prompt(action, payload, config):
     if media not in ("image", "video", "audio", "text"):
         raise ValueError("Choose an image, video, audio or text context.")
     if media in ("image", "video") and not config.vision:
-        raise ValueError("Enable vision only for a CLIP model that accepts images.")
+        raise ValueError("Vision is off on the H3 AI Loader, so the AI is not shown this picture. Switch Vision on if the "
+                         "connected model reads images (Qwen3-VL does), or write the description yourself.")
     if media == "audio" and not config.audio:
-        raise ValueError("Enable audio only for a CLIP model that accepts audio.")
-    prompt = analysis_prompt(media, widgets.get("content", ""))
+        raise ValueError("Audio is off on the H3 AI Loader, so the AI is not given this sound. Qwen3-VL cannot hear; switch "
+                         "Audio on only for a model that accepts audio, or write the description yourself.")
+    prompt = analysis_prompt(media, widgets.get("content", ""), payload.get("offer"))
     if media == "text":
         prompt += "\n\nContext text:\n" + widgets.get("text", "")
     return prompt, media if media != "text" else None
@@ -85,7 +87,9 @@ def native_request(provider, action, request_json):
                   # something to parse back out again.
                   system_prompt=(enhance.system_for(h3_prompt.preset_of(payload.get("preset", "global")), 0)
                                  if action == "prompt"
-                                 else framed(for_node("director" if action == "direct" else "context", media))))
+                                 # The card's medium, not `media` (which only says what is sent along and is None for a
+                                 # text note): with None a Text card got the generic role and Qwen3-VL 4B lost the JSON.
+                                 else framed(for_node("director" if action == "direct" else "context", payload.get("media")))))
     if media:
         source = payload["widgets"].get(media, "")
         loaded = graph.node("NGAIReadMedia", media=media, source=source)
@@ -98,7 +102,8 @@ def native_request(provider, action, request_json):
 def parse_result(text, action, request_json):
     payload = json.loads(request_json)
     if action == "prompt":
-        return h3_prompt.clean(text, payload.get("preset", "global"))
+        # The same shape as the HTTP route's answer; the card reads suggestion.prompt and saw nothing in a bare string.
+        return {"prompt": h3_prompt.clean(text, payload.get("preset", "global"))}
     # Generic Qwen CLIP tokenizers can decode the assistant role header with the answer.
     text = text.removeprefix("assistant\n").strip()
     if action == "analyze":

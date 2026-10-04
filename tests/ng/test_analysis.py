@@ -19,17 +19,17 @@ class ContentRoles(unittest.TestCase):
 
     def test_a_picture_cannot_be_answered_as_dialogue(self):
         answer = '{"description": "a red rectangle", "content": "dialogue"}'
-        with self.assertRaisesRegex(ValueError, "image card cannot be dialogue"):
-            core.parse_suggestion(answer, "image")
-        with self.assertRaisesRegex(ValueError, "voice"):
-            core.parse_suggestion('{"description": "x", "content": "voice"}', "image")
+        got = core.parse_suggestion(answer, "image")
+        # Named and left out; the description is still offered.
+        self.assertEqual((got.description, got.content), ("a red rectangle", None))
+        self.assertIn("“dialogue” does not fit this image card", got.why)
+        self.assertIsNone(core.parse_suggestion('{"description": "x", "content": "voice"}', "image").content)
 
     def test_every_medium_only_accepts_its_own_roles(self):
         for media, allowed in core.CONTENT_BY_MEDIA.items():
             for wrong in set(core.CONTENT_KINDS) - set(allowed):
                 with self.subTest(media=media, wrong=wrong):
-                    with self.assertRaises(ValueError):
-                        core.parse_suggestion('{"description": "x", "content": "%s"}' % wrong, media)
+                    self.assertIsNone(core.parse_suggestion('{"description": "x", "content": "%s"}' % wrong, media).content)
 
     def test_the_roles_a_medium_does_offer_are_accepted(self):
         for media, allowed in core.CONTENT_BY_MEDIA.items():
@@ -43,9 +43,46 @@ class ContentRoles(unittest.TestCase):
         on the offered list itself: "effect" is a substring of "sound_effect", so a substring test
         over the whole prompt would flag a role the audio card really can hold."""
         for media, allowed in core.CONTENT_BY_MEDIA.items():
-            offered = core.analysis_prompt(media, "").split("content (one of: ")[1].split(")")[0]
+            offered = core.analysis_prompt(media, "").split("content (exactly one of: ")[1].split(")")[0]
             self.assertEqual([name.strip() for name in offered.split(",")], list(allowed),
                              "the %s prompt offers the wrong roles" % media)
+
+    def test_usage_is_asked_from_the_roles_the_card_shows_not_as_prose(self):
+        # "usage (optional, how the director should use it)" got "To capture the emotional depth ..." from Ollama,
+        # which no card can hold; the card's role was never filled by an analysis.
+        prompt = core.analysis_prompt("image", "", {"content": ["character", "face", "nonsense"], "usage": ["reference", "first_frame"]})
+        self.assertIn("content (exactly one of: character, face)", prompt)
+        self.assertIn("usage (exactly one of: reference = keep this figure or thing recognizable; first_frame = the opening picture)", prompt)
+        self.assertNotIn("how the director should use it", prompt)
+        self.assertNotIn("content (", core.analysis_prompt("text", "", {"content": [], "usage": ["rule"]}), "the Text card shows no content choice")
+        for media, roles in core.USAGE_BY_MEDIA.items():
+            self.assertEqual(set(core.USAGE_MEANING[media]), set(roles), "every %s role is explained to the model" % media)
+        # A Text card's hidden default content ("rules") made a 4B model call a character description a rule.
+        text = core.analysis_prompt("text", "rules")
+        self.assertNotIn("Focus on rules", text)
+        self.assertIn("character = describes a person or creature", text)
+        self.assertIn("camera = how the camera works", text)
+
+    def test_a_video_answered_per_still_becomes_one_suggestion(self):
+        # Real Qwen3-VL 4B answer for ng_test_video.mp4; it failed with "analysis.description: is required".
+        answer = json.dumps({"stills": [
+            {"description": "A hand presses down on a ball of dough.", "content": "motion", "usage": "motion", "why": "The hand presses."},
+            {"description": "The hand shapes the dough.", "content": "motion", "usage": "motion", "why": "It goes on."}]})
+        got = core.parse_suggestion(answer, "video")
+        self.assertEqual(got.description, "A hand presses down on a ball of dough. The hand shapes the dough.")
+        self.assertEqual((got.content, got.usage, got.why), ("motion", "motion", "The hand presses."))
+        self.assertIn("one object for the whole clip", core.analysis_prompt("video", ""))
+        with self.assertRaises(ValueError):
+            core.parse_suggestion(json.dumps({"stills": [{"content": "motion"}]}), "video")
+
+    def test_a_role_written_as_a_key_is_read_as_the_usage(self):
+        # Real Qwen3-VL 4B answer for "Never show any text, logos or watermarks on screen." on a Text card.
+        got = core.parse_suggestion('{"constraint": "Never show any text, logos or watermarks on screen", "why": "Keeps it clean."}', "text")
+        self.assertEqual((got.usage, got.why), ("constraint", "Keeps it clean."))
+        self.assertEqual(core.parse_suggestion('{"usage": "camera"}', "text").usage, "camera", "a Text card needs no description")
+        with self.assertRaises(ValueError):
+            core.parse_suggestion('{"usage": "reference"}', "image")
+        self.assertIn('"usage": "<one word from the usage list>"', core.analysis_prompt("text", "", {"content": [], "usage": ["rule"]}))
 
     def test_an_answer_with_no_role_at_all_is_still_fine(self):
         got = core.parse_suggestion('{"description": "just a sentence"}', "image")
@@ -248,10 +285,11 @@ class ThroughTheNode(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(core.parse_suggestion("```json\n" + answer + "\n```"), core.parse_suggestion(answer))
         # "not json" used to be refused by the bare decoder; it is now refused with a message that
         # names the likelier cause, so the wording is what changed, not what is refused.
-        for text in (None, [], "not json", "[]", '{"description":""}', '{"description":"x","content":"made_up"}'):
+        for text in (None, [], "not json", "[]", '{"description":""}'):
             with self.subTest(text=text), self.assertRaises(ValueError):
-                core.parse_suggestion(text)
-        # A description on its own is a complete, usable answer: the role is optional.
+                core.parse_suggestion(text, "image")
+        # An unknown role is left out and named; a description on its own is a complete, usable answer.
+        self.assertIsNone(core.parse_suggestion('{"description":"x","content":"made_up"}').content)
         self.assertIsNone(core.parse_suggestion('{"description":"x"}').content)
 
     def test_prompts_disclose_sampling_limits(self):
@@ -427,7 +465,7 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
 
     async def test_capabilities_stop_before_network(self):
         for payload in (self.payload(vision=False), self.payload("audio")):
-            with self.assertRaisesRegex(ValueError, "Enable"):
+            with self.assertRaisesRegex(ValueError, "is off on the H3 AI Loader"):
                 await self.adapter.analyze(payload)
         self.assertEqual(self.requests, [])
 
@@ -484,11 +522,9 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["suggestion"]["description"], "red object")
         # The image card got a role an image can hold.
         self.assertIn(result["results"][0]["suggestion"]["content"], core.CONTENT_BY_MEDIA["image"])
-        # The audio card was refused by name, not written down as a role it cannot have.
-        self.assertFalse(result["results"][1]["ok"])
-        self.assertIn("audio card cannot be", result["results"][1]["error"])
-        self.assertTrue(any("The same error occurred" in reason for reason in result["skipped"])
-                        or result["results"][1]["error"])
+        # The audio card names the role it cannot have and leaves it out instead of writing it down.
+        self.assertIsNone(result["results"][1]["suggestion"]["content"])
+        self.assertIn("does not fit this audio card", result["results"][1]["suggestion"]["why"])
         # Asked on its own, with a provider that answers for audio, the same card succeeds.
         alone = await adapter.analyze(self.answering("audio"))
         self.assertIn(alone["content"], core.CONTENT_BY_MEDIA["audio"])
@@ -509,7 +545,7 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
             {"media": "image", "widgets": base["widgets"]}]}
         result = await adapter.analyze_all(payload)
         self.assertEqual([entry["ok"] for entry in result["results"]], [False, True])
-        self.assertIn("Enable audio", result["results"][0]["error"])
+        self.assertIn("Audio is off on the H3 AI Loader", result["results"][0]["error"])
         self.assertEqual(result["results"][1]["suggestion"]["description"], "red object")
 
     async def test_analyze_all_keeps_going_after_one_card_fails_and_says_so(self):

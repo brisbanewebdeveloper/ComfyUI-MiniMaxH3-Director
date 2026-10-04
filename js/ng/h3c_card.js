@@ -2,7 +2,7 @@
 // the saved values; the card draws them, redraws on change and grows the node to its content so cards never overlap.
 import { h, keepKeys } from "./h3s_dom.js";
 import { ensureCardStyle } from "./h3c_style.js";
-import { studioUses, TEMPLATES, usableFields } from "./h3c_model.js";
+import { studioUses, TEMPLATES, usableFields, offerFor } from "./h3c_model.js";
 import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box } from "./h3c_parts.js";
 import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
@@ -153,16 +153,16 @@ function attach(node, media) {
     async analyze() {
       const provider = contextProvider(node);
       if (!provider || S.busy) return;
-      S.busy = true; S.suggestion = null; controller = new AbortController(); say("");
+      S.busy = "analyze"; S.suggestion = null; controller = new AbortController(); say("");
       const before = JSON.stringify(values(node));
       try {
-        const data = await aiAction(app, api, "analyze", { media, widgets: values(node), provider }, controller.signal);
+        const data = await aiAction(app, api, "analyze", { media, widgets: values(node), provider, offer: offerFor(media) }, controller.signal);
         if (JSON.stringify(values(node)) !== before) { say("The card changed while the AI was looking; its answer was discarded. Analyze again.", true); return; }
         const fields = usableFields(media, offeredFields(data.suggestion));
         S.suggestion = Object.keys(fields).length ? { raw: data.suggestion, fields, why: reasonLine(data.suggestion), basis: before, model: provider.model } : null;
         if (!S.suggestion) say("The AI answered, but suggested nothing new.", true);
       } catch (error) { say(error.message === "AI action cancelled." ? "AI cancelled, nothing changed." : `AI failed: ${error.message}`, error.message !== "AI action cancelled."); }
-      finally { S.busy = false; controller = null; render(); }
+      finally { S.busy = ""; controller = null; render(); }
     },
     accept() {
       const suggestion = S.suggestion; S.suggestion = null;
@@ -194,7 +194,7 @@ function attach(node, media) {
       const provider = contextProvider(node), note = String(node.properties.ng_text_note ?? values(node).text ?? "").trim();
       if (!provider || S.busy) return;
       if (!note) { say("Write the note first, in any language.", true); return; }
-      S.busy = true; controller = new AbortController(); say("");
+      S.busy = "build"; controller = new AbortController(); say("");
       try {
         const seconds = Math.min(15, Math.max(4, Number(S.build.seconds) || 8));
         const data = await aiAction(app, api, "prompt", { note, seconds, preset: S.build.block, provider }, controller.signal);
@@ -204,7 +204,7 @@ function attach(node, media) {
         node.properties.ng_text_ai = prompt; S.textMode = node.properties.ng_text_view = "ai";
         applyValues(node, { text: prompt }); node.graph?.change?.(); say("Built the English H3 prompt. Your note is kept under “My note”.");
       } catch (error) { say(error.message === "AI action cancelled." ? "AI cancelled, nothing changed." : `AI failed: ${error.message}`, error.message !== "AI action cancelled."); }
-      finally { S.busy = false; controller = null; render(); }
+      finally { S.busy = ""; controller = null; render(); }
     },
   };
 

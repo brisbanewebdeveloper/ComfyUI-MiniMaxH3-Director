@@ -105,7 +105,7 @@ class NativeAI(unittest.TestCase):
 
     def test_media_capabilities_and_response_validation_are_enforced(self):
         for media, options in (("image", {"vision": False}), ("audio", {"audio": False})):
-            with self.subTest(media=media), self.assertRaisesRegex(ValueError, "Enable"):
+            with self.subTest(media=media), self.assertRaisesRegex(ValueError, "is off on the H3 AI Loader"):
                 self.nodes["NGAIRequest"].execute(ai_provider=self.provider(**options), action="analyze", request_json=self.payload(media))
         with self.assertRaises(ValueError):
             self.nodes["NGAIResult"].execute(text="This isn't JSON", action="analyze", request_json=self.payload())

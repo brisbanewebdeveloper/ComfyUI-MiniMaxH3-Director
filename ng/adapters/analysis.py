@@ -92,11 +92,11 @@ def _capability_error(config, media):
             return providers.UNSUPPORTED_HINT.get(media, "This provider cannot read %s." % media)
         return None
     if media in ("image", "video") and not config.vision:
-        return ("Enable vision only for a model that accepts images, or describe this picture "
-                "in a Text card.")
+        return ("Vision is off on the H3 AI Loader, so the AI is not shown this picture. Switch Vision on if the model "
+                "reads images, or write the description yourself.")
     if media == "audio" and not config.audio:
-        return ("Enable audio only for an input_audio-compatible model, or describe this sound "
-                "in a Text card.")
+        return ("Audio is off on the H3 AI Loader, so the AI is not given this sound. Switch Audio on only for a model "
+                "that accepts audio (input_audio), or write the description yourself.")
     return None
 
 
@@ -110,7 +110,7 @@ async def analyze(payload):
     refused = _capability_error(config, media)
     if refused:
         raise ValueError(refused)
-    prompt = analysis_prompt(media, widgets.get("content", ""))
+    prompt = analysis_prompt(media, widgets.get("content", ""), payload.get("offer"))
     key = legacy.resolve_api_key({"api_key_env": config.api_key_env})
     try:
         if media == "audio":

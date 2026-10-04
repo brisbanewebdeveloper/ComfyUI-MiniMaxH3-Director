@@ -3,7 +3,7 @@
 // (ng_text_note / ng_text_ai), so switching between them never loses either.
 import { h } from "./h3s_dom.js";
 import { INSERTS, TEMPLATES } from "./h3c_model.js";
-import { usageBox, ownerBox } from "./h3c_parts.js";
+import { usageBox, ownerBox, suggestionBox } from "./h3c_parts.js";
 
 export const CHARACTER_LIMIT = 2000;
 const BLOCKS = [["global", "Scene + style"], ["storyboard", "Storyboard (shots)"]];
@@ -31,9 +31,9 @@ export function textBody(S, actions) {
           h("button", { class: ai ? "on" : "", disabled: !S.hasAiText, title: S.hasAiText ? "" : "Build a prompt first", onclick: () => actions.textView("ai") }, "AI prompt")),
         editor,
         h("div", { class: "h3c-row" }, block, seconds, h("span", { class: "h3c-lbl" }, "s"),
-          h("button", { class: "h3c-btn ai", disabled: !S.ai || S.busy, title: S.ai ? "Rewrite the note into the English block H3 expects; your note is kept."
-            : "Connect an H3 AI Loader to this card or to the Context Connector.", onclick: actions.build }, S.busy ? "Building …" : "✦ Build H3 prompt"),
-          S.busy ? h("button", { class: "h3c-btn", onclick: actions.cancel }, "Cancel") : null),
+          h("button", { class: "h3c-btn ai", disabled: !S.ai || Boolean(S.busy), title: S.ai ? "Rewrite the note into the English block H3 expects; your note is kept."
+            : "Connect an H3 AI Loader to this card or to the Context Connector.", onclick: actions.build }, S.busy === "build" ? "Building …" : "✦ Build H3 prompt"),
+          S.busy === "build" ? h("button", { class: "h3c-btn", onclick: actions.cancel }, "Cancel") : null),
         h("span", { class: "h3c-hint" }, "Any language → the English block H3 expects. Your note stays.")),
       h("div", { class: "h3c-box" }, h("div", { class: "h3c-cap" }, "Quick insert"),
         INSERTS.map(([key, label, color]) => h("button", { class: "h3c-ins", style: { borderColor: `${color}66`, color }, disabled: ai,
@@ -44,5 +44,6 @@ export function textBody(S, actions) {
           h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, template,
             h("button", { class: "h3c-btn", disabled: ai, onclick: () => actions.useTemplate(template.value) }, "Use"))),
         ownerBox(S, actions, "A rule for the whole project. Link it to a figure to scope it to that figure."))),
-  ];
+    suggestionBox(S, actions),
+  ].filter(Boolean);
 }

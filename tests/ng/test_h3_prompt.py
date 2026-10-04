@@ -103,8 +103,20 @@ class H3PromptAction(unittest.TestCase):
     def test_the_clip_answer_is_cleaned_like_the_http_one(self):
         text = native_ai.parse_result("detailed_description: A girl plays.\nAudio: Room tone.",
                                        "prompt", json.dumps(self.answer()))
-        self.assertIn("A girl plays.", text)
-        self.assertNotIn("detailed_description", text)
+        # The card reads suggestion.prompt on both paths; a bare string reached it as "the AI answered without a prompt".
+        self.assertEqual(set(text), {"prompt"})
+        self.assertIn("A girl plays.", text["prompt"])
+        self.assertNotIn("detailed_description", text["prompt"])
+
+    def test_a_text_card_analysis_gets_the_text_role_on_the_clip_path(self):
+        # request_prompt names no medium to send for a note; the system prompt must still be the Text card's.
+        sp = module("ng.core.system_prompts")
+        config = module("ng.core.analysis").ProviderConfig(max_tokens=256)
+        provider = module("ng.adapters.ai_provider").NativeAIProvider(["clip", 0], config)
+        graph, _ = native_ai.native_request(provider, "analyze", json.dumps({"media": "text", "widgets": {"text": "No cuts.", "content": ""}}))
+        system = next(node["inputs"]["system_prompt"] for node in graph.values() if node["class_type"] == "TextGenerate")
+        self.assertEqual(system, sp.framed(sp.for_node("context", "text")))
+        self.assertNotEqual(system, sp.framed(sp.for_node("context", None)))
 
     def test_the_clip_request_carries_no_schema_framing(self):
         # The other two actions answer with JSON that a parser reads. This one answers with prose that
