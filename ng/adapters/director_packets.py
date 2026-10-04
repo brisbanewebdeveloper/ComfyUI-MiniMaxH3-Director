@@ -68,8 +68,12 @@ def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_si
     negative = graph.node("ConditioningZeroOut", "negative", conditioning=conditioning.out(1))
     context = result.project.context
     chunk_seed = (int(result.settings.seed if seed is None else seed) + job.index) % (2**64)
+    settings = result.settings
+    sampler = graph.node("KSamplerSelect", "sampler", sampler_name=settings.sampler_name)
+    sigmas = graph.node("BasicScheduler", "sigmas", model=conditioning.out(0), scheduler=settings.scheduler, steps=settings.steps, denoise=1.0)
     outputs = (conditioning.out(0), conditioning.out(1), negative.out(0), conditioning.out(2),
-               24.0, context.width, context.height, conditioning.out(3), result, chunk_seed)
+               24.0, context.width, context.height, conditioning.out(3), result, chunk_seed,
+               settings.steps, 1.0, settings.sampler_name, settings.scheduler, sampler.out(0), sigmas.out(0))
     return graph.finalize(), outputs
 
 

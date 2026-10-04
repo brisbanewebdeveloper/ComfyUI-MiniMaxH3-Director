@@ -20,6 +20,11 @@ CFGGuider explicitly uses CFG 1. The base examples use 20 steps; the recorded pi
    The seed is the Director's base seed plus the chunk index; its optional seed input overrides the base.
    Connect seed to the ordinary **RandomNoise / noise_seed**, then NOISE to SamplerCustomAdvanced.
    For the ordinary native KSampler, connect Output's seed directly to its seed input.
+   **The Director's sampling settings** come out of Output too (slots 10–15), so the Studio's Steps, Sampler and Scheduler
+   drive your own sampler: **steps**, **cfg** (always 1.0, H3 runs without classifier-free guidance), **sampler_name** and
+   **scheduler** connect to KSampler, KSamplerSelect or BasicScheduler; **sampler** and **sigmas** are ready-made for
+   SamplerCustomAdvanced (sigmas use this chunk's model, so the Director's shift is included). With Turbo on they carry 4 steps.
+   Measured on the user's workflow: Director steps 4 reached BasicScheduler over the link, 243 frames rendered in 318 s.
 4. Wire the sampling stages. Return the final, complete **AV LATENT** to both End Loop's `output_value` and
    `next_iteration_value`, with **accumulate on**. Include both video and audio, the whole sampled time axis and the pinned head.
 5. Connect End Loop's accumulated latents and Director's original **chunks** list to NG Collect, with both VAEs.

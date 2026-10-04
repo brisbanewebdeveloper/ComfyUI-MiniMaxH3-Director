@@ -2,6 +2,8 @@
 
 ## 1.0.0 (unreleased)
 
+**Director sampling settings at the Output** (2026-10-05): H3 Director Output gains steps, cfg, sampler_name, scheduler, sampler and sigmas (appended, older links keep their slots), so an external KSampler or SamplerCustomAdvanced runs with the Studio's settings. sampler_name and scheduler connect to the classic KSampler as well as to KSamplerSelect/BasicScheduler.
+
 **The Studio is the Director node** (2026-10-05): the compact Director with **Open Studio** is gone.
 
 - The whole Studio is the node's face in the graph and the node is as tall as its content; **Full screen** lifts the same Studio over the window and Esc puts it back.

@@ -52,13 +52,34 @@ class ExternalSampling(unittest.TestCase):
         self.assertIsNone(director.expand)
         self.assertTrue(self.nodes["NGH3Director"].GET_SCHEMA().outputs[1].is_output_list)
 
+    def test_the_directors_sampling_settings_reach_an_external_sampler(self):
+        """User request: steps, sampler and scheduler from the Director at the Output, for an external KSampler."""
+        from comfy.samplers import KSampler
+        from comfy_execution.validation import validate_node_input
+        out = self.nodes["NGDirectorOutput"].execute(self.result(), chunk_index=1)
+        self.assertEqual(out.args[10:14], (8, 1.0, "euler", "simple"))
+        nodes = {n["class_type"]: (key, n["inputs"]) for key, n in out.expand.items()}
+        conditioning = nodes["NGChunkConditioning"][0]
+        self.assertEqual(nodes["KSamplerSelect"][1], {"sampler_name": "euler"})
+        self.assertEqual(nodes["BasicScheduler"][1], {"model": [conditioning, 0], "scheduler": "simple", "steps": 8, "denoise": 1.0})
+        self.assertEqual(out.args[14:16], ([nodes["KSamplerSelect"][0], 0], [nodes["BasicScheduler"][0], 0]))
+        # KSampler declares sampler_name/scheduler as the option list; a COMBO-typed output would be refused there.
+        types = self.nodes["NGDirectorOutput"].RETURN_TYPES
+        names = self.nodes["NGDirectorOutput"].RETURN_NAMES
+        for name, options in (("sampler_name", KSampler.SAMPLERS), ("scheduler", KSampler.SCHEDULERS)):
+            received = types[names.index(name)]
+            self.assertTrue(validate_node_input(received, options), name + " to KSampler")
+            self.assertTrue(validate_node_input(received, "COMBO"), name + " to KSamplerSelect / BasicScheduler")
+        self.assertEqual(list(names[:10]), ["model", "positive", "negative", "latent", "fps", "width", "height", "prompt", "sequence", "seed"],
+                         "older links keep their slots")
+
     def test_single_output_prepares_conditioning_and_seed_for_native_random_noise(self):
         result = self.result()
         job = self.jobs(result)[1]
         for seed, expected in ((None, 124), (456, 457), (2**64 - 1, 0)):
             out = self.nodes["NGDirectorOutput"].execute(result, loop_chunk=job, previous=["start", 4], seed=seed, apply_sigma_shift=False)
             kinds = {n["class_type"]: (key, n["inputs"]) for key, n in out.expand.items()}
-            self.assertEqual(set(kinds), {"NGChunkConditioning", "ConditioningZeroOut"})
+            self.assertEqual(set(kinds), {"NGChunkConditioning", "ConditioningZeroOut", "KSamplerSelect", "BasicScheduler"})
             self.assertIs(kinds["NGChunkConditioning"][1]["chunk"], job)
             self.assertEqual(kinds["NGChunkConditioning"][1]["previous"], ["start", 4])
             self.assertFalse(kinds["NGChunkConditioning"][1]["apply_sigma_shift"])

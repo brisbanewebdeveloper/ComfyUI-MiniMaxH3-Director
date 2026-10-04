@@ -58,8 +58,10 @@ class ProductNodes(unittest.TestCase):
         self.assertEqual([value.io_type for value in director_outputs], ["NG_DIRECTOR_RESULT", "NG_CHUNK"])
         self.assertTrue(director_outputs[1].is_output_list)
         outputs = self.nodes["NGDirectorOutput"].GET_SCHEMA().outputs
+        from comfy.samplers import KSampler
         self.assertEqual([value.io_type for value in outputs],
-                         ["MODEL", "CONDITIONING", "CONDITIONING", "LATENT", "FLOAT", "INT", "INT", "STRING", "NG_DIRECTOR_RESULT", "INT"])
+                         ["MODEL", "CONDITIONING", "CONDITIONING", "LATENT", "FLOAT", "INT", "INT", "STRING", "NG_DIRECTOR_RESULT", "INT",
+                          "INT", "FLOAT", KSampler.SAMPLERS, KSampler.SCHEDULERS, "SAMPLER", "SIGMAS"])
 
     def test_media_contexts_load_files_directly_without_external_media_ports(self):
         for media in ("image", "video", "audio"):

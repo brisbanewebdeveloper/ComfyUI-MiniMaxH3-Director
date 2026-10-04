@@ -139,7 +139,7 @@ This is the compiler's real output, refreshed live while you edit.
 | H3 AI Loader | Optional local/API provider configuration; a separate `NG_AI_PROVIDER`, not a diffusion MODEL |
 | H3 Context Connector | Native model/CLIP/VAE ports, optional AI and four dynamically growing Context groups |
 | H3 Director | The Studio itself in the graph (Full screen on demand); outputs the project result and the chunk list |
-| H3 Director Output | Current chunk's native sampler values and seed, plus complete sequence packet for the simple render path |
+| H3 Director Output | Current chunk's native sampler values, seed and the Director's steps/cfg/sampler/scheduler (also as SAMPLER and SIGMAS), plus complete sequence packet for the simple render path |
 | H3 Context Image | Full card: picture, what is in it, default role, what to keep, figure link, description, preset |
 | H3 Context Video | Full card: player, part of the file, motion/camera/continue roles, its own sound |
 | H3 Context Audio | Full card: waveform with selection, voice/copy/lock roles, whose voice, listening controls |
