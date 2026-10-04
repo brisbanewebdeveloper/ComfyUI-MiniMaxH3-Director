@@ -33,3 +33,19 @@ Validation: compiler/source-window/serialization tests, actual native audio
 reference presentation, PCM mix/carry/mask tests and native GPU sampling through
 both external Loop and Render Sequence. Synthetic tones verify placement and
 mixing, not speech, music quality or subjective continuity.
+
+## Audio lane clips (Studio, 2026-10-04)
+
+A shot-bound Context restarts at every shot, which suits a voice line but not a song. For audio that should run
+through the project, the Studio places **clips on audio lanes**. A clip is stored in the shot document's `audio`
+list with `id`, `context_id`, story `start`/`end`, `offset` (seconds into the file), `mode` (`lock`, `copy`, `ref`)
+and `lane`. Clip ranges are independent of shots and of render parts: each part receives the slice of the clip that
+falls into its window (including the pinned head), with the source trim advanced by the clip's offset, so the sound
+continues across the seam. A clip that runs past the project end is cut there and reported; one that starts after the end is not played and
+reported. Past the end of its file a clip simply has no more sound.
+`ref` clips are sent once as a reference to every part they touch. In FL2VA only `lock` is offered.
+A document without `audio` behaves exactly as before.
+
+Validation: core tests in `tests/ng/test_audio_clips.py`; a GPU run (FL2VA Turbo, two parts, song locked at story
+1–7 s from file second 20) measured envelope correlation 0.97 at the intended place, best lag 1.00 s and 0.97 on
+each side of the seam. No listening assessment.

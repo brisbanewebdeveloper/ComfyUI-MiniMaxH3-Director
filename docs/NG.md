@@ -1,30 +1,13 @@
 # H3 Director NG
 
-Context Image, Video and Audio select/upload files directly in their own cards. Additional native media inputs on these
-context nodes are intentionally omitted, following the current product decision. Native sampler/model ports remain available.
-Cards using the same file keep their own source windows and roles. Video soundtrack and standalone audio labels follow the
-actual H3 reference order. Workflow reload supports both the original Output schema and its current sigma-shift setting.
-One file may be used by several cards: every card keeps its own name, source window and role, and the prompt labels follow the
-order the media reach the model, so a video with a soundtrack is numbered before a subject's own voice.
-Named references support the compiler's Unicode casefold spellings and follow a context rename through its stable ID.
-Inspector colors/tooltips use canonical compiler labels: video and its soundtrack share their card identity; a separate voice
-keeps its own audio label. Older workflow data still load; current Python fixes require a later server restart to become active.
-
-NG is an unfinished Director interface in this pack. The requirements audit found missing AI, context and reference-layout work. It separates reusable media contexts, model connections, story editing and rendering.
+NG is the second-generation Director in this pack: videos of any length, rendered as several H3 parts
+that continue into each other. It separates reusable media (Context nodes), model connections (Context
+Connector), story editing (the **Studio**) and rendering (native ComfyUI sampling).
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
 The local 1.0.0 development version is unreleased; the published version remains 0.3.2.
 
-Shots now retain stable IDs and explicit Context bindings after editing an old timed-text scene.
-Use each shot's Dialogue controls for exact spoken words, a Subject or narrator, language and delivery;
-no AI/API is required. Protected fields remain manually editable. The old whole-scene AI Apply is
-blocked for scenes with these bindings/dialogue/protections until selective merging is implemented.
-See the [structured shot contract and current limits](NG-shots.md).
-
-Shot cards show all assigned media kinds with their Context colors and identifying tooltips.
-Images show the input picture; videos show their first input frame. These are reference previews.
-Audio kinds, including **Singing**, are explicit Context choices and require no AI/API.
-Use **Refresh previews** after replacing a file under the same filename. Missing sources keep
-their type indicator and explain the preview failure. See [shot media behavior](NG-shot-media.md).
+The Studio's labels are German, matching the reference design; this guide quotes them with an English
+explanation.
 
 ## Start with a connected workflow
 
@@ -36,7 +19,7 @@ replace model selections if your installation differs. No models or reference me
 MODEL / CLIP / video VAE / audio VAE ─┐
 Image / Video / Audio / Text contexts ├→ H3 Context Connector
 H3 AI Loader (optional) ─────────────┘          ↓
-                                         H3 Director
+                                         H3 Director  ── Studio öffnen ──▶ full-screen Studio
                                               ↓
                                       H3 Director Output
                                               ↓ sequence
@@ -45,25 +28,107 @@ H3 AI Loader (optional) ─────────────┘          ↓
                                           SaveVideo
 ```
 
-Write an idea and set the project duration. The Director displays the planned chunks, actual duration and warnings before rendering.
-**Generate video** queues the connected ComfyUI workflow. Sampling uses native ComfyUI loops and samplers, with normal previews and Stop.
-Look at SaveVideo for the finished result. The Director itself plans and prepares the project; it does not run a private sampler loop.
-
 For a character and voice, open **H3 Director NG - image and voice.json**, select your own picture and voice in their Context nodes,
-and connect the H3 Ref2VA model. Set distinct context names; `@Mage` refers to the image named Mage, and the voice's Speaker field names Mage.
+and connect the H3 Ref2VA model. Give each context a distinct name; `@Mage` refers to the image named Mage.
 
-For an existing sampler graph, open **H3 Director NG - native sampler.json**. Director Output supplies native `MODEL`, positive/negative
-`CONDITIONING`, `LATENT`, `FLOAT` fps, `INT` width/height and `STRING` prompt. The example uses BasicGuider, whose internal CFG is 1;
-negative is ZeroOut of positive. Editable loop examples use the native CFGGuider with an explicit CFG 1.
-**Chunk index** selects one prepared chunk. A continuation requires the previous chunk's raw latent on `previous`.
-These native sampler outputs describe one chunk; **sequence** carries the whole project to Render Sequence.
-The Director's **chunks** supplies the complete list for an editable native loop; Output's **seed** supplies the current chunk seed.
+## The Director node
 
-For a complete sequence with editable samplers, use **H3 Director NG - native chunk loop.json** or
-**H3 Director NG - two sampler chunk loop.json**. Director's **chunks** starts the loop. A single **H3 Director Output** inside it prepares
-the current conditioning, initial AV latent and deterministic seed, using the previous completed AV latent. Use native RandomNoise.
-One or two native samplers repeat for every chunk. Native LoRA, Sigma Shift, guidance and schedules stay accessible.
-See [connections and continuity contract](NG-external-sampling.md).
+In the graph the Director stays small: a **Prompt** field, tiles for duration, render-part length and resolution,
+a mini timeline of the shots and render parts, a one-line summary (mode, Turbo, steps, whether an AI provider is connected,
+number of plan warnings) and **Studio öffnen** (open Studio). Render progress and the live preview appear under it.
+
+Everything else is edited in the Studio. Studio and node write the same widgets, so a value changed in one is shown in the other,
+and ComfyUI's unsaved-changes marker and Save/Reload include Studio edits.
+
+## The Studio
+
+The Studio is a full-screen view over the graph. **Esc** or **Zurück zum Graph** closes it. It has no inner scroll areas; on a small
+window the page scrolls as a whole. **Generieren** queues the connected workflow, exactly like ComfyUI's Queue button.
+
+### Prompt and Content
+
+**Prompt** describes the whole video. Without shots, the prompt alone carries the project: a text-only video needs nothing else.
+
+- **KI: in Shots aufteilen** asks the optional AI provider to split the prompt into timed shots. The proposal appears as dashed
+  shots on the timeline; **Übernehmen** (accept) replaces the current shots, **Verwerfen** (discard) leaves everything unchanged.
+  Audio lanes are never touched by a proposal.
+- **Ganzer Prompt = ein Shot** turns the prompt into one shot spanning the project.
+
+**Content** shows one card per Context node connected to the Context Connector, in its context colour, plus a plain **Text-Shot** card.
+Drag a card onto the empty timeline to create a shot with it, onto a shot (or click it while a shot is selected) to assign it,
+or an audio card onto an audio lane. Cards the current mode cannot use are dimmed (for example a video in Start-/Endbild mode).
+Files are chosen in the Context nodes themselves, not in the Studio.
+
+### Timeline
+
+All tracks share one time axis on a **0.1 s grid**.
+
+- **Shots**: drag a shot to move it, drag its edges to change start or end. Drag a shot over another and release to reorder;
+  the others close up behind it while gaps stay where they were. A click selects the shot. **+ Shot** adds a text shot after the last one.
+- **Audio lanes** run independently of the shots, so a song placed on a lane plays continuously across shots and render parts
+  instead of restarting per shot. **+ Tonspur** (or the empty drop zone) adds a lane; drop audio Content on it, move the clip,
+  trim it at its edges. A clip has its own story range and **Ab Sekunde im File** (start offset in the file).
+  An empty lane can be removed. There are no fixed lanes for voice, music or effects.
+- **Render parts** show how the planner splits the project into H3 runs (about 10 s by default), each in its own colour.
+  A part's tooltip shows its frames and the frames carried over from the previous part.
+
+### Right column: Arbeitsweise and the selected item
+
+**Arbeitsweise** (mode) is the central choice and applies to the whole project:
+
+| Choice | H3 model | Uses |
+|---|---|---|
+| **Start- / Endbild** (FL2VA) | first/last-frame model | first and last frame, keyframes, sound |
+| **Referenzen** (Ref2VA) | reference model | figures, places, videos and voices as references |
+
+Older workflows saved with `auto` keep it and show it as automatic; it is also selectable under **Weitere Einstellungen**.
+
+**Turbo** switches between 20 steps and 4 steps with the H3 turbo LoRA. Each mode has its own LoRA selection, preselected from installed
+files whose name contains `turbo` and `h3` or `minimax`. If Turbo is on without a LoRA, the Studio picks an installed one, or warns when none is found.
+CFG stays 1 in both cases: every official H3 template uses BasicGuider.
+
+Below it is the panel of the selected item:
+
+- **Shot**: start/end, **Was passiert?** (what happens), the Content assigned to this shot, and one spoken line with
+  **Wer spricht** (speaker or narrator) and **Sprache** (language). **KI: Text vorschlagen / verbessern** asks the provider for this
+  shot's text; the suggestion is shown with **Übernehmen** / **Verwerfen** and changes nothing until accepted.
+  The panel lists the render parts the shot falls into.
+- **Audio clip**: start/end on the story, the offset in the file and how H3 uses it:
+  **Genau so übernehmen** (lock: encoded source audio is pinned), **Möglichst übernehmen** (copy: H3 is asked to reuse the sound) or
+  **Nur als Vorbild** (reference: mood, voice, style). In Start-/Endbild mode H3 can only take a clip as lock.
+
+### Settings bar
+
+The bar under the timeline has two rows that are always visible:
+
+- **Video**: duration, render-part length (Auto = about 10 s), resolution preset, width/height, **Bildgröße** fold-out, FPS (H3 is 24 fps).
+- **Sampling**: seed with random toggle, steps, sampler, scheduler, **Weitere Einstellungen** fold-out.
+
+Resolution follows the Legacy Director: presets **Nativ** (short side 768), **Schnell** (short side 480) and **Über nativ** (1920×1088), **Aus erstem Bild (H3 wählt)**,
+and custom sizes on H3's /32 grid. The **Bildgröße** fold-out has aspect ratio, megapixels, **Bilder einpassen** (crop, stretch, pad,
+pad green) and **Referenzbilder** (reference image size; *Wie Video* is fastest).
+With width and height 0, the size comes from the first frame picture, or else from the first image, using H3's rule
+(short side 768, area at most 768·1344, multiples of 32); without any picture it falls back to 1344×768 and says so.
+
+**Weitere Einstellungen** contains continuity between render parts (picture and sound / picture only / hard cuts), the overlap,
+ambient sound, music, style and the video/audio sigma shifts.
+
+### Prompts per render part
+
+**Prompt ansehen** opens a drawer at the bottom with the actual prompt each render part receives, coloured like its part,
+its reference budget (pictures/videos/audio used of H3's limits) and all plan warnings with a German heading.
+This is the compiler's real output, refreshed live while you edit.
+
+## Rendering paths
+
+- **Simple**: Director → Director Output → Render Sequence → SaveVideo (the text studio example). Render Sequence expands into
+  native StartLoop/List, conditioning, SamplerCustomAdvanced and EndLoop with normal previews and Stop. When Turbo is on,
+  `LoraLoaderModelOnly` is inserted on the model.
+- **Your own sampler**: **H3 Director NG - native sampler.json**. Director Output supplies native `MODEL`, positive/negative
+  `CONDITIONING`, `LATENT`, fps, width/height, prompt and seed for one chunk; **sequence** carries the whole project.
+  A continuation requires the previous chunk's raw latent on `previous`.
+- **Editable loop**: **H3 Director NG - native chunk loop.json** or **two sampler chunk loop.json**. The Director's **chunks** starts
+  the loop and one Director Output inside it prepares each chunk. See [connections and continuity contract](NG-external-sampling.md).
 
 ## Product nodes
 
@@ -71,50 +136,29 @@ See [connections and continuity contract](NG-external-sampling.md).
 |---|---|
 | H3 AI Loader | Optional local/API provider configuration; a separate `NG_AI_PROVIDER`, not a diffusion MODEL |
 | H3 Context Connector | Native model/CLIP/VAE ports, optional AI and four dynamically growing Context groups |
-| H3 Director | Idea, settings, contexts, scene cards, story/chunk timelines, generation summary, prompt inspector and complete chunk list |
+| H3 Director | Compact node with prompt and summary; opens the Studio; outputs the project result and the chunk list |
 | H3 Director Output | Current chunk's native sampler values and seed, plus complete sequence packet for the simple render path |
 | H3 Context Image | Image source, content roles, usages, property preservation, preview and presets |
 | H3 Context Video | Video player, source range, motion/camera/continuation usages and optional paired audio |
 | H3 Context Audio | Player/waveform, source selection, speaker, voice/copy/lock usages and presets |
-| H3 Context Text | Text editor with quick insertion over the real H3 fields, one AI button that turns the note into the English prompt block, presets |
+| H3 Context Text | Text editor with quick insertion, one AI button that turns the note into an English prompt block, presets |
 | H3 Render Sequence | Expanded native List loop, sampler and collector; outputs VIDEO, IMAGE, AUDIO and notes |
 
-Native port types, names and colors come from ComfyUI. Context identity colors affect the cards and references.
-The existing technical nodes remain available under **MiniMax H3 / NG / Technical**, including NG Chunk Planner,
-NG Chunk Conditioning, NG Collect, NG Chunk Sequence and NG Studio Laboratory. Saved IDs remain valid.
+The technical nodes remain available under **MiniMax H3 / NG / Technical** (NG Chunk Planner, NG Chunk Conditioning,
+NG Collect, NG Project Chunks, NG Studio Laboratory). Saved IDs remain valid.
 
-## Editing the project
+## Project data
 
-The Director uses one interface. Idea, project settings, contexts, scenes and generation stay available.
-Duration, target chunk length, aspect ratio, width/height, seed, steps, sampler and scheduler are directly editable.
-Continuity, sound/model settings and the Output Inspector have individual expandable panels.
-Manual/Assist/Auto controls AI actions only. Old workflow view settings are discarded on load; saved node sizes remain.
+Shots and audio clips are stored in the Director's `shots` widget as one JSON document (`format: "h3-director-shots"`).
+Old timed text such as `0-4: @Mage looks up.` still loads. See [the shot contract](NG-shots.md).
+New Director widgets (`turbo`, the two turbo LoRAs, `resize_method`, `ref_image_size`) are appended at the end, so older
+workflows keep their values; an older NG workflow's trailing empty value is repaired on load.
 
-Leave scenes empty to describe the whole project with the idea. Use **+ Shot** to add a timed scene, edit its action/dialogue and times,
-then shorten its end before adding another. Drag the story bar or its edges to change timing. The separate generation track shows render chunks.
-Both tracks share one time axis; the requested end and delivered frame duration remain visible.
-Selecting a shot highlights its actual compiler chunks, including pinned-head intersections.
-Use the card's earlier/later arrows to swap neighboring shots while retaining their lengths,
-gap and contents. Editing clears the previous chunk track until its plan is refreshed.
-See [the timeline contract](NG-timeline.md).
-**Use idea as one scene** clears timed scene overrides and returns to automatic scene planning.
+H3 renders at **24 fps** on its `17k + 5` frame grid. The plan reports the real finished length and warns about rounding.
+One resolution applies to the whole project. `chunk_seconds = 0` selects the planner's 10-second target; H3's trained chunk range is 4–15 seconds.
+The style choice adds prompt instructions; it does not load a different model.
 
-The original shot text remains editable and uses the existing contract:
-
-```text
-0-4: @Mage looks up in the sanctuary.
-@Mage says: Welcome back.
-4-8: @Mage turns toward the window.
-```
-
-Times can be seconds or `m:ss.s`. Spoken lines belong where their shot starts; continued chunks carry the action without repeating its dialogue.
-Renaming a connected context with the same persistent ID updates its recognized `@Name` references in the idea and shots.
-Unknown mentions are highlighted for review. Shot thumbnails are labeled reference previews, not generated frames.
-
-H3 renders at **24 fps** on its `17k + 5` frame grid. The preview reports the real finished length and warns about rounding.
-Aspect presets set width/height; Custom preserves explicit dimensions. One resolution applies to the whole project.
-`chunk_seconds = 0` selects the planner's 10-second target. H3's trained chunk range is 4–15 seconds.
-The style choice adds prompt instructions; it does not load a different model or style adapter.
+In Start-/Endbild mode the prompt carries no `@refN` tags: mentions become plain names and a spoken line becomes `@voice(Name) says:`.
 
 ## Context workspaces
 
@@ -123,77 +167,62 @@ Select an input file or use **Browse / Upload**. Files are resolved within Comfy
 Missing files stop rendering by name. Absolute paths, traversal and escaping symlinks are rejected.
 
 **Detected Content** describes the medium, independently of **Use As**, which determines its role in generation.
-Multiple image content/usage choices are supported. Image Preserve controls for Identity, Outfit, Pose and Background are compiled into
-retention instructions; they guide H3 rather than enforce exact pixel preservation.
-First/Last Frame anchor the project; Keyframe/Storyboard require a scene time and condition only the chunk containing that time.
+Image Preserve controls for Identity, Outfit, Pose and Background are compiled into retention instructions;
+they guide H3 rather than enforce exact pixel preservation.
+First/Last Frame anchor the project; Keyframe/Storyboard condition only the chunk containing their time.
 Guide time is sampled on H3's latent grid, so subframe precision and a smooth transition are not guaranteed.
 
 Video uses native playback and source start/end fields. Motion/Camera/Whole Structure send references and prompt guidance;
 they do not promise exact motion copying. **Continue From Video** uses the final frame of the selected source interval as a starting guide.
-**Audio Track** can ignore the video sound or send it as the correspondingly numbered paired audio reference.
+**Audio Track** can ignore the video sound or send it as the paired audio reference.
 
-Audio shows full-source waveform metadata, draggable selection and zoom. Start/End select the source used for generation;
-zero End means file end. Speaker can be a character name or persistent context ID.
-Voice guides timbre, Copy asks H3 to reuse sound, and Lock pins encoded source audio while video is generated.
-The audio VAE and output codec can change the waveform even with Lock. Preview Volume/Fades affect playback only, as labeled.
+Audio shows a waveform, draggable selection and zoom. Start/End select the source used for generation; zero End means file end.
+Speaker can be a character name or persistent context ID. Voice guides timbre, Copy asks H3 to reuse sound, and Lock pins encoded
+source audio while video is generated. The audio VAE and output codec can change the waveform even with Lock.
+Preview Volume/Fades affect playback only, as labeled.
 
-Text provides an editable large field, character count, quick bracket placeholders, role choices and templates/examples.
-Replace placeholders with real descriptions; `@Name` refers to a connected context. Templates remain ordinary editable text.
+One file may be used by several cards: every card keeps its own name, source window and role. Prompt labels follow the
+order the media reach the model, so a video with a soundtrack is numbered before a subject's own voice.
+Renaming a context updates its `@Name` mentions in the prompt and shots through its stable ID.
 
 ## Assign assets to Subjects
 
 An independent reference image defines a Subject. In Image, Video or Text, use **Subject assignment** to link
-the card to one or more connected Subjects. For example, keep Alice's identity image independent and assign
-an outfit image and a motion video to Alice. Audio uses the existing **Speaker / Voice** selector.
-File selection and upload stay inside each Context node.
-
-The compiler presents the identity image and linked image assets within the same Subject, preserving each
-card's ID and actual Picture number. Property, description and preservation guidance are scoped to the asset;
-`@Outfit` names its Picture, while `@Alice` names the Subject. Videos keep their own Video/soundtrack labels;
-assigned text receives an explicit Subject scope. Rename, workflow reload and presets keep the stored IDs.
-An image shared by two Subjects is presented twice and consumes two native reference slots.
-
-Invalid or unavailable relations produce warnings and keep the material. Budget-dropped Subjects are removed
-from text scopes; if none remain, the rule stays as general context guidance. First/Last/Keyframe/Continue
-guides retain their existing native global meaning. Subjects without a reference image, nested relationships,
-automatic extraction of several voices from one file and the optional relationship graph remain further work.
-Manual prompt override remains exact. See [validation](NG-validation.md) for native render evidence and limits.
+the card to one or more connected Subjects, for example an outfit image and a motion video to Alice.
+Audio uses the existing **Speaker / Voice** selector. The compiler presents linked assets within the same Subject;
+`@Outfit` names its Picture, while `@Alice` names the Subject. An image shared by two Subjects consumes two reference slots.
+Invalid or unavailable relations produce warnings and keep the material.
 
 ## Presets
 
 Save/Save As writes a versioned JSON preset under the current ComfyUI user's `minimax_h3_ng/contexts` folder.
-Load restores source, roles, description, property preservation, timing, identity, Subject assignments and color. Media bytes and AI credentials are not included.
-Saving an existing name replaces it atomically. Loading the same preset twice restores its ID twice; give one copy a new advanced Context ID
-if they should be separate items. Duplicate IDs are rejected, and ambiguous names are reported.
+Load restores source, roles, description, property preservation, timing, identity, Subject assignments and colour.
+Media bytes and AI credentials are not included. Duplicate IDs are rejected, and ambiguous names are reported.
 
 ## Optional AI
 
-Connect **H3 AI Loader** to the Connector for Director assistance, or directly to a Context for analysis.
-Contexts can also inherit the single provider from their downstream Connector. Without an AI connection the manual workflow remains usable.
-The four source cards have real execution paths. **Local** chooses an installed text encoder from disk or a running Ollama/LM Studio server. **CLIP / Encoder** consumes a connected generative Load CLIP through native Generate Text. **API** and **Custom** use compatible endpoints. H3's conditioning encoder stays independently connected at the Connector. See [native AI setup](NG-native-ai.md).
+Connect **H3 AI Loader** to the Connector for Studio assistance, or directly to a Context for analysis.
+Without an AI connection everything works manually; the Studio's AI buttons are disabled and say why.
+**Local** chooses an installed text encoder or a running Ollama/LM Studio server, **CLIP / Encoder** uses a connected generative
+Load CLIP, **API** and **Custom** use compatible endpoints. See [native AI setup](NG-native-ai.md).
+Credentials come from a named server environment variable; workflow files store the variable name, not the secret.
 
-Enter provider, base URL, model and declared Vision/Audio capabilities. Timeout, Max tokens and Keep model loaded
-change the outgoing request itself and are range-checked in the core. Credentials come from the named server
-environment variable; workflow files store the variable name rather than the secret. Use a URL without embedded
-credentials/query parameters; `/v1` is supported.
-**Configured · not tested** describes configuration, not a successful request. Native sources show the successful action/medium after a real request; changes to the model/settings invalidate that status. Declaring capability does not add it to an incompatible model.
-
-**Analyze** makes one explicit request. Images send bounded thumbnails; videos send three ordered stills from at most the first 15 seconds,
-which cannot establish unseen motion. Audio uses at most 15 seconds of mono audio; HTTP providers need `input_audio`, while native models must accept ComfyUI AUDIO. Ollama has no audio transport. **Cancel AI** cancels this action; native cancellation targets its own queue prompt.
-**Apply suggestion** changes description/supported content choices, preserving source, usage and preservation settings.
-
-**Auto Direct** asks the connected provider for a timed scene proposal using the idea and context descriptions.
-It displays the proposal for review; **Apply scene suggestion** updates editable shots and any proposed soundscape/music.
-Changed input invalidates a pending suggestion. Loading, connecting and rendering do not trigger provider requests.
-Native CLIP and disk tests with installed Qwen3VL 4B cover real text/image analysis and a timed scene proposal. HTTP transport tests also use a local mock. Full analysis fields, Analyze All, AI control modes and scene-Apply field selection remain unfinished.
+**Analyze** on a Context makes one explicit request; **Apply suggestion** changes description and content choices only.
+In the Studio, AI proposals for shots are reviewed before they change anything ([shot drafts](NG-shot-drafts.md)).
+Loading, connecting and rendering never trigger provider requests.
 
 ## Continuity and verification
 
-`video_audio` pins a previous latent's video tail and about a second of audio before the next chunk; `video` pins only picture,
+`video_audio` pins a previous part's video tail and about a second of audio before the next part; `video` pins only picture,
 and `none` renders independent clips. The collector removes pinned heads. The planner tries to place boundaries away from new story actions
-and warns when it cannot. Tail continuity reuses the tested PackedLayout adapter, inspired by H3 Motion Context, without changing core ComfyUI.
+and warns when it cannot. Audio on a lane is cut per part at its story position, so it continues across the seam.
 
-Read [NG-validation.md](NG-validation.md) for automated checks, native sampler/sequence runs, interruption recovery and quality limits.
-Single-seed functional runs show feasibility. Long chains may drift in identity or sound, and pinned audio may lose high frequencies.
-Adaptive continuity/crossfades, Subjects without an image, the optional relationship graph and broad perceptual quality validation remain further work.
-An imperceptible seam and a human listening assessment have not been established.
+Read [NG-validation.md](NG-validation.md) for automated checks and native GPU runs. Single-seed functional runs show feasibility;
+long chains may drift in identity or sound, and pinned audio may lose high frequencies. An imperceptible seam and a human listening
+assessment have not been established.
+
+## Not in the Studio (yet)
+
+- The old inspector's **Analyze all contexts** and raw Director-Context JSON view.
+- Only the first spoken line of a shot is editable in the shot panel; further lines from older data are kept.
+- Adaptive continuity/crossfades, Subjects without an image and a relationship graph remain further work.

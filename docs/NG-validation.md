@@ -618,3 +618,28 @@ No GPU render or human design/quality acceptance was performed for this editor
 change. E45 remains partial: shot audio placement, overlapping copy/lock mixing,
 and interior anchor contracts are still open. E46 selective AI Apply and E47
 provenance remain open. Contract: [NG-timeline.md](NG-timeline.md).
+
+## Studio (S1–S8, 2026-10-04)
+
+Built by Claude from the accepted clickable prototype; plan and decisions in `_notes/NG/45-studio-build-plan.md`.
+Local commits on `ng`: `fc5901b` audio lane clips, `89755e8` turbo/canvas/fitting, `6ec31a6` Studio,
+`bd26caa` settings bar, `8af8515` change tracker and turbo LoRA choice. No push, tag or publication.
+
+Automated: 559 NG tests (one Windows symlink skip), Legacy 374/374 + 74/74, every `tests/ng/js/*.mjs` suite
+(including `test_h3s_model.mjs` and `test_h3s_views.mjs` on a minimal DOM), size/layer limits in `test_structure.py`.
+
+Browser, own CPU instance (port 8210, own user/output directory, in-memory database): open/close with Esc,
+moving/resizing/reordering shots with real mouse input, Content drop, audio drop onto a lane with the file's real length,
+typing while the live plan refreshes (focus kept), presets/megapixels/from picture, Turbo and mode, the per-part prompt
+drawer, Save/Reload, and both AI buttons over `/ng/direct` with a mock provider (port 8211). At 1280×800 no horizontal
+scrolling and no inner scroll areas; the page is 979 px tall and scrolls as a whole.
+
+GPU, own instance (port 8212, RTX 5060 Ti), both runs through Render Sequence with Turbo:
+
+| Run | Setup | Result |
+|---|---|---|
+| FL2VA | 8 s, two parts, 864×480; song locked as a lane clip at story 1–7 s from file second 20 | 192 frames, 138 s. Envelope correlation at the intended place 0.97 (control against the file start −0.07); best lag 1.00 s; part 1 and part 2 each 0.97, so the sound continues across the seam |
+| Ref2VA | Mage picture and voice, two parts | 192 frames, 159 s; the figure is consistent across both parts |
+
+Evidence: `_notes/NG/experiments/s8_*` (videos, frames, `measure.json`, `s8_measure.py`). All own instances were stopped;
+the user's server on 8189 was not touched. No listening test or human quality acceptance.

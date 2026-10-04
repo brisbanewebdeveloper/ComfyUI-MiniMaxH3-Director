@@ -1,5 +1,10 @@
 # Shot AI drafts and selective Apply
 
+> **Studio (2026-10-04):** the Studio shows AI proposals as dashed shots (**KI: in Shots aufteilen**) or as a
+> suggestion in the shot panel (**KI: Text vorschlagen / verbessern**) with Übernehmen/Verwerfen, both over the same
+> `/ng/direct` route. The field-by-field review list described below is no longer shown; stored `locked_fields`
+> still protect fields in the draft contract.
+
 Auto Direct uses the existing optional AI Loader. With existing Shots it asks for
 an ID-addressed draft instead of a replacement scene. A separate Idea is optional
 when Shots already exist. With no Shots it keeps the original scene proposal path.

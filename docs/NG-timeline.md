@@ -1,5 +1,9 @@
 # Story and generation timeline contract
 
+> **Studio (2026-10-04):** the in-node editor this page describes was replaced by the full-screen Studio
+> ([guide](NG.md#the-studio)). Shots now move on a 0.1 s grid and are reordered by dragging one over another
+> instead of earlier/later arrows; audio clips have their own lanes. The planner contract below is unchanged.
+
 Story shots and generation chunks share one time axis covering both requested
 and delivered duration. The requested end remains visible when H3's frame grid
 extends or shortens output. Labels derive from integer frame counts at native

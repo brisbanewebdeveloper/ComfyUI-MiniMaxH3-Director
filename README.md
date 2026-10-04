@@ -47,18 +47,29 @@ see the exact prompt the model will receive while you are still editing it.
 
 ## NG: videos of any length
 
-**Development status: incomplete.** One Director interface, native CLIP assistance, media cards and the compiler inspector are available. Structured shot storage, explicit media bindings, manual dialogue and protection metadata are implemented; selective AI merging, native validation of scoped references, timeline placement/mixing of audio, remaining layout work and continuity/quality acceptance remain open. See [the shot contract](docs/NG-shots.md). Context cards load media files directly. Published 0.3.2 is unchanged.
+**Development status: unreleased, functionally tested.** Published 0.3.2 is unchanged.
 
-**H3 Director NG** now has its own connected product workflow: **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
-Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text contexts describe your references;
-the Director provides one interface, editable scene cards, separate story/chunk timelines and a generation summary.
-An optional **H3 AI Loader** enables explicit Analyze/Apply and Auto Direct/Apply through a generative CLIP connection, an installed encoder from disk, or a running local/compatible API provider. [Native AI setup](docs/NG-native-ai.md) explains the separate assistant encoder.
+**H3 Director NG** renders videos of any length as several H3 parts that continue into each other:
+**Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
+Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text Context nodes hold your references.
+
+The Director node stays small in the graph: a prompt, duration, render-part length, resolution and **Studio öffnen**.
+The full-screen **Studio** holds everything else on one page without inner scrolling:
+
+- **Prompt** for the whole video, optionally split into timed shots by AI (proposals shown dashed until you accept them).
+- **Content** cards from the connected Context nodes, dragged onto the timeline or onto a shot.
+- A **timeline** on a 0.1 s grid: shots you move, resize and reorder by mouse; free **audio lanes** whose clips run across shots
+  and render parts (with an offset into the file); and the coloured render parts the planner will run.
+- **Arbeitsweise** (Start-/Endbild FL2VA or Referenzen Ref2VA) and **Turbo** (H3 turbo LoRA, 4 steps; off = 20 steps; CFG stays 1).
+- A settings bar with resolution as in the Legacy Director (presets, from first picture, aspect/megapixels, fitting, reference size),
+  seed, steps, sampler and scheduler, and a drawer showing the real prompt of each render part.
+
+The Studio's labels are German. An optional **H3 AI Loader** (generative CLIP, an installed encoder from disk, or a local/compatible API)
+enables Context analysis and the Studio's AI buttons; everything works without it. [Native AI setup](docs/NG-native-ai.md) explains the separate assistant encoder.
 
 Open **`example_workflows/H3 Director NG - text studio.json`** for the complete render path, **`H3 Director NG - image and voice.json`**
 for references, or **`H3 Director NG - native sampler.json`** to use native Output ports with your sampler.
-Select your own installed model files and reference media as needed. Native port colors come from ComfyUI.
-
-The four Context nodes have compact cards and detailed media workspaces: previews, roles, preservation, source ranges and presets. The Text card is a plain text-to-video note: quick insertion over the real H3 fields, and one AI button that rewrites whatever you wrote, in any language, into the English prompt block H3 expects.
+Select your own installed model files and reference media as needed.
 Rendering expands native ComfyUI loops/samplers, preserving preview, progress and Stop. The original timeline Director below remains **Legacy**.
 Technical chunk/laboratory nodes are available under NG/Technical and keep their saved IDs.
 

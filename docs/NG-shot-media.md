@@ -1,5 +1,8 @@
 # Shot media display contract
 
+> **Studio (2026-10-04):** shots and Content cards are now shown in the Studio ([guide](NG.md#the-studio)); the
+> old shot cards, their media marks and **Refresh previews** are gone. Previews still come from `/ng/media`.
+
 Shots show the material the user assigned, mentioned or selected as a dialogue
 speaker. This display does not assert that an asset is present in a generated
 frame; the compiler Inspector describes the actual chunk conditioning.
