@@ -386,7 +386,11 @@
         "simple",
         12.0,
         3.0,
-        ""
+        false,
+        "none",
+        "none",
+        "crop",
+        "match"
       ],
       "widgets_values_named": {
         "idea": "A baker kneads dough in a warm bakery.",

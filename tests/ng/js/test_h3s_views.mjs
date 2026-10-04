@@ -1,0 +1,127 @@
+// Studio views on a minimal DOM: what they show for a given state and which actions the mouse triggers.
+import assert from "node:assert/strict";
+import { installDom } from "./fake_dom.mjs";
+
+installDom();
+const { timelineView } = await import("../../../js/ng/h3s_timeline.js");
+const { sideView } = await import("../../../js/ng/h3s_side.js");
+const { footerView, drawerView } = await import("../../../js/ng/h3s_footer.js");
+const { contentView, promptView, contentEntries } = await import("../../../js/ng/h3s_content.js");
+const { issueLine } = await import("../../../js/ng/h3s_issues.js");
+
+const shot = (id, start, end, text = id, media = []) => ({ id, start, end, text, media, spoken: [], locked_fields: [], draft: null });
+const contexts = contentEntries([
+  { media: "image", widgets: { context_id: "mage", name: "Mage", image: "mage.png", usage: "reference" } },
+  { media: "video", widgets: { context_id: "move", name: "Move", video: "move.mp4", usage: "motion" } },
+  { media: "audio", widgets: { context_id: "song", name: "Song", audio: "song.wav", usage: "music_style" } },
+], (entry) => ({ image: "#6AA6F8", video: "#E6BE57", audio: "#B38CF5" }[entry.media]));
+const plan = { width: 1344, height: 768, total_s: 20, total_frames: 480, mode: "ref2va", issues: [{ code: "shot_gap", text: "there is a gap.", ref: "shot 2" }],
+  chunks: [{ index: 0, start_s: 0, end_s: 10, delivered_frames: 240, head_frames: 0, mode: "ref2va", prompt: "first prompt", refs: [{ kind: "picture", ctx_id: "mage" }], shots: [{ shot_id: "a" }] },
+    { index: 1, start_s: 10, end_s: 20, delivered_frames: 240, head_frames: 22, mode: "ref2va", prompt: "second prompt", refs: [], shots: [{ shot_id: "a" }, { shot_id: "b" }] }] };
+
+function state(extra = {}) {
+  const values = { idea: "A walk.", project_seconds: 20, chunk_seconds: 0, width: 1344, height: 768, mode: "ref2va", turbo: false, steps: 20, seed: 1,
+    sampler_name: "res_multistep", scheduler: "simple", turbo_lora_fl2va: "fl.safetensors", turbo_lora_ref2va: "none", resize_method: "crop",
+    ref_image_size: "match", continuity: "video_audio", pin_frames: "22", style: "None", shift_video: 12, shift_audio: 3, ...extra.values };
+  return { values, duration: values.project_seconds, options: { sampler_name: ["euler", "res_multistep"], scheduler: ["simple"],
+    turbo_lora_fl2va: ["none", "fl.safetensors"], turbo_lora_ref2va: ["none", "ref.safetensors"] },
+    contexts, byId: new Map(contexts.map((entry) => [entry.id, entry])), shots: [shot("a", 0, 8, "Walks in.", [{ schema_version: 1, context_id: "mage", role: "context" }]), shot("b", 8, 20)],
+    audio: [{ schema_version: 1, id: "c1", context_id: "song", start: 4, end: 18, offset: 10, mode: "lock", lane: "l1" }], lanes: ["l1", "l2"],
+    selected: null, ghosts: [], suggestions: {}, plan, ai: false, busy: "", promptOpen: false, sizeOpen: false, furtherOpen: false, selectedRange: null, ...extra };
+}
+function recorder() {
+  const calls = [];
+  const actions = new Proxy({}, { get: (_t, name) => name === "shotLabel" ? (id) => ({ a: "Shot 1", b: "Shot 2" }[id] || "Shot")
+    : name === "thumb" ? () => "" : name === "takeDragged" ? () => "song" : (...args) => { calls.push([name, ...args]); } });
+  return { actions, calls };
+}
+
+// Timeline: shots, lanes, parts with their colours and the clip's mode.
+{
+  const { actions, calls } = recorder();
+  const view = timelineView(state(), actions);
+  assert.deepEqual(view.byClass("h3s-shot").map((node) => node.style.left), ["0%", "40%"]);
+  assert.equal(view.byClass("h3s-clip")[0].innerText.includes("fest · 4–18 s"), true);
+  const parts = view.byClass("h3s-part");
+  assert.deepEqual(parts.map((node) => node.style.borderColor), ["#4FB8C4", "#E58A5C"], "each render part has its own colour");
+  assert.ok(view.innerText.includes("Ton 2"), "an empty lane is shown");
+  // Drag shot b over shot a: the drop reorders.
+  const block = view.byClass("h3s-shot")[1];
+  block.onpointerdown({ stopPropagation() {}, preventDefault() {}, currentTarget: block, clientX: 500, pointerId: 1 });
+  block.onpointermove({ clientX: 50 });
+  block.onpointerup();
+  const set = calls.find(([name]) => name === "setShots");
+  assert.ok(set, "a drag writes the shots once, on release");
+  assert.deepEqual(set[1].map((s) => [s.id, s.start, s.end]).sort((x, y) => x[1] - y[1]), [["b", 0, 12], ["a", 12, 20]]);
+  assert.deepEqual(calls.filter(([name]) => ["beginPointer", "endPointer"].includes(name)).map(([name]) => name), ["beginPointer", "endPointer"]);
+  // A click without moving selects.
+  const fresh = recorder(), again = timelineView(state(), fresh.actions), first = again.byClass("h3s-shot")[0];
+  first.onpointerdown({ stopPropagation() {}, preventDefault() {}, currentTarget: first, clientX: 100, pointerId: 1 });
+  first.onpointerup();
+  assert.deepEqual(fresh.calls.find(([name]) => name === "select"), ["select", "shot", "a"]);
+}
+
+// Ghost suggestions say what Übernehmen does.
+{
+  const view = timelineView(state({ ghosts: [{ start: 0, end: 20, text: "One take." }] }), recorder().actions);
+  assert.ok(view.byClass("h3s-banner")[0].innerText.includes("Übernehmen ersetzt deine 2 Shots; Tonspuren bleiben."));
+  assert.ok(view.byClass("h3s-track")[0].classList.contains("ghosting"));
+}
+
+// Side: mode, turbo LoRA per mode, shot panel, clip panel restricted in FL2VA.
+{
+  const { actions, calls } = recorder();
+  let [mode, panel] = sideView(state({ values: { turbo: true, mode: "fl2va" } }), actions);
+  assert.equal(mode.byTag("select").length, 1, "Start-/Endbild shows only its own turbo LoRA");
+  assert.ok(mode.innerText.includes("Turbo an"));
+  mode.button("Referenzen").onclick();
+  assert.deepEqual(calls.at(-1), ["setWidget", "mode", "ref2va"]);
+  [, panel] = sideView(state({ selected: { kind: "clip", id: "c1" }, values: { mode: "fl2va" } }), actions);
+  assert.ok(panel.innerText.includes("Story 4–10 s → spielt File 10–16 s"));
+  assert.ok(panel.innerText.includes("kann H3 Ton nur fest übernehmen"));
+  assert.equal(panel.byTag("select")[0].children.length, 1, "FL2VA offers only lock for a lane clip");
+  [, panel] = sideView(state({ selected: { kind: "shot", id: "a" } }), actions);
+  assert.ok(panel.innerText.includes("Liegt in: Render-Teil 1, Render-Teil 2"));
+  assert.ok(panel.innerText.includes("Mage"));
+  assert.equal(panel.button("KI: Text").disabled, true, "no AI suggestion without a loader");
+}
+
+// Footer and drawer.
+{
+  const { actions } = recorder();
+  const footer = footerView(state({ values: { width: 0, height: 0 } }), actions);
+  assert.equal(footer.byTag("select").find((node) => node.value === "auto")?.value, "auto");
+  assert.ok(footer.innerText.includes("1344×768 aus Bild"));
+  const drawer = drawerView(state({ promptOpen: true }), actions);
+  assert.ok(drawer.innerText.includes("first prompt") && drawer.innerText.includes("second prompt"));
+  assert.ok(drawer.innerText.includes("Bilder 1/9 · Video 0/3 · Ton 0/3"));
+  assert.ok(drawer.innerText.includes("Lücke zwischen Shots (shot 2): there is a gap."));
+  assert.equal(issueLine({ code: "new_code", text: "x" }), "Hinweis: x");
+}
+
+// Content cards and prompt.
+{
+  const { actions, calls } = recorder();
+  const view = contentView(state({ selected: { kind: "shot", id: "a" }, values: { mode: "fl2va" } }), actions);
+  const cards = view.byClass("h3s-ctx");
+  assert.equal(cards.length, 4, "Text-Shot plus three Context cards");
+  assert.ok(cards[1].classList.contains("on"), "Mage is in the selected shot");
+  assert.ok(cards[2].classList.contains("off"), "a video is unused in FL2VA");
+  cards[3].onclick();
+  assert.deepEqual(calls.at(-1), ["toggleBinding", "song"]);
+  const prompt = promptView(state({ ai: false }), actions);
+  assert.equal(prompt.button("KI: in Shots").disabled, true, "no AI without a loader");
+}
+
+// Older NG workflows put an empty trailing value on the first widget added later; it falls back to its default.
+{
+  globalThis.window = { comfyAPI: { app: { app: { registerExtension() {} } }, api: { api: {} } } };
+  const { repairLaterWidgets } = await import("../../../js/ng/h3s_node.js");
+  const widget = (name, value, values) => ({ name, value, options: values ? { values } : {} });
+  const node = { widgets: [widget("turbo", ""), widget("turbo_lora_fl2va", "gone.safetensors", ["none", "fl.safetensors"]),
+    widget("turbo_lora_ref2va", "none", ["none"]), widget("resize_method", "pad", ["crop", "pad"]), widget("seed", "")] };
+  repairLaterWidgets(node);
+  assert.deepEqual(node.widgets.map((w) => w.value), [false, "none", "none", "pad", ""], "only the later widgets are repaired, valid values stay");
+}
+
+console.log("h3s views ok");

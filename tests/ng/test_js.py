@@ -18,34 +18,14 @@ class Frontend(unittest.TestCase):
                 result = subprocess.run([NODE, "--check", os.path.join(JS_DIR, name)], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, "%s: %s" % (name, result.stderr))
 
-    def test_logic_tests_pass(self):
-        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_js.mjs")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_context_text_rename_passes(self):
-        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_context_text.mjs")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_studio_workflow_reload_and_controls(self):
-        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_studio.mjs")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_structured_shot_controls_and_migration(self):
-        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_shots.mjs")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_shot_media_display_and_request_lifecycle(self):
-        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_shot_media.mjs")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_timeline_frame_truth_and_mouse_contracts(self):
-        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_timeline.mjs")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_direction_field_apply_and_request_lifecycle(self):
-        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_direction.mjs")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
+    def test_every_frontend_suite_passes(self):
+        """Every tests/ng/js/*.mjs runs, so a new suite cannot be forgotten here."""
+        suites = sorted(name for name in os.listdir(os.path.join(REPO, "tests", "ng", "js")) if name.endswith(".mjs"))
+        self.assertIn("test_h3s_model.mjs", suites)
+        for name in suites:
+            with self.subTest(suite=name):
+                result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", name)], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 if __name__ == "__main__":
     unittest.main()

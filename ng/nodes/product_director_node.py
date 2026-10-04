@@ -22,8 +22,10 @@ def turbo_inputs():
     loras = folder_paths.get_filename_list("loras")
 
     def preferred(kind):
-        named = [n for n in loras if "turbo" in n.lower() and kind in n.lower()]
-        generic = [n for n in loras if "turbo" in n.lower() and "fl2v" not in n.lower() and "ref2v" not in n.lower()]
+        # Only an H3 turbo LoRA qualifies: a turbo LoRA for another model (Flux, Wan, ...) would load and do harm.
+        turbo = [n for n in loras if "turbo" in n.lower() and ("h3" in n.lower() or "minimax" in n.lower())]
+        named = [n for n in turbo if kind in n.lower()]
+        generic = [n for n in turbo if "fl2v" not in n.lower() and "ref2v" not in n.lower()]
         # Prefer files converted for ComfyUI: the raw training checkpoints carry other key names.
         return sorted(named or generic or ["none"], key=lambda n: "comfy" not in n.lower())[0]
     return [io.Boolean.Input("turbo", default=False, advanced=True,

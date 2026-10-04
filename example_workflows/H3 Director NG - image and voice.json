@@ -516,7 +516,11 @@
         "simple",
         12.0,
         3.0,
-        ""
+        false,
+        "none",
+        "none",
+        "crop",
+        "match"
       ],
       "widgets_values_named": {
         "idea": "@Mage speaks quietly in a warm sanctuary.",

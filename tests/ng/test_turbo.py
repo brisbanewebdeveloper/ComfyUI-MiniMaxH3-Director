@@ -33,6 +33,19 @@ class Turbo(unittest.TestCase):
         combo = self.nodes["NGH3Director"].GET_SCHEMA().inputs[start + 2]
         self.assertEqual(combo.options[0], "none")
 
+    def test_default_turbo_lora_is_an_h3_one(self):
+        from unittest.mock import patch
+        product = __import__("mmxd_pack.ng.nodes.product_director_node", fromlist=["turbo_inputs"])
+        names = ["flux2/Flux2TurboComfyv2.safetensors", "minimax-h3/minimax_h3_fl2v_turbo_4step_comfyui.safetensors",
+                 "minimax-h3/minimax_h3_turbo_4step_ckpt500.safetensors", "minimax-h3/minimax_h3_turbo_4step_ckpt500_pruned_comfyui.safetensors"]
+        with patch.object(product.folder_paths, "get_filename_list", return_value=names):
+            inputs = {item.id: item for item in product.turbo_inputs()}
+        self.assertEqual(inputs["turbo_lora_fl2va"].default, names[1])
+        self.assertEqual(inputs["turbo_lora_ref2va"].default, names[3], "generic H3 turbo, ComfyUI conversion first; never the Flux one")
+        with patch.object(product.folder_paths, "get_filename_list", return_value=names[:1]):
+            inputs = {item.id: item for item in product.turbo_inputs()}
+        self.assertEqual((inputs["turbo_lora_fl2va"].default, inputs["turbo_lora_ref2va"].default), ("none", "none"))
+
     def test_render_sequence_puts_each_lora_on_its_own_model(self):
         result = self.result(turbo=True, turbo_lora_fl2va="fl.safetensors", turbo_lora_ref2va="ref.safetensors")
         render = self.nodes["NGProjectRender"].execute(sequence=result)

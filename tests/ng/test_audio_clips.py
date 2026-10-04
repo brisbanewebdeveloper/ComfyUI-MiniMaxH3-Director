@@ -114,5 +114,18 @@ class Placement(unittest.TestCase):
         self.assertEqual([bool(c.of_kind("audio")) or bool(c.of_kind("lock")) for c in result.compiled], [True, False])
 
 
+class PlainNames(unittest.TestCase):
+    def test_without_reference_slots_a_mention_is_the_name_and_a_line_names_its_voice(self):
+        mage = ctx.ContextItem("mage", "Mage", "image", "mage.png", usage=("reference",))
+        director = ctx.DirectorContext(idea="@Mage speaks quietly.", shots_text="0-8: @Mage looks up.\n@Mage says: Welcome back, @Mage.",
+                                       items=(mage,), project_seconds=8, mode="fl2va")
+        prompt = project.plan_project(director, 0, chunks.ContinuityPlan("none")).compiled[0].prompt
+        self.assertNotIn("@ref", prompt)
+        self.assertIn("Mage looks up.", prompt)
+        self.assertIn("Mage (S1) says, <d>[English] Welcome back, Mage.</d>", prompt)
+        reference = project.plan_project(ctx.DirectorContext(**{**director.__dict__, "mode": "ref2va"}), 0, chunks.ContinuityPlan("none"))
+        self.assertIn("<Subject 1> looks up.", reference.compiled[0].prompt)
+
+
 if __name__ == "__main__":
     unittest.main()

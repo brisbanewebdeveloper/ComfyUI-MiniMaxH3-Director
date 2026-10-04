@@ -111,6 +111,21 @@ def _tag_substitutor(slot_items, context):
     return lambda text: replace_mentions(text, names, (item.name for item in context.items))
 
 
+def _plain_substitutor(subjects, context):
+    """Without reference slots there is no <Subject N> to point at: a mention is the name, a spoken line names its voice."""
+    known = [item.name for item in context.items]
+    names, voices = {s.name: s.name for s in subjects}, {s.name: "@voice(%s)" % s.name for s in subjects}
+
+    def substitute(text):
+        lines = []
+        for line in text.splitlines():
+            head, colon, rest = line.partition(":")
+            spoken = replace_mentions(head, voices, known) + colon + replace_mentions(rest, names, known)
+            lines.append(spoken if colon and plan.DIALOGUE_RE.match(spoken.strip()) else replace_mentions(line, names, known))
+        return "\n".join(lines)
+    return substitute
+
+
 def _lane_references(item, chunk, spans):
     """A reference clip is not placed in the soundtrack; it is sent once to every chunk whose window it touches."""
     window_start = chunk.story_start_f - chunk.head_frames
@@ -216,7 +231,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
     groups = subject_groups(context)
     subjects = [group.root for group in groups]
     voices, extra_voices = _voices_by_speaker(context)
-    substitute = _tag_substitutor([s.id for s in subjects], context)
+    substitute = _tag_substitutor([s.id for s in subjects], context) if mode == "ref2va" else _plain_substitutor(subjects, context)
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
                  "prompt": _shot_text(s, substitute, automatic=not has_shots(context.shots_text), context=context)}
                 for s in chunk.shots]
