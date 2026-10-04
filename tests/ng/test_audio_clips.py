@@ -103,6 +103,16 @@ class Placement(unittest.TestCase):
         result = plan([clip("a1", "song", 0, 3, "lock", offset=0), clip("a2", "song", 5, 8, "lock", offset=30)], seconds=8)
         self.assertEqual(spans(result.compiled[0], "lock"), [(0, 72, 0), (120, 72, 720)])
 
+    def test_a_lane_plays_one_clip_at_a_time_and_names_an_overlap(self):
+        # BUG-027: the Studio keeps clips on a lane apart; an older or edited document may not. The later clip yields the
+        # overlap and goes on at its own place in the file, so the sound is never stacked on itself.
+        result = plan([clip("a1", "song", 0, 6, "lock"), clip("a2", "song", 2, 8, "lock")], seconds=8)
+        self.assertEqual(spans(result.compiled[0], "lock"), [(0, 144, 0), (144, 48, 96)])
+        self.assertIn(("audio_clip_overlap", "a2"), {(i.code, i.ref) for i in result.issues})
+        apart = plan([clip("a1", "song", 0, 6, "lock"), clip("a2", "song", 2, 8, "lock", lane="l2")], seconds=8)
+        self.assertEqual(spans(apart.compiled[0], "lock"), [(0, 144, 0), (48, 144, 0)], "two lanes play together")
+        self.assertNotIn("audio_clip_overlap", {i.code for i in apart.issues})
+
     def test_a_clip_stops_at_the_end_of_its_file(self):
         short = song(length_s=5)
         result = plan([clip("a1", "song", 0, 8, "lock", offset=2)], seconds=8, items=(short,))

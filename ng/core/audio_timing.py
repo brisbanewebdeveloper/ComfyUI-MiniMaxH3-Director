@@ -30,12 +30,19 @@ def shot_windows(context):
 
 
 def clip_windows(context, modes):
-    """The same spans for audio-lane clips of the given modes, clipped to the project's end."""
-    total, windows = seconds_to_frames(context.project_seconds), {}
+    """The same spans for audio-lane clips of the given modes, clipped to the project's end. A lane plays one clip at a
+    time: where a later clip overlaps an earlier one on its lane, only the earlier one plays (clip_issues names it)."""
+    total, windows, lanes = seconds_to_frames(context.project_seconds), {}, {}
     for clip in sorted(read_audio_clips(context.shots_text), key=lambda c: c.start):
         start, end = seconds_to_frames(clip.start), min(seconds_to_frames(clip.end), total)
-        if clip.mode in modes and end > start:
-            windows.setdefault(clip.context_id, []).append((start, end, seconds_to_frames(clip.offset)))
+        if end <= start:
+            continue
+        span = (start, end, seconds_to_frames(clip.offset))
+        pieces = outside([span], lanes.get(clip.lane, ())) if clip.lane else [span]
+        if clip.lane:
+            lanes.setdefault(clip.lane, []).append(span)
+        if clip.mode in modes:
+            windows.setdefault(clip.context_id, []).extend(pieces)
     return windows
 
 
@@ -58,9 +65,14 @@ def outside(spans, taken):
 
 
 def clip_issues(context):
-    """Nothing is cut silently: a clip past the project's end, or one whose offset lies past its file's end, is named."""
-    issues = []
-    for clip in read_audio_clips(context.shots_text):
+    """Nothing is cut silently: a clip overlapping an earlier one on its lane, past the project's end, or with an offset past its file's end is named."""
+    issues, last_end = [], {}
+    for clip in sorted(read_audio_clips(context.shots_text), key=lambda c: c.start):
+        if clip.lane and clip.start < last_end.get(clip.lane, 0):
+            issues.append(Issue("audio_clip_overlap", "overlaps an earlier clip on its lane; a lane plays one clip at a time, "
+                                "so the overlap plays only the earlier clip.", clip.id))
+        if clip.lane:
+            last_end[clip.lane] = max(last_end.get(clip.lane, 0), clip.end)
         item = context.item(clip.context_id)
         if item is not None and item.length_s > 0 and clip.offset >= item.length_s:
             issues.append(Issue("audio_clip_past_file", "starts at %.2fs in the file, but the file is only %.2fs long; it plays nothing."
