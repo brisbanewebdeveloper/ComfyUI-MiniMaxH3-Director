@@ -3,12 +3,26 @@ from comfy_execution.graph_utils import GraphBuilder
 from comfy_execution.validation import validate_loops
 
 
+def turbo_models(graph, inputs, settings):
+    """Turbo puts the chosen few-step LoRA on each connected H3 model, as the official MiniMax H3 templates do."""
+    if not settings.get("turbo"):
+        return inputs
+    out = dict(inputs)
+    for name in ("model_fl2va", "model_ref2va"):
+        lora = settings.get("turbo_lora_" + name[len("model_"):], "none")
+        if out.get(name) is not None and lora != "none":
+            out[name] = graph.node("LoraLoaderModelOnly", "turbo_" + name, model=out[name], lora_name=lora, strength_model=1.0).out(0)
+    return out
+
+
 def render_sequence(inputs, settings):
     graph = GraphBuilder()
+    inputs = turbo_models(graph, inputs, settings)
     start = graph.node("StartLoop", "start", mode="List", **{"mode.list": inputs["chunks"]}, cache_iterations=False)
     conditioning = graph.node("NGChunkConditioning", "conditioning", chunk=start.out(3), previous=start.out(4),
                               clip=inputs["clip"], vae=inputs["vae"], audio_vae=inputs["audio_vae"],
-                              shift_video=settings["shift_video"], shift_audio=settings["shift_audio"], ref_image_size="match")
+                              shift_video=settings["shift_video"], shift_audio=settings["shift_audio"],
+                              ref_image_size=settings.get("ref_image_size", "match"), resize_method=settings.get("resize_method", "crop"))
     for name in ("model_fl2va", "model_ref2va"):
         if inputs.get(name) is not None:
             conditioning.set_input(name, inputs[name])

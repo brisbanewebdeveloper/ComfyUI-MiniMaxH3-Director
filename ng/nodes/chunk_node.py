@@ -6,6 +6,7 @@ from comfy_api.latest import io
 from ...minimax_core import audio_nodes, core
 from ..adapters import audio_locks, chunk_builder, collect, latents
 from ..adapters.media import MediaError
+from ..core.limits import RESIZE_METHODS
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
 
@@ -43,6 +44,8 @@ class NGChunkConditioning(io.ComfyNode):
                 io.Combo.Input("ref_image_size", options=["match", "max"], default="match", advanced=True),
                 io.Boolean.Input("apply_sigma_shift", default=True, optional=True, advanced=True,
                                  tooltip="Disable to keep the connected model's existing H3 sampling shifts."),
+                io.Combo.Input("resize_method", options=list(RESIZE_METHODS), default="crop", optional=True, advanced=True,
+                               tooltip="How a first or last frame picture is fitted to the video size."),
             ],
             outputs=[io.Model.Output(display_name="model"), io.Conditioning.Output(display_name="positive"), io.Latent.Output(display_name="latent"),
                      io.String.Output(display_name="prompt")],
@@ -62,7 +65,7 @@ class NGChunkConditioning(io.ComfyNode):
 
     @classmethod
     def execute(cls, chunk, clip, vae, audio_vae=None, model_fl2va=None, model_ref2va=None, previous=None,
-                shift_video=12.0, shift_audio=3.0, ref_image_size="match", apply_sigma_shift=True):
+                shift_video=12.0, shift_audio=3.0, ref_image_size="match", apply_sigma_shift=True, resize_method="crop"):
         job = _job(chunk)
         if job.chunk.head_frames:
             if previous is None:
@@ -76,7 +79,8 @@ class NGChunkConditioning(io.ComfyNode):
         if wanted is None:
             log.warning("[NG] this project needs the %s model but only the other one is connected; using it.", job.compiled.mode)
         try:
-            built = chunk_builder.build_chunk(job, clip, vae, audio_vae=audio_vae, previous=previous, ref_image_size=ref_image_size, mm=mm)
+            built = chunk_builder.build_chunk(job, clip, vae, audio_vae=audio_vae, previous=previous, ref_image_size=ref_image_size, mm=mm,
+                                              resize_method=resize_method)
         except MediaError as error:
             raise ValueError("NG chunk %d: %s" % (job.index + 1, error)) from error
         if apply_sigma_shift:

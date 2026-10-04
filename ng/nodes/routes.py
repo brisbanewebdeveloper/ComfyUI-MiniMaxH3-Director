@@ -12,4 +12,4 @@ async def plan_endpoint(request):
         payload = await request.json()
     except ValueError:
         return web.json_response({"ok": False, "error": "the request body is not JSON"}, status=400)
-    return web.json_response(plan_preview(payload, probe=probe.duration_seconds))
+    return web.json_response(plan_preview(payload, probe=probe.duration_seconds, image_size=probe.image_size))

@@ -2,6 +2,7 @@
 import os
 
 import av
+from PIL import Image, UnidentifiedImageError
 
 from .paths import input_path
 
@@ -16,6 +17,18 @@ def duration_seconds(source):
             return max(container.duration or 0, 0) / float(av.time_base)
     except (av.error.FFmpegError, OSError, ValueError):
         return 0.0
+
+
+def image_size(source):
+    """(width, height) of a picture in ComfyUI's input folder, read from its header; None when it cannot be read."""
+    path = input_path(source)
+    if not path:
+        return None
+    try:
+        with Image.open(path) as image:
+            return image.size
+    except (OSError, UnidentifiedImageError):
+        return None
 
 
 def file_stamp(source):

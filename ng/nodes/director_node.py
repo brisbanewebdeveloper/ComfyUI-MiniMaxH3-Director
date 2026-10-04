@@ -7,6 +7,7 @@ from comfy_api.latest import io
 from ..core.chunks import ContinuityPlan
 from ..core.context import ContextItem, DirectorContext
 from ..core.limits import DEFAULT_CHUNK_SECONDS, DEFAULT_SOUNDSCAPE, PIN_AUDIO_DEFAULT
+from ..adapters.probe import image_size
 from ..core.project import describe, jobs, plan_project
 from .context_nodes import CATEGORY, NGContext
 
@@ -30,8 +31,8 @@ class NGDirector(io.ComfyNode):
                 io.Float.Input("project_seconds", default=10.0, min=0.5, max=3600.0, step=0.5, tooltip="Length of the finished video. Chunks sit on H3's frame grid, so it can differ by a fraction of a second."),
                 io.Float.Input("chunk_seconds", default=0.0, min=0.0, max=15.0, step=0.5, advanced=True,
                                tooltip="Target length of one H3 run. 0 = automatic (%.0f s)." % DEFAULT_CHUNK_SECONDS),
-                io.Int.Input("width", default=768, min=64, max=16384, step=32),
-                io.Int.Input("height", default=1152, min=64, max=16384, step=32),
+                io.Int.Input("width", default=768, min=0, max=16384, step=32, tooltip="0 together with height 0: the size of the first picture, as H3 picks it."),
+                io.Int.Input("height", default=1152, min=0, max=16384, step=32, tooltip="0 together with width 0: the size of the first picture, as H3 picks it."),
                 io.Combo.Input("mode", options=MODES, default="auto", advanced=True, tooltip="auto: references selected -> ref2va, otherwise fl2va."),
                 io.Combo.Input("continuity", options=CONTINUITY, default="video_audio", advanced=True,
                                tooltip="How a chunk continues the one before: video_audio pins the last frames and the last second of sound; video only the frames; none = independent clips."),
@@ -52,7 +53,7 @@ class NGDirector(io.ComfyNode):
         context = DirectorContext(idea=idea, project_seconds=project_seconds, width=width, height=height, mode=mode, shots_text=shots,
                                   soundscape=soundscape, music=music, prepend_text=prepend_text or "", items=items)
         plan = ContinuityPlan(mode=continuity, video_frames=int(pin_frames), audio_frames=PIN_AUDIO_DEFAULT)
-        project = plan_project(context, chunk_seconds, plan)
+        project = plan_project(context, chunk_seconds, plan, image_size)
         return io.NodeOutput(jobs(project), "\n".join(str(i) for i in project.issues), describe(project))
 
 

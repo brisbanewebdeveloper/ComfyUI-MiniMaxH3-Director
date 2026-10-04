@@ -24,6 +24,8 @@ MAX_REF_AUDIOS = _plan.MAX_REF_AUDIOS
 MAX_REF_FILES = _plan.MAX_REF_FILES
 
 DEFAULT_CHUNK_SECONDS = 10.0
+# Fitting a first/last frame picture to the canvas; every method returns the full canvas, which the latent needs.
+RESIZE_METHODS = ("crop", "stretch to fit", "pad", "pad green")
 # A new action asked for right after a join starts late: the pinned head holds the old action for about this long (E7: 2.4 s).
 LATE_CHANGE_FRAMES = 60
 # Above this many joins the sound visibly loses its highs (E6: >4 kHz share fell to a ninth over five joins).

@@ -2,8 +2,9 @@
 
 This is what the Director node does with its inputs, kept free of ComfyUI so it can be tested and reused by a preview endpoint.
 """
+import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from . import frames, limits
 from .chunks import ContinuityPlan, SequencePlan, plan_chunks
@@ -17,6 +18,8 @@ from .shot_document import has_shots, read_document
 from .audio_timing import clip_issues
 
 CANVAS_MULTIPLE = 32
+H3_SHORT_EDGE, H3_MAX_PIXELS = 768, 768 * 1344
+DEFAULT_CANVAS = (1344, 768)
 
 
 def slug(text):
@@ -46,6 +49,32 @@ def snap_canvas(width, height):
         issues.append(Issue("canvas_snapped", "The size %dx%d was changed to %dx%d: H3 needs multiples of %d."
                             % (width, height, snapped[0], snapped[1], CANVAS_MULTIPLE)))
     return snapped, issues
+
+
+def h3_canvas(width, height):
+    """H3's own canvas for a source picture, as comfy_extras.nodes_minimax_h3.adapt_canvas: 768 short edge, 768*1344 area, /32."""
+    ratio = width / float(height)
+    w, h = (H3_SHORT_EDGE * ratio, H3_SHORT_EDGE) if ratio >= 1.0 else (H3_SHORT_EDGE, H3_SHORT_EDGE / ratio)
+    if w * h > H3_MAX_PIXELS:
+        scale = math.sqrt(H3_MAX_PIXELS / (w * h))
+        w, h = w * scale, h * scale
+    return tuple(max(CANVAS_MULTIPLE, int(round(v / CANVAS_MULTIPLE)) * CANVAS_MULTIPLE) for v in (w, h))
+
+
+def auto_canvas(context, image_size):
+    """Width or height 0 asks for the size of the first picture: the first frame if there is one, else the first image."""
+    if context.width > 0 and context.height > 0:
+        return context, []
+    images = [i for i in context.by_media("image") if i.source]
+    source = next((i for i in images if "first_frame" in i.effective_usage), images[0] if images else None)
+    size = image_size(source.source) if source and image_size else None
+    if size:
+        width, height = h3_canvas(*size)
+        issue = Issue("canvas_from_image", "The video is %dx%d, taken from '%s'." % (width, height, source.name))
+    else:
+        width, height = DEFAULT_CANVAS
+        issue = Issue("canvas_default", "No picture to take the size from; the video is %dx%d." % DEFAULT_CANVAS)
+    return replace(context, width=width, height=height), [issue]
 
 
 @dataclass(frozen=True)
@@ -107,8 +136,10 @@ def _prepare(context):
     return ctx, relationship_issues + issues + canvas_issues + checks
 
 
-def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan) -> ProjectPlan:
+def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan, image_size=None) -> ProjectPlan:
+    context, canvas_issues = auto_canvas(context, image_size)
     context, issues = _prepare(context)
+    issues = canvas_issues + issues
     total = frames.seconds_to_frames(context.project_seconds)
     if has_shots(context.shots_text):
         shots, shot_issues = parse_shots(context.shots_text, total)

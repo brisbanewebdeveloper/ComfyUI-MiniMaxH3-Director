@@ -27,8 +27,8 @@ def _first_two(out):
     return args[0], args[1]
 
 
-def _canvas_frame(tensor, width, height):
-    return legacy.resize_image(tensor, width, height, "crop", 32)
+def _canvas_frame(tensor, width, height, method):
+    return legacy.resize_image(tensor, width, height, method, 32)
 
 
 def _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size):
@@ -45,12 +45,12 @@ def _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size):
         ref_videos=media.numbered("ref_video", videos), ref_video_audios=scene_guides.video_soundtracks(job), ref_audios=media.numbered("ref_audio", audios))
 
 
-def _frame_conditioning(mm, job, clip, vae):
+def _frame_conditioning(mm, job, clip, vae, resize_method):
     compiled, ctx = job.compiled, job.project.context
 
     def frame(kind):
         refs = compiled.of_kind(kind)
-        return _canvas_frame(media.load_picture(refs[0]), ctx.width, ctx.height) if refs else None
+        return _canvas_frame(media.load_picture(refs[0]), ctx.width, ctx.height, resize_method) if refs else None
 
     return mm.MiniMaxH3ImageToVideo.execute(clip=clip, vae=vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
                                             length=job.chunk.sampled_frames, first_frame=frame("first_frame"), last_frame=frame("last_frame"))
@@ -80,13 +80,13 @@ def _hold_locked_audio(mm, latent, locks, sampled_frames, audio_vae):
     return lock_audio_latent(latent, encoded, spans, mm.AUDIO_LATENT_FPS)
 
 
-def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="match", mm=None) -> BuiltChunk:
+def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="match", mm=None, resize_method="crop") -> BuiltChunk:
     mm = mm or core()
     compiled = job.compiled
     if compiled.mode == "ref2va":
         out = _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size)
     else:
-        out = _frame_conditioning(mm, job, clip, vae)
+        out = _frame_conditioning(mm, job, clip, vae, resize_method)
     positive, latent = _first_two(out)
     positive = scene_guides.apply_guides(mm, job, positive, latent, vae)
     continuity: ContinuityPlan = job.project.plan.continuity

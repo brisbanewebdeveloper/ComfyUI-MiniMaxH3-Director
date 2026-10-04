@@ -6,7 +6,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from ..core.analysis import ProviderConfig
 from .ai_provider import NativeAIProvider
 from ..core.project import ChunkJob, jobs
-from .render_graph import render_sequence
+from .render_graph import render_sequence, turbo_models
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,11 @@ class RenderSettings:
     scheduler: str = "simple"
     shift_video: float = 12.0
     shift_audio: float = 3.0
+    turbo: bool = False
+    turbo_lora_fl2va: str = "none"
+    turbo_lora_ref2va: str = "none"
+    resize_method: str = "crop"
+    ref_image_size: str = "match"
 
     def values(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}
@@ -55,10 +60,11 @@ def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_si
             raise ValueError("Connect the current chunk to Start Loop's list_item from the same Director's chunks.")
     graph = GraphBuilder()
     inputs = result.inputs.links()
-    inputs = {name: value for name, value in inputs.items() if value is not None}
+    inputs = turbo_models(graph, {name: value for name, value in inputs.items() if value is not None}, result.settings.values())
     conditioning = graph.node("NGChunkConditioning", "conditioning", chunk=job, previous=previous,
                               **inputs, shift_video=result.settings.shift_video, shift_audio=result.settings.shift_audio,
-                              apply_sigma_shift=apply_sigma_shift)
+                              apply_sigma_shift=apply_sigma_shift, ref_image_size=result.settings.ref_image_size,
+                              resize_method=result.settings.resize_method)
     negative = graph.node("ConditioningZeroOut", "negative", conditioning=conditioning.out(1))
     context = result.project.context
     chunk_seed = (int(result.settings.seed if seed is None else seed) + job.index) % (2**64)

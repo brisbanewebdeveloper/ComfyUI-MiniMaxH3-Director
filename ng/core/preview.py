@@ -36,7 +36,7 @@ def _chunk_view(chunk, compiled, context):
             "prompt_labels": dict(compiled.prompt_labels), "shots": [s.to_dict() for s in chunk.shots]}
 
 
-def plan_preview(payload, probe=None):
+def plan_preview(payload, probe=None, image_size=None):
     """payload: {"director": {widget values}, "contexts": [{"media": "image", "widgets": {...}}, ...]}. Never raises on bad user input."""
     try:
         fields.need_dict(payload, "request")
@@ -48,10 +48,10 @@ def plan_preview(payload, probe=None):
                                   music=values["music"], prepend_text=values["prepend_text"], items=_items(payload.get("contexts"), probe),
                                   style=values.get("style", ""), prompt_override=values.get("prompt_override", ""))
         continuity = ContinuityPlan(mode=values["continuity"], video_frames=int(values["pin_frames"]), audio_frames=PIN_AUDIO_DEFAULT)
-        project = plan_project(context, float(values["chunk_seconds"]), continuity)
+        project = plan_project(context, float(values["chunk_seconds"]), continuity, image_size)
     except (SchemaError, KeyError, ValueError, TypeError, OverflowError) as error:
         return {"ok": False, "error": str(error)}
-    return {"ok": True, "total_s": round(frames.frames_to_seconds(project.plan.total_frames), 3), "total_frames": project.plan.total_frames,
+    return {"ok": True, "width": project.context.width, "height": project.context.height, "total_s": round(frames.frames_to_seconds(project.plan.total_frames), 3), "total_frames": project.plan.total_frames,
             "fps": FPS, "requested_frames": project.plan.requested_frames,
             "mode": project.compiled[0].mode, "chunks": [_chunk_view(c, k, project.context) for c, k in zip(project.plan.chunks, project.compiled)],
             "director_context": project.context.to_dict(),
