@@ -26,6 +26,10 @@ const CSS = `
 textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-field{display:flex;flex-direction:column;gap:4px}
 .h3s-toast{margin:12px 20px 0;padding:10px 14px;border-radius:8px;background:#1D2A1F;border:1px solid #3C6B44;color:#CDEFD3}
+.h3s-float{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:8px;width:max-content;max-width:min(760px,calc(100vw - 32px))}
+.h3s-float>*{margin:0;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.h3s-float .h3s-toast.error{background:#2E1A16;border-color:#8A4B3A;color:#F6D2C7}
+.h3s-float .h3s-toast.busy{background:#1F1A33;border-color:#4B3F78;color:#E1D8FF}
 .h3s-body{flex:1 1 auto;display:flex;gap:12px;padding:12px 16px;align-items:flex-start}
 .h3s-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:12px}
 .h3s-side{flex:0 0 360px;min-width:0;display:flex;flex-direction:column;gap:12px}

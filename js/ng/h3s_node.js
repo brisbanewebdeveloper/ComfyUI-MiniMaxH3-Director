@@ -48,14 +48,14 @@ function attach(node) {
   for (const key of ["ng_view_mode", "ng_selected_shot_id"]) delete node.properties[key];
   node.color = "#172a48"; node.bgcolor = "#101a2c";
   const root = h("div", { class: "h3n" });
-  const prompt = h("textarea", { rows: 3, placeholder: "Beschreibe dein Video …", "aria-label": "Prompt",
+  const prompt = h("textarea", { rows: 3, placeholder: "Describe your video …", "aria-label": "Prompt",
     oninput: (event) => { applyValues(node, { idea: event.target.value }); node.graph?.change?.(); } });
   const body = h("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } });
-  const status = h("span", { style: { fontSize: "12px", color: "#B9D8FF" } }), preview = h("img", { hidden: true, alt: "Live-Vorschau",
+  const status = h("span", { style: { fontSize: "12px", color: "#B9D8FF" } }), preview = h("img", { hidden: true, alt: "Live preview",
     style: { maxWidth: "100%", borderRadius: "6px" } });
   const progress = attachProgress(node, api, status, preview, () => projectRenderIds(node));
   root.append(h("span", { style: { fontSize: "12px", color: "#9AA4B5" } }, "Prompt"), prompt, body,
-    h("button", { class: "h3n-open", onclick: () => openStudio(node, app, api) }, icon("expand"), "Studio öffnen"), status, preview);
+    h("button", { class: "h3n-open", onclick: () => openStudio(node, app, api) }, icon("expand"), "Open Studio"), status, preview);
   hideNative(node, (node.widgets || []).map((widget) => widget.name));
   const dom = node.addDOMWidget("h3_director", "h3_director", root, { serialize: false, hideOnZoom: false });
   dom.computeSize = undefined;
@@ -66,22 +66,22 @@ function attach(node) {
     const v = values(node), project = readProject(v.shots || ""), seconds = Number(v.project_seconds) || 1;
     if (document.activeElement !== prompt) prompt.value = v.idea || "";
     const tile = (label, value) => h("div", { class: "h3n-tile" }, h("div", { style: { fontSize: "11px", color: "#9AA4B5" } }, label), h("div", { style: { fontWeight: 600 } }, value));
-    const size = isAuto(v.width, v.height) ? (plan ? `${plan.width}×${plan.height}` : "aus Bild") : `${v.width}×${v.height}`;
+    const size = isAuto(v.width, v.height) ? (plan ? `${plan.width}×${plan.height}` : "from picture") : `${v.width}×${v.height}`;
     const shots = sorted(project.shots).map((shot, index) => h("span", { style: { left: `${shot.start / seconds * 100}%`, width: `${(shot.end - shot.start) / seconds * 100}%` },
       title: shot.text }, `Shot ${index + 1}`));
     const parts = (plan?.chunks || []).map((chunk) => h("span", { style: { left: `${chunk.start_s / Math.max(seconds, plan.total_s) * 100}%`,
       width: `calc(${(chunk.end_s - chunk.start_s) / Math.max(seconds, plan.total_s) * 100}% - 2px)`, background: partColor(chunk.index)[0] } }));
     const ai = Boolean(connectedProvider(node)), issues = plan?.issues?.length || 0;
     body.replaceChildren(...[
-      h("div", { class: "h3n-tiles" }, tile("Dauer", fmt(Number(v.project_seconds))), tile("Render-Teil", Number(v.chunk_seconds) ? fmt(Number(v.chunk_seconds)) : "Auto"), tile("Auflösung", size)),
-      h("span", { style: { fontSize: "12px", color: "#9AA4B5" } }, project.error ? "Shot-Daten fehlerhaft, im Studio prüfen"
-        : `${project.shots.length || "Keine"} Shots · ${plan ? plan.chunks.length : "?"} Render-Teil${plan?.chunks.length === 1 ? "" : "e"} · ${project.lanes.length} Tonspur${project.lanes.length === 1 ? "" : "en"}`),
-      h("div", { class: "h3n-mini" }, shots.length ? shots : h("span", { style: { left: "0", width: "100%", background: "transparent", border: 0, color: "#7F8A9C" } }, "Der Prompt trägt das ganze Video")),
+      h("div", { class: "h3n-tiles" }, tile("Duration", fmt(Number(v.project_seconds))), tile("Render part", Number(v.chunk_seconds) ? fmt(Number(v.chunk_seconds)) : "Auto"), tile("Resolution", size)),
+      h("span", { style: { fontSize: "12px", color: "#9AA4B5" } }, project.error ? "Shot data invalid, check it in the Studio"
+        : `${project.shots.length || "No"} shot${project.shots.length === 1 ? "" : "s"} · ${plan ? plan.chunks.length : "?"} render part${plan?.chunks.length === 1 ? "" : "s"} · ${project.lanes.length} audio lane${project.lanes.length === 1 ? "" : "s"}`),
+      h("div", { class: "h3n-mini" }, shots.length ? shots : h("span", { style: { left: "0", width: "100%", background: "transparent", border: 0, color: "#7F8A9C" } }, "The prompt carries the whole video")),
       h("div", { class: "h3n-parts" }, parts),
       h("div", { style: { display: "flex", justifyContent: "space-between", gap: "8px", fontSize: "12px", color: "#9AA4B5" } },
         h("span", {}, `${MODES[v.mode] || v.mode}${v.turbo ? " · Turbo" : ""} · 24 FPS · ${v.steps} Steps`),
-        h("span", { style: { color: ai ? "#A9E8C2" : "#9AA4B5" } }, ai ? "KI verbunden" : "KI aus")),
-      issues ? h("span", { style: { fontSize: "12px", color: "#F2B98A" } }, `${issues} Hinweis${issues === 1 ? "" : "e"} · im Studio unter „Prompt ansehen“`) : null].filter(Boolean));
+        h("span", { style: { color: ai ? "#A9E8C2" : "#9AA4B5" } }, ai ? "AI connected" : "AI off")),
+      issues ? h("span", { style: { fontSize: "12px", color: "#F2B98A" } }, `${issues} note${issues === 1 ? "" : "s"} · in the Studio under “Show prompts”`) : null].filter(Boolean));
   }
   function schedule() {
     clearTimeout(timer); const mine = ++serial;

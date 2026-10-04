@@ -1,9 +1,16 @@
 // The Studio's two AI actions over the existing /ng/direct route: split the Prompt into shots, and
-// suggest a better text per shot. Nothing changes until the user presses Übernehmen.
+// suggest a better text per shot. Nothing changes until the user presses Accept.
 import { aiAction } from "./ng_ai_request.js";
 import { connectedProvider, readContexts } from "./ng_read.js";
 import { values } from "./ng_widgets.js";
 import { readProject, writeProject, clipToFit } from "./h3s_model.js";
+
+// A failed or empty answer stays on screen until it is dismissed; the user may have scrolled away meanwhile.
+function failure(error, provider) {
+  if (error.message === "AI action cancelled.") return { text: "AI cancelled, nothing changed.", error: false };
+  const slow = /did not answer within/i.test(error.message) ? ` The AI Loader's Timeout is ${provider.timeout_seconds || 120} s; a large model may need more.` : "";
+  return { text: `AI failed: ${error.message}${slow}`, error: true };
+}
 
 export function studioAI(S, app, api, done) {
   let controller = null, serial = 0;
@@ -13,14 +20,14 @@ export function studioAI(S, app, api, done) {
     if (!provider || S.busy) return null;
     controller = new AbortController();
     const mine = ++serial;
-    S.busy = kind; done();
+    S.busy = kind; S.aiStarted = Date.now(); S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; done();
     try {
       const payload = { director: { ...values(S.node), shots: shots === null ? "" : writeProject({ shots, audio: [], lanes: [] }) },
         contexts: readContexts(S.node), provider, mode: "auto" };
       const data = await aiAction(app, api, "direct", payload, controller.signal);
       return mine === serial ? data.suggestion : null;
     } catch (error) {
-      if (mine === serial) S.toast = error.message === "AI action cancelled." ? "KI abgebrochen, nichts geändert." : `KI: ${error.message}`;
+      if (mine === serial) S.notice = failure(error, provider);
       return null;
     } finally {
       if (mine === serial) { S.busy = ""; controller = null; done(); }
@@ -30,11 +37,11 @@ export function studioAI(S, app, api, done) {
   return {
     async split() {
       const suggestion = await run("split", null);
-      if (!suggestion?.shots) return;
-      const proposed = clipToFit(readProject(suggestion.shots).shots, S.values.project_seconds);
+      if (!suggestion) return;
+      const proposed = clipToFit(readProject(suggestion.shots || "").shots, S.values.project_seconds);
       S.ghosts = proposed.map(({ start, end, text }) => ({ start, end, text }));
       S.ghostSound = { soundscape: suggestion.soundscape || "", music: suggestion.music || "" };
-      if (!S.ghosts.length) S.toast = "Die KI hat keine Shots vorgeschlagen.";
+      if (!S.ghosts.length) S.notice = { text: "The AI answered, but proposed no shots. Try again or split by hand.", error: true };
       done();
     },
     async suggest(shotId) {
@@ -42,10 +49,10 @@ export function studioAI(S, app, api, done) {
       if (!suggestion) return;
       const texts = (suggestion.patches || []).filter((patch) => typeof patch.fields?.text === "string" && patch.fields.text.trim());
       for (const patch of texts) S.suggestions[patch.shot_id] = patch.fields.text.trim();
-      if (!S.suggestions[shotId]) S.toast = "Die KI hat für diesen Shot keinen neuen Text vorgeschlagen.";
+      if (!S.suggestions[shotId]) S.notice = { text: "The AI answered, but suggested no new text for this shot.", error: true };
       done();
     },
-    cancel() { serial++; controller?.abort(); controller = null; S.busy = ""; S.toast = "KI abgebrochen, nichts geändert."; done(); },
+    cancel() { serial++; controller?.abort(); controller = null; S.busy = ""; S.notice = { text: "AI cancelled, nothing changed.", error: false }; done(); },
     dispose() { serial++; controller?.abort(); },
   };
 }

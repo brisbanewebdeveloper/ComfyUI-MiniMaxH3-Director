@@ -12,7 +12,7 @@ export const PART_COLORS = [["#4FB8C4", "#12272B"], ["#E58A5C", "#2C1C14"], ["#9
 export const r1 = (value) => Math.round(value * 10) / 10;
 export function fmt(seconds) {
   const value = r1(seconds);
-  return `${Number.isInteger(value) ? value : value.toFixed(1).replace(".", ",")} s`;
+  return `${Number.isInteger(value) ? value : value.toFixed(1)} s`;
 }
 export const span = (a, b) => `${fmt(a).replace(" s", "")}–${fmt(b)}`;
 export const sorted = (items) => [...items].sort((x, y) => x.start - y.start);
@@ -76,6 +76,23 @@ export function placeAt(items, sec, total, length) {
   if (!gap || gap.next - gap.prev < MIN_LENGTH) return null;
   const start = r1(Math.max(gap.prev, Math.min(sec, gap.next - MIN_LENGTH)));
   return { start, end: r1(Math.min(start + length, gap.next)) };
+}
+
+// "+ Shot": a 4 s shot in free room after `afterId` (or the last shot), else in the first free room of the project,
+// else the anchor shot is halved and the new shot takes its second half. Returns {shots, id, split?} or null.
+export function addShotAt(items, afterId, total, length = 4) {
+  const list = sorted(items), anchor = list.find((item) => item.id === afterId) || list.at(-1);
+  const add = (start, end) => { const shot = newShot(start, end); return { shots: [...items, shot], id: shot.id }; };
+  const after = placeAt(items, anchor ? anchor.end : 0, total, length);
+  if (after) return add(after.start, after.end);
+  for (const sec of [0, ...list.map((item) => item.end)]) {
+    const at = placeAt(items, sec, total, length);
+    if (at) return add(at.start, at.end);
+  }
+  const wide = [anchor, ...list].find((item) => item && item.end - item.start >= 2 * MIN_LENGTH);
+  if (!wide) return null;
+  const middle = r1((wide.start + wide.end) / 2), shot = newShot(middle, wide.end);
+  return { shots: [...items.map((item) => (item.id === wide.id ? { ...item, end: middle } : item)), shot], id: shot.id, split: wide.id };
 }
 
 function neighbours(items, id, total) {

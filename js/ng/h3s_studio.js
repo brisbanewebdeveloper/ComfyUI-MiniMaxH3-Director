@@ -2,7 +2,7 @@
 // loading and queueing stay ComfyUI's; the shot document keeps shots, audio clips and lanes in the shots widget.
 import { h, icon } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, sorted, clipToFit, MIN_LENGTH, r1, preferredTurboLora } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, sorted, clipToFit, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -36,10 +36,10 @@ export function openStudio(node, app, api) {
   const page = h("div", { class: "h3s-page" });
   root.append(page);
   const S = { node, root, selected: null, ghosts: [], ghostSound: null, suggestions: {}, plan: null, planError: "", promptOpen: false,
-    sizeOpen: false, furtherOpen: false, busy: "", toast: "", dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
+    sizeOpen: false, furtherOpen: false, busy: "", toast: "", notice: null, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
   load(S);
-  let timer = null, serial = 0, toastTimer = null, closed = false;
-  const status = h("span", { class: "h3s-lbl" }), live = h("img", { class: "h3s-live", hidden: true, alt: "Live-Vorschau" });
+  let timer = null, serial = 0, toastTimer = null, tick = null, closed = false;
+  const status = h("span", { class: "h3s-lbl" }), live = h("img", { class: "h3s-live", hidden: true, alt: "Live preview" });
   const progress = attachProgress(node, api, status, live, () => projectRenderIds(node));
   const ai = studioAI(S, app, api, () => render());
 
@@ -116,10 +116,17 @@ export function openStudio(node, app, api) {
     takeDragged() { const id = S.dragged; S.dragged = null; return id; },
     beginPointer() { S.dragging = true; },
     endPointer() { S.dragging = false; if (S.pending) render(); },
+    addShot() {
+      const made = addShotAt(S.shots, S.selected?.kind === "shot" ? S.selected.id : null, S.values.project_seconds);
+      if (!made) { flash("No room for a new shot: every shot is already at its shortest length."); return; }
+      if (made.split) flash(`${actions.shotLabel(made.split)} was halved to make room for the new shot.`);
+      setItems("shot", made.shots, made.id);
+    },
     newShot(sec, id) {
       if (id === null) return;
-      const at = placeAt(S.shots, sec ?? (sorted(S.shots).at(-1)?.end ?? 0), S.values.project_seconds, 4);
-      if (!at) { flash("Dort ist kein Platz für einen neuen Shot."); return; }
+      if (sec === null || sec === undefined) { if (id === "__text") { actions.addShot(); return; } sec = sorted(S.shots).at(-1)?.end ?? 0; }
+      const at = placeAt(S.shots, sec, S.values.project_seconds, 4);
+      if (!at) { flash("There is no room for a new shot there. Drop it on a free spot, or use + Shot."); return; }
       const media = id && id !== "__text" && S.byId.has(id) ? [id] : [];
       const shot = newShot(at.start, at.end, media);
       setItems("shot", [...S.shots, shot], shot.id);
@@ -137,15 +144,15 @@ export function openStudio(node, app, api) {
     },
     toggleBinding(id) {
       const shot = S.selected?.kind === "shot" && S.shots.find((entry) => entry.id === S.selected.id);
-      if (!shot) { flash("Erst einen Shot anklicken, oder den Content auf die Timeline ziehen."); return; }
+      if (!shot) { flash("Click a shot first, or drag the Content onto the timeline."); return; }
       if (shot.media.some((binding) => binding.context_id === id)) actions.unassign(shot.id, id); else actions.assign(shot.id, id);
     },
     newClip(lane, sec, id) {
       const entry = S.byId.get(id);
-      if (!entry || entry.media !== "audio") { if (id) flash("Auf die Tonspuren gehört nur Audio-Content."); return; }
+      if (!entry || entry.media !== "audio") { if (id) flash("Only audio Content goes on the audio lanes."); return; }
       const length = Math.min(S.lengths.get(id) || 8, S.values.project_seconds);
       const at = placeAt(S.audio.filter((clip) => clip.lane === lane), sec, S.values.project_seconds, length);
-      if (!at) { flash("Auf dieser Tonspur ist dort kein Platz."); return; }
+      if (!at) { flash("There is no room on this audio lane there."); return; }
       const clip = newClip(id, lane, at.start, at.end);
       setItems("clip", [...S.audio, clip], clip.id);
     },
@@ -153,7 +160,7 @@ export function openStudio(node, app, api) {
       const lane = newLane();
       S.lanes = [...S.lanes, lane];
       if (id && S.byId.get(id)?.media === "audio") actions.newClip(lane, 0, id);
-      else { if (id) flash("Auf die Tonspuren gehört nur Audio-Content."); save(); render(); }
+      else { if (id) flash("Only audio Content goes on the audio lanes."); save(); render(); }
     },
     removeLane(lane) { S.lanes = S.lanes.filter((entry) => entry !== lane); save(); render(); },
     setWidget,
@@ -224,19 +231,19 @@ export function openStudio(node, app, api) {
   function header() {
     const ready = hasRenderPath(node);
     return h("header", { class: "h3s-head" },
-      h("button", { class: "h3s-btn ghost", onclick: close, title: "Zurück zum Graph (Esc)" }, icon("back"), "Zurück zum Graph"),
+      h("button", { class: "h3s-btn ghost", onclick: close, title: "Back to the graph (Esc)" }, icon("back"), "Back to graph"),
       h("span", { style: { width: "1px", height: "24px", background: "#2A3342" } }),
       h("span", { class: "h3s-title" }, "H3 Director"), h("span", { class: "h3s-muted" }, "Studio"),
       h("span", { class: "h3s-grow" }), status, live,
-      h("span", { class: "h3s-row", style: { gap: "6px" }, title: "Grün, wenn ein H3 AI Loader am Context Connector hängt" },
-        h("span", { class: "h3s-swatch", style: { background: S.ai ? "#5BD08A" : "#6B7383", borderRadius: "50%" } }), S.ai ? "KI verbunden" : "KI aus"),
-      h("button", { class: "h3s-btn", onclick: () => actions.toggle("promptOpen") }, icon("doc"), S.promptOpen ? "Prompt ausblenden" : "Prompt ansehen"),
-      h("button", { class: "h3s-btn go", disabled: !ready, title: ready ? "Stellt den verbundenen Workflow in die ComfyUI-Queue" :
-        "Director Output mit H3 Render Sequence oder einem Sampler und einer Video-Ausgabe verbinden", onclick: generate }, icon("play"), "Generieren"));
+      h("span", { class: "h3s-row", style: { gap: "6px" }, title: "Green when an H3 AI Loader is connected to the Context Connector" },
+        h("span", { class: "h3s-swatch", style: { background: S.ai ? "#5BD08A" : "#6B7383", borderRadius: "50%" } }), S.ai ? "AI connected" : "AI off"),
+      h("button", { class: "h3s-btn", onclick: () => actions.toggle("promptOpen") }, icon("doc"), S.promptOpen ? "Hide prompts" : "Show prompts"),
+      h("button", { class: "h3s-btn go", disabled: !ready, title: ready ? "Queues the connected workflow in ComfyUI" :
+        "Connect Director Output to H3 Render Sequence or a sampler and a video output", onclick: generate }, icon("play"), "Generate"));
   }
   function generate() {
     app.queuePrompt(0, 1);
-    flash(`In die Queue gestellt: ${S.plan ? S.plan.chunks.length : "?"} Render-Teil(e). Fortschritt oben, Ergebnis im Save-Video-Node.`);
+    flash(`Queued: ${S.plan ? S.plan.chunks.length : "?"} render part(s). Progress at the top, result in the Save Video node.`);
     render();
   }
 
@@ -250,12 +257,12 @@ export function openStudio(node, app, api) {
     const caret = index >= 0 && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
     const top = root.scrollTop;
     page.replaceChildren(...[header(),
-      S.toast ? h("div", { class: "h3s-toast" }, S.toast) : null,
-      S.docError ? h("div", { class: "h3s-toast h3s-warn" }, `Die gespeicherten Shot-Daten sind fehlerhaft und werden nicht verändert: ${S.docError}`) : null,
+      S.docError ? h("div", { class: "h3s-toast h3s-warn" }, `The saved shot data is invalid and is left unchanged: ${S.docError}`) : null,
       h("div", { class: "h3s-body" },
         h("main", { class: "h3s-main" }, promptView(S, actions), contentView(S, actions), timelineView(S, actions)),
         h("div", { class: "h3s-side" }, sideView(S, actions))),
-      footerView(S, actions), drawerView(S, actions)].filter(Boolean));
+      footerView(S, actions), drawerView(S, actions), floating()].filter(Boolean));
+    clearInterval(tick); tick = S.busy ? setInterval(() => { const clock = root.querySelector(".h3s-ai-clock"); if (clock) clock.textContent = aiClock(); }, 1000) : null;
     root.scrollTop = top;
     const after = fields(), next = index >= 0 && after.length === before.length ? after[index] : null;
     if (next && next.tagName === active.tagName) {
@@ -265,8 +272,21 @@ export function openStudio(node, app, api) {
   }
 
   function refresh() { if (S.dragging) return; load(S); schedulePlan(); render(); }
+  function aiClock() { return `${fmt(Math.floor((Date.now() - S.aiStarted) / 1000))} of at most ${fmt(S.aiTimeout)}`; }
+  // Messages float over the bottom of the window, so they are seen wherever the Studio is scrolled to.
+  function floating() {
+    const items = [];
+    if (S.busy) items.push(h("div", { class: "h3s-toast busy", role: "status" }, icon("spark"),
+      h("span", {}, S.busy === "split" ? "AI is splitting the prompt into shots …" : "AI is writing a text for this shot …"),
+      h("span", { class: "h3s-ai-clock h3s-muted" }, aiClock()), h("button", { class: "h3s-btn ghost small", onclick: actions.cancelAI }, "Cancel")));
+    if (S.notice) items.push(h("div", { class: S.notice.error ? "h3s-toast error" : "h3s-toast", role: S.notice.error ? "alert" : "status" },
+      h("span", {}, S.notice.text), h("button", { class: "h3s-btn ghost small", title: "Dismiss", "aria-label": "Dismiss",
+        onclick: () => { S.notice = null; render(); } }, icon("close", 14))));
+    if (S.toast) items.push(h("div", { class: "h3s-toast", role: "status" }, S.toast));
+    return items.length ? h("div", { class: "h3s-float" }, items) : null;
+  }
   function close() {
-    closed = true; clearTimeout(timer); clearTimeout(toastTimer); ai.dispose(); progress.dispose();
+    closed = true; clearTimeout(timer); clearTimeout(toastTimer); clearInterval(tick); ai.dispose(); progress.dispose();
     document.removeEventListener("ng-context-changed", outside);
     open.delete(node.id); root.remove();
     document.dispatchEvent(new CustomEvent("ng-context-changed"));

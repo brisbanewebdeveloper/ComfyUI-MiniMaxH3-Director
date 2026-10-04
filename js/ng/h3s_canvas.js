@@ -11,12 +11,12 @@ const FAST = [["21:9", 1120, 480], ["2:1", 960, 480], ["16:9", 864, 480], ["3:2"
   ["9:16", 480, 864], ["1:2", 480, 960], ["9:21", 480, 1120]];
 
 export const PRESET_GROUPS = [
-  ["Nativ · kurze Kante 768", NATIVE],
-  ["Schnell · kurze Kante 480", FAST],
-  ["Über nativ · langsam, mehr Speicher", [["16:9", 1920, 1088]]],
+  ["Native · short side 768", NATIVE],
+  ["Fast · short side 480", FAST],
+  ["Above native · slow, more memory", [["16:9", 1920, 1088]]],
 ];
 export const ASPECTS = NATIVE.map(([label]) => { const [a, b] = label.split(":").map(Number); return [label, a / b]; });
-export const RESIZE = [["crop", "Zuschneiden"], ["stretch to fit", "Strecken"], ["pad", "Rand auffüllen"], ["pad green", "Grün auffüllen"]];
+export const RESIZE = [["crop", "Crop"], ["stretch to fit", "Stretch"], ["pad", "Pad"], ["pad green", "Pad green"]];
 
 const PRESET_KEYS = new Set(PRESET_GROUPS.flatMap(([, list]) => list.map(([, w, h]) => `${w}x${h}`)));
 
@@ -52,9 +52,9 @@ export function nearestAspect(width, height) {
 }
 
 export function canvasInfo(width, height) {
-  if (isAuto(width, height)) return ["H3 wählt die Größe aus dem ersten Bild: kurze Kante 768, höchstens so viel Fläche wie 1344×768.", ""];
+  if (isAuto(width, height)) return ["H3 takes the size from the first picture: short side 768, at most the area of 1344×768.", ""];
   if (width * height / 1e6 > NATIVE_MP * 1.05)
-    return ["Über H3-nativ (1,03 MP): deutlich langsamer, mehr Speicher und außerhalb dessen, worauf H3 trainiert ist.", "warn"];
-  if (Math.min(width, height) <= 512) return ["Schnelle Größe: gut zum Ausprobieren, weniger Details.", ""];
+    return ["Above H3 native (1.03 MP): much slower, more memory and outside what H3 was trained on.", "warn"];
+  if (Math.min(width, height) <= 512) return ["Fast size: good for trying things out, less detail.", ""];
   return ["Im nativen Bereich von H3. Kanten sind Vielfache von 32.", ""];
 }

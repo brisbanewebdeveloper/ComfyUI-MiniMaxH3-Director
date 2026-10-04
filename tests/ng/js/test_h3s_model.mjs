@@ -24,8 +24,8 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
 {
   assert.equal(model.r1(3.14159), 3.1);
   assert.equal(model.fmt(10), "10 s");
-  assert.equal(model.fmt(10.125), "10,1 s");
-  assert.equal(model.span(0, 6.5), "0–6,5 s");
+  assert.equal(model.fmt(10.125), "10.1 s");
+  assert.equal(model.span(0, 6.5), "0–6.5 s");
 }
 
 // Moving and edges stay between neighbours on the 0.1 s grid.
@@ -102,6 +102,27 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   assert.equal(model.preferredTurboLora(names, "fl2v"), names[1]);
   assert.equal(model.preferredTurboLora(names, "ref2v"), names[3]);
   assert.equal(model.preferredTurboLora(names.slice(0, 1), "fl2v"), "none");
+}
+
+// "+ Shot" always finds a place: room after the selected shot, else any free room, else it halves a shot.
+{
+  const at = (id, start, end) => ({ id, start, end });
+  let made = model.addShotAt([at("a", 0, 4)], null, 8);
+  assert.deepEqual([made.shots.at(-1).start, made.shots.at(-1).end, made.split], [4, 8, undefined], "free room after the last shot");
+  made = model.addShotAt([at("a", 2, 8)], null, 8);
+  assert.deepEqual([made.shots.at(-1).start, made.shots.at(-1).end], [0, 2], "free room before it when the end is full");
+  made = model.addShotAt([at("a", 0, 8)], null, 8);
+  assert.equal(made.split, "a", "a full timeline (Whole prompt = one shot) halves the shot");
+  assert.deepEqual(made.shots.map((s) => [s.start, s.end]), [[0, 4], [4, 8]]);
+  made = model.addShotAt([at("a", 0, 3), at("b", 3, 8)], "a", 8);
+  assert.equal(made.split, "a", "the selected shot is the one that is halved");
+  assert.deepEqual(made.shots.map((s) => [s.start, s.end]).sort((x, y) => x[0] - y[0]), [[0, 1.5], [1.5, 3], [3, 8]]);
+  assert.equal(model.addShotAt([at("a", 0, 0.5), at("b", 0.5, 1)], null, 1), null, "nothing to halve below the minimum length");
+  // No result ever overlaps.
+  for (const shots of [[at("a", 0, 8)], [at("a", 0, 4), at("b", 4, 8)], [at("a", 1, 2), at("b", 5, 8)]]) {
+    const list = model.sorted(model.addShotAt(shots, null, 8).shots);
+    list.slice(1).forEach((shot, i) => assert.ok(shot.start >= list[i].end - 1e-9, "shots do not overlap"));
+  }
 }
 
 console.log("h3s model ok");

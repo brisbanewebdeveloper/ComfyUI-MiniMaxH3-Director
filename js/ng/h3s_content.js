@@ -1,12 +1,12 @@
 // Prompt field and the Content cards that come from the Context nodes in the graph.
 import { h, icon } from "./h3s_dom.js";
 
-const KIND = { image: "Bild", video: "Video", audio: "Audio", text: "Text" };
+const KIND = { image: "Image", video: "Video", audio: "Audio", text: "Text" };
 const BG = { image: "#172338", video: "#2A2414", audio: "#221A33", text: "#13291F" };
-const USAGE = { reference: "Vorbild", first_frame: "Startbild", last_frame: "Endbild", keyframe: "Keyframe", storyboard: "Storyboard",
-  motion: "Bewegung", camera: "Kamera", continue: "Fortsetzen", structure: "Aufbau", voice: "Stimme", copy: "Übernehmen", lock: "Fest",
-  music_style: "Musikstil", rhythm: "Rhythmus", sound_reference: "Klang", style: "Stil", rule: "Regel", character: "Figur", world: "Welt",
-  scene: "Szene", dialogue: "Dialog", constraint: "Vorgabe", instruction: "Anweisung" };
+const USAGE = { reference: "Reference", first_frame: "First frame", last_frame: "Last frame", keyframe: "Keyframe", storyboard: "Storyboard",
+  motion: "Motion", camera: "Camera", continue: "Continue", structure: "Structure", voice: "Voice", copy: "Copy", lock: "Lock",
+  music_style: "Music style", rhythm: "Rhythm", sound_reference: "Sound", style: "Style", rule: "Rule", character: "Character", world: "World",
+  scene: "Scene", dialogue: "Dialogue", constraint: "Constraint", instruction: "Instruction" };
 const BARS = [8, 14, 22, 12, 30, 18, 26, 10, 34];
 
 function usageOf(widgets, media) {
@@ -38,13 +38,13 @@ function visual(entry, thumb) {
 export function promptView(S, actions) {
   return h("section", { class: "h3s-card" },
     h("div", { class: "h3s-row" }, h("label", { class: "h3s-strong", for: "h3s-prompt" }, "Prompt"),
-      h("span", { class: "h3s-lbl" }, "Beschreibe, was passieren soll. Mehr braucht es nicht."), h("span", { class: "h3s-grow" }),
+      h("span", { class: "h3s-lbl" }, "Describe what should happen. Nothing else is needed."), h("span", { class: "h3s-grow" }),
       h("button", { class: "h3s-btn ai", disabled: !S.ai || Boolean(S.busy), onclick: actions.splitPrompt,
-        title: S.ai ? "Die KI schlägt Shots vor; du übernimmst oder verwirfst sie." : "Dafür einen H3 AI Loader an den Connector anschließen." },
-        icon("spark"), S.busy === "split" ? "KI arbeitet …" : "KI: in Shots aufteilen"),
-      S.busy === "split" ? h("button", { class: "h3s-btn ghost", onclick: actions.cancelAI }, "Abbrechen") : null,
-      h("button", { class: "h3s-btn", onclick: actions.promptAsShot }, "Ganzer Prompt = ein Shot")),
-    h("textarea", { class: "h3s-in", id: "h3s-prompt", rows: 3, value: S.values.idea || "", placeholder: "Eine junge Frau spielt draußen mit einem roten Ball …",
+        title: S.ai ? "The AI suggests shots; you accept or discard them." : "Connect an H3 AI Loader to the Connector for this." },
+        icon("spark"), S.busy === "split" ? "AI working …" : "AI: split into shots"),
+      S.busy === "split" ? h("button", { class: "h3s-btn ghost", onclick: actions.cancelAI }, "Cancel") : null,
+      h("button", { class: "h3s-btn", onclick: actions.promptAsShot }, "Whole prompt = one shot")),
+    h("textarea", { class: "h3s-in", id: "h3s-prompt", rows: 3, value: S.values.idea || "", placeholder: "A young woman plays outside with a red ball …",
       oninput: (event) => actions.setWidget("idea", event.target.value, false) }));
 }
 
@@ -52,25 +52,25 @@ export function contentView(S, actions) {
   const selectedShot = S.selected?.kind === "shot" ? S.shots.find((shot) => shot.id === S.selected.id) : null;
   const drag = (id) => (event) => { actions.setDragged(id); try { event.dataTransfer.setData("text/plain", id); event.dataTransfer.effectAllowed = "copy"; } catch {} };
   const cards = [h("button", { class: "h3s-ctx", draggable: true, ondragstart: drag("__text"), ondragend: actions.endDrag,
-    onclick: () => actions.newShot(null, "__text"), title: "Leerer Shot nur mit Text" },
+    onclick: () => actions.newShot(null, "__text"), title: "Empty shot with text only" },
     h("div", { class: "h3s-ctx-visual", style: { color: "#9AA4B5", background: "#121722" } }, icon("plus", 24)),
-    h("div", { class: "h3s-ctx-text" }, h("span", { class: "h3s-strong" }, "Text-Shot"), h("span", { class: "h3s-lbl" }, "nur Text, ohne Medien")))];
+    h("div", { class: "h3s-ctx-text" }, h("span", { class: "h3s-strong" }, "Text-Shot"), h("span", { class: "h3s-lbl" }, "text only, no media")))];
   for (const entry of S.contexts) {
     const assigned = Boolean(selectedShot?.media.some((binding) => binding.context_id === entry.id));
     const unused = S.values.mode === "fl2va" && entry.media === "video";
-    const tip = unused ? "Wird bei Start-/Endbild (FL2VA) nicht genutzt" : entry.media === "audio"
-      ? "Auf eine Tonspur ziehen = läuft durchgehend · auf einen Shot = nur in diesem Shot"
-      : selectedShot ? `Klicken: ${assigned ? "aus" : "zu"} ${actions.shotLabel(selectedShot.id)} ${assigned ? "entfernen" : "hinzufügen"}` : "Auf die Timeline ziehen";
+    const tip = unused ? "Not used in First/last frame mode (FL2VA)" : entry.media === "audio"
+      ? "Drag onto an audio lane = plays throughout · onto a shot = only in that shot"
+      : selectedShot ? `Click: ${assigned ? "remove from" : "add to"} ${actions.shotLabel(selectedShot.id)}` : "Drag onto the timeline";
     cards.push(h("button", { class: `h3s-ctx${assigned ? " on" : ""}${unused ? " off" : ""}`, draggable: true, title: tip,
       ondragstart: drag(entry.id), ondragend: actions.endDrag, onclick: () => actions.toggleBinding(entry.id) },
       visual(entry, actions.thumb),
-      assigned ? h("span", { class: "h3s-badge" }, "im Shot") : null,
+      assigned ? h("span", { class: "h3s-badge" }, "in shot") : null,
       h("div", { class: "h3s-ctx-text" }, h("span", { class: "h3s-strong", style: { display: "flex", alignItems: "center", gap: "6px" } },
         h("span", { class: "h3s-swatch", style: { background: entry.color } }), entry.name), h("span", { class: "h3s-lbl" }, `${entry.kind} · ${entry.role}`))));
   }
-  cards.push(h("div", { class: "h3s-hint" }, S.contexts.length ? "Weiterer Content kommt aus Context-Nodes im Graph" : "Noch kein Content: Context-Nodes an den Context Connector anschließen. Ohne Content geht es auch nur mit Text."));
+  cards.push(h("div", { class: "h3s-hint" }, S.contexts.length ? "More Content comes from Context nodes in the graph" : "No Content yet: connect Context nodes to the Context Connector. Text alone works too."));
   return h("section", { class: "h3s-card" },
     h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Content"),
-      h("span", { class: "h3s-lbl" }, "Auf die Timeline ziehen = neuer Shot · auf einen Shot ziehen oder anklicken = zuordnen · Audio auf eine Tonspur")),
+      h("span", { class: "h3s-lbl" }, "Drag onto the timeline = new shot · drag onto a shot or click = assign · audio onto an audio lane")),
     h("div", { class: "h3s-content" }, cards));
 }

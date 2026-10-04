@@ -1,21 +1,21 @@
-// German headings for the plan's notes. The detail stays the planner's own sentence, so nothing is lost in translation.
+// Short headings for the plan's notes. The detail stays the planner's own sentence.
 const TITLES = {
-  anchor_multiple: "Mehrere Start-/Endbilder", voice_unbound: "Stimme ohne Figur", voice_extra_take: "Weitere Stimmprobe",
-  usage_unknown: "Unbekannte Verwendung", usage_pending: "Zeitpunkt fehlt", text_empty: "Leere Textkarte",
-  subject_target_invalid: "Zuordnung ungültig", speaker_unknown: "Sprecher unbekannt", source_shared: "Datei mehrfach genutzt",
-  source_missing: "Datei fehlt", shots_preamble: "Text ohne Zeit", shot_speaker_unknown: "Sprecher nicht verbunden",
-  shot_speaker_unbound: "Sprecher ohne Bild", shot_role_unknown: "Rolle passt nicht", shot_overlap: "Shots überlappen",
-  shot_gap: "Lücke zwischen Shots", shot_empty_range: "Shot ohne Länge", shot_context_unknown: "Content nicht verbunden",
-  shot_clipped: "Shot gekürzt", shot_after_end: "Shot nach Projektende", reference_disabled: "Bei Start-/Endbild nicht genutzt",
-  prompt_override: "Prompt von Hand aktiv", planner: "Hinweis des Compilers", no_text: "Kein Text", no_continuity: "Harte Schnitte",
-  length_snapped: "Länge an H3-Raster angepasst", late_change: "Wechsel kurz nach einer Naht", guide_outside_project: "Zeitpunkt außerhalb",
-  content_unknown: "Unbekannter Inhalt", canvas_snapped: "Größe auf 32er-Raster", canvas_from_image: "Größe aus Bild",
-  canvas_default: "Standardgröße", audio_short: "Ton zu kurz", audio_roles: "Mehrere Ton-Rollen", audio_dulling: "Ton wird dumpfer",
-  audio_clip_unknown: "Tonclip ohne Audio-Content", audio_clip_clipped: "Tonclip gekürzt", audio_clip_after_end: "Tonclip nach Projektende",
-  asset_relation_unavailable: "Zuordnung nicht möglich",
+  anchor_multiple: "Several first/last frames", voice_unbound: "Voice without character", voice_extra_take: "Extra voice take",
+  usage_unknown: "Unknown use", usage_pending: "Time missing", text_empty: "Empty text card",
+  subject_target_invalid: "Invalid assignment", speaker_unknown: "Unknown speaker", source_shared: "File used several times",
+  source_missing: "File missing", shots_preamble: "Text without time", shot_speaker_unknown: "Speaker not connected",
+  shot_speaker_unbound: "Speaker without picture", shot_role_unknown: "Role does not fit", shot_overlap: "Shots overlap",
+  shot_gap: "Gap between shots", shot_empty_range: "Shot without length", shot_context_unknown: "Content not connected",
+  shot_clipped: "Shot shortened", shot_after_end: "Shot after project end", reference_disabled: "Not used in First/last frame mode",
+  prompt_override: "Manual prompt active", planner: "Compiler note", no_text: "No text", no_continuity: "Hard cuts",
+  length_snapped: "Length fitted to H3 grid", late_change: "Change just after a seam", guide_outside_project: "Time outside project",
+  content_unknown: "Unknown content", canvas_snapped: "Size on 32 grid", canvas_from_image: "Size from picture",
+  canvas_default: "Default size", audio_short: "Audio too short", audio_roles: "Several audio roles", audio_dulling: "Audio gets duller",
+  audio_clip_unknown: "Audio clip without audio Content", audio_clip_clipped: "Audio clip shortened", audio_clip_after_end: "Audio clip after project end",
+  asset_relation_unavailable: "Assignment not possible",
 };
 
 export function issueLine(issue) {
-  const title = TITLES[issue.code] || "Hinweis";
+  const title = TITLES[issue.code] || "Note";
   return `${title}${issue.ref ? ` (${issue.ref})` : ""}: ${issue.text}`;
 }

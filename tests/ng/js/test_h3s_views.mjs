@@ -41,10 +41,10 @@ function recorder() {
   const { actions, calls } = recorder();
   const view = timelineView(state(), actions);
   assert.deepEqual(view.byClass("h3s-shot").map((node) => node.style.left), ["0%", "40%"]);
-  assert.equal(view.byClass("h3s-clip")[0].innerText.includes("fest · 4–18 s"), true);
+  assert.equal(view.byClass("h3s-clip")[0].innerText.includes("locked · 4–18 s"), true);
   const parts = view.byClass("h3s-part");
   assert.deepEqual(parts.map((node) => node.style.borderColor), ["#4FB8C4", "#E58A5C"], "each render part has its own colour");
-  assert.ok(view.innerText.includes("Ton 2"), "an empty lane is shown");
+  assert.ok(view.innerText.includes("Audio 2"), "an empty lane is shown");
   // Drag shot b over shot a: the drop reorders.
   const block = view.byClass("h3s-shot")[1];
   block.onpointerdown({ stopPropagation() {}, preventDefault() {}, currentTarget: block, clientX: 500, pointerId: 1 });
@@ -61,10 +61,10 @@ function recorder() {
   assert.deepEqual(fresh.calls.find(([name]) => name === "select"), ["select", "shot", "a"]);
 }
 
-// Ghost suggestions say what Übernehmen does.
+// Ghost suggestions say what Accept does.
 {
   const view = timelineView(state({ ghosts: [{ start: 0, end: 20, text: "One take." }] }), recorder().actions);
-  assert.ok(view.byClass("h3s-banner")[0].innerText.includes("Übernehmen ersetzt deine 2 Shots; Tonspuren bleiben."));
+  assert.ok(view.byClass("h3s-banner")[0].innerText.includes("Accept replaces your 2 shots; audio lanes stay."));
   assert.ok(view.byClass("h3s-track")[0].classList.contains("ghosting"));
 }
 
@@ -72,18 +72,18 @@ function recorder() {
 {
   const { actions, calls } = recorder();
   let [mode, panel] = sideView(state({ values: { turbo: true, mode: "fl2va" } }), actions);
-  assert.equal(mode.byTag("select").length, 1, "Start-/Endbild shows only its own turbo LoRA");
-  assert.ok(mode.innerText.includes("Turbo an"));
-  mode.button("Referenzen").onclick();
+  assert.equal(mode.byTag("select").length, 1, "First/last frame shows only its own turbo LoRA");
+  assert.ok(mode.innerText.includes("Turbo on"));
+  mode.button("References").onclick();
   assert.deepEqual(calls.at(-1), ["setWidget", "mode", "ref2va"]);
   [, panel] = sideView(state({ selected: { kind: "clip", id: "c1" }, values: { mode: "fl2va" } }), actions);
-  assert.ok(panel.innerText.includes("Story 4–10 s → spielt File 10–16 s"));
-  assert.ok(panel.innerText.includes("kann H3 Ton nur fest übernehmen"));
+  assert.ok(panel.innerText.includes("Story 4–10 s → plays file 10–16 s"));
+  assert.ok(panel.innerText.includes("H3 can only lock sound"));
   assert.equal(panel.byTag("select")[0].children.length, 1, "FL2VA offers only lock for a lane clip");
   [, panel] = sideView(state({ selected: { kind: "shot", id: "a" } }), actions);
-  assert.ok(panel.innerText.includes("Liegt in: Render-Teil 1, Render-Teil 2"));
+  assert.ok(panel.innerText.includes("In: Render part 1, Render part 2"));
   assert.ok(panel.innerText.includes("Mage"));
-  assert.equal(panel.button("KI: Text").disabled, true, "no AI suggestion without a loader");
+  assert.equal(panel.button("AI: improve text").disabled, true, "no AI suggestion without a loader");
 }
 
 // Footer and drawer.
@@ -91,12 +91,12 @@ function recorder() {
   const { actions } = recorder();
   const footer = footerView(state({ values: { width: 0, height: 0 } }), actions);
   assert.equal(footer.byTag("select").find((node) => node.value === "auto")?.value, "auto");
-  assert.ok(footer.innerText.includes("1344×768 aus Bild"));
+  assert.ok(footer.innerText.includes("1344×768 from picture"));
   const drawer = drawerView(state({ promptOpen: true }), actions);
   assert.ok(drawer.innerText.includes("first prompt") && drawer.innerText.includes("second prompt"));
-  assert.ok(drawer.innerText.includes("Bilder 1/9 · Video 0/3 · Ton 0/3"));
-  assert.ok(drawer.innerText.includes("Lücke zwischen Shots (shot 2): there is a gap."));
-  assert.equal(issueLine({ code: "new_code", text: "x" }), "Hinweis: x");
+  assert.ok(drawer.innerText.includes("Images 1/9 · Video 0/3 · Audio 0/3"));
+  assert.ok(drawer.innerText.includes("Gap between shots (shot 2): there is a gap."));
+  assert.equal(issueLine({ code: "new_code", text: "x" }), "Note: x");
 }
 
 // Content cards and prompt.
@@ -110,7 +110,7 @@ function recorder() {
   cards[3].onclick();
   assert.deepEqual(calls.at(-1), ["toggleBinding", "song"]);
   const prompt = promptView(state({ ai: false }), actions);
-  assert.equal(prompt.button("KI: in Shots").disabled, true, "no AI without a loader");
+  assert.equal(prompt.button("AI: split into shots").disabled, true, "no AI without a loader");
 }
 
 // Older NG workflows put an empty trailing value on the first widget added later; it falls back to its default.
@@ -122,6 +122,16 @@ function recorder() {
     widget("turbo_lora_ref2va", "none", ["none"]), widget("resize_method", "pad", ["crop", "pad"]), widget("seed", "")] };
   repairLaterWidgets(node);
   assert.deepEqual(node.widgets.map((w) => w.value), [false, "none", "none", "pad", ""], "only the later widgets are repaired, valid values stay");
+}
+
+// The Studio speaks English: no German text is left in its modules (comments included, to keep them consistent).
+{
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const dir = new URL("../../../js/ng/", import.meta.url);
+  for (const name of readdirSync(dir).filter((file) => file.startsWith("h3s_"))) {
+    const text = readFileSync(new URL(name, dir), "utf8");
+    assert.doesNotMatch(text, /[äöüÄÖÜß]|(Teil|Tonspur|Shots aus|Übernehmen|Verwerfen|Hinweis|Zurück)/, `${name} still has German text`);
+  }
 }
 
 console.log("h3s views ok");
