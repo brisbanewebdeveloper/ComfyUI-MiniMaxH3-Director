@@ -21,10 +21,18 @@ export function basis(node, withShots = true) {
     readContexts(node), connectedProvider(node)]);
 }
 
+// The dialogue the user wrote, inline ("@Mage says: ...") or as spoken lines: a split starts from the prompt, so these
+// are sent along and take the place of whatever the AI makes the same speaker say.
+export function ownLines(S) {
+  const name = (id) => (id ? `@${S.byId?.get(id)?.name || id}` : "Narrator");
+  return S.shots.flatMap((shot) => [...(shot.text || "").split("\n").filter((line) => /^\s*@?[\p{L}\p{N}_-]+\s+says:/iu.test(line)).map((line) => line.trim()),
+    ...(shot.spoken || []).filter((line) => line.text?.trim()).map((line) => `${name(line.speaker_id)} says: ${line.text.trim()}`)]).join("\n");
+}
+
 export function studioAI(S, app, api, done) {
   let controller = null, serial = 0;
 
-  async function run(kind, shots) {
+  async function run(kind, shots, keep = "") {
     const provider = connectedProvider(S.node);
     if (!provider || S.busy) return null;
     controller = new AbortController();
@@ -33,7 +41,7 @@ export function studioAI(S, app, api, done) {
     const before = basis(S.node);
     try {
       const payload = { director: { ...values(S.node), shots: shots === null ? "" : writeProject({ shots, audio: [], lanes: [] }) },
-        contexts: readContexts(S.node), provider, mode: "auto" };
+        contexts: readContexts(S.node), provider, mode: "auto", keep };
       const data = await aiAction(app, api, "direct", payload, controller.signal);
       if (mine !== serial) return null;
       if (basis(S.node) !== before) {
@@ -51,7 +59,7 @@ export function studioAI(S, app, api, done) {
 
   return {
     async split() {
-      const suggestion = await run("split", null);
+      const suggestion = await run("split", null, ownLines(S));
       if (!suggestion) return;
       const proposed = clipToFit(readProject(suggestion.shots || "").shots, S.values.project_seconds);
       S.ghosts = proposed.map(({ start, end, text }) => ({ start, end, text }));
@@ -59,7 +67,8 @@ export function studioAI(S, app, api, done) {
       S.ghostBasis = basis(S.node, true);
       if (!S.ghosts.length) S.notice = { text: "The AI answered, but proposed no shots. Try again or split by hand.", error: true };
       else {
-        const notes = [suggestion.timing_adjusted && "Its shot times were laid end to end over the whole project",
+        const notes = [suggestion.kept_dialogue?.length && `Your own dialogue (${suggestion.kept_dialogue.length} line${suggestion.kept_dialogue.length === 1 ? "" : "s"}) replaces what the AI wrote for those speakers`,
+          suggestion.timing_adjusted && "Its shot times were laid end to end over the whole project",
           suggestion.unknown_mentions?.length && `${suggestion.unknown_mentions.map((name) => "@" + name).join(", ")} is no Content here and stays a plain word`];
         if (notes.some(Boolean)) S.notice = { text: `${notes.filter(Boolean).join("; ")}. Check the proposal before you accept it.`, error: false };
       }

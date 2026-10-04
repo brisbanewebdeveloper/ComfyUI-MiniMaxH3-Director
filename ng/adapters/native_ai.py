@@ -115,4 +115,4 @@ def parse_result(text, action, request_json):
         # The medium decides which content roles the answer may name: a picture cannot be dialogue.
         return parse_suggestion(text, payload.get("media", "text")).to_dict()
     return finish_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"],
-                            payload["director"].get("shots", ""))
+                            payload["director"].get("shots", ""), payload.get("keep", ""))

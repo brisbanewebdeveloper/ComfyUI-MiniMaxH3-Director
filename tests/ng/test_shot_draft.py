@@ -68,6 +68,15 @@ class ShotDraft(unittest.TestCase):
         result = self.parse(answer(patches=[{"shot_id": "b", "fields": {"spoken": spoken}}]))
         self.assertEqual(result["patches"][0]["fields"]["spoken"][0]["text"], "Mein Dialog.")
 
+    def test_a_bad_extra_field_is_dropped_with_its_reason_and_the_text_stays(self):
+        # Real gemma answer to "AI: improve text": a good text plus a spoken line without schema_version.
+        result = self.parse(answer(patches=[{"shot_id": "a", "fields": {"text": "@Alice turns slowly.", "spoken": [{"speaker_id": "", "text": "Hi"}]}}]))
+        self.assertEqual(result["patches"], [{"shot_id": "a", "fields": {"text": "@Alice turns slowly.\n@Alice says: Original words."}}])
+        self.assertEqual(len(result["dropped"]), 1)
+        self.assertTrue(result["dropped"][0].startswith("spoken of a: "))
+        with self.assertRaisesRegex(ValueError, "no usable changes: spoken of a"):
+            self.parse(answer(patches=[{"shot_id": "a", "fields": {"spoken": [{"speaker_id": "", "text": "Hi"}]}}]))
+
     def test_legacy_shots_receive_the_existing_stable_ids(self):
         text = "0-4: Walk.\n@Alice says: Hello.\n4-8: Wait."
         data = answer(patches=[{"shot_id": "legacy-shot-1", "fields": {"text": "@Alice turns."}}])

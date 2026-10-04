@@ -32,22 +32,41 @@ def direction_prompt(idea, seconds, contexts, current_shots=""):
             "Idea: %s\nContexts: %s" % (seconds, mention_rule(meanings), seconds, idea, json.dumps(meanings, ensure_ascii=False)))
 
 
-def keep_manual_dialogue(suggested, current_shots):
+def keep_manual_dialogue(suggested, current_shots, keep=""):
     """A scene proposal replaces action and camera, never a line the user wrote themselves.
 
-    Dialogue is the one thing a director cannot invent twice: if the proposal says nothing for a speaker who has
-    a line in the current shots, that line is kept and the result says which ones were kept.
+    Dialogue is the one thing a director cannot invent twice. For a speaker the user wrote lines for, the user's lines
+    take the place of the proposal's own lines for that speaker (gemma turned "@Mage says: Welcome back." into
+    "@Mage says: Welcome... settle your spirit."); lines with no such place are appended to the last shot.
+    `keep` holds the user's lines when the shots themselves are not sent (the Studio's split starts from the prompt).
+    The result says which of the user's lines the proposal did not already contain.
     """
-    if not suggested or not current_shots:
-        return suggested, []
     spoken = _spoken_lines(current_shots)
-    said = _spoken_lines(suggested)
-    missing = [line for speaker, lines in spoken.items() if speaker not in said for line in lines]
-    if not missing:
+    for line in (keep or "").splitlines():
+        speaker = _speaker(line)
+        if speaker:
+            spoken.setdefault(speaker, []).append(line.strip())
+    if not suggested or not spoken:
         return suggested, []
+    lines, placed = [], set()
+    for line in suggested.splitlines():
+        speaker = None if _is_header(line) else _speaker(line)
+        if speaker in spoken:
+            if speaker not in placed:
+                placed.add(speaker)
+                lines.extend(spoken[speaker])
+            continue
+        lines.append(line)
     # Appended as further text of the last shot, which is how parse_shots reads a dialogue line; a separate
     # `end-end:` block would be an empty range and get dropped with an Issue.
-    return "\n".join([suggested, *missing]), missing
+    lines += [line for speaker, own in spoken.items() if speaker not in placed for line in own]
+    proposed = [line.strip() for line in suggested.splitlines()]
+    return "\n".join(lines), [line for own in spoken.values() for line in own if line not in proposed]
+
+
+def _speaker(line):
+    found = re.match(r"^\s*@?([\w-]+)\s+says:", line.strip(), re.IGNORECASE)
+    return found.group(1).casefold() if found else None
 
 
 def _spoken_lines(text):
@@ -57,9 +76,9 @@ def _spoken_lines(text):
         if _is_header(line):
             current = []
             continue
-        found = re.match(r"^\s*@?([\w-]+)\s+says:", line.strip(), re.IGNORECASE)
-        if found and current is not None:
-            spoken.setdefault(found.group(1).casefold(), []).append(line.strip())
+        speaker = _speaker(line)
+        if speaker and current is not None:
+            spoken.setdefault(speaker, []).append(line.strip())
     return spoken
 
 
@@ -122,10 +141,10 @@ def parse_direction(text, seconds, contexts=None, current_shots=""):
     return result
 
 
-def finish_direction(text, seconds, contexts, current_shots):
+def finish_direction(text, seconds, contexts, current_shots, keep=""):
     suggestion = parse_direction(text, seconds, contexts, current_shots)
     if suggestion.get("format") != "h3-director-draft":
-        suggestion["shots"], kept = keep_manual_dialogue(suggestion["shots"], current_shots)
+        suggestion["shots"], kept = keep_manual_dialogue(suggestion["shots"], current_shots, keep)
         if kept:
             suggestion["kept_dialogue"] = kept
     return suggestion

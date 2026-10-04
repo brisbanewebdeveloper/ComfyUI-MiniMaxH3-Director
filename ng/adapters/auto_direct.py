@@ -21,6 +21,6 @@ async def direct(payload):
         entry, url, model = endpoint(config)
         answer = await legacy.vlm_generate([], prompt, config.provider, url, model, api_key=key, auth=entry.auth,
                                           **{**wire(config), "max_tokens": direct_tokens(config.max_tokens)})
-        return finish_direction(answer, seconds, contexts, current)
+        return finish_direction(answer, seconds, contexts, current, read_str(payload, "keep", "request", ""))
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None

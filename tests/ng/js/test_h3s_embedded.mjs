@@ -54,4 +54,12 @@ assert.equal(host.children.length, 0, "removing the node removes its Studio");
   assert.deepEqual(image.pos, [-1560, 838], "the lower card moves below the grown upper one");
   assert.ok(text.pos[0] + text.size[0] <= connector.pos[0], "the grown cards end before the Connector");
 }
+// A split sends the user's own dialogue along: inline lines and spoken lines, by the speaker's name.
+{
+  const { ownLines } = await import("../../../js/ng/h3s_ai.js");
+  const S = { byId: new Map([["mage", { name: "Mage" }]]), shots: [
+    { text: "The mage looks up.\n@Mage says: Welcome back.", spoken: [] },
+    { text: "Wide shot.", spoken: [{ speaker_id: "mage", text: "Stay." }, { speaker_id: "", text: "Night falls." }, { speaker_id: "mage", text: " " }] }] };
+  assert.equal(ownLines(S), "@Mage says: Welcome back.\n@Mage says: Stay.\nNarrator says: Night falls.");
+}
 console.log("h3s embedded ok");

@@ -28,6 +28,17 @@ class SceneSuggestion(unittest.TestCase):
         self.assertIn(merged.splitlines()[0], "0.000-4.000: @Alice enters.")
         self.assertEqual(kept, ["@Alice says: Hello."])
 
+    def test_the_users_own_line_replaces_the_one_the_ai_wrote_for_that_speaker(self):
+        # Real gemma split: "@Mage says: Welcome back." came back as "@Mage says: Welcome... settle your spirit."
+        suggested = ("0.000-3.000: The mage stands.\n@Mage says: Welcome... settle your spirit.\n"
+                     "3.000-8.000: Close up.\n@Mage says: Find the quiet.")
+        merged, kept = direction.keep_manual_dialogue(suggested, "", "@Mage says: Welcome back.")
+        self.assertEqual(merged, "0.000-3.000: The mage stands.\n@Mage says: Welcome back.\n3.000-8.000: Close up.")
+        self.assertEqual(kept, ["@Mage says: Welcome back."])
+        result = direction.finish_direction(json.dumps({"shots": [{"start_s": 0, "end_s": 8, "action": "The mage stands.", "dialogue": "@Mage says: Hi."}]}),
+                                            8, [{"widgets": {"name": "Mage"}}], "", "@Mage says: Welcome back.")
+        self.assertIn("@Mage says: Welcome back.", result["shots"]); self.assertNotIn("Hi.", result["shots"])
+
     def test_dialogue_the_proposal_repeats_is_not_written_twice(self):
         suggested = "0.000-8.000: @Alice enters.\n@Alice says: Hello."
         merged, kept = direction.keep_manual_dialogue(suggested, "0.000-8.000: Alice enters.\n@Alice says: Hello.")

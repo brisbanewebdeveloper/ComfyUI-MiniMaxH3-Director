@@ -121,7 +121,7 @@ def parse_draft(data, records, seconds, contexts):
     patches = fields.read_list(data, "patches", "draft")
     if len(patches) > 64:
         raise ValueError("A draft can propose at most 64 Shot patches.")
-    by_id, seen, validated = {record["id"]: record for record in records}, set(), []
+    by_id, seen, validated, dropped = {record["id"]: record for record in records}, set(), [], []
     for patch in patches:
         fields.need_dict(patch, "draft.patch")
         identity = fields.read_str(patch, "shot_id", "draft.patch")
@@ -131,12 +131,22 @@ def parse_draft(data, records, seconds, contexts):
         changes = fields.need_dict(patch.get("fields"), "draft.fields")
         if not changes or set(changes) - set(LOCK_FIELDS):
             raise ValueError("Draft fields must be timing, text, media or spoken.")
-        validated.append(dict(shot_id=identity, fields={key: _field_value(key, value, by_id[identity], seconds, contexts)
-                                                      for key, value in changes.items()}))
+        # A field that fails its check is left out with its reason; the others stay. Gemma's "improve text" carried a
+        # spoken line without schema_version, and the good text of the same patch was thrown away with it.
+        kept = {}
+        for key, value in changes.items():
+            try:
+                kept[key] = _field_value(key, value, by_id[identity], seconds, contexts)
+            except ValueError as error:
+                dropped.append("%s of %s: %s" % (key, identity, error))
+        if kept:
+            validated.append(dict(shot_id=identity, fields=kept))
     result = dict(format=FORMAT, schema_version=1, patches=validated)
     for key in ("soundscape", "music"):
         if key in data:
             result[key] = fields.read_str(data, key, "draft")
-    if not patches and not any(result.get(key, "").strip() for key in ("soundscape", "music")):
-        raise ValueError("The draft has no proposed changes.")
+    if dropped:
+        result["dropped"] = dropped
+    if not validated and not any(result.get(key, "").strip() for key in ("soundscape", "music")):
+        raise ValueError("The draft has no usable changes" + (": " + "; ".join(dropped) if dropped else "."))
     return result
