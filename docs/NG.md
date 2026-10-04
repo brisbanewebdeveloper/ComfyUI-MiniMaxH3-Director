@@ -92,6 +92,11 @@ Manual/Assist/Auto controls AI actions only. Old workflow view settings are disc
 
 Leave scenes empty to describe the whole project with the idea. Use **+ Shot** to add a timed scene, edit its action/dialogue and times,
 then shorten its end before adding another. Drag the story bar or its edges to change timing. The separate generation track shows render chunks.
+Both tracks share one time axis; the requested end and delivered frame duration remain visible.
+Selecting a shot highlights its actual compiler chunks, including pinned-head intersections.
+Use the card's earlier/later arrows to swap neighboring shots while retaining their lengths,
+gap and contents. Editing clears the previous chunk track until its plan is refreshed.
+See [the timeline contract](NG-timeline.md).
 **Use idea as one scene** clears timed scene overrides and returns to automatic scene planning.
 
 The original shot text remains editable and uses the existing contract:

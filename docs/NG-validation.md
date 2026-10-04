@@ -567,3 +567,54 @@ is preserved, with empty queues observed. No GPU render was needed for this prev
 change. Visual design, output quality and the overall product remain unaccepted.
 E45 audio placement/mixing, interior anchors and timeline work, E46 selective AI
 Apply, and E47 provenance remain open. Contract: [NG-shot-media.md](NG-shot-media.md).
+
+## E45a — Shared timeline axis and shot ordering (2026-10-04)
+
+The Story and Generation tracks previously stretched different durations to the
+same width. They now share an axis covering requested and delivered time. Preview
+responses add exact story frame boundaries, fps and requested frame count from
+the existing planner. Three-decimal duration labels and the grid warning agree;
+the original requested value remains visible even for subframe input.
+
+Shot selection highlights cards, bars and actual compiled chunk membership,
+including pinned-head intersections. Earlier/later controls swap chronological
+neighbors while preserving duration, gap, stable IDs and every non-timing field.
+Overlaps/invalid ranges stay unchanged with feedback. Drag/resize use the shared
+axis and zoomed DOM width; cancellation restores data. Removal stops bubbling
+into the deleted card and moves selection to a remaining ID. Widget edits clear
+the prior chunk track before requesting a new plan.
+
+NG: 510 checks, 509 passed/one existing Windows skip; Legacy 374/374 + 74/74.
+All nine frontend suites, syntax/compileall, layering/size guards and staged diff
+checks passed. Before fixes: the timeline geometry assertion failed, the additive
+preview fields were missing in all three duration cases, the warning said 10.12s
+instead of 10.125s, removal bubbled, and a subframe wish was shown as a rounded frame
+target. Each red log is retained; existing tests were not weakened.
+
+The real planner and local endpoint confirm: 10 s/Auto → 243 frames/one chunk;
+10 s/5 s target → 243 frames/two chunks; 120 s/10 s target → 2878 frames/twelve
+chunks (119.917 s). These are delivered lengths; heads are included only in sampled
+counts. Native sampling behavior and prompts are unchanged.
+
+An isolated CPU browser at 8201 verified arrows and their inverse, then actual
+mouse movement and both resize edges at 75% ComfyUI zoom. Saved/reloaded DOM
+observations and workflow data match exactly; size 880×1300, width/scrollWidth
+843 px, stable selection and all non-timing fields persist. An independent endpoint
+probe compares track percentages to exact compiled frame boundaries and verifies
+that the selected shot in chunk two exists only inside its 22-frame pinned head.
+A second browser check sets 120/10: twelve chunks and 119.917 s are visible; the
+requested-end marker is kept inside the track at 100% when output is shorter.
+
+Evidence: `_notes/NG/experiments/e45a_*`, especially `e45a_verified.json`, live plan,
+API cases, browser saved/reload JSON, head membership, drag data and screenshot.
+Own server PIDs 52220/48752/26840 are stopped; port 8201 is closed; both working browser
+tabs are closed. The first navigation preceded server readiness; binding its error
+page was blocked by the browser URL policy. A fresh allowed localhost tab worked;
+the failed tab was left temporary for automatic turn cleanup. Browser logs retain
+four early graph-initialization messages, two Jobs API fetch failures during the
+own-server restart and twenty warnings. No clean-console claim is made.
+
+No GPU render or human design/quality acceptance was performed for this editor
+change. E45 remains partial: shot audio placement, overlapping copy/lock mixing,
+and interior anchor contracts are still open. E46 selective AI Apply and E47
+provenance remain open. Contract: [NG-timeline.md](NG-timeline.md).

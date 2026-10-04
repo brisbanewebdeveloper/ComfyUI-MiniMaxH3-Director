@@ -188,7 +188,7 @@ def _shots_for_chunk(shots, story_start, story_end, head):
 def _plan_issues(requested, planned, count, continuity):
     issues = []
     if planned != requested:
-        issues.append(Issue("length_snapped", "The video will be %.2fs (%d frames), not %.2fs: chunks sit on H3's frame grid."
+        issues.append(Issue("length_snapped", "The video will be %.3fs (%d frames), not %.3fs: chunks sit on H3's frame grid."
                             % (frames.frames_to_seconds(planned), planned, frames.frames_to_seconds(requested))))
     if count > 1 and continuity.mode == "none":
         issues.append(Issue("no_continuity", "%d chunks without continuity are independent clips; expect visible cuts between them." % count))

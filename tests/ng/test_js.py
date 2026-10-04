@@ -38,6 +38,10 @@ class Frontend(unittest.TestCase):
         result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_shot_media.mjs")], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_timeline_frame_truth_and_mouse_contracts(self):
+        result = subprocess.run([NODE, os.path.join(REPO, "tests", "ng", "js", "test_ng_timeline.mjs")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

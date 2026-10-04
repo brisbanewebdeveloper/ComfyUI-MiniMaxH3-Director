@@ -13,6 +13,7 @@ import { contextColor } from "./ng_identity.js";
 import { inspector,warningView } from "./ng_inspector.js";
 import { summarizeBatch } from "./ng_assist.js";
 import { renameStoryReferences } from "./ng_story_model.js";
+import {frameSeconds} from "./ng_timeline.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -140,10 +141,10 @@ function attach(node) {
     try {
       const data=await request(api,"/ng/plan",readPayload(node));
       if (removed || current!==serial) return;
-      summary.textContent=`${data.total_s.toFixed(2)} s · ${data.chunks.length} render chunk${data.chunks.length===1?"":"s"} · ${now.continuity.replaceAll("_"," + ")}`;
+      summary.textContent=`${frameSeconds(data.total_frames,data.fps)} s delivered · ${now.project_seconds} s requested · ${data.chunks.length} render chunk${data.chunks.length===1?"":"s"} · ${now.continuity.replaceAll("_"," + ")}`;
       generationCards.replaceChildren();
-      for(const [title,detail]of[[`${data.chunks.length} Chunks`,data.chunks.map((chunk)=>`${chunk.index+1}: ${(chunk.end_s-chunk.start_s).toFixed(2)} s`).join(" · ")],
-                               ["Continuity",now.continuity.replaceAll("_"," + ")],["Total Duration",`${data.total_s.toFixed(2)} s · ${data.total_frames} frames`],
+      for(const [title,detail]of[[`${data.chunks.length} Chunks`,data.chunks.map((chunk)=>`${chunk.index+1}: ${frameSeconds(chunk.delivered_frames,data.fps)} s`).join(" · ")],
+                               ["Continuity",now.continuity.replaceAll("_"," + ")],["Total Duration",`${frameSeconds(data.total_frames,data.fps)} s · ${data.total_frames} frames`],
                                [generate.disabled?"Connect render path":"Ready",data.mode.toUpperCase()]]){
         const card=element("div","ng-generation-card");card.append(element("strong","",title),element("small","",detail));generationCards.append(card);}
       warnings.replaceChildren();data.issues.forEach((issue)=>warnings.append(warningView(issue,readContexts(node))));
@@ -151,7 +152,7 @@ function attach(node) {
       story.plan(data);progress.planning("Ready · plan checked");
     } catch (error) { if (current===serial&&!removed) { summary.textContent=error.message; progress.planning("Check project"); generationCards.replaceChildren();outputInspector.render(null,[]); story.plan(null);generate.disabled=true; } }
   }
-  function schedule() { clearTimeout(timer); serial++;timer=setTimeout(refresh,300); }
+  function schedule() { clearTimeout(timer); serial++;story.invalidate();timer=setTimeout(refresh,300); }
   for (const widget of node.widgets || []) {
     if (widget===dom) continue;
     const original=widget.callback;widget.callback=function(...args){const result=original?.apply(this,args);schedule();return result;};

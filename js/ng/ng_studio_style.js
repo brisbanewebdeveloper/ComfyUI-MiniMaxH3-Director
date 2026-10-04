@@ -39,8 +39,12 @@ const CSS = `
   padding:5px 10px; font-size:11px; cursor:grab; touch-action:none; }
 .ng-time-handle { position:absolute; top:0; bottom:0; width:7px; cursor:ew-resize; }
 .ng-time-start { left:0; } .ng-time-end { right:0; }
-.ng-generation-track { display:flex; gap:2px; height:22px; }
-.ng-chunk-block { text-align:center; padding:2px; background:#344151; border-radius:3px; color:#c0ccdc; font-size:10px; }
+.ng-generation-track { position:relative; height:22px; background:#151b22; border-radius:5px; overflow:hidden; }
+.ng-chunk-block { position:absolute; height:100%; text-align:center; padding:2px; background:#344151; border:1px solid #26354a; border-radius:3px; color:#c0ccdc; font-size:10px; }
+.ng-studio .ng-story-block[aria-selected=true],.ng-studio .ng-chunk-block[aria-selected=true] { box-shadow:inset 0 0 0 2px #b8e1ff; }
+.ng-studio .ng-requested-end { position:absolute; top:0; bottom:0; border-left:2px dashed #ffd483; transform:translateX(-2px); z-index:2; pointer-events:none; }
+.ng-studio .ng-timeline-duration { font-size:11px; color:#b5c9dd; }
+.ng-studio .ng-shot-order { display:flex; gap:3px; }
 .ng-studio details, .ng-studio-context details { border-top:1px solid #3b424b; padding-top:7px; margin-top:9px; }
 .ng-studio summary, .ng-studio-context summary { cursor:pointer; color:#becbd7; font-size:12px; }
 .ng-studio .ng-plan-summary { background:#2b353e; border-radius:6px; padding:8px 10px; font-size:12px; margin:8px 0; }
