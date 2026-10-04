@@ -101,6 +101,11 @@ def native_request(provider, action, request_json):
 
 def parse_result(text, action, request_json):
     payload = json.loads(request_json)
+    # qwen3vl_4b_fp8_scaled sometimes decodes the user's turn again instead of answering; "not readable JSON, maybe
+    # Max tokens" sent the user the wrong way.
+    if text.lstrip().startswith("user\n"):
+        raise ValueError("The model repeated the request instead of answering. Ask again; if it keeps doing it, "
+                         "use another encoder (qwen3vl_4b_bf16 answered reliably) or Ollama.")
     if action == "prompt":
         # The same shape as the HTTP route's answer; the card reads suggestion.prompt and saw nothing in a bare string.
         return {"prompt": h3_prompt.clean(text, payload.get("preset", "global"))}

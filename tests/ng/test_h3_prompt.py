@@ -116,6 +116,12 @@ class H3PromptAction(unittest.TestCase):
         cleaned = h3.clean("A woman sings in a dark hall.\n\nAudio:\nWind sighs.\nMusic:\nA cello swells.", "global")
         self.assertEqual(cleaned, "A woman sings in a dark hall.\nAudio: Wind sighs.\nMusic: A cello swells.")
 
+    def test_an_echoed_request_is_named_as_such(self):
+        # Real qwen3vl_4b_fp8_scaled output: the user's turn again, no answer.
+        for action in ("prompt", "analyze"):
+            with self.assertRaisesRegex(ValueError, "repeated the request"):
+                native_ai.parse_result("user\nDescribe the supplied context text ...", action, json.dumps(self.answer() | {"media": "text"}))
+
     def test_a_text_card_analysis_gets_the_text_role_on_the_clip_path(self):
         # request_prompt names no medium to send for a note; the system prompt must still be the Text card's.
         sp = module("ng.core.system_prompts")
