@@ -477,3 +477,50 @@ contracts. E46 must provide ID-addressed drafts and selective AI Apply; currentl
 the old scene replacement is blocked for bindings, structured dialogue or locks.
 Audio placement/mixing, media indicators, timeline work and human quality/design
 acceptance remain open. See [the exact shot contract](NG-shots.md).
+
+## E43b — Native scoped-shot validation (2026-10-04)
+
+Fixed a reproduced role-order regression: alphabetically sorting scoped roles
+could turn a context's `voice, copy` choice into `copy, voice`. Two tests failed
+before the fix; inheritance and overlapping bindings now retain context/story
+order and remove duplicates. Invalid-role fallback is tested too.
+A separate failing counterprobe showed late, short copy/lock bindings can produce
+no reference under the existing project-origin timing. They now report
+`shot_audio_origin`; placement at a shot's own start is still unimplemented.
+
+NG: 503 checks, 502 passed/one existing Windows skip. Legacy: 374/374 + 74/74.
+All seven frontend suites, syntax, compileall and git diff checks passed.
+New contracts cover Ref2VA/T2VA scope changes, stable Subject ownership after
+label renumbering, inactive drafts, dialogue non-repetition, absolute keyframe
+timing with carry, role priority and the visible audio-origin limit. A real
+installed H3 tokenizer test checks scoped video, selected source interval,
+paired soundtrack and standalone audio presentation. Its tensors are synthetic.
+
+Two GPU jobs succeeded on a private server at 8199: native external sampling loop
+(normal RandomNoise, KSamplerSelect Euler, BasicScheduler, CFG 1, sigma shift,
+ConditioningZeroOut) and H3 Render Sequence's native loop. Both used three chunks,
+Ref2VA → T2VA → Ref2VA, with bound image/voice references in the outer chunks.
+The external observer confirmed actual models REF → FL → REF, seeds
+20261043/44/45, exact preview/execution prompts and labels, both AV streams, and
+7 video/1 audio carry-conditioning entries copied exactly from each prior tail.
+These equality checks concern conditioning, not an assertion that generated
+frames or sound are identical across a seam.
+
+Both outputs: 277 decoded frames, 256×256, 24 fps, 369333 audio samples at 32000 Hz,
+finite images/audio; duration difference is less than one audio sample. MP4 files
+decode all 277 frames and include AAC audio. Contact sheets were produced for
+inspection. Three sampling steps provide function smoke evidence only; no speech,
+identity, seam, visual design or product-quality acceptance is claimed.
+
+Evidence: `_notes/NG/experiments/e43b_*`, especially API fixtures, native/sequence
+histories, before/after observations, verified output JSON, role/audio red-green
+logs, full-suite logs and contact sheets. MP4s are in `ComfyUI/output/ng_lab/e43b`.
+An initial new fixture assumed a shorter trained minimum; it was corrected to
+107 sampled frames without changing the planner/tests. The initial Legacy command
+used unittest module loading with embedded Python and failed to import the script;
+the prescribed direct script runs passed and the failed launcher log is retained.
+
+Audio placement/mixing and arbitrary interior first/last/continue anchors remain
+explicit E45 work. E44 media indicators, E46 selective AI Apply and E47 provenance
+remain open. The user server is preserved; own server/junction cleanup is recorded
+in the section note. No push, tag, release or completion claim.

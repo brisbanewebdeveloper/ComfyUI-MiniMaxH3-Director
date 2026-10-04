@@ -1,5 +1,6 @@
 """Actual installed H3 node/Tokenizer contract, using generated tensors instead of model weights."""
 import importlib
+import json
 import unittest
 from unittest.mock import patch
 
@@ -8,6 +9,49 @@ from _pack import comfy_available, load_full_pack
 
 @unittest.skipUnless(comfy_available(), "ComfyUI is not importable")
 class NativeAssetPresentation(unittest.TestCase):
+    def test_shot_scoped_video_soundtrack_and_audio_reach_actual_native_presentation(self):
+        import torch
+        name = load_full_pack().__name__
+        ctx = importlib.import_module(name + ".ng.core.context")
+        opts = importlib.import_module(name + ".ng.core.context_options")
+        project = importlib.import_module(name + ".ng.core.project")
+        chunks = importlib.import_module(name + ".ng.core.chunks")
+        media = importlib.import_module(name + ".ng.adapters.media")
+        builder = importlib.import_module(name + ".ng.adapters.chunk_builder")
+        native = importlib.import_module(name + ".minimax_core").core()
+        records = [{"id": identity, "start": start, "end": end, "text": "A quiet room.",
+                    "media": [{"schema_version": 1, "context_id": target, "role": "context"} for target in targets]}
+                   for identity, start, end, targets in (("first", 0, 85/24, ()), ("middle", 85/24, 8, ()),
+                                                        ("last", 8, 277/24, ("move", "voice")))]
+        document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": records})
+        items = (ctx.ContextItem("move", "Move", "video", "move.mp4", length_s=3,
+                                 options=opts.ContextOptions(start_s=.5, end_s=2, video_audio="reference")),
+                 ctx.ContextItem("voice", "Voice", "audio", "voice.wav", length_s=2))
+        result = project.plan_project(ctx.DirectorContext(shots_text=document, items=items, project_seconds=277/24,
+                                                         width=64, height=64), 4, chunks.ContinuityPlan())
+        self.assertEqual([c.mode for c in result.compiled], ["t2va", "t2va", "ref2va"])
+        self.assertTrue(all(not c.refs for c in result.compiled[:2]))
+        class Encoder:
+            def tokenize(self, prompt, **kwargs):
+                self.prompt, self.presentation = prompt, kwargs["minimax_ref_items"]
+                return "tokens"
+            def encode_from_tokens_scheduled(self, tokens):
+                return [[torch.zeros(1, 1, 8), {}]]
+        class AudioVAE:
+            audio_sample_rate = 44100
+            def encode(self, wave):
+                return torch.zeros(1, 32, 2, round(wave.shape[1] / 44100 * 40))
+        encoder = Encoder()
+        with patch.object(media, "load_picture", side_effect=AssertionError("unexpected picture")), \
+             patch.object(media, "load_video", return_value=torch.zeros(36, 64, 64, 3)) as video, \
+             patch.object(media, "load_audio", return_value={"waveform": torch.zeros(1, 2, 66150), "sample_rate": 44100}) as audio:
+            builder.build_chunk(project.jobs(result)[2], encoder, None, AudioVAE(), mm=native)
+        self.assertEqual([(call.args[0].ctx_id, call.args[0].trim_start_f, call.args[0].length_f)
+                          for call in video.call_args_list], [("move", 12, 36)])
+        self.assertEqual([call.args[0].ctx_id for call in audio.call_args_list], ["voice", "move"])
+        self.assertEqual([item["type"] for item in encoder.presentation], ["audio", "video", "audio"])
+        self.assertIn("<Audio 1> is the soundtrack of <Video 1>", encoder.prompt)
+
     def test_native_schema_and_execute_consume_relationships_without_media_inputs(self):
         nodes = load_full_pack().NODE_CLASS_MAPPINGS
         for kind in ("Image", "Video", "Text"):
