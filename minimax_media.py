@@ -652,8 +652,8 @@ async def vlm_generate(images_b64, prompt, provider, base_url, model,
                         # the one HTTP status worth naming: the fix is somewhere else
                         # entirely, and the endpoint's own body rarely says where
                         raise VLMError(
-                            "%s refused the request (HTTP %s)%s. Set an API key in the "
-                            "Analyze settings, or put one in the %s environment variable."
+                            "%s refused the request (HTTP %s)%s. Set an API key on the H3 AI Loader "
+                            "(API → API key), or put one in the %s environment variable."
                             % (provider, response.status,
                                "" if headers else " and no API key was sent",
                                API_KEY_ENV_VARS[0]))

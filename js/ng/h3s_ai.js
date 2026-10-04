@@ -67,10 +67,11 @@ export function studioAI(S, app, api, done) {
       S.ghostBasis = basis(S.node, true);
       if (!S.ghosts.length) S.notice = { text: "The AI answered, but proposed no shots. Try again or split by hand.", error: true };
       else {
-        const notes = [suggestion.kept_dialogue?.length && `Your own dialogue (${suggestion.kept_dialogue.length} line${suggestion.kept_dialogue.length === 1 ? "" : "s"}) replaces what the AI wrote for those speakers`,
-          suggestion.timing_adjusted && "Its shot times were laid end to end over the whole project",
+        const notes = [suggestion.kept_dialogue?.length && `your own dialogue (${suggestion.kept_dialogue.length} line${suggestion.kept_dialogue.length === 1 ? "" : "s"}) replaces what the AI wrote for those speakers`,
+          suggestion.timing_adjusted && "its shot times were laid end to end over the whole project",
           suggestion.unknown_mentions?.length && `${suggestion.unknown_mentions.map((name) => "@" + name).join(", ")} is no Content here and stays a plain word`];
-        if (notes.some(Boolean)) S.notice = { text: `${notes.filter(Boolean).join("; ")}. Check the proposal before you accept it.`, error: false };
+        const said = notes.filter(Boolean).join("; ");
+        if (said) S.notice = { text: `${said[0].toUpperCase()}${said.slice(1)}. Check the proposal before you accept it.`, error: false };
       }
       done();
     },
