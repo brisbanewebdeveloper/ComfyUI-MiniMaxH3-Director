@@ -143,7 +143,10 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   lines = model.editSpoken(lines, 2, { text: "Bye.", speaker_id: "mage" });
   assert.deepEqual(model.removeSpoken(lines, 0).map((line) => line.text), ["Hi there.", "Bye."]);
   assert.deepEqual(model.editSpoken([], 0, { text: "First." }).map((line) => [line.text, line.language]), [["First.", "English"]], "the first input creates the line");
-  assert.deepEqual(model.editSpoken([a], 0, { text: "", speaker_id: "" }), [], "clearing the only line leaves the shot without dialogue");
+  assert.deepEqual(model.editSpoken([b], 0, { text: "", speaker_id: "" }), [], "clearing the only English line leaves the shot without dialogue");
+  // BUG-035: a language picked before typing, or kept while retyping, is not thrown away.
+  assert.deepEqual(model.editSpoken([], 0, { language: "German" }).map((line) => [line.text, line.language]), [["", "German"]]);
+  assert.equal(model.editSpoken([a], 0, { text: "", speaker_id: "" })[0].language, "German", "retyping a German line keeps German");
   assert.equal(model.editSpoken([a, b], 0, { text: "", speaker_id: "" }).length, 2, "an emptied line among others stays until removed");
 }
 

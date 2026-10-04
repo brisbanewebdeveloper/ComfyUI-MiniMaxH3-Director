@@ -16,6 +16,7 @@ from ... import minimax_enhance as enhance
 from ... import minimax_media as legacy
 from ..core.analysis import ProviderConfig
 from ..core.fields import need_dict, read_number, read_str
+from .analysis import endpoint, wire
 
 PRESETS = (enhance.PRESET_GLOBAL, enhance.PRESET_STORYBOARD)
 # The card and the wire speak in short names ("global", "storyboard"); the enhance node names the
@@ -69,14 +70,11 @@ async def build(payload):
     # NG actions append would be wrong here: this answer is prose that goes into the prompt, and
     # asking for JSON would turn it back into something that needs parsing.
     system = enhance.system_for(preset, 0)
-    defaults = legacy._PROVIDER_DEFAULTS[config.provider]
-    url = legacy.normalize_base_url(config.base_url, defaults["url"])
     try:
-        answer = await legacy.vlm_generate([], prompt, config.provider, url,
-                                           config.model or defaults["model"], api_key=key,
-                                           max_tokens=config.max_tokens,
-                                           timeout=config.timeout_seconds,
-                                           keep_alive=config.keep_alive, system_prompt=system)
+        # Address, model and auth come from the provider registry, as for Analyze; the local defaults know only three.
+        entry, url, model = endpoint(config)
+        answer = await legacy.vlm_generate([], prompt, config.provider, url, model, api_key=key, auth=entry.auth,
+                                           system_prompt=system, **wire(config))
         return {"prompt": clean(answer, preset)}
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None

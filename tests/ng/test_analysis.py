@@ -351,6 +351,20 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         return {"media": media, "widgets": {"image": "image.png", "audio": "sound.wav", "text": "Keep a slow camera.", "content": "style"},
                 "provider": config.to_dict()}
 
+    async def test_split_and_build_reach_a_cloud_provider_like_analyze(self):
+        # BUG-033/034: both indexed the local-only _PROVIDER_DEFAULTS and failed with KeyError: 'openrouter'.
+        provider = self.payload(provider="openrouter")["provider"]
+        self.answer = json.dumps({"shots": [{"start_s": 0, "end_s": 8, "action": "Alice walks.", "camera": "", "dialogue": ""}],
+                                  "soundscape": "", "music": ""})
+        result = await module("ng.adapters.auto_direct").direct({"provider": provider, "contexts": [],
+                                                                 "director": {"idea": "Alice walks.", "project_seconds": 8}})
+        self.assertIn("Alice walks.", result["shots"])
+        self.answer = "A woman walks through a station."
+        built = await module("ng.adapters.h3_prompt").build({"provider": provider, "note": "Eine Frau geht.", "seconds": 8, "preset": "global"})
+        self.assertIn("station", built["prompt"])
+        self.assertEqual([(path, auth, body["model"]) for path, auth, body in self.requests],
+                         [("/v1/chat/completions", "Bearer test-key", "mock")] * 2)
+
     async def test_vision_reuses_auth_and_normalizes_v1(self):
         result = await self.adapter.analyze(self.payload(max_tokens=1024, timeout_seconds=45))
         self.assertEqual(result["description"], "red object")

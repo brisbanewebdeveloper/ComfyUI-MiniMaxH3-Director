@@ -13,7 +13,7 @@ from . import keys as key_store
 from . import preview_media
 
 
-def _endpoint(config):
+def endpoint(config):
     """Where this provider actually lives, and which model to ask for.
 
     The registry owns the address. `_PROVIDER_DEFAULTS` only ever listed Ollama, LM Studio and
@@ -39,7 +39,7 @@ async def audio_generate(config, prompt, source, key):
     if config.provider == "ollama":
         raise ValueError("This Ollama transport has no audio input; choose an input_audio-compatible provider or describe the sound manually.")
     wav = await asyncio.to_thread(preview_media.audio_wav, source)
-    entry, url, model = _endpoint(config)
+    entry, url, model = endpoint(config)
     if not url or not model:
         raise ValueError("Set the provider's address and audio-capable model name.")
     # The same role text and the same schema framing the other media send. Audio had neither until
@@ -119,20 +119,20 @@ async def analyze(payload):
             image_list = await asyncio.to_thread(images, media, widgets.get(media, "")) if media in ("image", "video") else []
             if media == "text":
                 prompt += "\n\nContext text:\n" + widgets.get("text", "")
-            entry, url, model = _endpoint(config)
+            entry, url, model = endpoint(config)
             answer = await legacy.vlm_generate(
                 image_list, prompt, config.provider, url, model, api_key=key, auth=entry.auth,
                 # The role and the schema framing come from one place, and the framing is appended
                 # after the role. Sending the role but not the framing is how an answer arrives as
                 # prose that parse_suggestion cannot read.
                 system_prompt=framed(for_node("context", media)),
-                **_wire(config))
+                **wire(config))
         return parse_suggestion(answer, payload.get("media", "text")).to_dict()
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None
 
 
-def _wire(config):
+def wire(config):
     """The settings that actually go out, named the way `vlm_generate` names them.
 
     Built from the config rather than spelled out here, because the sampling matrix in the registry

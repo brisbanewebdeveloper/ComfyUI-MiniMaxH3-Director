@@ -60,13 +60,15 @@ export function newShot(start, end, media = []) {
   return createShot({ start, end, media: media.map((id) => ({ schema_version: 1, context_id: id, role: "context" })) });
 }
 
-// Spoken lines of one shot, in order. Editing keeps every other line as it is; the only line left empty is dropped,
-// so a shot without dialogue stays without one. A new line starts with the previous line's language.
+// Spoken lines of one shot, in order. Editing keeps every other line as it is; the only line left untouched (no text,
+// no speaker, default language) is dropped, so a shot without dialogue stays without one, but a language chosen before
+// typing, or kept while retyping, stays. Empty lines do not compile. A new line starts with the previous line's language.
 const SPOKEN = { schema_version: 1, text: "", speaker_id: "", voice: "a narrator", language: "English", delivery: "says" };
 export function editSpoken(lines, index, change) {
   const next = [...lines];
   next[index] = { ...SPOKEN, ...lines[index], ...change };
-  return next.length === 1 && !next[0].text.trim() && !next[0].speaker_id ? [] : next;
+  const untouched = !next[0].text.trim() && !next[0].speaker_id && next[0].language === SPOKEN.language;
+  return next.length === 1 && untouched ? [] : next;
 }
 export const addSpoken = (lines) => [...lines, { ...SPOKEN, language: lines.at(-1)?.language || "English" }];
 export const removeSpoken = (lines, index) => lines.filter((_line, at) => at !== index);
