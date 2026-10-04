@@ -93,6 +93,12 @@ class Placement(unittest.TestCase):
         self.assertNotIn("fully_copy", result.compiled[1].prompt)
         self.assertFalse(result.compiled[0].of_kind("lock"))
 
+    def test_two_reference_clips_of_one_card_send_both_windows(self):
+        result = plan([clip("a1", "song", 0, 2, "ref", offset=0), clip("a2", "song", 3, 5, "ref", offset=20)], seconds=8)
+        self.assertEqual(sorted((r.trim_start_f, r.length_f) for r in result.compiled[0].of_kind("audio")), [(0, 48), (480, 48)])
+        same = plan([clip("a1", "song", 0, 2, "ref"), clip("a2", "song", 4, 6, "ref")], seconds=8)
+        self.assertEqual(len(same.compiled[0].of_kind("audio")), 1, "the same file window is sent once")
+
     def test_two_clips_of_one_card_keep_separate_clocks(self):
         result = plan([clip("a1", "song", 0, 3, "lock", offset=0), clip("a2", "song", 5, 8, "lock", offset=30)], seconds=8)
         self.assertEqual(spans(result.compiled[0], "lock"), [(0, 72, 0), (120, 72, 720)])

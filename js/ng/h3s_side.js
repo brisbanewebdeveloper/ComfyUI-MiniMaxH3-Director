@@ -107,7 +107,7 @@ function clipPanel(S, actions, clip) {
     flOnly ? h("span", { class: "h3s-lbl" }, "In First/last frame mode (FL2VA) H3 can only lock sound; reference and copy need References mode (Ref2VA).") : null,
     h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } }, h("span", { class: "h3s-lbl" }, "How the sound is split across the render parts"),
       clipParts(clip, S.plan?.chunks || []).map((part) => h("div", { class: "h3s-item", style: { fontSize: "13px" } },
-        h("strong", {}, `Part ${part.index + 1}`), h("span", { class: "h3s-muted" }, `Story ${span(...part.story)} → plays file ${span(...part.file)}`)))));
+        h("strong", {}, `Part ${part.index + 1}`), h("span", { class: "h3s-muted" }, part.reference ? `Story ${span(...part.story)} → gets file ${span(...part.file)} as a reference` : `Story ${span(...part.story)} → plays file ${span(...part.file)}`)))));
 }
 
 export function sideView(S, actions) {

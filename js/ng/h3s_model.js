@@ -157,10 +157,13 @@ export function reorder(items, id, target, layout) {
 }
 
 // Which part of the source file a lane clip plays in each render part; plan chunks give their story range in seconds.
+// A lock or copy clip is placed: each part plays its slice. A reference clip is not placed: every part it touches
+// receives the clip's whole file window as a reference (legacy_bridge._lane_references).
 export function clipParts(clip, chunks) {
   return chunks.filter((chunk) => clip.start < chunk.end_s && clip.end > chunk.start_s).map((chunk) => {
     const a = Math.max(clip.start, chunk.start_s), b = Math.min(clip.end, chunk.end_s);
-    return { index: chunk.index, story: [a, b], file: [clip.offset + a - clip.start, clip.offset + b - clip.start] };
+    const file = clip.mode === "ref" ? [clip.offset, clip.offset + clip.end - clip.start] : [clip.offset + a - clip.start, clip.offset + b - clip.start];
+    return { index: chunk.index, story: [a, b], file, reference: clip.mode === "ref" };
   });
 }
 
@@ -183,7 +186,7 @@ export function chunkBudget(chunk) {
   chunk.refs.forEach((ref, index) => {
     if (["first_frame", "last_frame"].includes(ref.kind) && pictures.has(ref.ctx_id)) return;
     const media = { picture: "image", first_frame: "image", last_frame: "image", video: "video", audio: "audio" }[ref.kind];
-    if (media) ids[media].add(ref.kind === "picture" ? `${index}:${ref.ctx_id}` : `${ref.kind}:${ref.ctx_id}`);
+    if (media) ids[media].add(["picture", "audio"].includes(ref.kind) ? `${index}:${ref.ctx_id}` : `${ref.kind}:${ref.ctx_id}`);
   });
   return { image: ids.image.size, video: ids.video.size, audio: ids.audio.size, total: ids.image.size + ids.video.size + ids.audio.size };
 }

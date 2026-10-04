@@ -133,7 +133,8 @@ def _plain_substitutor(subjects, context):
 
 
 def _lane_references(item, chunk, spans):
-    """A reference clip is not placed in the soundtrack; it is sent once to every chunk whose window it touches."""
+    """A reference clip is not placed in the soundtrack; its whole file window is sent once to every chunk it touches.
+    Two clips of one card with different windows are two references."""
     window_start = chunk.story_start_f - chunk.head_frames
     source_start, available = file_window(item)
     out = []
@@ -145,7 +146,7 @@ def _lane_references(item, chunk, spans):
         if length > 0:
             out.append({"type": "audio", "audioFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,
                         "trimStart": source_start + offset, "retention": _AUDIO_RETENTION[usage], "ng_item": item.id, "ng_in_file": True})
-    return out[:1]
+    return list({(segment["trimStart"], segment["length"]): segment for segment in out}.values())
 
 
 def _shot_bound(item, chunk, windows, lanes, needs_reference):

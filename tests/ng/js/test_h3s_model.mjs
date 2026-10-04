@@ -66,7 +66,12 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
 {
   const clip = { start: 4, end: 18, offset: 10 };
   const chunks = [{ index: 0, start_s: 0, end_s: 10 }, { index: 1, start_s: 10, end_s: 20 }];
-  assert.deepEqual(model.clipParts(clip, chunks), [{ index: 0, story: [4, 10], file: [10, 16] }, { index: 1, story: [10, 18], file: [16, 24] }]);
+  assert.deepEqual(model.clipParts({ ...clip, mode: "lock" }, chunks), [{ index: 0, story: [4, 10], file: [10, 16], reference: false },
+    { index: 1, story: [10, 18], file: [16, 24], reference: false }]);
+  // BUG-022: a reference clip is not played in slices; each touched part gets its whole window.
+  assert.deepEqual(model.clipParts({ ...clip, mode: "ref" }, chunks).map((part) => part.file), [[10, 24], [10, 24]]);
+  // BUG-020: several windows of one audio card are several native inputs.
+  assert.equal(model.chunkBudget({ refs: [{ kind: "audio", ctx_id: "song" }, { kind: "audio", ctx_id: "song" }, { kind: "lock", ctx_id: "song" }] }).audio, 2);
   assert.deepEqual(model.clipToFit([{ start: 2, end: 30 }, { start: 19.9, end: 25 }], 20), [{ start: 2, end: 20 }]);
   assert.equal(model.partColor(7)[0], model.PART_COLORS[1][0]);
 }
