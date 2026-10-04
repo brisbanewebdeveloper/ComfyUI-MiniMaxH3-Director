@@ -37,9 +37,11 @@ last use makes that context global again. Overlapping bindings keep roles in sto
 time order and remove duplicates without alphabetic sorting. Conflicting audio
 roles are diagnosed; the first supported role remains the compiler's choice.
 
-First/last-frame and video-continue roles retain the existing project's boundary
-semantics. They do not create conditioning anchors at an arbitrary interior shot
-time. Inapplicable interior bindings report `shot_boundary_role`. Audio Copy/Lock
+Bound First/Last frames target the normalized Shot start/final frame. Video Continue
+places the selected source's final frame at that Shot start. Each occurrence owns
+one delivered chunk, without repeating the boundary in carried heads. Unbound
+Contexts retain project-boundary behavior. See [Shot guides](NG-shot-guides.md) for
+native frame slots, exact offsets and conflict priority. Audio Copy/Lock
 separates the selected source window from Shot placement: each binding starts at
 the normalized Shot start and carried chunks advance the source. Locks add before
 encoding; Copy supplies a timed reference instruction. See [Shot audio](NG-shot-audio.md)
@@ -75,6 +77,7 @@ This is a three-step, 256-pixel function smoke test, not quality acceptance.
 E44 adds mixed media indicators, explicit audio kinds and actual image/input-video
 previews, with refresh, cancellation and missing-file feedback. See [shot media](NG-shot-media.md).
 E45a adds timeline reorder and honest shared axes. E45b adds Shot audio placement
-and lock mixing. ID-addressed AI drafts/Apply, interior anchors and provenance remain
+and lock mixing. E45c adds actual interior First/Last/Continue guides with native
+conditioning and render checks. ID-addressed AI drafts/Apply and provenance remain
 for the following sections. Existing native sampler and Legacy paths
 are preserved; the Director as a whole is unfinished.

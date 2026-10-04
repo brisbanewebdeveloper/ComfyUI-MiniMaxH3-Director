@@ -17,15 +17,6 @@ def _add_roles(roles, identity, values):
     roles[identity] = tuple(dict.fromkeys((*roles.get(identity, ()), *values)))
 
 
-def _timing_issues(effective, shot, chunk):
-    issues = []
-    if (("first_frame" in effective and not chunk.is_first) or
-            ("last_frame" in effective and not chunk.is_last) or ("continue" in effective and not chunk.is_first)):
-        issues.append(Issue("shot_boundary_role", "First/last-frame and continue roles still use project boundaries; "
-                            "this binding does not create an interior shot boundary anchor.", shot.shot_id))
-    return issues
-
-
 def scoped_context(context, chunk):
     records = read_document(context.shots_text)
     if records is None:
@@ -50,8 +41,6 @@ def scoped_context(context, chunk):
                 issues.append(Issue("shot_role_unknown", "Role '%s' is not valid for %s; the context's own role is used."
                                     % (binding.role, item.media), shot.shot_id))
                 _add_roles(roles, item.id, item.effective_usage)
-            effective = roles.get(item.id, item.effective_usage)
-            issues.extend(_timing_issues(effective, shot, chunk))
         selected.update(s.speaker_id for s in shot.spoken if context.item(s.speaker_id))
     # A scoped asset still needs its owning Subject; voice samples need the image
     # they speak for. Following only outward dependencies avoids pulling unused takes.

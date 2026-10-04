@@ -1,13 +1,15 @@
 """Cross-item diagnostics before legacy compilation; never hide ambiguous or discarded inputs."""
 from .issues import Issue
 from . import frames
+from .shot_document import bound_media_ids
 
 
 def check_context(context):
     issues = []
+    bound = bound_media_ids(context.shots_text)
     subjects = {i.id for i in context.by_media("image") if "reference" in i.effective_usage and i.source and not i.subject_ids}
     for role in ("first_frame", "last_frame"):
-        items = [i for i in context.by_media("image") if role in i.effective_usage and i.source]
+        items = [i for i in context.by_media("image") if i.id not in bound and role in i.effective_usage and i.source]
         if len(items) > 1:
             # H3 takes one frame per slot, so exactly the first one is sent. The warning has to say which one won,
             # otherwise the user cannot tell why their second image seems to be ignored.

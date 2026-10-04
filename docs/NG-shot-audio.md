@@ -26,8 +26,8 @@ outside the pinned audio head; a lock intersecting that head takes priority and
 suppresses its audio carry conditioning. When there are no more locks, normal
 audio carry resumes. No custom sampler or output audio replacement is added.
 
-Interior First/Last/Continue bindings are a separate open contract; their
-existing `shot_boundary_role` warning remains until implemented and verified.
+Interior First/Last/Continue bindings use normalized Shot boundaries and native
+guide frame indices. See [Shot guides](NG-shot-guides.md) for their separate contract.
 
 Validation: compiler/source-window/serialization tests, actual native audio
 reference presentation, PCM mix/carry/mask tests and native GPU sampling through

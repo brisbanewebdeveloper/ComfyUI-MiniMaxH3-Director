@@ -3,7 +3,7 @@
 The compiling itself is the legacy planner's (see legacy_bridge); this module turns its result into NG's own types, so nothing
 above it depends on legacy dictionaries, and attaches NG's warnings.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from ... import minimax_plan as plan
 from . import fields, limits
@@ -14,31 +14,8 @@ from .legacy_bridge import build_timeline, decide_mode
 from .media_labels import resolve_media_mentions, resolve_guide_mentions, resolve_lock_mentions, prompt_labels, read_prompt_labels
 from .asset_prompt import apply_asset_relations
 from .shot_bindings import scoped_context
-
-KINDS = ("picture", "video", "audio", "lock", "first_frame", "last_frame", "keyframe", "continue_video")
-
-
-@dataclass(frozen=True)
-class MediaRef:
-    kind: str
-    ctx_id: str
-    source: str
-    start_f: int = 0
-    length_f: int = 0
-    trim_start_f: int = 0
-    SCHEMA_VERSION = 1
-
-    def to_dict(self):
-        return {"schema_version": self.SCHEMA_VERSION, "kind": self.kind, "ctx_id": self.ctx_id, "source": self.source,
-                "start_f": self.start_f, "length_f": self.length_f, "trim_start_f": self.trim_start_f}
-
-    @classmethod
-    def from_dict(cls, data, path="ref"):
-        data = fields.need_dict(data, path)
-        fields.check_version(data, path, cls.SCHEMA_VERSION)
-        return cls(kind=fields.read_choice(data, "kind", path, KINDS, None), ctx_id=fields.read_str(data, "ctx_id", path),
-                   source=fields.read_str(data, "source", path), start_f=int(fields.read_number(data, "start_f", path, 0)),
-                   length_f=int(fields.read_number(data, "length_f", path, 0)), trim_start_f=int(fields.read_number(data, "trim_start_f", path, 0)))
+from .media_ref import KINDS, MediaRef
+from .guide_timing import plan_guides
 
 
 @dataclass(frozen=True)
@@ -82,25 +59,6 @@ def _picture_refs(result, mapping):
     return refs
 
 
-def _anchor_refs(result, mapping):
-    """One first frame and one last frame per chunk.
-
-    H3's frame conditioning takes a single image per slot, so a project that set two last frames must not send two:
-    the planner keeps both events for its own bookkeeping, but only the first of each role reaches the model. Which
-    one was dropped is reported by `ng/core/context_checks.py` as `anchor_multiple`.
-    """
-    refs = []
-    for kind in ("first_frame", "last_frame"):
-        role = plan.ROLE_FIRST if kind == "first_frame" else plan.ROLE_LAST
-        for event in result["events"]:
-            source = event["seg"].get("imageFile", "")
-            if event["role"] == role and source:
-                ctx_id = event["seg"].get("ng_item") or mapping.anchor_id(role, source)
-                refs.append(MediaRef(kind, ctx_id, source))
-                break
-    return refs
-
-
 def _timed(kind, seg, key, mapping):
     source = seg.get(key, "")
     return MediaRef(kind, mapping.media_id(seg, source), source, int(seg.get("ng_start", seg.get("start", 0) if kind == "lock" else 0)),
@@ -112,7 +70,7 @@ def _media_refs(result, mapping):
     refs += [_timed("video", s, "videoFile", mapping) for s in result["ref_video_segs"]]
     refs += [_timed("audio", s, "audioFile", mapping) for s in result["ref_audio_segs"]]
     refs += [_timed("lock", s, "audioFile", mapping) for s in result["lock_audio_segs"]]
-    return refs + _anchor_refs(result, mapping)
+    return refs
 
 
 def _issues(context, chunk, result, continuity):
@@ -129,24 +87,6 @@ def _issues(context, chunk, result, continuity):
     return out
 
 
-def _scene_guides(context, chunk):
-    refs = []
-    for item in context.items:
-        if not item.source:
-            continue
-        if item.media == "image" and set(item.effective_usage) & {"keyframe", "storyboard"} and item.options.anchor_s >= 0:
-            frame = int(round(item.options.anchor_s * limits.FPS))
-            if chunk.story_start_f <= frame < chunk.story_end_f:
-                refs.append(MediaRef("keyframe", item.id, item.source, frame - chunk.story_start_f + chunk.head_frames, 1))
-        if item.media == "video" and "continue" in item.effective_usage and chunk.is_first:
-            end = item.options.end_s or item.length_s
-            start = max(item.options.start_s, end - 1.0) if end else item.options.start_s
-            first = int(round(start * limits.FPS))
-            length = max(1, min(limits.FPS, int(round(end * limits.FPS)) - first)) if end else limits.FPS
-            refs.append(MediaRef("continue_video", item.id, item.source, 0, length, first))
-    return refs
-
-
 def _selected_audio(context, refs):
     selected = []
     for ref in refs:
@@ -161,18 +101,21 @@ def _selected_audio(context, refs):
 
 
 def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: ContinuityPlan) -> CompiledChunk:
+    original = context
     context, binding_issues = scoped_context(context, chunk)
     mode = decide_mode(context)
-    tdata, mapping, voice_notes = build_timeline(context, chunk, mode)
+    guide_context = replace(original, items=tuple(original.item(item.id) for item in context.items))
+    guides, timing_issues = plan_guides(guide_context, chunk, mode)
+    tdata, mapping, voice_notes = build_timeline(context, chunk, mode, guides)
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
                                 prepend_text=context.prepend_text, prompt_format="minimax")
-    refs = _selected_audio(context, _media_refs(result, mapping)) + _scene_guides(context, chunk)
+    refs = _selected_audio(context, _media_refs(result, mapping)) + list(guides)
     related_prompt, relation_issues = apply_asset_relations(result, mapping, context, refs)
     prompt = resolve_media_mentions(related_prompt, context, refs)
     labels = prompt_labels(result, mapping, context, refs)
     prompt, guide_issues = (prompt, ()) if context.prompt_override.strip() else resolve_guide_mentions(prompt, context, refs, labels)
     prompt, lock_issues = (prompt, ()) if context.prompt_override.strip() else resolve_lock_mentions(prompt, context, refs)
     return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or prompt, refs=tuple(refs),
-                         issues=binding_issues + tuple(voice_notes) + relation_issues + guide_issues + lock_issues + tuple(_issues(context, chunk, result, continuity)),
+                         issues=binding_issues + timing_issues + tuple(voice_notes) + relation_issues + guide_issues + lock_issues + tuple(_issues(context, chunk, result, continuity)),
                          prompt_labels=labels)
 

@@ -127,12 +127,13 @@ class Bindings(unittest.TestCase):
         self.assertIn("shot_role_unknown", {i.code for i in result.issues})
         self.assertEqual(result.compiled[0].refs[0].kind, "picture")
 
-    def test_interior_anchor_role_reports_existing_boundary_constraint(self):
+    def test_interior_shot_start_uses_its_actual_base_chunk_edge(self):
         first, second = record("first", 0, 10.125), record("second", 10.125, 20)
         second["media"] = [bind("a", "first_frame")]
         result = plan(document(first, second), (image("a"),))
-        self.assertIn("shot_boundary_role", {i.code for i in result.issues})
-        self.assertFalse(result.compiled[1].refs, "an interior binding must not pretend to create an anchor")
+        self.assertNotIn("shot_boundary_role", {i.code for i in result.issues})
+        self.assertEqual([(r.kind, r.ctx_id, r.start_f) for r in result.compiled[1].refs], [("first_frame", "a", 0)])
+        self.assertEqual(result.plan.chunks[1].story_start_f, 243)
 
     def test_override_anchor_conflicts_are_diagnosed_after_scope(self):
         one = record("one", end=8); one["media"] = [bind("a", "first_frame"), bind("b", "first_frame")]

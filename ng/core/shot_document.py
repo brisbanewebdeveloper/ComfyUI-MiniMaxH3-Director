@@ -99,3 +99,8 @@ def metadata(record, path="shot"):
     if any(value not in LOCK_FIELDS for value in locks):
         raise SchemaError(path + ".locked_fields", "expected timing, text, media or spoken")
     return {"id": record["id"], "media": media, "spoken": spoken, "locked_fields": locks}
+
+
+def bound_media_ids(text):
+    records = read_document(text)
+    return {binding["context_id"] for record in records or () for binding in record.get("media", [])}
