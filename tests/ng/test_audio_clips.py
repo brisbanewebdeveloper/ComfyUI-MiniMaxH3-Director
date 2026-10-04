@@ -128,6 +128,17 @@ class Placement(unittest.TestCase):
         result = plan([clip("a1", "song", 2, 6, "lock", offset=10)], seconds=8, items=(trimmed,))
         self.assertEqual(spans(result.compiled[0], "lock"), [(48, 96, 240)], "file second 10, as the Studio shows")
 
+    def test_a_shot_copy_role_and_a_lane_lock_both_play_without_a_false_role_warning(self):
+        shot = {"id": "s1", "start": 0, "end": 6, "text": "A", "media": [{"schema_version": 1, "context_id": "song", "role": "copy"}],
+                "spoken": [], "locked_fields": [], "draft": None}
+        result = plan([clip("c1", "song", 0, 4, "lock")], seconds=8, shots=[shot])
+        self.assertEqual(spans(result.compiled[0], "lock"), [(0, 96, 0)])
+        self.assertEqual(spans(result.compiled[0], "audio"), [(0, 144, 0)], "the shot's copy role is placed at its shot")
+        self.assertNotIn("audio_roles", {i.code for i in result.issues})
+        two_roles = song(usage=("copy", "music_style"))
+        self.assertIn("audio_roles", {i.code for i in plan([clip("c1", "song", 0, 4, "lock")], seconds=8, items=(two_roles,), shots=[shot]).issues},
+                      "a card that itself has two roles is still warned about")
+
     def test_copy_and_reference_clips_ignore_the_cards_own_selection(self):
         trimmed = song(options=opts.ContextOptions(start_s=5, end_s=12))
         for mode in ("copy", "ref"):

@@ -78,7 +78,11 @@ def scoped_context(context, chunk):
     items = tuple(replace(item, usage=roles[item.id]) if item.id in roles else item
                   for item in context.items if item.id in selected)
     scoped = replace(context, items=items)
-    return scoped, tuple(issues + check_context(scoped))
+    # A lane clip adds its mode to the card's roles for this chunk; lane and Shot binding both play, so that
+    # second role is not the "only the first role is applied" case the check warns about.
+    laned = {item.name for item in context.items if item.id in {clip.context_id for clip in clips} and len(item.effective_usage) <= 1}
+    checked = [issue for issue in check_context(scoped) if not (issue.code == "audio_roles" and issue.ref in laned)]
+    return scoped, tuple(issues + checked)
 
 
 def spoken_text(shot, context):
