@@ -10,7 +10,7 @@ def envelope(source, bins=320):
         if not container.streams.audio:
             raise ValueError("Choose a source containing audio.")
         stream = container.streams.audio[0]
-        duration = float(stream.duration * stream.time_base) if stream.duration else float(container.duration or 0) / av.time_base
+        duration = float(stream.duration * stream.time_base) if stream.duration and stream.time_base else float(container.duration or 0) / av.time_base
         if duration <= 0:
             raise ValueError("This source has no readable duration; use the audio player's timing.")
         peaks = np.zeros(bins, dtype=np.float32)
