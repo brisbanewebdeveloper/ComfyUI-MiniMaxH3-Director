@@ -21,6 +21,8 @@ function modeCard(S, actions) {
     if (mode === "ref2va" && name.endsWith("fl2va")) continue;
     const options = (S.options[name] || ["none"]).map((value) => [value, value === "none" ? "keine" : value]);
     loras.push(field(label, select(options, S.values[name], (value) => actions.setWidget(name, value), { style: { maxWidth: "100%" } })));
+    if (S.values[name] === "none") loras.push(h("span", { class: "h3s-warn", style: { fontSize: "12px" } },
+      "Ohne Turbo-LoRA liefern 4 Steps kein brauchbares Bild. LoRA wählen oder Turbo ausschalten."));
   }
   return h("section", { class: "h3s-card" },
     h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Arbeitsweise"), h("span", { class: "h3s-lbl" }, "Die wichtigste Entscheidung zuerst")),

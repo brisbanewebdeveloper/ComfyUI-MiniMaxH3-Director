@@ -2,7 +2,7 @@
 // loading and queueing stay ComfyUI's; the shot document keeps shots, audio clips and lanes in the shots widget.
 import { h, icon } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, sorted, clipToFit, MIN_LENGTH, r1 } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, sorted, clipToFit, MIN_LENGTH, r1, preferredTurboLora } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -157,7 +157,12 @@ export function openStudio(node, app, api) {
     },
     removeLane(lane) { S.lanes = S.lanes.filter((entry) => entry !== lane); save(); render(); },
     setWidget,
-    setTurbo(on) { write({ turbo: on, steps: on ? 4 : 20 }); setWidget("turbo", on); },
+    setTurbo(on) {
+      const loras = {};
+      if (on) for (const [name, kind] of [["turbo_lora_fl2va", "fl2v"], ["turbo_lora_ref2va", "ref2v"]])
+        if (S.values[name] === "none" || !S.values[name]) loras[name] = preferredTurboLora(S.options[name], kind);
+      write({ turbo: on, steps: on ? 4 : 20, ...loras }); setWidget("turbo", on);
+    },
     setDuration(seconds) {
       S.shots = clipToFit(S.shots, seconds); S.audio = clipToFit(S.audio, seconds); S.ghosts = [];
       write({ project_seconds: seconds }); save(); render();

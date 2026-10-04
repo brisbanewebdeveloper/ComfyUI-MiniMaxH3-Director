@@ -95,4 +95,13 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   assert.deepEqual(model.chunkBudget(refs(["first_frame", "frame"], ["last_frame", "frame"])), { image: 2, video: 0, audio: 0, total: 2 });
 }
 
+// Turbo LoRA preference mirrors the Python default.
+{
+  const names = ["flux2/Flux2TurboComfyv2.safetensors", "minimax-h3/minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors",
+    "minimax-h3/minimax_h3_turbo_4step_ckpt500.safetensors", "minimax-h3/minimax_h3_turbo_4step_ckpt500_pruned_comfyui.safetensors"];
+  assert.equal(model.preferredTurboLora(names, "fl2v"), names[1]);
+  assert.equal(model.preferredTurboLora(names, "ref2v"), names[3]);
+  assert.equal(model.preferredTurboLora(names.slice(0, 1), "fl2v"), "none");
+}
+
 console.log("h3s model ok");

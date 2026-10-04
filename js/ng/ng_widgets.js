@@ -21,6 +21,14 @@ export function nativeAIFingerprint(node) {
   return JSON.stringify([values(node),encoder?.id,encoder?values(encoder):null]);
 }
 
+// Edits made from a panel do not pass ComfyUI's own input events, so the workflow would not notice them:
+// no unsaved mark, no undo step and the browser restore keeps the old graph. Ask the change tracker once they settle.
+let tracking = null;
+function noteChange() {
+  clearTimeout(tracking);
+  tracking = setTimeout(() => globalThis.window?.comfyAPI?.app?.app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState?.(), 300);
+}
+
 export function applyValues(node, changes) {
   for (const widget of node.widgets || []) {
     if (!(widget.name in changes)) continue;
@@ -29,6 +37,7 @@ export function applyValues(node, changes) {
   }
   node.setDirtyCanvas?.(true, true);
   document.dispatchEvent(new CustomEvent("ng-context-changed"));
+  noteChange();
 }
 
 export function element(tag, className = "", text) {
