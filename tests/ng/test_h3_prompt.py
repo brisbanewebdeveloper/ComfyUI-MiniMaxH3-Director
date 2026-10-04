@@ -108,6 +108,14 @@ class H3PromptAction(unittest.TestCase):
         self.assertIn("A girl plays.", text["prompt"])
         self.assertNotIn("detailed_description", text["prompt"])
 
+    def test_an_answer_with_only_sound_lines_is_refused_and_a_lone_label_keeps_its_text(self):
+        # Real Qwen3-VL 4B answer to a global block: the labels alone, the sound below them, no description.
+        raw = ("Audio:  \nWind sighs through broken glass panes.  \n\nMusic:  \nA lone cello line swells, then fades.")
+        with self.assertRaisesRegex(ValueError, "only the sound lines"):
+            native_ai.parse_result(raw, "prompt", json.dumps(self.answer() | {"preset": "global"}))
+        cleaned = h3.clean("A woman sings in a dark hall.\n\nAudio:\nWind sighs.\nMusic:\nA cello swells.", "global")
+        self.assertEqual(cleaned, "A woman sings in a dark hall.\nAudio: Wind sighs.\nMusic: A cello swells.")
+
     def test_a_text_card_analysis_gets_the_text_role_on_the_clip_path(self):
         # request_prompt names no medium to send for a note; the system prompt must still be the Text card's.
         sp = module("ng.core.system_prompts")

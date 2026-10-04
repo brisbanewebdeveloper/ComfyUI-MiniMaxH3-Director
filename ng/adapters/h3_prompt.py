@@ -86,4 +86,10 @@ def clean(answer, preset):
     text = answer.removeprefix("assistant\n").strip()
     if not text:
         raise ValueError("The AI returned an empty prompt. Try again, or write the note in more detail.")
-    return enhance.clean_prompt(text, preset, 0)
+    cleaned = enhance.clean_prompt(text, preset, 0)
+    # Qwen3-VL 4B answered a global block with nothing but its Audio and Music lines; saved as the prompt, the
+    # figure and the action of the note were gone.
+    if not any(line.strip() and not line.lower().startswith(("audio:", "sound:", "sfx:", "music:", "score:")) for line in cleaned.splitlines()):
+        raise ValueError("The AI wrote only the sound lines and no description. Try again, or use a larger model "
+                         "(Qwen3-VL 4B often does this; Ollama gemma e4b wrote complete blocks).")
+    return cleaned
