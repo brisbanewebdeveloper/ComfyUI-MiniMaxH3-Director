@@ -174,7 +174,7 @@ function recorder() {
   const dir = new URL("../../../js/ng/", import.meta.url);
   for (const name of readdirSync(dir).filter((file) => file.startsWith("h3s_"))) {
     const text = readFileSync(new URL(name, dir), "utf8");
-    assert.doesNotMatch(text, /[äöüÄÖÜß]|(Teil|Tonspur|Shots aus|Übernehmen|Verwerfen|Hinweis|Zurück)/, `${name} still has German text`);
+    assert.doesNotMatch(text, /[äöüÄÖÜß]|\b(Teil|Tonspur|Shots aus|Übernehmen|Verwerfen|Hinweis|Zurück|und|nicht|oder|der|die|das|ist|mit|von|wird|sind|kein|keine|eine|einen)\b/, `${name} still has German text`);
   }
 }
 

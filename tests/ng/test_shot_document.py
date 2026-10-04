@@ -158,6 +158,12 @@ class Dialogue(unittest.TestCase):
             self.assertIn("<Subject 1> (S1) whispers", result.compiled[0].prompt)
             self.assertIn("<d>[German] Hallo, Welt!</d>", result.compiled[0].prompt)
 
+    def test_a_manual_prompt_is_text_enough(self):
+        empty = context.DirectorContext(shots_text="", project_seconds=8)
+        self.assertIn("no_text", {i.code for i in project.plan_project(empty, 10, NONE).issues})
+        manual = context.DirectorContext(shots_text="", project_seconds=8, prompt_override="A baker kneads dough.")
+        self.assertNotIn("no_text", {i.code for i in project.plan_project(manual, 10, NONE).issues})
+
     def test_several_lines_compile_in_order_and_empty_ones_are_skipped(self):
         one = record("one", end=8); one["spoken"] = [spoken("Erste Zeile."), spoken(""), spoken("Second line.", speaker="a")]
         one["spoken"][2]["language"] = "English"

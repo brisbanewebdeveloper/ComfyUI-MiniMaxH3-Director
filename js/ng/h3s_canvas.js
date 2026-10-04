@@ -56,5 +56,5 @@ export function canvasInfo(width, height) {
   if (width * height / 1e6 > NATIVE_MP * 1.05)
     return ["Above H3 native (1.03 MP): much slower, more memory and outside what H3 was trained on.", "warn"];
   if (Math.min(width, height) <= 512) return ["Fast size: good for trying things out, less detail.", ""];
-  return ["Im nativen Bereich von H3. Kanten sind Vielfache von 32.", ""];
+  return ["Within H3's native range. Edges are multiples of 32.", ""];
 }

@@ -80,7 +80,9 @@ def _issues(context, chunk, result, continuity):
            if not (resumed and "has no spoken line" in text)]
     for item in context.items:
         out.extend(check_item(item))
-    if not context.idea.strip() and not any(s.text.strip() or any(line.text.strip() for line in s.spoken) for s in chunk.shots):
+    # A manual prompt replaces the generated one, so a missing idea or shot text is no gap then.
+    if not context.prompt_override.strip() and not context.idea.strip() and not any(
+            s.text.strip() or any(line.text.strip() for line in s.spoken) for s in chunk.shots):
         out.append(Issue("no_text", "There is no text for this chunk; the prompt falls back to a bare placeholder.", "chunk %d" % (chunk.index + 1)))
     if context.prompt_override.strip():
         out.append(Issue("prompt_override", "Manual prompt replaces every chunk prompt; references and timing remain as planned."))
