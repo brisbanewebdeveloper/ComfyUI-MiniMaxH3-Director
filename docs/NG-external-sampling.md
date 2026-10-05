@@ -28,11 +28,12 @@ CFGGuider explicitly uses CFG 1. The base examples use 20 steps; the recorded pi
 4. Wire the sampling stages. Return the final, complete **AV LATENT** to both End Loop's `output_value` and
    `next_iteration_value`, with **accumulate on**. Include both video and audio, the whole sampled time axis and the pinned head.
 5. Connect End Loop's accumulated latents and Director's original **chunks** list to NG Collect, with both VAEs.
-   Feed its images/audio into CreateVideo at 24 fps, then SaveVideo.
+   Feed its images/audio into CreateVideo, then SaveVideo. Take CreateVideo's fps from Collect's **fps** (24) or type 24.
 
 One Output prepares each current chunk; H3 Prepare Chunk has been removed. Its original nine outputs retain their slots.
 Keep Output's sampler values and seed inside the loop. Sending an Output value directly past End Loop creates a native loop escape;
-the examples use a constant 24 fps on CreateVideo outside the loop. Use sequence → H3 Render Sequence in a separate simple graph,
+ComfyUI then refuses the run with "Invalid input: loop boundary" on Start Loop, End Loop and the node outside
+(typically Output **fps** -> CreateVideo); use Collect's **fps** instead. Use sequence → H3 Render Sequence in a separate simple graph,
 without Start Loop feeding that Output. Do not wire the loop back into the Director that supplies its own list.
 
 ## Two sampling stages

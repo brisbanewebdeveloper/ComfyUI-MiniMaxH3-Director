@@ -8,6 +8,8 @@
 - Spoken lines can be sung (says / sings / whispers / shouts / murmurs).
 - Build H3 prompt keeps sung or spoken words verbatim and has room for a full storyboard (at least 1536 tokens).
 - An image analysis names what keeps a figure recognizable (clothing, accessories), and the Subject sentence reads "<Subject 1> is an elfin woman", not "is An".
+- A locked song stays exact in render parts whose length is not a whole number of audio latent steps (209 frames came back garbled).
+- NG Collect has an **fps** output for CreateVideo: Director Output's fps sits inside the loop, and wiring it past End Loop made ComfyUI refuse the run ("loop boundary").
 
 **Every AI function checked with real models** (2026-10-05): Context cards, Text card, Studio and the Legacy Enhance node, with Qwen3-VL 4B (Load CLIP and installed encoder) and Ollama.
 

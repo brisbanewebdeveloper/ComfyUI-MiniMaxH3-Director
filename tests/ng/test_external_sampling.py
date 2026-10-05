@@ -143,6 +143,16 @@ class ExternalSampling(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ordered Project Chunks"):
             self.nodes["NGCollect"].execute([], jobs[::-1], [], [])
 
+    def test_collect_gives_createvideo_an_fps_outside_the_loop(self):
+        # User's graph: Director Output fps -> CreateVideo past End Loop; core rejected it as "loop boundary".
+        names = [o.display_name for o in self.nodes["NGCollect"].GET_SCHEMA().outputs]
+        self.assertEqual(names, ["images", "audio", "warnings", "fps"], "fps appended, saved links keep their slots")
+        frames, sound = torch.zeros(1, 4, 4, 3), {"waveform": torch.zeros(1, 2, 10), "sample_rate": 32000}
+        with patch.object(self.chunk_module.collect, "collect_chunks", return_value=(frames, sound, ())), \
+             patch.object(self.chunk_module, "audio_nodes"):
+            out = self.nodes["NGCollect"].execute([], self.jobs(self.result()), [object()], [object()])
+        self.assertEqual(out.args[3], 24.0)
+
     def test_collector_rejects_trimmed_audio_before_decoding(self):
         plan = self.result().project.plan
         returned = [av_latent(c.sampled_frames) for c in plan.chunks]

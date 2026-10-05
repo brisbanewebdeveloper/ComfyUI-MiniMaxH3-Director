@@ -6,7 +6,7 @@ from comfy_api.latest import io
 from ...minimax_core import audio_nodes, core
 from ..adapters import audio_locks, chunk_builder, collect, latents
 from ..adapters.media import MediaError
-from ..core.limits import RESIZE_METHODS
+from ..core.limits import FPS, RESIZE_METHODS
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
 
@@ -98,7 +98,8 @@ class NGCollect(io.ComfyNode):
             description="After the loop: decode every chunk, cut off the pinned heads and join picture and sound into one video.",
             inputs=[io.Latent.Input("latents", tooltip="End Loop output (accumulate on)."), NGChunk.Input("chunks", tooltip="The Director's chunks."),
                     io.Vae.Input("vae"), io.Vae.Input("audio_vae")],
-            outputs=[io.Image.Output(display_name="images"), io.Audio.Output(display_name="audio"), io.String.Output(display_name="warnings")],
+            outputs=[io.Image.Output(display_name="images"), io.Audio.Output(display_name="audio"), io.String.Output(display_name="warnings"),
+                     io.Float.Output(display_name="fps", tooltip="24, for CreateVideo. Outside the loop, unlike Director Output's fps.")],
         )
 
     @classmethod
@@ -109,7 +110,7 @@ class NGCollect(io.ComfyNode):
         decode_audio = audio_nodes().vae_decode_audio
         frames, sound, issues = collect.collect_chunks(
             latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}))
-        return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues))
+        return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues), float(FPS))
 
 
 def _decode_video(vae, video):
