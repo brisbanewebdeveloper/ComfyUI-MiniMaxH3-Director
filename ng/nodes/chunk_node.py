@@ -1,7 +1,10 @@
-"""NG Chunk Conditioning and NG Collect: the two nodes inside and after the loop."""
+"""NG Chunk Conditioning and NG Collect: the nodes inside and after the loop."""
 import logging
+import os
+import uuid
 
-from comfy_api.latest import io
+import folder_paths
+from comfy_api.latest import InputImpl, io
 
 from ...minimax_core import audio_nodes, core
 from ..adapters import audio_locks, chunk_builder, collect, latents
@@ -104,13 +107,41 @@ class NGCollect(io.ComfyNode):
 
     @classmethod
     def execute(cls, latents, chunks, vae, audio_vae):
-        project = chunks[0].project
-        if [job.index for job in chunks] != list(range(len(project.plan.chunks))) or any(job.project is not project for job in chunks):
-            raise ValueError("Connect the complete, ordered Project Chunks list from the same Director to Collect.")
+        project = _jobs_of(chunks)
         decode_audio = audio_nodes().vae_decode_audio
         frames, sound, issues = collect.collect_chunks(
             latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}))
         return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues), float(FPS))
+
+
+def _jobs_of(chunks):
+    project = chunks[0].project
+    if [job.index for job in chunks] != list(range(len(project.plan.chunks))) or any(job.project is not project for job in chunks):
+        raise ValueError("Connect the complete, ordered Project Chunks list from the same Director to Collect.")
+    return project
+
+
+class NGCollectVideo(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="NGCollectVideo", display_name="NG Collect Video", category=CATEGORY + "/Technical", is_input_list=True,
+            description="After the loop, for long projects such as a whole song: decodes one render part at a time straight into a video "
+                        "file, so the frames never have to fit in memory at once. Connect SaveVideo.",
+            inputs=[io.Latent.Input("latents", tooltip="End Loop output (accumulate on)."), NGChunk.Input("chunks", tooltip="The Director's chunks."),
+                    io.Vae.Input("vae"), io.Vae.Input("audio_vae")],
+            outputs=[io.Video.Output(display_name="video"), io.String.Output(display_name="warnings")],
+        )
+
+    @classmethod
+    def execute(cls, latents, chunks, vae, audio_vae):
+        project = _jobs_of(chunks)
+        decode_audio = audio_nodes().vae_decode_audio
+        path = os.path.join(folder_paths.get_temp_directory(), "ng_collect_%s.mp4" % uuid.uuid4().hex)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        issues = collect.write_video(path, latents, project.plan, lambda video: _decode_video(vae[0], video),
+                                     lambda audio: decode_audio(audio_vae[0], {"samples": audio}))
+        return io.NodeOutput(InputImpl.VideoFromFile(path), "\n".join(str(i) for i in issues))
 
 
 def _decode_video(vae, video):
@@ -118,4 +149,4 @@ def _decode_video(vae, video):
     return frames.reshape(-1, *frames.shape[-3:]) if frames.ndim == 5 else frames
 
 
-NODES = [NGChunkConditioning, NGCollect]
+NODES = [NGChunkConditioning, NGCollect, NGCollectVideo]

@@ -153,6 +153,30 @@ class ExternalSampling(unittest.TestCase):
             out = self.nodes["NGCollect"].execute([], self.jobs(self.result()), [object()], [object()])
         self.assertEqual(out.args[3], 24.0)
 
+    def test_collect_video_streams_the_same_join_into_a_file(self):
+        # A whole song (177 s, 4248 frames at 768x1152) is 45 GB as one float picture tensor; the file is written part by part.
+        import os
+        import tempfile
+        import av
+        plan = self.result().project.plan
+        returned = [av_latent(c.sampled_frames) for c in plan.chunks]
+        sound = lambda audio: {"waveform": torch.full((1, 2, 200000), .1), "sample_rate": 32000}
+        def decoder():
+            sizes = iter(c.sampled_frames for c in plan.chunks)
+            return lambda video: torch.full((next(sizes), 64, 64, 3), .5)
+        frames, wave, _ = self.chunk_module.collect.collect_chunks(returned, plan, decoder(), sound)
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "song.mp4")
+            self.chunk_module.collect.write_video(path, returned, plan, decoder(), sound)
+            with av.open(path) as container:
+                video_frames = sum(1 for _ in container.decode(video=0))
+            with av.open(path) as container:
+                stream = container.streams.audio[0]
+                seconds = sum(f.samples for f in container.decode(audio=0)) / float(stream.rate)
+        self.assertEqual(video_frames, frames.shape[0])
+        self.assertAlmostEqual(seconds, wave["waveform"].shape[-1] / 32000.0, delta=0.05)
+        self.assertEqual([o.display_name for o in self.nodes["NGCollectVideo"].GET_SCHEMA().outputs], ["video", "warnings"])
+
     def test_collector_rejects_trimmed_audio_before_decoding(self):
         plan = self.result().project.plan
         returned = [av_latent(c.sampled_frames) for c in plan.chunks]
