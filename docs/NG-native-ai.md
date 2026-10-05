@@ -2,7 +2,7 @@
 
 Use a generative text/vision encoder for assistance. The H3 conditioning CLIP remains a separate connection at the Context Connector.
 
-Open `example_workflows/H3 Director NG - native AI.json` for a minimal Load CLIP → AI Loader → Text Context example. Choose your installed model, then use **✦ Analyze** (on "Use as") or **✦ Build H3 prompt** on the Text card. This example needs no H3 diffusion model.
+Open `example_workflows/H3 Director NG - native AI.json` for a minimal Load CLIP → AI Loader → Text Context example. Choose your installed model, then use **✦ Analyze** (on "Use as") on the Text card. This example needs no H3 diffusion model.
 
 1. Add **Load CLIP** and choose an installed generative encoder (`qwen3vl_4b_bf16`, type `stable_diffusion`, is the tested choice).
 2. Connect CLIP to **H3 AI Loader** and select **CLIP / Encoder**. Without Load CLIP, choose the installed encoder on the same card; it is loaded only inside the AI job.
@@ -25,8 +25,9 @@ Images are bounded for analysis. Video analysis uses three ordered stills from a
 | Video card | ✦ Analyze → Accept | description of the three stills as one, content (e.g. Character motion), Use as | Qwen3-VL 4B, Ollama qwen3.5:9b |
 | Audio card | ✦ Analyze | with a model that hears: description, content, Use as; otherwise a clear refusal | refusal checked with Qwen3-VL 4B and Ollama |
 | Text card | ✦ Analyze → Accept | Use as (Character, Camera rule, Constraint, …); a Text card has no description field | Qwen3-VL 4B, Ollama gemma e4b |
-| Text card | ✦ Build H3 prompt (global / storyboard) | the note in any language becomes the English H3 block under "AI prompt"; the note stays under "My note". An answer without a description is refused | Qwen3-VL 4B, Ollama gemma e4b |
-| Studio | AI: split into shots → Accept | dashed proposal; Accept replaces the shots and sets ambience/music | Qwen3-VL 4B, Ollama gemma e4b |
+| Studio | AI: split into shots → Accept | dashed proposal: shots with action, camera and every spoken or sung line as its own entry, plus Look, ambience and music; lines a timed song already sings are not repeated | Ollama qwen3.5:9b (elf song: 3 shots, one per view), earlier format also Qwen3-VL 4B |
+| Studio | Prompts per render part → Write with AI → Accept | the part's prompt written out (250-390 words per part); cut times, `<d>` lines, speaker IDs and labels are checked against the plan, small slips are repaired, the rest refused | Ollama qwen3.5:9b, 15 of 15 parts accepted after the repairs (9 by script, 6 in the Studio) |
+| Audio card | ⟳ Time with Whisper | the Lyrics' own words get the times Whisper heard; without lines, a transcript | Whisper small (local file), 27 s song in 5-7 s on the GPU |
 | Studio | AI: improve text → Accept | a new text for the selected shot | Qwen3-VL 4B, Ollama gemma e4b |
 | Enhance Prompt (Legacy) | run the node | global or storyboard block from idea and pictures | Ollama qwen3.5:9b |
 

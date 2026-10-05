@@ -2,6 +2,15 @@
 
 ## 1.0.0 (unreleased)
 
+**One story, timed lyrics, a final prompt per render part** (2026-10-05):
+
+- The Prompt (or a Text card used as Scene / story) is the story. With shots, H3 gets the shots plus a new **Look** that every part shares; the Prompt is no longer pasted whole into every part.
+- **AI: split into shots** answers with real spoken lines (speaker, language, delivery, exact words), the camera as a sentence and a Look; it starts a new shot only when the view changes.
+- **Lyrics** on the Audio card (LRC), timed with a local **Whisper** model or by ear; each render part sings only its own lines.
+- **Prompts per render part**: Write with AI / Edit / Reset. The AI writes only the prose; the plan's structure is checked, small slips are repaired, an outdated own prompt is not used.
+- First / last frame mode with only reference pictures now says so in the Studio's mode panel (it renders from text alone).
+- Removed: **Build H3 prompt** on the Text card (its block nested inside the Director's own prompt).
+
 **A music video end to end** (2026-10-05): the user's 27 s elf song (picture, MP3, prompt with lyrics) rendered in both modes.
 
 - Duration is any value on the 0.1 s grid with "= <audio card>" for the song's length (the list had no 27 s); a longer duration lets the last shot run on, so the added render parts keep their text.

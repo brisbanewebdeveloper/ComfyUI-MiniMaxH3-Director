@@ -45,12 +45,20 @@ into the node. It has no inner scroll areas. Below about 960 px of width the sid
 
 ### Prompt and Content
 
-**Prompt** describes the whole video. Without shots, the prompt alone carries the project: a text-only video needs nothing else.
+**Prompt** is the story: what happens, in any language, lyrics included. Without shots, the prompt alone carries the project:
+a text-only video needs nothing else. A Text card used as **Scene / story** is read the same way, so the story may live in
+either place.
 
-- **AI: split into shots** asks the optional AI provider to split the prompt into timed shots. The proposal appears as dashed
-  shots on the timeline; **Accept** replaces the current shots, **Discard** leaves everything unchanged.
-  Audio lanes are never touched by a proposal.
+- **AI: split into shots** asks the optional AI provider to turn the story into timed shots: action, the camera as a sentence,
+  every spoken or sung line as its own entry (speaker, language, delivery, exact words), plus the **Look**, ambience and music.
+  It is told when the song sings each lyric line (see the Audio card) and does not repeat those lines; it starts a new shot only
+  when the view changes, as MiniMax's guide asks. The proposal appears as dashed shots; **Accept** replaces the current shots
+  (and clears the parts' own prompts, which belonged to the old plan), **Discard** leaves everything unchanged. Audio lanes are
+  never touched by a proposal.
 - **Whole prompt = one shot** turns the prompt into one shot spanning the project.
+- **Look (every part)** is what all render parts share: style, place, light. Once there are shots, H3 gets the shots and the Look;
+  the Prompt itself is not pasted into every part again (a 27 s song carried its whole verse into each of three parts that way).
+  In First / last frame mode the Look opens `[Shot 1]`, in References mode it stands before `[Shot 1]`, as the two guides ask.
 
 **Content** shows one card per Context node connected to the Context Connector, in its context colour, plus a plain **Text-Shot** card.
 Drag a card onto the empty timeline to create a shot with it, onto a shot (or click it while a shot is selected) to assign it,
@@ -116,7 +124,18 @@ ambient sound, music, style and the video/audio sigma shifts.
 ### Prompts per render part
 
 **Show prompts** opens a drawer at the bottom with the actual prompt each render part receives, coloured like its part,
-its reference budget (pictures/videos/audio used of H3's limits) and all plan warnings with a short heading.
+its reference budget (pictures/videos/audio used of H3's limits) and all plan warnings with a short heading. A badge says where
+each part's prompt comes from: compiled, AI-written, edited, or manual.
+
+- **Write with AI** (one part) or **Write all parts with AI** asks the AI Loader's model to write the part out in full, the way
+  MiniMax's own hosted pre-processing does. The AI writes only prose: the description and the two sound fields. The alignment
+  line, subject definitions, summary, retention analysis, cut times, every `<d>` line, the speaker IDs and the labels stay the
+  planner's. What a model reliably gets slightly wrong is put back (a time on Shot 1, a sung line without its speaker,
+  re-punctuated lyrics, lyric lines left out); anything else is refused with the reason and nothing changes. **Accept** stores it.
+- **Edit** lets you write the part yourself; **Save** stores it, **Reset** returns to the compiled prompt.
+- An AI-written or edited prompt is kept with the plan it was written for. When the plan of that part changes (timing, shots,
+  media, Look), the compiled prompt is used again and the badge says "own prompt outdated".
+- **Manual prompt** under More settings still replaces every part's prompt.
 
 While an AI action runs, a status at the bottom of the window shows the elapsed time against the AI Loader's timeout and
 **Cancel**. Failures stay there until dismissed; short confirmations disappear by themselves.
@@ -144,7 +163,7 @@ This is the compiler's real output, refreshed live while you edit.
 | H3 Context Image | Full card: picture, what is in it, default role, what to keep, figure link, description, preset |
 | H3 Context Video | Full card: player, part of the file, motion/camera/continue roles, its own sound |
 | H3 Context Audio | Full card: waveform with selection, voice/copy/lock roles, whose voice, listening controls |
-| H3 Context Text | Full card: note, quick insert, templates, role, Build H3 prompt with My note / AI prompt |
+| H3 Context Text | Full card: note, quick insert, templates, role (Scene / story is read by the AI split) |
 | H3 Render Sequence | Expanded native List loop, sampler and collector; outputs VIDEO, IMAGE, AUDIO and notes |
 
 The technical nodes remain available under **MiniMax H3 / NG / Technical** (NG Chunk Planner, NG Chunk Conditioning,
@@ -190,12 +209,20 @@ and prompt guidance, not exact copies; **Continue from video** starts from the l
 **Its own sound** ignores the soundtrack or sends it along as the paired audio reference.
 
 **Audio:** play button and waveform; drag in it to choose the part of the file. **Whose voice** names the figure for the
-Voice role. **Listen here** (volume, fades) only affects playback on the card. Voice guides timbre, Copy asks H3 to reuse
-sound, Lock pins encoded source audio; the audio VAE and codec can still change the waveform.
+Voice role and the singer of the Lyrics. **Listen here** (volume, fades) only affects playback on the card. Voice guides
+timbre, Copy asks H3 to reuse sound, Lock pins encoded source audio; the audio VAE and codec can still change the waveform.
 
-**Text:** the note the Director reads, with **Quick insert** brackets, templates and the role. **✦ Build H3 prompt**
-rewrites the note (any language) into the English block H3 expects; **My note / AI prompt** switches which one the
-Director reads, and both are kept.
+**Lyrics** on an Audio card are LRC lines, `[mm:ss.xx] words`, in seconds of the file; an empty stamped line is a pause.
+**⟳ Time with Whisper** keeps your own words and takes only the times from a local Whisper model (`models/whisper/small.pt`
+or larger; while a render runs it stays on the CPU). Without lines it writes down what it hears. **Stamp line** sets the
+selected line's time by ear while the song plays. Where the card plays exactly (Lock or Copy, on an audio lane, a shot or the
+whole project), each render part gets only the lines sung in it, as `<Subject 1> (S1) sings, <d>[English] …</d>` in the
+shot where they are sung. Measured on the 27 s elf song: Whisper small heard all eight lines in 7 s.
+
+**Text:** a note in any language, with **Quick insert** brackets, templates and the role. As **Scene / story** it is story:
+the AI split reads it like the Prompt, and with shots it is not pasted into every part. In every other role (style, rule,
+character, camera rule, …) it goes into every render part. The former **Build H3 prompt** is gone: it wrote a complete H3
+block that then nested inside the Director's own; final prompts are written per render part in the Studio.
 
 One file may be used by several cards: every card keeps its own name, part of the file and role. Prompt labels follow the
 order the media reach the model. Renaming a card updates its `@Name` mentions through its stable ID.
