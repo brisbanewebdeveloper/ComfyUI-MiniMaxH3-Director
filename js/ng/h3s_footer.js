@@ -43,9 +43,22 @@ function furtherMore(S, actions) {
       style: { width: "420px" }, oninput: (event) => actions.setWidget("prompt_override", event.target.value, false) })));
 }
 
+// Any length on the 0.1 s grid, the usual ones offered as suggestions; a music video takes the length of its song.
+// A fixed list offered no 27 s, so a 27 s song could not set the project's length.
+function durationField(S, actions) {
+  const v = S.values, set = (value) => { if (value > 0) actions.setDuration(Math.min(3600, Math.round(value * 10) / 10)); };
+  const song = S.contexts.filter((entry) => entry.media === "audio" && S.lengths.get(entry.id) > 0)
+    .sort((a, b) => S.lengths.get(b.id) - S.lengths.get(a.id))[0];
+  const length = song && Math.round(S.lengths.get(song.id) * 10) / 10;
+  return field("Duration", h("span", { class: "h3s-row", style: { gap: "6px", flexWrap: "nowrap" } },
+    number(v.project_seconds, set, { min: "0.5", max: "3600", step: "0.1", list: "h3s-durations", "aria-label": "Duration in seconds", style: { width: "84px" } }),
+    h("datalist", { id: "h3s-durations" }, DURATIONS.map((d) => h("option", { value: String(d) }))),
+    song && length !== Number(v.project_seconds) ? h("button", { class: "h3s-btn small", title: `Set the duration to the length of ${song.name} (${fmt(length)})`,
+      onclick: () => set(length) }, `= ${song.name}`) : null));
+}
+
 export function footerView(S, actions) {
   const v = S.values;
-  const durations = withCurrent(DURATIONS.map((d) => [String(d), `${d} s`]), v.project_seconds, (d) => fmt(Number(d)));
   const parts = withCurrent([["0", "Auto"], ["5", "5 s"], ["8", "8 s"], ["10", "10 s"]], v.chunk_seconds, (d) => fmt(Number(d)));
   const presets = [["auto", "From first picture (H3 chooses)"], ...PRESET_GROUPS.map(([group, list]) => ({ group, items: list.map(([label, w, hh]) => [`${w}x${hh}`, `${label} · ${w}×${hh}`]) })),
     ["custom", "Custom size"]];
@@ -57,7 +70,7 @@ export function footerView(S, actions) {
   const row = (title, ...children) => h("div", { class: "h3s-foot-row" }, h("span", { class: "h3s-foot-title" }, title), ...children);
   return h("footer", { class: "h3s-foot" },
     row("Video",
-    field("Duration", select(durations, String(v.project_seconds), (value) => actions.setDuration(Number(value)))),
+    durationField(S, actions),
     field("Render part", select(parts, String(v.chunk_seconds), (value) => actions.setWidget("chunk_seconds", Number(value)))),
     field("Resolution", select(presets, presetValue(v.width, v.height), actions.setPreset, { style: { maxWidth: "240px" } })),
     field("Width", number(isAuto(v.width, v.height) ? "" : v.width, (value) => actions.setSize("width", value), { step: "32", min: "0", placeholder: "auto", style: { width: "88px" } })),

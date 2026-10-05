@@ -76,7 +76,8 @@ def native_request(provider, action, request_json):
         clip = graph.node("CLIPLoader", clip_name=provider.local_model, type=provider.local_type, device="default").out(0)
     # A connected clip is only a link here; whether it is the conditioning encoder is known once it is loaded.
     clip = graph.node("NGAICheckEncoder", clip=clip).out(0)
-    max_length = direct_tokens(provider.config.max_tokens) if action == "direct" else provider.config.max_tokens
+    max_length = (direct_tokens(provider.config.max_tokens) if action == "direct"
+                  else h3_prompt.prompt_tokens(provider.config.max_tokens) if action == "prompt" else provider.config.max_tokens)
     inputs = dict(clip=clip, prompt=prompt, max_length=max_length,
                   sampling_mode="off", thinking=False, use_default_template=True,
                   # The role comes from system_prompts.py and the schema framing from there too, so

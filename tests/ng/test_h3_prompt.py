@@ -116,6 +116,11 @@ class H3PromptAction(unittest.TestCase):
         cleaned = h3.clean("A woman sings in a dark hall.\n\nAudio:\nWind sighs.\nMusic:\nA cello swells.", "global")
         self.assertEqual(cleaned, "A woman sings in a dark hall.\nAudio: Wind sighs.\nMusic: A cello swells.")
 
+    def test_a_built_prompt_has_room_and_keeps_sung_words(self):
+        # At 512 tokens a storyboard of the elf's song stopped mid-sentence; its lyrics came back paraphrased.
+        self.assertEqual((h3.prompt_tokens(512), h3.prompt_tokens(4096)), (1536, 4096))
+        self.assertIn("spoken or sung stay verbatim", h3.note_prompt('She sings: "My master, where did your footsteps fade?"', 15, "storyboard"))
+
     def test_an_echoed_request_is_named_as_such(self):
         # Real qwen3vl_4b_fp8_scaled output: the user's turn again, no answer.
         for action in ("prompt", "analyze"):

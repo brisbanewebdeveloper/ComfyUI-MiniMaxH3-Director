@@ -3,6 +3,8 @@ import { h, icon, field, select } from "./h3s_dom.js";
 import { span, clipParts, sorted } from "./h3s_model.js";
 
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
+// How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
+const DELIVERY = ["says", "sings", "whispers", "shouts", "murmurs"].map((word) => [word, word]);
 const CLIP_MODES = [["lock", "Lock exactly (the sound stays fixed)"], ["copy", "Copy as closely as possible (H3 may vary)"],
   ["ref", "Reference only (mood, voice, style)"]];
 
@@ -43,11 +45,12 @@ function speakers(S) {
 
 // Every spoken line of the shot; with none yet, one empty editor whose first input creates the line.
 function spokenLines(S, actions, shot) {
-  const lines = shot.spoken.length ? shot.spoken : [{ text: "", speaker_id: "", language: "English" }];
+  const lines = shot.spoken.length ? shot.spoken : [{ text: "", speaker_id: "", language: "English", delivery: "says" }];
   return lines.map((line, index) => h("div", { class: "h3s-spoken", style: { display: "flex", flexDirection: "column", gap: "6px" } },
-    h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto", gap: "8px" } },
+    h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1fr) minmax(0,0.9fr) auto", gap: "8px" } },
       select(speakers(S), line.speaker_id, (value) => actions.setSpoken(shot.id, index, { speaker_id: value }), { "aria-label": `Speaker of line ${index + 1}` }),
       select(LANGUAGES, line.language, (value) => actions.setSpoken(shot.id, index, { language: value }), { "aria-label": `Language of line ${index + 1}` }),
+      select(DELIVERY, line.delivery || "says", (value) => actions.setSpoken(shot.id, index, { delivery: value }), { "aria-label": `Delivery of line ${index + 1}` }),
       shot.spoken.length ? h("button", { class: "h3s-btn ghost small", title: "Remove this line", "aria-label": `Remove line ${index + 1}`,
         onclick: () => actions.removeSpoken(shot.id, index) }, icon("close", 14)) : h("span")),
     h("input", { class: "h3s-in", type: "text", value: line.text, placeholder: "Line that is spoken", "aria-label": `Spoken line ${index + 1}`,

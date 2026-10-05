@@ -28,7 +28,7 @@ class NGDirector(io.ComfyNode):
                 io.String.Input("idea", multiline=True, default="", tooltip="What the video is about. Without shots below, this carries the whole project."),
                 io.String.Input("shots", multiline=True, default="", tooltip="Optional. One shot per line: 0-8: Alice enters the station.  Lines below a shot belong to it; "
                                 "@Alice says: ... writes dialogue."),
-                io.Float.Input("project_seconds", default=10.0, min=0.5, max=3600.0, step=0.5, tooltip="Length of the finished video. Chunks sit on H3's frame grid, so it can differ by a fraction of a second."),
+                io.Float.Input("project_seconds", default=10.0, min=0.5, max=3600.0, step=0.1, tooltip="Length of the finished video. Chunks sit on H3's frame grid, so it can differ by a fraction of a second."),
                 io.Float.Input("chunk_seconds", default=0.0, min=0.0, max=15.0, step=0.5, advanced=True,
                                tooltip="Target length of one H3 run. 0 = automatic (%.0f s)." % DEFAULT_CHUNK_SECONDS),
                 io.Int.Input("width", default=768, min=0, max=16384, step=32, tooltip="0 together with height 0: the size of the first picture, as H3 picks it."),

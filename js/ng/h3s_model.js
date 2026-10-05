@@ -67,7 +67,7 @@ const SPOKEN = { schema_version: 1, text: "", speaker_id: "", voice: "a narrator
 export function editSpoken(lines, index, change) {
   const next = [...lines];
   next[index] = { ...SPOKEN, ...lines[index], ...change };
-  const untouched = !next[0].text.trim() && !next[0].speaker_id && next[0].language === SPOKEN.language;
+  const untouched = !next[0].text.trim() && !next[0].speaker_id && next[0].language === SPOKEN.language && next[0].delivery === SPOKEN.delivery;
   return next.length === 1 && untouched ? [] : next;
 }
 export const addSpoken = (lines) => [...lines, { ...SPOKEN, language: lines.at(-1)?.language || "English" }];
@@ -174,6 +174,14 @@ export function trimToDuration(items, total) {
   const kept = clipToFit(items, total), ids = new Set(kept.map((item) => item.id));
   return { items: kept, removed: items.filter((item) => !ids.has(item.id)).map((item) => item.id),
     shortened: kept.filter((item) => item.end < items.find((old) => old.id === item.id).end).map((item) => item.id) };
+}
+
+// A longer project: the shot that reached the old end goes on to the new one. Otherwise the added time had no shot,
+// and its render parts no text: a 10 s shot carrying the whole song's text left 17-27 s of a 27 s music video empty.
+export function growToDuration(items, from, total) {
+  const last = sorted(items).at(-1);
+  if (!(total > from) || !last || Math.abs(last.end - from) > 0.05) return { items, grown: [] };
+  return { items: items.map((item) => (item.id === last.id ? { ...item, end: total } : item)), grown: [last.id] };
 }
 
 export function clipToFit(items, total) {

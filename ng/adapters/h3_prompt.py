@@ -29,6 +29,13 @@ SHORT = {"global": enhance.PRESET_GLOBAL, "storyboard": enhance.PRESET_STORYBOAR
 # produces cut times the model will not honour.
 MIN_SECONDS, MAX_SECONDS = 4.0, 15.0
 DEFAULT_SECONDS = 8.0
+# The enhance guide asks for 350-500 words plus two audio lines; at the AI Loader's default 512 tokens a storyboard
+# stopped mid-sentence ("... quiet footsteps echoing far away in the"). A built prompt never asks for less than this.
+PROMPT_TOKENS = 1536
+
+
+def prompt_tokens(max_tokens):
+    return max(max_tokens, PROMPT_TOKENS)
 
 
 def preset_of(value):
@@ -45,8 +52,11 @@ def note_prompt(note, seconds, preset):
     if not MIN_SECONDS <= seconds <= MAX_SECONDS:
         raise ValueError("H3 takes %g to %g seconds, got %g." % (MIN_SECONDS, MAX_SECONDS, seconds))
     storyboard = preset_of(preset) == enhance.PRESET_STORYBOARD
+    # A song's lyrics came back paraphrased ("she sings about how the halls are cold") or not at all; words that are
+    # spoken or sung are the one thing H3 has to get verbatim.
     return ("The note below is a video the user described, in whatever language they wrote it in. "
             "Rewrite it as the %s of a %.1f second video. Keep every concrete detail the note names. "
+            "Words the note gives to be spoken or sung stay verbatim, in their own language and in double quotation marks. "
             "Invent only what the H3 format needs and the note leaves open.\n\nNote:\n%s"
             % ("shot-by-shot storyboard, with [Shot N] markers and cut times" if storyboard
                else "opening scene-and-style block", seconds, note.strip()))
@@ -74,7 +84,7 @@ async def build(payload):
         # Address, model and auth come from the provider registry, as for Analyze; the local defaults know only three.
         entry, url, model = endpoint(config)
         answer = await legacy.vlm_generate([], prompt, config.provider, url, model, api_key=key, auth=entry.auth,
-                                           system_prompt=system, **wire(config))
+                                           system_prompt=system, **{**wire(config), "max_tokens": prompt_tokens(config.max_tokens)})
         return {"prompt": clean(answer, preset)}
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None

@@ -7,7 +7,8 @@ export function h(tag, props = {}, ...children) {
     else if (key === "style" && typeof value === "object") Object.assign(node.style, value);
     else if (key === "dataset") Object.assign(node.dataset, value);
     else if (key.startsWith("on")) node[key.toLowerCase()] = value;
-    else if (key in node && !key.startsWith("aria") && key !== "role") node[key] = value;
+    // `list` (an input's datalist) is read-only as a property and exists only as an attribute.
+    else if (key in node && !key.startsWith("aria") && key !== "role" && key !== "list") node[key] = value;
     else node.setAttribute(key, value === true ? "" : value);
   }
   for (const child of children.flat()) {

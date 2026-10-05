@@ -2,7 +2,7 @@
 // node's own widgets, so saving, loading and queueing stay ComfyUI's; the shot document keeps shots, clips and lanes.
 import { h, icon, keepKeys } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -185,11 +185,13 @@ export function openStudio(node, app, api, host = null) {
     setDuration(seconds) {
       const before = { shots: S.shots, audio: S.audio, seconds: S.values.project_seconds, names: labels() };
       const shots = trimToDuration(S.shots, seconds), audio = trimToDuration(S.audio, seconds);
-      S.shots = shots.items; S.audio = audio.items; S.ghosts = [];
+      const grown = growToDuration(shots.items, Number(before.seconds), seconds);
+      S.shots = grown.items; S.audio = audio.items; S.ghosts = [];
       write({ project_seconds: seconds }); save();
       const cut = [shots.removed.length && `removed ${shots.removed.map((id) => before.names.get(id)).join(", ")}`,
         shots.shortened.length && `shortened ${shots.shortened.map((id) => before.names.get(id)).join(", ")}`,
-        (audio.removed.length || audio.shortened.length) && `cut ${audio.removed.length + audio.shortened.length} audio clip(s)`].filter(Boolean);
+        (audio.removed.length || audio.shortened.length) && `cut ${audio.removed.length + audio.shortened.length} audio clip(s)`,
+        grown.grown.length && `${before.names.get(grown.grown[0])} now runs to the new end`].filter(Boolean);
       if (cut.length) S.notice = { text: `Duration ${fmt(seconds)}: ${cut.join("; ")}.`, undo: () => {
         S.shots = before.shots; S.audio = before.audio; write({ project_seconds: before.seconds }); save(); render(); } };
       render();

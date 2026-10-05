@@ -143,7 +143,8 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   lines = model.editSpoken(lines, 2, { text: "Bye.", speaker_id: "mage" });
   assert.deepEqual(model.removeSpoken(lines, 0).map((line) => line.text), ["Hi there.", "Bye."]);
   assert.deepEqual(model.editSpoken([], 0, { text: "First." }).map((line) => [line.text, line.language]), [["First.", "English"]], "the first input creates the line");
-  assert.deepEqual(model.editSpoken([b], 0, { text: "", speaker_id: "" }), [], "clearing the only English line leaves the shot without dialogue");
+  assert.deepEqual(model.editSpoken([{ ...b, delivery: "says" }], 0, { text: "", speaker_id: "" }), [], "clearing the only plain English line leaves the shot without dialogue");
+  assert.equal(model.editSpoken([b], 0, { text: "", speaker_id: "" })[0].delivery, "whispers", "a chosen delivery stays while retyping, like a language");
   // BUG-035: a language picked before typing, or kept while retyping, is not thrown away.
   assert.deepEqual(model.editSpoken([], 0, { language: "German" }).map((line) => [line.text, line.language]), [["", "German"]]);
   assert.equal(model.editSpoken([a], 0, { text: "", speaker_id: "" })[0].language, "German", "retyping a German line keeps German");
@@ -168,6 +169,11 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   const cut = model.trimToDuration(items, 10);
   assert.deepEqual([cut.items.map((i) => [i.id, i.end]), cut.removed, cut.shortened], [[["a", 6], ["b", 10]], ["c"], ["b"]]);
   assert.deepEqual(model.trimToDuration(items, 30), { items, removed: [], shortened: [] });
+  // A longer project: the shot that reached the old end follows it (a 10 s shot left 17-27 s of a song without text).
+  const grown = model.growToDuration(items, 20, 27);
+  assert.deepEqual([grown.items.map((i) => i.end), grown.grown], [[6, 12, 27], ["c"]]);
+  assert.deepEqual(model.growToDuration([{ id: "a", start: 0, end: 8 }], 10, 27).grown, [], "a shot that stopped earlier stays");
+  assert.deepEqual(model.growToDuration(items, 20, 15).grown, [], "shorter is trimToDuration's job");
 }
 
 console.log("h3s model ok");

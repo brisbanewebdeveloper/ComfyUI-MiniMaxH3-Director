@@ -27,7 +27,8 @@ function state(extra = {}) {
     turbo_lora_fl2va: ["none", "fl.safetensors"], turbo_lora_ref2va: ["none", "ref.safetensors"] },
     contexts, byId: new Map(contexts.map((entry) => [entry.id, entry])), shots: [shot("a", 0, 8, "Walks in.", [{ schema_version: 1, context_id: "mage", role: "context" }]), shot("b", 8, 20)],
     audio: [{ schema_version: 1, id: "c1", context_id: "song", start: 4, end: 18, offset: 10, mode: "lock", lane: "l1" }], lanes: ["l1", "l2"],
-    selected: null, ghosts: [], suggestions: {}, plan, ai: false, busy: "", promptOpen: false, sizeOpen: false, furtherOpen: false, selectedRange: null, ...extra };
+    selected: null, ghosts: [], suggestions: {}, plan, ai: false, busy: "", promptOpen: false, sizeOpen: false, furtherOpen: false, selectedRange: null,
+    lengths: new Map(), ...extra };
 }
 function recorder() {
   const calls = [];
@@ -97,6 +98,11 @@ function recorder() {
   assert.deepEqual(inputs.map((node) => node.value), ["Hello.", "Hi."]);
   inputs[1].oninput({ target: { value: "Hi there." } });
   assert.deepEqual(calls.at(-1), ["setSpoken", "a", 1, { text: "Hi there." }, false]);
+  // A song needs "sings": the delivery is chosen per line (it was fixed to "says").
+  const delivery = panel.find((node) => node.attributes["aria-label"] === "Delivery of line 2")[0];
+  assert.equal(delivery.value, "says");
+  delivery.onchange({ target: { value: "sings" } });
+  assert.deepEqual(calls.at(-1), ["setSpoken", "a", 1, { delivery: "sings" }]);
   panel.find((node) => node.attributes["aria-label"] === "Remove line 1")[0].onclick();
   assert.deepEqual(calls.at(-1), ["removeSpoken", "a", 0]);
   panel.button("Spoken line").onclick();
@@ -116,6 +122,16 @@ function recorder() {
   assert.ok(drawer.innerText.includes("Images 1/9 · Video 0/3 · Audio 0/3"));
   assert.ok(drawer.innerText.includes("Gap between shots (shot 2): there is a gap."));
   assert.equal(issueLine({ code: "new_code", text: "x" }), "Note: x");
+  // Any duration, and a music video's length in one click (a 27 s song had no matching entry in the old list).
+  const { actions: act, calls } = recorder();
+  const withSong = footerView(state({ lengths: new Map([["song", 27.0106]]) }), act);
+  const seconds = withSong.byTag("input").find((node) => node.attributes["aria-label"] === "Duration in seconds");
+  seconds.onchange({ target: { value: "27.34" } });
+  assert.deepEqual(calls.at(-1), ["setDuration", 27.3]);
+  withSong.button("= ").onclick();
+  assert.deepEqual(calls.at(-1), ["setDuration", 27]);
+  assert.ok(withSong.button("= ").title.includes("(27.0 s)") || withSong.button("= ").title.includes("27"), withSong.button("= ").title);
+  assert.equal(footerView(state({ values: { project_seconds: 27 }, lengths: new Map([["song", 27.0106]]) }), act).button("= "), undefined, "no button when it already fits");
 }
 
 // Content cards and prompt.
