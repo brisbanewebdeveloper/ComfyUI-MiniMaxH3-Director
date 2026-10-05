@@ -8,7 +8,7 @@ import json
 import re
 
 from . import fields
-from .auto_direct import _meanings, story
+from .auto_direct import story
 from .directions import DIRECTIONS, LANGUAGES, SPEECH, check_adults, direction, shot_count
 from .split import _seconds, parse_split
 

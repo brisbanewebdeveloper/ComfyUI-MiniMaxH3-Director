@@ -117,17 +117,21 @@ export function studioAI(S, app, api, done) {
       S.busy = "build"; S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; step("Planning the shots …");
       try {
         const director = { ...values(S.node), shots: writeProject({ shots: [], audio: S.audio, lanes: S.lanes }) };
-        const plan = await aiAction(app, api, "build", { director, contexts: readContexts(S.node), provider, quick: S.quick }, signal);
+        const ask = () => aiAction(app, api, "build", { director, contexts: readContexts(S.node), provider, quick: S.quick }, signal);
+        // A small model sometimes answers with broken JSON; one more try is cheaper than sending the user back.
+        const plan = await ask().catch((error) => { if (/JSON/.test(error.message) && mine === serial) return ask(); throw error; });
         if (mine !== serial) return null;
         apply(plan.suggestion);
         const view = await replan();
         const result = { parts: view.chunks.length, written: 0, refused: 0, unchanged: 0, unseen: plan.suggestion.unseen_pictures || [] };
         for (const chunk of view.chunks) {
           step(view.chunks.length > 1 ? `Writing part ${chunk.index + 1} of ${view.chunks.length} …` : "Writing the prompt …");
-          const data = await aiAction(app, api, "write", { director: values(S.node), contexts: readContexts(S.node), provider,
+          const write = () => aiAction(app, api, "write", { director: values(S.node), contexts: readContexts(S.node), provider,
             part: chunk.index, quick: S.quick }, signal);
+          let draft = (await write()).suggestion;
           if (mine !== serial) return null;
-          const draft = data.suggestion;
+          // A refused or unchanged part gets a second try (qwen3.5:9b: about one part in five on the first).
+          if (draft.problems.length || draft.unchanged) { draft = (await write()).suggestion; if (mine !== serial) return null; }
           if (draft.problems.length) result.refused++;
           else if (draft.unchanged || draft.key !== chunk.prompt_key) result.unchanged++;
           else { keep(chunk.index, draft); result.written++; }
