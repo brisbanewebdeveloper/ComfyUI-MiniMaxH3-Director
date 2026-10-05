@@ -15,7 +15,7 @@ from .issues import Issue
 from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
 from .shot_document import has_shots, read_document
-from .audio_timing import clip_issues
+from .audio_timing import clip_issues, covers, locked_spans
 
 CANVAS_MULTIPLE = 32
 H3_SHORT_EDGE, H3_MAX_PIXELS = 768, 768 * 1344
@@ -147,6 +147,10 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
         shots, shot_issues = auto_shots(context.idea, total), ()
     chunk_frames = frames.seconds_to_frames(chunk_seconds or limits.DEFAULT_CHUNK_SECONDS)
     plan = plan_chunks(total, chunk_frames, continuity, shots)
+    # A song locked over the whole video is put back into every part from its file, so a long chain does not dull it
+    # (elf song: 0.97-0.98 against the song in every part). A last second past the song's end is no chain.
+    if covers(locked_spans(context), plan.total_frames, limits.FPS):
+        plan = replace(plan, issues=tuple(i for i in plan.issues if i.code != "audio_dulling"))
     compiled = tuple(compile_chunk(context, chunk, continuity) for chunk in plan.chunks)
     issues = list(issues) + list(shot_issues) + list(plan.issues) + check_guide_times(context, plan.total_frames) + clip_issues(context)
     for one in compiled:

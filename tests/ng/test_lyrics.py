@@ -132,6 +132,12 @@ class Placement(unittest.TestCase):
         result = plan(doc([shot("s1", 0, 27)]), (song(usage=("music_style",)),))
         self.assertNotIn("<d>", "".join(self.prompts(result)))
 
+    def test_a_song_locked_over_the_whole_video_is_no_dulling_chain(self):
+        long = plan(doc([shot("s1", 0, 177)], [lane(end=177.0)]), (song(),), seconds=177.0)
+        self.assertNotIn("audio_dulling", {i.code for i in long.issues})
+        unlocked = plan(doc([shot("s1", 0, 177)], [lane(end=60.0)]), (song(),), seconds=177.0)
+        self.assertIn("audio_dulling", {i.code for i in unlocked.issues}, "generated sound after 60 s is still carried")
+
     def test_a_carried_shot_keeps_its_timed_lines(self):
         result = plan(doc([shot("s1", 0, 27)], [lane()]), (song(),))
         self.assertTrue(result.plan.chunks[1].shots[0].carried)

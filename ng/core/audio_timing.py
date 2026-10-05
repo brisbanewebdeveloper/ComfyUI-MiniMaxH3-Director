@@ -46,6 +46,30 @@ def clip_windows(context, modes):
     return windows
 
 
+def locked_spans(context):
+    """Story spans (start f, end f) whose sound is pinned to a file by Lock: on an audio lane, a Shot, or the whole project,
+    each ending where its file ends."""
+    spans = [(start, end) for windows in clip_windows(context, ("lock",)).values() for start, end, _ in windows]
+    laned, bound = set(clip_windows(context, ("lock", "copy", "ref"))), shot_windows(context) or {}
+    total = seconds_to_frames(context.project_seconds)
+    for item in context.by_media("audio"):
+        if item.id in laned or "lock" not in item.effective_usage or not item.source:
+            continue
+        last = seconds_to_frames(item.length_s - item.options.start_s) if item.length_s > 0 else total
+        spans += [(start, min(end, start + last)) for start, end, _ in bound.get(item.id, [(0, total, 0)])]
+    return spans
+
+
+def covers(spans, total, slack=0):
+    """Whether the spans together cover story frames 0..total, apart from `slack` frames at the very end."""
+    reached = 0
+    for start, end in sorted(spans):
+        if start > reached:
+            return False
+        reached = max(reached, end)
+    return reached >= total - slack
+
+
 def outside(spans, taken):
     """The parts of (start, end, offset) spans that no taken (start, end, _) span covers; a later piece keeps its place in the
     source, so cutting never restarts the sound."""
