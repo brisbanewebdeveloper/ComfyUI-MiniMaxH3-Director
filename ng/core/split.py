@@ -34,7 +34,11 @@ def split_prompt(idea, seconds, meanings, parts=(), sung=()):
         '"language":"English","text":"..."}]}],"soundscape":"...","music":"..."}.' % _seconds(seconds),
         "look: one or two English sentences with what every shot shares: visual style, place, light. No action, no spoken words.",
         "action: English, what is visible in this shot: who does what, where, with which expression. " + _mentions(meanings),
-        "camera: one camera movement in plain English, e.g. Slow push in.",
+        "camera: one English sentence starting with The camera, e.g. The camera pushes in with small amplitude at slow speed.",
+        # base-en 4.2: "A cut should introduce new information ... If only the distance or a slight angle needs to change,
+        # prefer camera motion." Split by line, the elf song became nine static shots of the same face.
+        "Start a new shot only when the view changes: another framing, angle, place or time. A slow change of distance or "
+        "angle stays inside one shot as camera movement.",
         "lines: each line the Idea gives to be spoken or sung, word for word in its own language, one entry per line, in the shot "
         "where it is heard. speaker is the exact Content name of who says it, or empty for a narrator; delivery is one of %s. "
         "Invent no words; use [] when nobody speaks." % ", ".join(DELIVERIES),
@@ -52,6 +56,10 @@ def split_prompt(idea, seconds, meanings, parts=(), sung=()):
         rules.append("These sung lines are already placed at their times, so do NOT put them into lines; let the action follow them: %s."
                      % "; ".join('%s-%s s "%s"' % (_seconds(a), _seconds(b), words) for a, b, _, words in sung))
     return " ".join(rules) + "\nIdea: %s\nContexts: %s" % (idea, json.dumps(meanings, ensure_ascii=False))
+
+
+def _sentence(text):
+    return text if text.endswith((".", "!", "?")) else text + "."
 
 
 def _norm(text):
@@ -132,7 +140,7 @@ def parse_split(data, seconds, contexts=None, keep="", sung=()):
         if not action:
             raise ValueError("Each suggested shot needs an action.")
         camera = fields.read_str(shot, "camera", path, "").strip()
-        text, unknown = plain_mentions("\n".join(v for v in (action, "Camera: " + camera if camera else "") if v), contexts)
+        text, unknown = plain_mentions(" ".join(_sentence(v) for v in (action, camera) if v), contexts)
         dropped += [name for name in unknown if name not in dropped]
         shots.append({"id": "ai-%d" % (number + 1), "start": round(end, 3), "end": round(placed, 3), "text": text, "media": [],
                       "spoken": _lines(shot, path, contexts, sung_words), "locked_fields": [], "draft": None})

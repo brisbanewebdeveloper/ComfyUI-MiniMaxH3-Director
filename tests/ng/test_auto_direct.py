@@ -26,7 +26,7 @@ class SceneSuggestion(unittest.TestCase):
                                            [{"media": "image", "widgets": {"name": "Alice", "context_id": "ctx_a"}}])
         shots = shots_of(result)
         self.assertEqual([(s["start"], s["end"]) for s in shots], [(0, 4), (4, 8)])
-        self.assertEqual(shots[0]["text"], "@Alice enters.\nCamera: Slow dolly")
+        self.assertEqual(shots[0]["text"], "@Alice enters. Slow dolly.")
         self.assertEqual(shots[1]["spoken"], [{"schema_version": 1, "text": "Hallo.", "speaker_id": "ctx_a", "voice": "a narrator",
                                                "language": "German", "delivery": "whispers"}])
         self.assertEqual(result["look"], "Dark gothic hall, cinematic anime style.")
@@ -115,7 +115,7 @@ class SceneSuggestion(unittest.TestCase):
         self.assertEqual([(s["start"], s["end"]) for s in filled], [(0, 8)], "a shot past the end fills it; later ones are dropped")
         # An @name of no Content becomes a plain word and is named.
         plain = direction.parse_direction(json.dumps(self.answer()), 8, [])
-        self.assertEqual(shots_of(plain)[0]["text"].splitlines()[0], "Alice enters.")
+        self.assertEqual(shots_of(plain)[0]["text"], "Alice enters. Slow dolly.")
         self.assertEqual(plain["unknown_mentions"], ["Alice"])
 
     def test_context_names_with_spaces_and_prefixes_are_resolved(self):

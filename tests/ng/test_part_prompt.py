@@ -36,7 +36,6 @@ class Check(unittest.TestCase):
             "spoken or sung lines": GOOD.replace("footsteps fade", "steps fade"),
             "cut times": GOOD.replace("00:04.500", "00:05.000"),
             "labels the plan does not have": GOOD.replace("The mage stands", "<Subject 2> stands"),
-            "speaker ID": GOOD.replace("(S1)", ""),
             "start with [Shot 1]": GOOD.replace("description: [Shot 1] ", "description: Style. [Shot 1] "),
             "nests another prompt section": GOOD.replace("Her lips close softly.", "Her lips close.\nsummary: x"),
             "shorter than": "description: [Shot 1] Short. The mage (S1) sings, <d>[English] My master, where did your footsteps fade?</d> "
@@ -47,6 +46,29 @@ class Check(unittest.TestCase):
                 final, problems = part.check(BASE, answer)
                 self.assertIsNone(final)
                 self.assertTrue(any(reason in problem for problem in problems), problems)
+
+    def test_what_a_model_reliably_gets_slightly_wrong_is_put_back(self):
+        # qwen3.5:9b on the elf song: a time on Shot 1, "(S1) sings" without its label, a lyric line re-punctuated.
+        compiled = BASE.replace("The mage (S1)", "<Subject 1> (S1)")
+        answer = (GOOD.replace("[Shot 1] Dark", "[Shot 1] At 00:00.000, Dark").replace("The mage (S1)", "Then (S1)")
+                  .replace("My master, where did your footsteps fade?", "My master where did your footsteps fade")
+                  .replace("[Shot 2] At 00:04.500,", "[Shot 2]"))
+        final, problems = part.check(compiled, answer)
+        self.assertEqual(problems, [])
+        self.assertIn("[Shot 1] Dark fantasy", final)
+        self.assertIn("Then <Subject 1> (S1) sings, <d>[English] My master, where did your footsteps fade?</d>", final)
+        self.assertIn("[Shot 2] At 00:04.500,", final)
+        # ... and once left every lyric line out of an otherwise good part: each goes back to the end of its shot.
+        lost = GOOD.replace("The mage (S1) sings, <d>[English] My master, where did your footsteps fade?</d> ", "")
+        final, problems = part.check(compiled, lost)
+        self.assertEqual(problems, [])
+        self.assertIn("high windows. The camera pushes in with small amplitude at slow speed. Her lips close softly. <Subject 1> (S1) sings, "
+                      "<d>[English] My master, where did your footsteps fade?</d> [Shot 2]", final)
+        # qwen3.5:9b dropped the speaker of a sung line altogether ("As she sings, <d>...").
+        final, problems = part.check(compiled, GOOD.replace("The mage (S1) sings, <d>", "As she sings, <d>"))
+        self.assertEqual(problems, [])
+        self.assertIn("As she sings, <Subject 1> (S1) <d>[English] My master", final)
+        self.assertIn("- <Subject 1> (S1) sings, <d>[English] My master, where did your footsteps fade?</d>", part.request(compiled, "fl2va", 8))
 
     def test_reference_sections_stay_the_planners(self):
         compiled = ("subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\nsummary: [reference generation] x\n\n"
