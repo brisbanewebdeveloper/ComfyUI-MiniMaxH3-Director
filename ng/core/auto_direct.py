@@ -18,13 +18,16 @@ def direct_tokens(max_tokens):
 
 
 def timing_hints(director, contexts, probe=None):
-    """The render parts and the songs' timed lines, from the same plan the Studio shows: ([(start s, end s)],
-    [(start s, end s, song, words)]). A split that knows them can cut at part boundaries and leave sung lines alone."""
+    """Hard-cut render parts and the songs' timed lines, from the same plan the Studio shows: ([(start s, end s)],
+    [(start s, end s, song, words)]). Parts are named only with Hard cuts: a continued part begins on the previous
+    part's picture, so the planner itself moves a boundary away from a new shot (boundaries.py, E7); told to cut at the
+    boundaries, the split put its cuts exactly where the pinned picture makes them come 2.5 s late."""
     view = plan_preview({"director": director, "contexts": contexts}, probe=probe)
     if not view["ok"]:
         return (), ()
     context = DirectorContext.from_dict(view["director_context"])
-    return (tuple((c["start_s"], c["end_s"]) for c in view["chunks"]),
+    hard = director.get("continuity") == "none"
+    return (tuple((c["start_s"], c["end_s"]) for c in view["chunks"]) if hard else (),
             tuple((round(l.start_f / 24.0, 2), round(l.end_f / 24.0, 2), l.song, l.text) for l in story_lines(context)))
 
 

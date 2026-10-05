@@ -264,6 +264,8 @@ export function openStudio(node, app, api, host = null) {
       const sound = S.ghostSound || {};
       for (const name of ["soundscape", "music"]) if (sound[name]?.trim()) write({ [name]: sound[name].trim() });
       if (sound.look?.trim()) S.look = sound.look.trim();
+      // New shots are a new plan: the parts' own prompts were written for the old one.
+      S.partPrompts = []; S.partDrafts = {};
       S.ghosts = []; S.ghostSound = null; setItems("shot", shots, shots[0]?.id);
     },
     dropGhosts() { S.ghosts = []; S.ghostSound = null; render(); },

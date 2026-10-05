@@ -50,7 +50,7 @@ def split_prompt(idea, seconds, meanings, parts=(), sung=()):
         "Do not claim generation or media analysis has occurred.",
     ]
     if len(parts) > 1:
-        rules.append("The video is rendered in parts: %s. A shot may run across a part boundary; a cut fits best at one."
+        rules.append("The video is rendered in separate parts with hard cuts between them: %s. A shot may run across a part boundary; a cut fits best at one."
                      % ", ".join("%s-%s s" % (_seconds(a), _seconds(b)) for a, b in parts))
     if sung:
         rules.append("These sung lines are already placed at their times, so do NOT put them into lines; let the action follow them: %s."

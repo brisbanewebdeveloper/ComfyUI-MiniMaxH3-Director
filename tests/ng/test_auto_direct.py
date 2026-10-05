@@ -98,7 +98,10 @@ class SceneSuggestion(unittest.TestCase):
         self.assertIn("Do not claim generation", prompt)
         self.assertIn("0-8.7 s, 8.7-17.9 s, 17.9-27.1 s", prompt)
         self.assertIn('0-3.5 s "My master, where did your footsteps fade?"', prompt)
-        self.assertNotIn("rendered in parts", direction.direction_prompt("She walks.", 8, [context]))
+        self.assertNotIn("rendered in separate parts", direction.direction_prompt("She walks.", 8, [context]))
+        director = {"idea": "She walks.", "project_seconds": 27, "continuity": "video_audio"}
+        self.assertEqual(direction.timing_hints(director, [])[0], (), "a continued part is planned around the shots, not the reverse")
+        self.assertEqual(len(direction.timing_hints({**director, "continuity": "none"}, [])[0]), 3)
 
     def test_gaps_overlaps_and_a_short_end_are_laid_end_to_end_unknown_mentions_become_words(self):
         # Qwen3-VL 4B ended a 10 s project at 5 s; the whole proposal used to be thrown away for it.
