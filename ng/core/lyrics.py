@@ -84,11 +84,12 @@ def _tokens(text):
     return re.findall(r"\w+", text.lower())
 
 
-def align(known, words):
+def align(known, words, duration=0.0):
     """Give the user's own lines the times of the recognised words: [(word, start, end)] from speech recognition.
 
     The words stay the user's (recognition mishears sung words); only the timing comes from the recogniser. A line none of
-    whose words were heard is placed between its neighbours by its share of the words."""
+    whose words were heard is placed between its neighbours by its share of the words; lines after the last heard one
+    share the rest of the file (`duration` seconds). Without it, 41 lines of a song collapsed onto one instant."""
     tokens = [(index, token) for index, line in enumerate(known) for token in _tokens(line)]
     heard = [(token, start, end) for word, start, end in words for token in _tokens(word)]
     matcher = difflib.SequenceMatcher(None, [t for _, t in tokens], [t for t, _, _ in heard], autojunk=False)
@@ -101,7 +102,7 @@ def align(known, words):
             spans[line] = (min(first, start), max(last, end))
     counts = [max(1, len(_tokens(line))) for line in known]
     times = [spans.get(index) for index in range(len(known))]
-    total_end = max((end for _, _, end in heard), default=LAST_LINE_SECONDS * len(known))
+    total_end = max([end for _, _, end in heard] + [duration], default=0.0) or LAST_LINE_SECONDS * len(known)
     for index, found in enumerate(times):
         if found:
             continue

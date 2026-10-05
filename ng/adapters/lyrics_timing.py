@@ -48,16 +48,17 @@ def time_lyrics(source, text, device):
     path = require_path(source)
     known = lyrics.plain_lines(text)
     language, _ = lyrics.parse(text)
+    samples = _samples(path)
     model = whisper.load_model(model_file(), device=device)
     try:
-        result = model.transcribe(_samples(path), word_timestamps=True, fp16=str(device) != "cpu",
+        result = model.transcribe(samples, word_timestamps=True, fp16=str(device) != "cpu",
                                   initial_prompt=" ".join(known) or None, condition_on_previous_text=False)
     finally:
         del model
     language = language or whisper.tokenizer.LANGUAGES.get(result.get("language", ""), "english").title()
     words = [(w["word"], float(w["start"]), float(w["end"])) for segment in result["segments"] for w in segment.get("words", [])]
     if known:
-        lines = lyrics.align(known, words)
+        lines = lyrics.align(known, words, len(samples) / float(whisper.audio.SAMPLE_RATE))
     else:
         lines = tuple(lyrics.LyricLine(round(float(s["start"]), 2), round(float(s["end"]), 2), s["text"].strip())
                       for s in result["segments"] if s["text"].strip())

@@ -85,6 +85,10 @@ class Align(unittest.TestCase):
         self.assertEqual(lines[1].end, 3.48)
         self.assertEqual(lines[2].start, 3.48)
 
+    def test_lines_after_the_last_heard_one_share_the_rest_of_the_file(self):
+        lines = lyrics.align(["My master, where did your footsteps fade?", "Come back to me", "through fire and rain"], self.WORDS[:7], 60.0)
+        self.assertEqual([(l.start, l.end) for l in lines[1:]], [(3.2, 31.6), (31.6, 60.0)])
+
     def test_plain_lines_drop_stamps_language_and_blank_lines(self):
         self.assertEqual(lyrics.plain_lines(SONG)[:2], ["My master, where did your footsteps fade?", "I still wait where your shadow stayed."])
         self.assertEqual(len(lyrics.plain_lines(SONG)), 5)
