@@ -34,7 +34,8 @@ function partView(S, actions, chunk) {
     draft ? h("div", { class: "h3s-banner", style: { margin: "8px 12px", flexDirection: "column", alignItems: "stretch" } },
       draft.problems.length
         ? h("span", {}, `The AI's version was not used: ${draft.problems.join("; ")}. Nothing changed; write it again or edit by hand.`)
-        : h("pre", { style: { margin: 0 } }, draft.text),
+        : h("div", {}, draft.unchanged ? h("span", { class: "h3s-lbl" }, "The AI kept the compiled prompt as it is; write again or edit by hand for more detail.") : null,
+          h("pre", { style: { margin: 0 } }, draft.text)),
       h("div", { class: "h3s-row" }, h("span", { class: "h3s-grow" }),
         draft.problems.length ? null : h("button", { class: "h3s-btn ai", onclick: () => actions.acceptPart(i) }, "Accept"),
         h("button", { class: "h3s-btn ghost", onclick: () => actions.dropPart(i) }, draft.problems.length ? "Dismiss" : "Discard"))) : null,

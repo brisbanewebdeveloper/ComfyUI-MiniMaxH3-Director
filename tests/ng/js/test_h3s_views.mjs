@@ -143,6 +143,8 @@ function recorder() {
   const refused = drawerView(state({ promptOpen: true, plan: own, partDrafts: { 1: { key: "k1", text: "", problems: ["the cut times differ"] } } }), parts);
   assert.ok(refused.innerText.includes("was not used: the cut times differ"));
   assert.equal(refused.button("Accept"), undefined, "a refused version cannot be accepted");
+  const kept = drawerView(state({ promptOpen: true, plan: own, partDrafts: { 1: { key: "k1", text: "second prompt", problems: [], unchanged: true } } }), parts);
+  assert.ok(kept.innerText.includes("The AI kept the compiled prompt as it is"), "a copy is not passed off as a rewrite");
   // Any duration, and a music video's length in one click (a 27 s song had no matching entry in the old list).
   const { actions: act, calls } = recorder();
   const withSong = footerView(state({ lengths: new Map([["song", 27.0106]]) }), act);

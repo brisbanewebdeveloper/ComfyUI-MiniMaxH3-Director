@@ -116,6 +116,13 @@ class OwnPrompt(unittest.TestCase):
         self.assertNotEqual(result.compiled[0].prompt, "old")
         self.assertIn("part_prompt_outdated", {issue.code for issue in result.issues})
 
+    def test_an_answer_that_keeps_the_compiled_prompt_is_marked(self):
+        facts = {"index": 0, "key": "k", "compiled": BASE.replace("Gothic hall.", LONG)}
+        _, sections = part.split_sections(facts["compiled"])
+        copied = "description: " + sections["integrated_multimodal_description"] + "\noverall_soundscape: ambience that fits the scene\nnon_diegetic_music: N/A"
+        self.assertTrue(writer.finish(copied, facts)["unchanged"])
+        self.assertFalse(writer.finish(GOOD, facts)["unchanged"])
+
     def test_the_writer_always_starts_from_the_compiled_prompt(self):
         compiled = plan(doc()).compiled[0]
         director = {"idea": "An elf sings.", "shots": doc([{"index": 0, "key": compiled.key, "text": "mine", "by": "user"}]),

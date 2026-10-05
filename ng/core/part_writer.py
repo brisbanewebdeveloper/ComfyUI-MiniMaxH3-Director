@@ -40,4 +40,7 @@ def write_prompt(facts):
 def finish(answer, facts):
     """What the Studio shows for Accept: the checked prompt, or why the AI's version was refused (then nothing changes)."""
     text, problems = check(facts["compiled"], answer)
-    return {"index": facts["index"], "key": facts["key"], "text": text or "", "problems": problems}
+    # Whole song (2026-10-05): 5 of 18 parts came back with the compiled description word for word, which passes every
+    # check; the Studio says so instead of offering it as a rewrite.
+    same = bool(text) and " ".join(text.split()) == " ".join(facts["compiled"].split())
+    return {"index": facts["index"], "key": facts["key"], "text": text or "", "problems": problems, "unchanged": same}
