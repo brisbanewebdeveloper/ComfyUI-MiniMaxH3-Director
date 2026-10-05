@@ -6,7 +6,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from ... import minimax_media as media
 from ..core.analysis import analysis_prompt, parse_suggestion
 from ..core.auto_direct import direct_tokens, direction_prompt, parse_direction, timing_hints
-from ..core.builder import SYSTEM as BUILD_SYSTEM, parse_plan, plan_prompt, plan_tokens, read_quick
+from ..core.builder import SYSTEM as BUILD_SYSTEM, parse_plan, pictures, plan_prompt, plan_tokens, read_quick
 from ..core.fields import need_dict, read_number, read_str
 from ..core.part_prompt import SYSTEM as WRITE_SYSTEM, write_tokens
 from ..core.part_writer import brief, finish, write_prompt
@@ -53,8 +53,11 @@ def request_prompt(action, payload, config):
     if action == "build":
         director = need_dict(payload["director"], "director")
         timing = timing_hints(director, payload["contexts"], probe.duration_seconds)
+        # Generate Text takes one picture: the first card's is shown (it set the style), the others go by their descriptions.
+        shown = 1 if config.vision and pictures(payload["contexts"]) else 0
         return plan_prompt(read_quick(payload), read_str(director, "idea", "director", ""),
-                           read_number(director, "project_seconds", "director", minimum=0.1), payload["contexts"], False, *timing), None
+                           read_number(director, "project_seconds", "director", minimum=0.1), payload["contexts"], shown,
+                           *timing), "image" if shown else None
     if action != "analyze":
         raise ValueError("Choose Analyze or Auto Direct.")
     media, widgets = payload["media"], need_dict(payload["widgets"], "context.widgets")
@@ -100,7 +103,8 @@ def native_request(provider, action, request_json):
                                  # text note): with None a Text card got the generic role and Qwen3-VL 4B lost the JSON.
                                  else framed(for_node("director" if action == "direct" else "context", payload.get("media")))))
     if media:
-        source = payload["widgets"].get(media, "")
+        source = (pictures(payload["contexts"])[0][0]["widgets"]["image"] if action == "build"
+                  else payload["widgets"].get(media, ""))
         loaded = graph.node("NGAIReadMedia", media=media, source=source)
         inputs["image" if media in ("image", "video") else "audio"] = loaded.out(0 if media != "audio" else 1)
     generated = graph.node("TextGenerate", **inputs)

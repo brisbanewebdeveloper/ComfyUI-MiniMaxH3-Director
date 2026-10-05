@@ -41,8 +41,10 @@ class Request(unittest.TestCase):
         self.assertIn("Request: Two samurai duel.", builder.plan_prompt(QUICK, "Two samurai duel.", 10, []))
 
     def test_pictures_are_listed_by_their_job(self):
-        text = builder.plan_prompt(QUICK, "", 25, [MAGE, HALL, STEPS])
-        self.assertIn("1. @Mage - a character: An elf with white hair.", text)
+        text = builder.plan_prompt(QUICK, "", 25, [MAGE, HALL, STEPS], shown=2)
+        self.assertIn("Pictures (the first 2 attached in this order):", text)
+        self.assertIn("1. @Mage - a character: An elf with white hair.\n", text)
+        self.assertIn("(not shown to you)", text.split("3. ")[1])
         self.assertIn("2. @Hall - a place or thing to use", text)
         self.assertIn('3. "Steps" - another view of @Mage', text)
         self.assertIn("@Mage, @Hall", text)  # the only @names a shot may use
@@ -57,10 +59,10 @@ class Request(unittest.TestCase):
         self.assertIn('"delivery":"says","language":"German"', talk)
 
     def test_a_first_frame_starts_the_video_and_a_card_without_description_is_described(self):
-        text = builder.plan_prompt(QUICK, "", 8, [card("Start", usage="first_frame")])
+        text = builder.plan_prompt(QUICK, "", 8, [card("Start", usage="first_frame")], shown=1)
         self.assertIn('The video starts exactly on "Start"', text)
         self.assertIn('"describe":{"Start":"..."}', text)
-        self.assertNotIn("describe", builder.plan_prompt(QUICK, "", 8, [card("Start", usage="first_frame")], shown=False))
+        self.assertNotIn("describe", builder.plan_prompt(QUICK, "", 8, [card("Start", usage="first_frame")], shown=0))
 
     def test_spicy_is_for_adults_only(self):
         with self.assertRaises(ValueError):

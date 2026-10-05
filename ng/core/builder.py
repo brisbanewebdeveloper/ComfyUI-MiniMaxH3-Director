@@ -221,12 +221,12 @@ def _shape(quick, sung, played, kinds_of, undescribed=()):
             '"music":"..."%s}' % (uses, line, describe))
 
 
-def plan_prompt(quick, idea, seconds, contexts, shown=True, parts=(), sung=()):
-    """The user turn for planning; with shown=True the pictures are attached in the order listed."""
+def plan_prompt(quick, idea, seconds, contexts, shown=0, parts=(), sung=()):
+    """The user turn for planning; the first `shown` pictures are attached in the order listed."""
     found = pictures(contexts)
     kinds_of = kinds(contexts)
-    undescribed = [entry["widgets"].get("name") for entry, _, _ in found
-                   if shown and entry["widgets"].get("name") and not (entry["widgets"].get("description") or "").strip()]
+    undescribed = [entry["widgets"].get("name") for number, (entry, _, _) in enumerate(found, 1)
+                   if number <= shown and entry["widgets"].get("name") and not (entry["widgets"].get("description") or "").strip()]
     request = story(idea, contexts)
     check_adults(quick["direction"], request, *[entry["widgets"].get("description", "") for entry in contexts])
     if not request.strip() and not found:
@@ -242,8 +242,9 @@ def plan_prompt(quick, idea, seconds, contexts, shown=True, parts=(), sung=()):
         "Request: %s" % (request.strip() or "(none - build the video from the pictures and the direction)"),
     ]
     if found:
-        lines += ["", "Pictures%s:" % (" (attached in this order)" if shown else "")]
-        lines += [_picture_line(number, entry, usage, content, shown, kinds_of[entry["widgets"].get("name") or ""])
+        lines += ["", "Pictures%s:" % (" (attached in this order)" if shown >= len(found) else
+                                     " (the first %d attached in this order)" % shown if shown else "")]
+        lines += [_picture_line(number, entry, usage, content, number <= shown, kinds_of[entry["widgets"].get("name") or ""])
                   for number, (entry, usage, content) in enumerate(found, 1)]
     sounds = [_audio_line(entry) for entry in contexts if entry.get("media") == "audio"]
     if sounds:

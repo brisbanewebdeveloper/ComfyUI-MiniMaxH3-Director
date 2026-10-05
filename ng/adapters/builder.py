@@ -21,14 +21,15 @@ def sees(config):
 
 
 def picture_data(contexts, limit=MAX_PICTURES):
-    """One small JPEG per image card, in the order pictures() lists them; a missing file is left out (and named)."""
-    out, missing = [], []
+    """One small JPEG per image card, in the order pictures() lists them, up to the first missing file (which is named):
+    the plan says "the first N attached in this order", so a gap would shift every later picture."""
+    out = []
     for entry, _, _ in pictures(contexts)[:limit]:
         try:
             out.extend(images("image", entry["widgets"]["image"]))
         except (ValueError, OSError):
-            missing.append(entry["widgets"].get("name") or entry["widgets"]["image"])
-    return out, missing
+            return out, [entry["widgets"].get("name") or entry["widgets"]["image"]]
+    return out, []
 
 
 async def plan(payload):
@@ -39,20 +40,18 @@ async def plan(payload):
     contexts = read_list(payload, "contexts", "request")
     quick = read_quick(payload)
     parts, sung = timing_hints(director, contexts, probe.duration_seconds)
-    shown, missing = (await asyncio.to_thread(picture_data, contexts)) if sees(config) else ([], [])
-    prompt = plan_prompt(quick, read_str(director, "idea", "director", ""), seconds, contexts, bool(shown) and not missing,
-                         parts, sung)
+    shown, _ = (await asyncio.to_thread(picture_data, contexts)) if sees(config) else ([], [])
+    prompt = plan_prompt(quick, read_str(director, "idea", "director", ""), seconds, contexts, len(shown), parts, sung)
     key = legacy.resolve_api_key({"api_key_env": config.api_key_env})
     try:
         entry, url, model = endpoint(config)
-        answer = await legacy.vlm_generate(shown if not missing else [], prompt, config.provider, url, model, api_key=key,
+        answer = await legacy.vlm_generate(shown, prompt, config.provider, url, model, api_key=key,
                                            auth=entry.auth, system_prompt=SYSTEM,
                                            **{**wire(config), "max_tokens": plan_tokens(config.max_tokens)})
         result = parse_plan(answer, seconds, contexts, quick, sung)
     except (ValueError, legacy.VLMError) as error:
         raise ValueError(str(error).replace(key, "[redacted]") if key else str(error)) from None
-    if missing:
-        result["unseen_pictures"] = missing
-    elif not shown and pictures(contexts):
-        result["unseen_pictures"] = [entry["widgets"].get("name") or "Picture" for entry, _, _ in pictures(contexts)]
+    unseen = [entry["widgets"].get("name") or "Picture" for entry, _, _ in pictures(contexts)[len(shown):]]
+    if unseen:
+        result["unseen_pictures"] = unseen
     return result
