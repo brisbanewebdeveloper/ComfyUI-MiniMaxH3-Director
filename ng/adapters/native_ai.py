@@ -3,7 +3,6 @@ import json
 
 from comfy_execution.graph_utils import GraphBuilder
 
-from ... import minimax_enhance as enhance
 from ... import minimax_media as media
 from ..core.analysis import analysis_prompt, parse_suggestion
 from ..core.auto_direct import direct_tokens, direction_prompt, parse_direction, timing_hints
@@ -11,7 +10,7 @@ from ..core.fields import need_dict, read_number, read_str
 from ..core.part_prompt import SYSTEM as WRITE_SYSTEM, write_tokens
 from ..core.part_writer import brief, finish, write_prompt
 from ..core.system_prompts import framed, for_node
-from . import h3_prompt, probe
+from . import probe
 from .ai_provider import NativeAIProvider
 
 # MiniMax H3's own text encoder is cut to 50 of Qwen3-VL-32B's 64 layers and ships no final norm and no lm_head
@@ -47,15 +46,6 @@ def request_prompt(action, payload, config):
         return direction_prompt(idea, seconds, payload["contexts"], read_str(director, "shots", "director", ""), timing), None
     if action == "write":
         return write_prompt(_write_facts(payload)), None
-    if action == "prompt":
-        # The Text card's own action. It answers with prose that goes straight into the prompt,
-        # not with the JSON the other two need, so it carries its own role and no schema framing.
-        # The preset strings come from minimax_enhance so this cannot name a block that does not
-        # exist there - a mismatch would silently fall back to the global system prompt.
-        return h3_prompt.note_prompt(read_str(payload, "note", "request", ""),
-                                     float(read_number(payload, "seconds", "request",
-                                                       h3_prompt.DEFAULT_SECONDS, minimum=0.1)),
-                                     h3_prompt.preset_of(payload.get("preset", "global"))), None
     if action != "analyze":
         raise ValueError("Choose Analyze or Auto Direct.")
     media, widgets = payload["media"], need_dict(payload["widgets"], "context.widgets")
@@ -87,18 +77,15 @@ def native_request(provider, action, request_json):
     # A connected clip is only a link here; whether it is the conditioning encoder is known once it is loaded.
     clip = graph.node("NGAICheckEncoder", clip=clip).out(0)
     max_length = (direct_tokens(provider.config.max_tokens) if action == "direct"
-                  else h3_prompt.prompt_tokens(provider.config.max_tokens) if action == "prompt"
                   else write_tokens(provider.config.max_tokens) if action == "write" else provider.config.max_tokens)
     inputs = dict(clip=clip, prompt=prompt, max_length=max_length,
                   sampling_mode="off", thinking=False, use_default_template=True,
                   # The role comes from system_prompts.py and the schema framing from there too, so
                   # the two cannot be edited apart. Auto Direct plans, an Analyze describes: the same
                   # framing with the wrong role produced answers that read as the wrong task.
-                  # "prompt" is the exception and carries no schema framing: its answer is prose
-                  # destined for the prompt itself, so asking for JSON would only turn it into
-                  # something to parse back out again.
-                  system_prompt=(enhance.system_for(h3_prompt.preset_of(payload.get("preset", "global")), 0)
-                                 if action == "prompt" else WRITE_SYSTEM if action == "write"
+                  # "write" is the exception and carries no schema framing: its answer is the prose of a
+                  # render part's prompt, labelled fields rather than JSON.
+                  system_prompt=(WRITE_SYSTEM if action == "write"
                                  # The card's medium, not `media` (which only says what is sent along and is None for a
                                  # text note): with None a Text card got the generic role and Qwen3-VL 4B lost the JSON.
                                  else framed(for_node("director" if action == "direct" else "context", payload.get("media")))))
@@ -120,9 +107,6 @@ def parse_result(text, action, request_json):
                          "use another encoder (qwen3vl_4b_bf16 answered reliably) or Ollama.")
     if action == "write":
         return finish(text, _write_facts(payload))
-    if action == "prompt":
-        # The same shape as the HTTP route's answer; the card reads suggestion.prompt and saw nothing in a bare string.
-        return {"prompt": h3_prompt.clean(text, payload.get("preset", "global"))}
     # Generic Qwen CLIP tokenizers can decode the assistant role header with the answer.
     text = text.removeprefix("assistant\n").strip()
     if action == "analyze":

@@ -26,9 +26,10 @@ def brief(director, contexts, index, probe=None):
     context = DirectorContext.from_dict(view["director_context"])
     figures = "\n".join("%s: %s" % (item.name, item.description) for item in context.items
                         if item.media == "image" and item.description.strip())
+    scenes = [item.source.strip() for item in context.items if item.media == "text" and "scene" in item.effective_usage]
     return {"index": index, "key": chunk["prompt_key"], "compiled": chunk["prompt"], "mode": chunk["mode"],
             "seconds": chunk["sampled_frames"] / 24.0, "continues": chunk["head_frames"] > 0, "parts": len(view["chunks"]),
-            "story": context.idea, "figures": figures}
+            "story": "\n\n".join(text for text in [context.idea.strip(), *scenes] if text), "figures": figures}
 
 
 def write_prompt(facts):

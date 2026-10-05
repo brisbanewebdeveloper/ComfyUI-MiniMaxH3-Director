@@ -270,7 +270,12 @@ def _global_prompt(context):
         parts = [context.idea.strip()] if has_shots(context.shots_text) else []
     if context.style and context.style != "None":
         parts.append("Visual style: %s." % context.style)
+    structured = read_document(context.shots_text) is not None
     for item in context.by_media("text"):
+        # A Scene note is story: with Shots it reached H3 through them (AI: split into shots reads it), so it is not
+        # pasted into every part again; the 27 s elf song carried its whole verse into each of three parts that way.
+        if structured and has_shots(context.shots_text) and item.effective_usage == ("scene",):
+            continue
         if item.source.strip() and set(item.effective_usage) & {"style", "rule", "character", "world", "scene", "camera", "dialogue", "constraint", "instruction"}:
             owners = [context.item(identity).name for identity in item.subject_ids if context.item(identity)]
             prefix = "For %s: " % " and ".join("@" + name for name in owners) if owners else ""

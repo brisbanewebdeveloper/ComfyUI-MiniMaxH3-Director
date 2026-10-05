@@ -30,6 +30,8 @@ const state = (extra = {}) => ({ media: "audio", values: { audio: "song.mp3" }, 
   view.button("Stamp line").onclick();
   assert.deepEqual(calls.at(-1), ["stampLyric"]);
   assert.ok(view.innerText.includes("2 of 3 line(s) timed"), view.innerText);
+  assert.ok(lyricsBox(state({ opts: { lyrics: "[00:01.00] a\n[00:03.00]\n[00:05.00] b\n[00:07.00]" } }), actions).innerText.includes("2 of 2 line(s)"),
+    "a pause stamp is not a line");
   assert.ok(lyricsBox(state({ usage: "music_style", opts: { lyrics: "[00:01.00] x" } }), actions).innerText.includes("Lock or Copy clip on a Studio audio lane"));
   assert.equal(lyricsBox(state({ busy: "lyrics" }), actions).button("Listening …").disabled, true);
   assert.equal(lyricsBox(state({ values: { audio: "" } }), actions).button("Stamp line").disabled, true);

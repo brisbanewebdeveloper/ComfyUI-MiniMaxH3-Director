@@ -14,7 +14,7 @@ export const USAGE = {
   video: [["motion", "Motion reference", ""], ["camera", "Camera reference", ""], ["continue", "Continue from video", ""], ["structure", "Whole structure", ""]],
   audio: [["voice", "Voice", "timbre of a figure"], ["copy", "Copy", "reuse the sound"], ["lock", "Lock", "keep it exactly"],
     ["music_style", "Music style", ""], ["rhythm", "Rhythm", ""], ["sound_reference", "Sound reference", ""]],
-  text: [["style", "Style / direction", ""], ["rule", "Rule", ""], ["character", "Character", ""], ["world", "World lore", ""], ["scene", "Scene", ""],
+  text: [["style", "Style / direction", ""], ["rule", "Rule", ""], ["character", "Character", ""], ["world", "World lore", ""], ["scene", "Scene / story", "read by the AI"],
     ["camera", "Camera rule", ""], ["dialogue", "Dialogue rule", ""], ["constraint", "Constraint", ""], ["instruction", "General", ""]],
 };
 // Preserve keys and their three levels, as context_options.preserve stores them; background has its own words.
@@ -59,6 +59,10 @@ export function roleHint(media, role, mode) {
     if (fl && role !== "lock") return { text: "First / last frame mode only uses sound as a lock.", warn: true };
     if (role === "voice") return { text: "The voice of the figure chosen under “Whose voice”.", warn: false };
     return { text: "On an audio lane the Studio chooses lock, copy or reference per clip.", warn: false };
+  }
+  if (media === "text") {
+    if (role === "scene") return { text: "The story, like the Director's Prompt: AI: split into shots reads it. With shots, H3 gets the shots instead.", warn: false };
+    return { text: "Sent in every render part, after the Look.", warn: false };
   }
   return { text: "", warn: false };
 }

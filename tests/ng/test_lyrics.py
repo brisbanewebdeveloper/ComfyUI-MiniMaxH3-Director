@@ -134,6 +134,20 @@ class Look(unittest.TestCase):
             self.assertNotIn("An elf mage sings a sad song.", prompt)
             self.assertIn("integrated_multimodal_description: [Shot 1] Dark gothic fantasy, cinematic anime style. She sings", prompt)
 
+    def test_a_scene_note_is_story_and_other_notes_go_into_every_part(self):
+        # User (2026-10-05): the prompt in H3 Context Text was "not understood" - it was pasted, whole, into every part.
+        scene = ctx.ContextItem("t1", "Song scene", "text", "She sings the whole verse: My master ...", usage=("scene",))
+        rule = ctx.ContextItem("t2", "Rule", "text", "No camera cuts.", usage=("rule",))
+        with_shots = plan(doc([shot("s1", 0, 27)]), (scene, rule))
+        self.assertTrue(all("whole verse" not in c.prompt and "No camera cuts." in c.prompt for c in with_shots.compiled))
+        without = plan("", (scene,), seconds=8.0)
+        self.assertIn("whole verse", without.compiled[0].prompt, "a text-only video without shots still gets its scene")
+        direct = module("ng.core.auto_direct")
+        card = {"media": "text", "widgets": {"name": "Song scene", "text": "She sings the whole verse.", "usage": "scene"}}
+        self.assertIn("She sings the whole verse.", direct.direction_prompt("", 27, [card]), "the split reads it with an empty Prompt")
+        with self.assertRaisesRegex(ValueError, "Text card used as Scene"):
+            direct.direction_prompt("", 27, [{**card, "widgets": {**card["widgets"], "usage": "rule"}}])
+
     def test_without_shots_the_prompt_still_carries_the_video(self):
         result = plan("", (), seconds=8.0)
         self.assertIn("[Shot 1] An elf mage sings a sad song.", result.compiled[0].prompt)

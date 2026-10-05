@@ -421,9 +421,10 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
         result = await module("ng.adapters.auto_direct").direct({"provider": provider, "contexts": [],
                                                                  "director": {"idea": "Alice walks.", "project_seconds": 8}})
         self.assertIn("Alice walks.", result["shots"])
-        self.answer = "A woman walks through a station."
-        built = await module("ng.adapters.h3_prompt").build({"provider": provider, "note": "Eine Frau geht.", "seconds": 8, "preset": "global"})
-        self.assertIn("station", built["prompt"])
+        self.answer = "description: [Shot 1] A woman walks through a station."
+        written = await module("ng.adapters.part_writer").write({"provider": provider, "contexts": [], "part": 0,
+                                                                 "director": {"idea": "Alice walks.", "project_seconds": 8}})
+        self.assertTrue(written["problems"], "a 9-word description is refused, but it did reach the provider")
         self.assertEqual([(path, auth, body["model"]) for path, auth, body in self.requests],
                          [("/v1/chat/completions", "Bearer test-key", "mock")] * 2)
 

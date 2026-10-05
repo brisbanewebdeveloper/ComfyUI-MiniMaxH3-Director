@@ -30,7 +30,7 @@ function speakerBox(S, actions) {
   const choose = h("select", { class: "h3c-in", "aria-label": "Whose voice", onchange: (event) => actions.set("speaker", event.target.value) },
     h("option", { value: "" }, "— nobody (narrator)"), S.speakers.map((entry) => h("option", { value: entry.id }, entry.name)));
   choose.value = S.values.speaker || "";
-  return box("Whose voice", choose, h("span", { class: "h3c-hint" }, "Only needed for “Voice”. Who speaks a line is set per shot in the Studio."));
+  return box("Whose voice", choose, h("span", { class: "h3c-hint" }, "For “Voice”, and for who sings this card's Lyrics. Who speaks a line in a shot is set in the Studio."));
 }
 
 function layout(S, actions) {
@@ -66,8 +66,7 @@ function attach(node, media) {
   const root = h("div", { class: "h3c", dataset: { media } });
   keepKeys(root);
   const S = { media, node, els: {}, files: [], presets: [], presetName: node.properties.ng_preset_name || "", suggestion: null, busy: false,
-    envelope: null, waveError: "", dragging: false, pending: false, textMode: node.properties.ng_text_view || (node.properties.ng_text_ai ? "ai" : "note"),
-    build: { block: "global", seconds: 8 }, status: "", statusWarn: false, listen: node.properties.ng_preview_settings };
+    envelope: null, waveError: "", dragging: false, pending: false, status: "", statusWarn: false, listen: node.properties.ng_preview_settings };
   if (media === "image") { S.els.image = new Image(); S.els.image.onload = () => schedule(); }
   if (media === "video") { S.els.video = h("video", { controls: true, preload: "metadata", muted: false }); S.els.video.onloadedmetadata = () => schedule(); }
   if (media === "audio") { S.els.audio = h("audio", { preload: "metadata" }); wirePlayback(S, () => schedule()); }
@@ -93,7 +92,6 @@ function attach(node, media) {
     S.files = (node.widgets?.find((widget) => widget.name === media)?.options?.values || []).slice();
     if (S.values[media] && !S.files.includes(S.values[media])) S.files.unshift(S.values[media]);
     S.accent = /^#[0-9a-f]{6}$/i.test(S.values.color || "") ? S.values.color : FAMILY[node.comfyClass].color;
-    S.hasAiText = Boolean(node.properties.ng_text_ai);
     if (media !== "text") refreshSource();
   }
 
@@ -192,39 +190,13 @@ function attach(node, media) {
       queueMicrotask(() => { S.els.lyrics?.focus(); S.els.lyrics?.setSelectionRange(result.caret, result.caret); });
     },
     cancel() { controller?.abort(); },
-    // Text card: the note and the built prompt are both kept; the switch decides which one the Director reads.
-    setNote(text) {
-      node.properties[S.textMode === "ai" ? "ng_text_ai" : "ng_text_note"] = text;
-      applyValues(node, { text }); S.values = values(node);
-    },
-    textView(next) {
-      node.properties[S.textMode === "ai" ? "ng_text_ai" : "ng_text_note"] = values(node).text || "";
-      S.textMode = node.properties.ng_text_view = next;
-      applyValues(node, { text: String((next === "ai" ? node.properties.ng_text_ai : node.properties.ng_text_note) ?? "") }); node.graph?.change?.();
-    },
+    setNote(text) { applyValues(node, { text }); S.values = values(node); },
     insert(key) {
       const editor = S.els.editor, text = values(node).text || "", at = editor?.selectionStart ?? text.length, end = editor?.selectionEnd ?? at, token = `[${key}]`;
       actions.setNote(text.slice(0, at) + token + text.slice(end)); render();
       queueMicrotask(() => { S.els.editor?.focus(); S.els.editor?.setSelectionRange(at, at + token.length); });
     },
     useTemplate(name) { const text = values(node).text || "", body = TEMPLATES[name] || ""; actions.setNote(text.trim() ? `${text}\n${body}` : body); render(); },
-    buildOption(key, value) { S.build[key] = value; },
-    async build() {
-      const provider = contextProvider(node), note = String(node.properties.ng_text_note ?? values(node).text ?? "").trim();
-      if (!provider || S.busy) return;
-      if (!note) { say("Write the note first, in any language.", true); return; }
-      S.busy = "build"; controller = new AbortController(); say("");
-      try {
-        const seconds = Math.min(15, Math.max(4, Number(S.build.seconds) || 8));
-        const data = await aiAction(app, api, "prompt", { note, seconds, preset: S.build.block, provider }, controller.signal);
-        const prompt = data.suggestion?.prompt || "";
-        if (!prompt) { say("The AI answered without a prompt.", true); return; }
-        if (S.textMode !== "ai") node.properties.ng_text_note = values(node).text || "";
-        node.properties.ng_text_ai = prompt; S.textMode = node.properties.ng_text_view = "ai";
-        applyValues(node, { text: prompt }); node.graph?.change?.(); say("Built the English H3 prompt. Your note is kept under “My note”.");
-      } catch (error) { say(error.message === "AI action cancelled." ? "AI cancelled, nothing changed." : `AI failed: ${error.message}`, error.message !== "AI action cancelled."); }
-      finally { S.busy = ""; controller = null; render(); }
-    },
   };
 
   // Redraw everything; the field being typed in gets its focus and caret back by its place among the fields.
@@ -292,7 +264,6 @@ function attach(node, media) {
     // Saved by the former, narrower Context node: the card needs the room once, and the nodes around it move along.
     if (node.size?.[0] < WIDTH[media] - 20) { noteGrowth(node, [...node.size]); node.setSize([WIDTH[media], Math.max(node.size[1], measured)]); }
     S.presetName = node.properties.ng_preset_name || ""; S.listen = node.properties.ng_preview_settings ||= { volume: 1, fade_in: 0, fade_out: 0 };
-    S.textMode = node.properties.ng_text_view || (node.properties.ng_text_ai ? "ai" : "note");
     schedule(); return result;
   };
   const connected = node.onConnectionsChange;

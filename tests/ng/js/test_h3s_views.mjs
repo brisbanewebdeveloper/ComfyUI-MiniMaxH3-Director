@@ -78,6 +78,10 @@ function recorder() {
   assert.ok(mode.innerText.includes("Turbo on"));
   mode.button("References").onclick();
   assert.deepEqual(calls.at(-1), ["setWidget", "mode", "ref2va"]);
+  // The user's FL2VA run used no picture at all: the card was a reference. The mode says so now, not only the drawer.
+  const ignored = { ...plan, issues: [{ code: "reference_disabled", text: "Is omitted by explicit fl2va mode.", ref: "Mage" }] };
+  [mode] = sideView(state({ plan: ignored, values: { mode: "fl2va" } }), actions);
+  assert.ok(mode.innerText.includes("Mage is a reference, which First / last frame does not use"), mode.innerText);
   [, panel] = sideView(state({ selected: { kind: "clip", id: "c1" }, values: { mode: "fl2va" } }), actions);
   assert.ok(panel.innerText.includes("Story 4–10 s → plays file 10–16 s"));
   assert.ok(panel.innerText.includes("H3 can only lock sound"));

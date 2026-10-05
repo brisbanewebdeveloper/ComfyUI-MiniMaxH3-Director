@@ -22,7 +22,8 @@ export function timedCount(text) {
 }
 
 export function lyricsBox(S, actions) {
-  const text = S.opts.lyrics || "", timed = timedCount(text), lines = String(text).split("\n").filter((line) => line.trim() && !/^\s*\[la:/i.test(line)).length;
+  const text = S.opts.lyrics || "", timed = timedCount(text);
+  const lines = String(text).split("\n").filter((line) => line.replace(STAMP, "").trim() && !/^\s*\[la:/i.test(line)).length;
   const editor = h("textarea", { class: "h3c-in", rows: Math.min(12, Math.max(4, lines + 1)), value: text, spellcheck: false, "aria-label": "Lyrics",
     placeholder: "Paste the lyrics, one line per sung line. ⟳ Time with Whisper adds when each line is sung.",
     onchange: (event) => actions.setOptions({ lyrics: event.target.value }) });

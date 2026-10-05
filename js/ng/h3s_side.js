@@ -31,6 +31,9 @@ function modeCard(S, actions) {
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "8px" } },
       seg("fl2va", "First / last frame", "FL2VA · first/last picture + sound"), seg("ref2va", "References", "Ref2VA · character, place, video, voice")),
     h("span", { style: { fontSize: "13px", color: "#B4BDCC" } }, hint),
+    ...(S.plan?.issues || []).filter((issue) => issue.code === "reference_disabled").map((issue) => h("span", { class: "h3s-warn", style: { fontSize: "13px" } },
+      `${issue.ref} is a reference, which First / last frame does not use: the video is made from text alone. `
+      + "On its card choose First frame, or switch to References.")),
     h("button", { class: "h3s-toggle", "aria-pressed": String(turbo), onclick: () => actions.setTurbo(!turbo) },
       h("span", { class: turbo ? "h3s-switch on" : "h3s-switch" }),
       h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Turbo ${turbo ? "on" : "off"}`),

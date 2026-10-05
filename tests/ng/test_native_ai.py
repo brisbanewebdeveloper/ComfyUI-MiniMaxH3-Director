@@ -76,7 +76,8 @@ class NativeAI(unittest.TestCase):
         self.assertTrue(minimax.conditioning_file("MiniMax-H3/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "stable_diffusion"))
         provider = self.provider(clip=None, local_model="qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors", local_type="minimax")
         with self.assertRaisesRegex(ValueError, "qwen3vl_4b"):
-            self.nodes["NGAIRequest"].execute(ai_provider=provider, action="prompt", request_json=json.dumps({"note": "x"}))
+            self.nodes["NGAIRequest"].execute(ai_provider=provider, action="direct",
+                                              request_json=json.dumps({"director": {"idea": "x", "project_seconds": 8}, "contexts": []}))
 
     def test_a_connected_clip_wins_over_a_leftover_model_name(self):
         """Choosing an encoder once and connecting Load CLIP later must not leave two candidates."""

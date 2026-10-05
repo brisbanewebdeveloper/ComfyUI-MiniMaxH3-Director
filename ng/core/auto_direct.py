@@ -35,11 +35,27 @@ def _meanings(contexts):
              "subject_ids": entry["widgets"].get("subject_ids", "")} for entry in contexts]
 
 
+def story(idea, contexts):
+    """What the video is about: the Prompt, and every Text card used as Scene. Either place works for the AI."""
+    notes = [entry["widgets"].get("text", "").strip() for entry in contexts
+             if entry.get("media") == "text" and "scene" in _roles(entry["widgets"])]
+    return "\n\n".join(text for text in [idea.strip(), *notes] if text)
+
+
+def _roles(widgets):
+    try:
+        roles = json.loads(widgets.get("usage_roles") or "[]")
+    except ValueError:
+        roles = []
+    return roles if isinstance(roles, list) and roles else [widgets.get("usage", "")]
+
+
 def direction_prompt(idea, seconds, contexts, current_shots="", timing=((), ())):
     meanings = _meanings(contexts)
     records = current_records(current_shots, seconds)
+    idea = story(idea, contexts)
     if not idea.strip() and not records:
-        raise ValueError("Write an idea or an existing Shot before Auto Direct.")
+        raise ValueError("Write the Prompt, or a Text card used as Scene, before AI: split into shots.")
     if records:
         return draft_prompt(idea, seconds, meanings, records)
     return split_prompt(idea, seconds, meanings, *timing)

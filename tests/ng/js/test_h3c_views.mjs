@@ -71,15 +71,13 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   const { actions, calls } = recorder();
   const S = state({ media: "text", usage: "style", values: { name: "Rules", text: "Slow camera." } });
   const [main] = textBody(S, actions);
-  assert.equal(main.button("AI prompt").disabled, true);
+  assert.equal(main.button("✦ Build"), undefined, "no H3 block is built on the card any more: it nested inside the Director's");
+  assert.ok(main.innerText.includes("goes into every render part"));
+  assert.ok(textBody(state({ media: "text", usage: "scene", values: { text: "She sings." } }), actions)[0].innerText.includes("the AI splits it into shots"));
   main.button("+ Character").onclick();
   assert.deepEqual(calls.at(-1), ["insert", "character"]);
   main.byTag("textarea")[0].oninput({ target: { value: "Slow camera, no cuts." } });
   assert.deepEqual(calls.at(-1), ["setNote", "Slow camera, no cuts."]);
-  const [aiView] = textBody(state({ media: "text", usage: "style", textMode: "ai", hasAiText: true, values: { text: "visual_style: slow" } }), actions);
-  const area = aiView.byTag("textarea")[0];
-  assert.ok(area.readOnly === true || "readOnly" in area.attributes, "the AI prompt is read-only");
-  assert.equal(aiView.button("+ Character").disabled, true);
   // The Text card analyzes too: Analyze on "Use as", the suggestion with Accept/Discard under it (the docs' native AI example).
   const all = (S) => ({ find: (test) => textBody(S, actions).flatMap((part) => part.find(test)) });
   const button = (S, text) => all(S).find((node) => node.tagName === "BUTTON" && node.innerText.startsWith(text))[0];
@@ -88,9 +86,8 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   const suggested = state({ media: "text", usage: "style", suggestion: { fields: { usage: "rule" }, why: "It states a rule." }, values: { text: "No cuts." } });
   button(suggested, "Accept").onclick();
   assert.deepEqual(calls.at(-1), ["accept"]);
-  const building = state({ media: "text", usage: "style", busy: "build", values: { text: "No cuts." } });
-  assert.equal(button(building, "✦ Analyze").disabled, true, "one AI action at a time");
-  assert.ok(button(building, "Building") && !button(building, "Analyzing"), "only the running action says so");
+  const analyzing = state({ media: "text", usage: "style", busy: "analyze", values: { text: "No cuts." } });
+  assert.equal(button(analyzing, "✦ Analyze"), undefined, "a running analysis shows its own state");
 }
 
 console.log("h3c views ok");
