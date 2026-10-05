@@ -167,7 +167,7 @@ This is the compiler's real output, refreshed live while you edit.
 | H3 Render Sequence | Expanded native List loop, sampler and collector; outputs VIDEO, IMAGE, AUDIO and notes |
 
 The technical nodes remain available under **MiniMax H3 / NG / Technical** (NG Chunk Planner, NG Chunk Conditioning,
-NG Collect, NG Project Chunks, NG Studio Laboratory). Saved IDs remain valid.
+NG Collect, NG Collect Video for long projects, NG Project Chunks, NG Studio Laboratory). Saved IDs remain valid.
 
 ## Project data
 

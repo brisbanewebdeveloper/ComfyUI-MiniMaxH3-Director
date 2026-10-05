@@ -10,6 +10,8 @@
 - **Prompts per render part**: Write with AI / Edit / Reset. The AI writes only the prose; the plan's structure is checked, small slips are repaired, an outdated own prompt is not used.
 - First / last frame mode with only reference pictures now says so in the Studio's mode panel (it renders from text alone).
 - Removed: **Build H3 prompt** on the Text card (its block nested inside the Director's own prompt).
+- **NG Collect Video** writes a long project (a whole song) part by part into a video file; NG Collect would hold every frame in memory (177 s at 768x1152: 45 GB).
+- Whisper timing of a whole song: lines after the last heard word are spread over the rest of the file instead of collapsing onto one instant; no audio-dulling warning when a lock covers the whole video; the Studio says when the prompt writer kept a part unchanged.
 
 **A music video end to end** (2026-10-05): the user's 27 s elf song (picture, MP3, prompt with lyrics) rendered in both modes.
 

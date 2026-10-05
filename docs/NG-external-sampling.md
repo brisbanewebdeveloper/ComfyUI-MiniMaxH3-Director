@@ -29,6 +29,9 @@ CFGGuider explicitly uses CFG 1. The base examples use 20 steps; the recorded pi
    `next_iteration_value`, with **accumulate on**. Include both video and audio, the whole sampled time axis and the pinned head.
 5. Connect End Loop's accumulated latents and Director's original **chunks** list to NG Collect, with both VAEs.
    Feed its images/audio into CreateVideo, then SaveVideo. Take CreateVideo's fps from Collect's **fps** (24) or type 24.
+   For long projects (a whole song) use **NG Collect Video** instead: same inputs, it decodes one render part at a time
+   straight into an H.264/AAC file and connects directly to SaveVideo. NG Collect holds every frame at once (177 s at
+   768×1152 are 4248 frames, 45 GB in float32), which does not fit in memory.
 
 One Output prepares each current chunk; H3 Prepare Chunk has been removed. Its original nine outputs retain their slots.
 Keep Output's sampler values and seed inside the loop. Sending an Output value directly past End Loop creates a native loop escape;
