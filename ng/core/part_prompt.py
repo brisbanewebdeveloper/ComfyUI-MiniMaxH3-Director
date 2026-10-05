@@ -85,7 +85,8 @@ def _extra_rules(head, reference, guidance, pictures):
     named = [label for label in pictures if label]
     if named:
         rules.append("The attached pictures are, in order: %s. Describe what they show concretely and never against them: faces, "
-                     "hair, clothing, colours, the place and its light." % ", ".join(named))
+                     "hair, clothing, colours, the place and its light. They are references, not the video: never describe a "
+                     "character sheet, its layout, labels or several views as such." % ", ".join(named))
     elif pictures:
         rules.append("The attached pictures show how the characters and the place look; describe that in words, without labels.")
     return rules
@@ -119,7 +120,8 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
         "The draft is only a skeleton: write new sentences of your own, two or three for every shot, describing what is visible "
         "and audible: appearance, position in the frame, actions and small movements, facial expression, light, and the camera "
         "movement as a sentence with amplitude and speed (e.g. The camera pushes in with small amplitude at slow speed). Only the "
-        "shot markers, the labels and the lines above are taken over word for word. About 250 to 400 words. English, except inside <d>.",
+        "shot markers, the labels and the lines above are taken over word for word. About %s words. English, except inside <d>."
+        % ("350 to 500" if reference else "250 to 400"),  # ref-en 5.2: a generation task's description is normally 350-500 words
         "overall_soundscape: one to three English sentences of ambience and physical sounds; no speech, no singing.",
         "non_diegetic_music: the score only the audience hears (instruments, tempo, dynamics), or N/A.",
         "The story and the figures below are material for detail only; they never change times, cuts or words.",
@@ -156,7 +158,8 @@ def _answer_fields(text):
 
 
 def _words(text):
-    return re.findall(r"\w+", text.lower())
+    # The language tag does not count: qwen3.5:9b copied "<d>The void calls to me.</d>" without its "[English]".
+    return re.findall(r"\w+", re.sub(r"^<d>\s*\[[^\]]*\]", "<d>", text).lower())
 
 
 def _lines_back(written, body):

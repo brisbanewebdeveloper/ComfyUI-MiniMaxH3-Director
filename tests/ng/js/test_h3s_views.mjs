@@ -169,6 +169,27 @@ function recorder() {
   assert.deepEqual(calls.at(-1), ["toggleBinding", "song"]);
   const prompt = promptView(state({ ai: false }), actions);
   assert.equal(prompt.button("AI: split into shots").disabled, true, "no AI without a loader");
+  assert.equal(prompt.button("Make H3 prompt").disabled, true, "Make H3 prompt needs a loader too");
+  assert.match(prompt.innerText, /Connect an H3 AI Loader/);
+}
+
+// Make H3 prompt: a picture is enough, the direction brings its speech, and the button starts the build.
+{
+  const { changeQuick, readQuick } = await import("../../../js/ng/h3s_quick.js");
+  const calls = [];
+  const actions = new Proxy({}, { get: (_, name) => (...args) => calls.push([name, ...args]) });
+  const quick = { direction: "music_video", speech: "none", language: "English" };
+  const prompt = promptView(state({ ai: true, quick, values: { idea: "", project_seconds: 20 } }), actions);
+  assert.match(prompt.innerText, /1 picture, no Prompt \(optional with pictures\), 20 s\. Nobody speaks\./);
+  prompt.button("Make H3 prompt").onclick();
+  assert.deepEqual(calls.at(-1), ["buildPrompt"]);
+  assert.equal(changeQuick(quick, "direction", "song").speech, "singing", "a song sings");
+  assert.equal(changeQuick({ ...quick, speech: "singing" }, "direction", "story").speech, "none", "and stops singing after");
+  assert.equal(changeQuick({ ...quick, speech: "dialogue" }, "direction", "story").speech, "dialogue", "a chosen dialogue stays");
+  assert.deepEqual(readQuick({ properties: { ng_quick: { direction: "x", speech: "dialogue" } } }),
+    { direction: "auto", speech: "dialogue", language: "English" });
+  const none = promptView(state({ ai: true, quick, values: { idea: "", project_seconds: 20 }, contexts: [] }), actions);
+  assert.equal(none.button("Make H3 prompt").disabled, true, "nothing to build from without a picture or a Prompt");
 }
 
 // BUG-003: with an empty Context ID field the Studio uses the id the Python side builds (tests/ng/test_context_ids.py).

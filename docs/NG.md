@@ -43,6 +43,26 @@ of it and below it move along so nothing overlaps; the same happens for Context 
 **Full screen** in the Studio's header lifts the same Studio over the whole window; **Esc** or **Back to graph** puts it back
 into the node. It has no inner scroll areas. Below about 960 px of width the side panel moves under the timeline. **Generate** queues the connected workflow, exactly like ComfyUI's Queue button.
 
+### Make H3 prompt
+
+The quickest way to a finished prompt, for anyone who does not want to write one. Choose a **direction** (Let the AI decide,
+Music video, Song, Story, Action / fight, Calm scene, Dance, Horror, Comedy, Romance, Spicy 18+), whether anyone speaks
+(No speech, Dialogue, Narrator, Singing; with words, their language) and press **Make H3 prompt**. Pictures on Context cards
+are enough; the Prompt is optional with pictures and is used when there is one. The Director's **Duration** sets the length.
+
+1. The AI is shown the pictures (with their card descriptions) and plans the whole video: the Look, timed shots with action
+   and camera, spoken or sung lines, ambience and music. Words you write in quotes or after "says:" are used as they are;
+   otherwise the AI writes short lines in the chosen language. Lyrics on an Audio card stay the song's (timed as usual).
+   A picture card without a description gets one from this answer.
+2. The plan replaces the shots (another view of a figure, "Belongs to", and a place picture are bound to the shots that show
+   them), then every render part is written out by the part writer with the direction and that part's pictures, checked and
+   kept as the part's own prompt. A part whose answer breaks a rule keeps its compiled prompt and is counted in the message.
+3. **Undo** in the message puts the shots, Look, sound fields and card descriptions back.
+
+The direction and speech are saved with the Director node. **Spicy 18+** is for adults only: a request or card that speaks
+of a minor is refused before any AI is asked, and the AI is told to refuse a picture that suggests one. Whether a model writes
+explicit scenes depends on the model (qwen3.5:9b writes them sensual but restrained).
+
 ### Prompt and Content
 
 **Prompt** is the story: what happens, in any language, lyrics included. Without shots, the prompt alone carries the project:

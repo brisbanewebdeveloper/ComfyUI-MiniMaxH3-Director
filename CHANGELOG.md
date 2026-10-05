@@ -2,6 +2,17 @@
 
 ## 1.0.0 (unreleased)
 
+**Make H3 prompt** (2026-10-06): one button in the Studio for a finished H3 prompt from a direction and the pictures.
+
+- Choose a direction (music video, song, story, action, calm, dance, horror, comedy, romance, Spicy 18+ for adults only) and
+  whether anyone speaks; the AI sees the pictures, plans the shots and writes every render part out. The Prompt is optional.
+- Empty picture descriptions are filled from the same answer; views and places are bound to the shots that show them.
+- The part writer gets the direction and the part's pictures, writes the Ref2VA summary, and its slips are repaired: an extra
+  shot marker, an invented line in a silent part, a dropped `[English]`, missing keyframe anchors (FL2VA/I2VA).
+- A figure that speaks in one shot keeps its reference picture in every render part (it was dropped from the others).
+- Later shots open with the guide's cut words ("At 00:04.000, the camera cuts to a close-up of ..."); a narrator line starts
+  with a capital letter.
+
 **One story, timed lyrics, a final prompt per render part** (2026-10-05):
 
 - The Prompt (or a Text card used as Scene / story) is the story. With shots, H3 gets the shots plus a new **Look** that every part shares; the Prompt is no longer pasted whole into every part.

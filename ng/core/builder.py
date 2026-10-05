@@ -167,9 +167,10 @@ def _rules(quick, seconds, found, names, played, parts, sung, kinds_of):
     rules = [
         "look: one or two English sentences that every shot shares. Start with the style the pictures are made in, judged "
         "from the pictures themselves: a photograph is 'Live-action, photorealistic'; a drawing, painting or anime illustration "
-        "is '2D anime' or 'illustrated'; only a rendered 3D image is '3D CG'. Then the place, the light and the colour palette. "
-        "No action. A picture that is a character sheet, collage or has text and labels gives only the character, never its "
-        "layout, labels or plain background." if found else
+        "is '2D anime' or 'illustrated'; only a rendered 3D image is '3D CG'. Then the place where the video happens, its light "
+        "and colour palette. No action. The pictures only say how the characters and places look: when a picture is a "
+        "character sheet, a collage, has text or a plain studio background, the video happens in a real place that fits the "
+        "request and the direction, never on a sheet or in front of a plain backdrop." if found else
         "look: one or two English sentences that every shot shares: the visual style (for example 'Live-action, cinematic', "
         "'2D anime', '3D CG'), the place, the light and the colour palette. No action.",
         "shots: %s, in order, end to end from 0 to %s s. Start a new shot only when the view changes (another framing, angle or "
