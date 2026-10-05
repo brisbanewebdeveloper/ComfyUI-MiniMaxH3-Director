@@ -136,6 +136,7 @@ export function studioAI(S, app, api, done) {
           else if (draft.unchanged || draft.key !== chunk.prompt_key) result.unchanged++;
           else { keep(chunk.index, draft); result.written++; }
         }
+        await replan(); // the parts' own prompts are in now; without this the drawer showed "outdated" until the next plan
         return result;
       } catch (error) {
         if (mine === serial) S.notice = failure(error, provider);
