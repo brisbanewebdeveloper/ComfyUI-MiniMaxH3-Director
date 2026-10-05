@@ -117,6 +117,13 @@ class Placement(unittest.TestCase):
         result = plan(doc([shot("s1", 0, 27, "@Mage sings in the hall.")], [lane()]), (mage(), song(speaker="mage")), mode="ref2va")
         self.assertRegex(result.compiled[0].prompt, r"<Subject 1> \(S1\) sings, <d>\[English\] My master")
 
+    def test_in_first_last_frame_mode_the_figure_is_shown_in_the_picture_and_sings_by_name(self):
+        # Elf song in FL2VA (2026-10-05): "<Picture 1> stands in a three-quarter portrait ... the singer (S1) sings".
+        first = ctx.ContextItem("mage", "Mage", "image", "mage.png", usage=("first_frame",), content=("character",))
+        prompt = plan(doc([shot("s1", 0, 27, "@Mage stands in the hall. @Mage looks up.")], [lane()]), (first, song(speaker="mage"))).compiled[0].prompt
+        self.assertIn("[Shot 1] Mage, shown in <Picture 1>, stands in the hall. Mage looks up.", prompt)
+        self.assertIn("Mage (S1) sings, <d>[English] My master", prompt)
+
     def test_a_reference_song_is_not_sung(self):
         result = plan(doc([shot("s1", 0, 27)]), (song(usage=("music_style",)),))
         self.assertNotIn("<d>", "".join(self.prompts(result)))

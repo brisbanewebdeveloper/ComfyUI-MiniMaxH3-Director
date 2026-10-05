@@ -59,6 +59,17 @@ def prompt_labels(result, mapping, context, refs):
     return tuple(labels) + media_labels(context, refs)
 
 
+def _shown_in(text, name, label):
+    """The first mention of a frame picture says where it is shown, later ones use the name: the guide writes "the young
+    woman shown in <Picture 1> remains ...", while "<Picture 1> stands in the hall" made the picture the actor."""
+    pieces = text.split("\x00")
+    if len(pieces) == 1:
+        return text
+    rest = pieces[1]
+    first = "%s, shown in %s%s" % (name, label, "" if not rest or rest[0] in ".,;:!?\n" else ",")
+    return pieces[0] + first + rest + "".join(name + piece for piece in pieces[2:])
+
+
 def resolve_guide_mentions(prompt, context, refs, labels):
     pictures = {identity: label for label, identity in reversed(labels) if label.startswith("<Picture ")}
     unnumbered = {ref.ctx_id: ref for ref in refs if ref.kind in ("keyframe", "continue_video")}
@@ -71,7 +82,11 @@ def resolve_guide_mentions(prompt, context, refs, labels):
         ref = unnumbered.get(item.id)
         fallback = "the continuation frame" if ref and ref.kind == "continue_video" else "the guide image"
         label = pictures.get(item.id) or item.description.strip().rstrip(".") or (fallback if ref else item.name)
-        resolved = replace_mentions(prompt, {item.name: label}, (candidate.name for candidate in context.items))
+        names = [candidate.name for candidate in context.items]
+        if item.id in pictures:
+            resolved = _shown_in(replace_mentions(prompt, {item.name: "\x00"}, names), item.name, label)
+        else:
+            resolved = replace_mentions(prompt, {item.name: label}, names)
         if resolved != prompt and item.id not in pictures:
             code = "guide_mention_prose" if ref else "guide_mention_unavailable"
             reason = "has frame conditioning but no numbered reference token" if ref else "is not presented in this chunk"

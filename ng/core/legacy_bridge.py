@@ -239,9 +239,11 @@ def _anchor_segments(context, chunk, guides):
     return out
 
 
-def _sung_line(line, speakers):
+def _sung_line(line, speakers, context):
     _, speaker, language, text = line
-    who = "@" + speakers[speaker].name if speaker in speakers else "@voice(%s)" % SINGER
+    # Without a reference subject (First / last frame) the singer is named, not "the singer".
+    named = context.item(speaker).name if speaker and context.item(speaker) else SINGER
+    who = "@" + speakers[speaker].name if speaker in speakers else "@voice(%s)" % named
     return "%s [%s] sings: %s" % (who, language, text)
 
 
@@ -258,7 +260,7 @@ def _add_sung_lines(segments, context, chunk, groups, substitute):
         local = line[0]
         segment = next((seg for seg in segments if seg["start"] <= local < seg["start"] + seg["length"]),
                        min(segments, key=lambda seg: abs(seg["start"] - local)))
-        segment["prompt"] = "\n".join(part for part in (segment["prompt"], substitute(_sung_line(line, speakers))) if part)
+        segment["prompt"] = "\n".join(part for part in (segment["prompt"], substitute(_sung_line(line, speakers, context))) if part)
 
 
 def _global_prompt(context):
