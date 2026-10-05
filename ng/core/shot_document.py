@@ -114,6 +114,12 @@ def read_audio_clips(text):
     return clips
 
 
+def read_look(text):
+    """What every render part shares (style, place, light), written once beside the Shots; "" when there is none."""
+    data = _load(text)
+    return fields.read_str(data, "look", "shots", "").strip() if data else ""
+
+
 def has_shots(text):
     """Whether the user wrote Shots. A document that only holds audio clips leaves the Prompt to carry the video."""
     data = _load(text)

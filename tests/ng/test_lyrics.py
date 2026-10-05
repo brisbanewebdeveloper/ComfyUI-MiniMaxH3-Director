@@ -1,0 +1,124 @@
+"""A song's timed lyrics reach only the render part they are sung in; the Look is what every part shares.
+
+User's 27 s elf song (2026-10-05): all eight lines were in each of the three 9 s parts, twice (Prompt and Shot), and only
+the first was a sung line at all.
+"""
+import json
+import unittest
+
+from _pack import module
+
+ctx, opts = module("ng.core.context"), module("ng.core.context_options")
+chunks, project, lyrics = module("ng.core.chunks"), module("ng.core.project"), module("ng.core.lyrics")
+
+SONG = """[la:English]
+[00:01.00] My master, where did your footsteps fade?
+[00:05.00] I still wait where your shadow stayed.
+[00:09.50]
+[00:12.00] The halls are cold, the candles burn,
+[00:16.00] but every flame still waits for your return.
+[00:21.00] You taught my hands to shape the light,
+"""
+
+
+def doc(shots=(), audio=(), look=None):
+    data = {"format": "h3-director-shots", "schema_version": 1, "shots": list(shots), "audio": list(audio)}
+    if look is not None:
+        data["look"] = look
+    return json.dumps(data)
+
+
+def shot(identity, start, end, text="She sings in the hall."):
+    return dict(id=identity, start=start, end=end, text=text, media=[], spoken=[], locked_fields=[], draft=None)
+
+
+def lane(start=0.0, end=27.0, offset=0.0, mode="lock"):
+    return {"schema_version": 1, "id": "c1", "context_id": "song", "start": start, "end": end, "offset": offset, "mode": mode, "lane": "l1"}
+
+
+def song(text=SONG, usage=("voice",), speaker=""):
+    return ctx.ContextItem("song", "Song", "audio", "song.mp3", usage=usage, length_s=27.0, speaker=speaker,
+                           options=opts.ContextOptions(lyrics=text))
+
+
+def mage():
+    return ctx.ContextItem("mage", "Mage", "image", "mage.png", usage=("reference",), content=("character",))
+
+
+def plan(shots_text, items, mode="fl2va", seconds=27.0, idea="An elf mage sings a sad song."):
+    director = ctx.DirectorContext(idea=idea, shots_text=shots_text, items=items, project_seconds=seconds, mode=mode)
+    return project.plan_project(director, 0, chunks.ContinuityPlan("video_audio"))
+
+
+class Parse(unittest.TestCase):
+    def test_lines_end_at_the_next_stamp_and_a_bare_stamp_is_a_pause(self):
+        language, lines = lyrics.parse(SONG)
+        self.assertEqual(language, "English")
+        self.assertEqual([(l.start, l.end) for l in lines][:3], [(1.0, 5.0), (5.0, 9.5), (12.0, 16.0)])
+        self.assertEqual(lines[-1].end, 21.0 + lyrics.LAST_LINE_SECONDS)
+
+    def test_lrc_roundtrip_keeps_times_and_pauses(self):
+        language, lines = lyrics.parse(SONG)
+        self.assertEqual(lyrics.parse(lyrics.to_lrc(language, lines)), (language, lines))
+
+    def test_the_option_survives_the_card_json_and_old_cards_have_none(self):
+        options = opts.ContextOptions(lyrics=SONG)
+        self.assertEqual(opts.ContextOptions.from_dict(options.to_dict()), options)
+        self.assertNotIn("lyrics", opts.ContextOptions().to_dict())
+
+
+class Placement(unittest.TestCase):
+    def prompts(self, result):
+        return [c.prompt for c in result.compiled]
+
+    def test_each_part_sings_only_its_own_lines(self):
+        result = plan(doc([shot("s1", 0, 27)], [lane()]), (song(),))
+        self.assertEqual(len(result.compiled), 3)
+        parts = self.prompts(result)
+        first, second, third = parts
+        self.assertIn("<d>[English] My master, where did your footsteps fade?</d>", first)
+        self.assertIn("<d>[English] I still wait where your shadow stayed.</d>", first)
+        self.assertNotIn("halls are cold", first)
+        self.assertIn("<d>[English] The halls are cold, the candles burn,</d>", second)
+        self.assertIn("You taught my hands", third)
+        self.assertTrue(all(p.count("My master") <= 1 for p in parts))
+        self.assertTrue(all("sings" in p for p in parts))
+
+    def test_a_lane_offset_shifts_the_song_against_the_story(self):
+        # The clip starts at story 8 s and plays the file from 0: "My master" (file 1-5 s) is sung at story 9-13 s.
+        result = plan(doc([shot("s1", 0, 27)], [lane(start=8.0, end=27.0)]), (song(),))
+        self.assertNotIn("My master", result.compiled[0].prompt)
+        self.assertIn("My master", result.compiled[1].prompt)
+
+    def test_the_singer_is_the_figure_the_voice_belongs_to(self):
+        result = plan(doc([shot("s1", 0, 27, "@Mage sings in the hall.")], [lane()]), (mage(), song(speaker="mage")), mode="ref2va")
+        self.assertRegex(result.compiled[0].prompt, r"<Subject 1> \(S1\) sings, <d>\[English\] My master")
+
+    def test_a_reference_song_is_not_sung(self):
+        result = plan(doc([shot("s1", 0, 27)]), (song(usage=("music_style",)),))
+        self.assertNotIn("<d>", "".join(self.prompts(result)))
+
+    def test_a_carried_shot_keeps_its_timed_lines(self):
+        result = plan(doc([shot("s1", 0, 27)], [lane()]), (song(),))
+        self.assertTrue(result.plan.chunks[1].shots[0].carried)
+        self.assertIn("candles burn", result.compiled[1].prompt)
+
+
+class Look(unittest.TestCase):
+    def test_the_prompt_is_not_pasted_into_every_part_once_shots_exist(self):
+        result = plan(doc([shot("s1", 0, 27)], look="Dark gothic fantasy, cinematic anime style."), ())
+        for prompt in (c.prompt for c in result.compiled):
+            self.assertNotIn("An elf mage sings a sad song.", prompt)
+            self.assertIn("integrated_multimodal_description: [Shot 1] Dark gothic fantasy, cinematic anime style. She sings", prompt)
+
+    def test_without_shots_the_prompt_still_carries_the_video(self):
+        result = plan("", (), seconds=8.0)
+        self.assertIn("[Shot 1] An elf mage sings a sad song.", result.compiled[0].prompt)
+
+    def test_reference_mode_keeps_the_look_before_shot_one(self):
+        result = plan(doc([shot("s1", 0, 8, "@Mage sings.")], look="Cinematic anime style."), (mage(),), mode="ref2va", seconds=8.0)
+        self.assertIn("detailed_description: Cinematic anime style. [Shot 1]", result.compiled[0].prompt)
+
+
+if __name__ == "__main__":
+    unittest.main()

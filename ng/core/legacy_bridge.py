@@ -15,7 +15,8 @@ from .context_options import retention_note
 from .issues import Issue
 from .subjects import subject_groups
 from .shot_bindings import spoken_text
-from .shot_document import has_shots
+from .shot_document import has_shots, read_document, read_look
+from .lyrics import SINGER, sung_lines
 from .audio_timing import clip_windows, file_window, outside, shot_windows, source_window, timed_segments
 
 FAR_AWAY = 10 ** 6          # parked past any window: a reference, not part of the soundtrack
@@ -238,8 +239,35 @@ def _anchor_segments(context, chunk, guides):
     return out
 
 
+def _sung_line(line, speakers):
+    _, speaker, language, text = line
+    who = "@" + speakers[speaker].name if speaker in speakers else "@voice(%s)" % SINGER
+    return "%s [%s] sings: %s" % (who, language, text)
+
+
+def _add_sung_lines(segments, context, chunk, groups, substitute):
+    """The song's own lines go into the shot where they are sung, after what the shot itself says; a carried shot keeps
+    them too, because they are timed, not tied to where the shot began."""
+    lines = sung_lines(context, chunk)
+    if not lines:
+        return
+    speakers = {image.id: group.root for group in groups for image in group.images}
+    if not segments:
+        segments.append({"type": "text", "start": 0, "length": chunk.sampled_frames, "prompt": ""})
+    for line in lines:
+        local = line[0]
+        segment = next((seg for seg in segments if seg["start"] <= local < seg["start"] + seg["length"]),
+                       min(segments, key=lambda seg: abs(seg["start"] - local)))
+        segment["prompt"] = "\n".join(part for part in (segment["prompt"], substitute(_sung_line(line, speakers))) if part)
+
+
 def _global_prompt(context):
-    parts = [context.idea.strip()] if has_shots(context.shots_text) else []
+    # With structured Shots the Prompt is the story they were made from; what every part shares is the Look.
+    # Timed text ("0-8: ...") predates both and keeps the Prompt as its global line.
+    if read_document(context.shots_text) is not None:
+        parts = [read_look(context.shots_text)]
+    else:
+        parts = [context.idea.strip()] if has_shots(context.shots_text) else []
     if context.style and context.style != "None":
         parts.append("Visual style: %s." % context.style)
     for item in context.by_media("text"):
@@ -268,12 +296,13 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
                  "prompt": _shot_text(s, substitute, automatic=not has_shots(context.shots_text), context=context)}
                 for s in chunk.shots]
+    _add_sung_lines(segments, context, chunk, groups, substitute)
     segments += _anchor_segments(context, chunk, guides)
     ref_on = mode == "ref2va"
     tdata = {"reference_mode": "REF2VA" if ref_on else "OFF", "prompt_format": "minimax", "global_prompt": substitute(_global_prompt(context)),
              "segments": segments, "subjects": [_slot(group.root, voices, group.images) for group in groups] if ref_on else [],
              "subjectSlotCount": max(len(subjects), 1), "audioSegments": _audio_segments(context, chunk, voices),
-             "motionSegments": _motion_segments(context) if ref_on else [], "overall_soundscape": context.soundscape,
+             "motionSegments": _motion_segments(context) if ref_on else [], "overall_soundscape": context.soundscape, "opening_in_shot": True,
              "non_diegetic_music": context.music}
     by_source = {}
     for item in context.items:

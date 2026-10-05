@@ -701,7 +701,7 @@ def alignment_instruction(has_first, has_last, shot_count, seconds):
 
 def compile_storyboard_minimax(global_prompt, shots, soundscape="", music="",
                                subject_lines=None, retention_lines=None,
-                               instruction="", summary=""):
+                               instruction="", summary="", opening_in_shot=False):
     """The notation MiniMax documents in VIDEO_PROMPT_WRITING_GUIDE_*.md.
 
     `integrated_multimodal_description: [Shot 1] … [Shot 2] At 00:05.000, …`, with the
@@ -735,8 +735,16 @@ def compile_storyboard_minimax(global_prompt, shots, soundscape="", music="",
     written = [s for s in shots if shot_has_text(s)]
     body = []
     gp = (global_prompt or "").strip()
-    if gp:
+    # ref-en 5.2: full-reference mode establishes the style "in one or two English sentences before [Shot 1]"; base-en
+    # 4.1: "At the beginning of [Shot 1], state the overall style and initial composition" - inside the shot.
+    # The Legacy Director keeps its layout (the global prompt ahead of [Shot 1]); NG asks for the guide's.
+    opening = ""
+    if gp and (subject_lines or not opening_in_shot):
         body.append(gp)
+    elif gp:
+        opening = gp if gp.endswith((".", "!", "?")) else gp + "."
+        if not written:
+            body.append("[Shot 1] %s" % opening)
     for index, shot in enumerate(written):
         pieces = list(shot.get("pieces") or [])
         # guide 5.3: a frame anchor is named in the shot itself, in natural phrasing, as
@@ -757,7 +765,7 @@ def compile_storyboard_minimax(global_prompt, shots, soundscape="", music="",
                 pieces.insert(last_prose + 1, ("prose", phrases))
         text = join_shot_pieces([piece for _, piece in pieces])
         if index == 0:
-            body.append("[Shot 1] %s" % text)
+            body.append("[Shot 1] %s" % " ".join(part for part in (opening, text) if part))
         else:
             body.append("[Shot %d] At %s, %s"
                         % (index + 1, fmt_timestamp(shot["start_sec"]), text))
@@ -1779,7 +1787,7 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
                 written_shots, actual_seconds)
         prompt = compile_storyboard_minimax(global_prompt, shots, soundscape, music,
                                             subject_lines, retention_lines, instruction,
-                                            summary_line)
+                                            summary_line, bool(tdata.get("opening_in_shot")))
 
         # Measured on detailed_description alone — the label blocks and the sound sections
         # are not what the guide is counting.

@@ -15,17 +15,21 @@ class ContextOptions:
     end_s: float = 0.0
     anchor_s: float = -1.0
     video_audio: str = "ignore"
+    lyrics: str = ""            # audio: timed lyrics as LRC text, "[mm:ss.xx] line", seconds in the file
     SCHEMA_VERSION = 1
 
     def to_dict(self):
-        return {"schema_version": 1, "preserve": dict(self.preserve), "start_s": self.start_s,
+        data = {"schema_version": 1, "preserve": dict(self.preserve), "start_s": self.start_s,
                 "end_s": self.end_s, "anchor_s": self.anchor_s, "video_audio": self.video_audio}
+        if self.lyrics:
+            data["lyrics"] = self.lyrics
+        return data
 
     @classmethod
     def from_dict(cls, data, path="context.options"):
         fields.need_dict(data, path)
         fields.check_version(data, path, cls.SCHEMA_VERSION)
-        if set(data) - set(cls().to_dict()):
+        if set(data) - set(cls(lyrics="-").to_dict()):
             raise ValueError("Unknown context option; use supported role, retention and source timing controls.")
         preserve = fields.need_dict(data.get("preserve", {}), path + ".preserve")
         if set(preserve) - set(PROPERTIES) or any(value not in STRENGTHS for value in preserve.values()):
@@ -35,7 +39,8 @@ class ContextOptions:
         if end and end <= start:
             raise ValueError("Source end must be later than source start; 0 means the file end.")
         return cls(tuple(preserve.items()), start, end, float(fields.read_number(data, "anchor_s", path, -1.0, minimum=-1)),
-                   fields.read_choice(data, "video_audio", path, ("ignore", "reference"), "ignore"))
+                   fields.read_choice(data, "video_audio", path, ("ignore", "reference"), "ignore"),
+                   fields.read_str(data, "lyrics", path, ""))
 
     @classmethod
     def from_json(cls, text):
