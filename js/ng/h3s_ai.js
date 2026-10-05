@@ -108,7 +108,7 @@ export function studioAI(S, app, api, done) {
     },
     // Make H3 prompt: plan the whole video, put the plan in (apply returns nothing; the Studio keeps the undo), then write
     // every part out and keep each checked answer. A refused or unchanged part keeps its compiled prompt.
-    async build(apply, replan, keep) {
+    async build(apply, replan, keep, describe) {
       const provider = connectedProvider(S.node);
       if (!provider || S.busy) return null;
       controller = new AbortController();
@@ -122,6 +122,9 @@ export function studioAI(S, app, api, done) {
         const plan = await ask().catch((error) => { if (/JSON/.test(error.message) && mine === serial) return ask(); throw error; });
         if (mine !== serial) return null;
         apply(plan.suggestion);
+        // A picture still without a description (the plan's answer may leave "describe" out) is analyzed like ✦ Analyze.
+        await describe((extra) => { step("Describing the pictures …"); return aiAction(app, api, "analyze", { ...extra, provider }, signal); });
+        if (mine !== serial) return null;
         const view = await replan();
         const result = { parts: view.chunks.length, written: 0, refused: 0, unchanged: 0, unseen: plan.suggestion.unseen_pictures || [] };
         for (const chunk of view.chunks) {

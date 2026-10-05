@@ -11,6 +11,7 @@ import { footerView } from "./h3s_footer.js";
 import { drawerView } from "./h3s_prompts.js";
 import { studioAI, basis as aiBasis } from "./h3s_ai.js";
 import { readQuick, changeQuick } from "./h3s_quick.js";
+import { offerFor } from "./h3c_model.js";
 import { values, applyValues, request } from "./ng_widgets.js";
 import { readPayload, readContexts, connectedProvider, contextNodes } from "./ng_read.js";
 import { contextColor } from "./ng_identity.js";
@@ -294,7 +295,14 @@ export function openStudio(node, app, api, host = null) {
         save(); render();
       };
       const keep = (index, draft) => { S.partPrompts = setPartPrompt(S.partPrompts, index, draft.key, draft.text, "ai"); save(); };
-      const result = await ai.build(apply, planNow, keep);
+      const describe = async (ask) => {
+        for (const { media, node: card } of contextNodes(node)) {
+          if (media !== "image" || (values(card).description || "").trim()) continue;
+          const text = await ask({ media, widgets: values(card), offer: offerFor(media) }).then((data) => data.suggestion?.description?.trim(), () => "");
+          if (text) { before.cards.push(card); applyValues(card, { description: text }); }
+        }
+      };
+      const result = await ai.build(apply, planNow, keep, describe);
       if (!result) return;
       const undo = () => { Object.assign(S, { shots: before.shots, look: before.look, partPrompts: before.partPrompts });
         for (const card of before.cards) applyValues(card, { description: "" });
