@@ -378,6 +378,9 @@ def _subject_sentence(label, description, kind, pictures):
     constraint.
     """
     text = (description or "").strip().rstrip(".")
+    # A description written as its own sentence ("An elfin woman ...", as an analysis returns it) continues this one.
+    if text.split(" ", 1)[0] in ("A", "An", "The"):
+        text = text[0].lower() + text[1:]
     if text:
         return "%s is %s, shown in %s." % (label, text, pictures)
     return "%s is %s shown in %s." % (label, SUBJECT_KINDS[kind], pictures)

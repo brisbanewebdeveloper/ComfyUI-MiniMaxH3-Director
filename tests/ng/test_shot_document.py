@@ -165,6 +165,13 @@ class Dialogue(unittest.TestCase):
             result = project.plan_project(context.DirectorContext(idea="A walk.", project_seconds=4, items=(alice, note), mode=mode), 10, NONE)
             self.assertIn(expected, result.compiled[0].prompt, mode)
 
+    def test_an_analysed_description_continues_the_subject_sentence(self):
+        # The analysis answers in a sentence of its own; the prompt read "<Subject 1> is An elfin woman ...".
+        elf = context.ContextItem("elf", "Mage", "image", "elf.png", usage=("reference",), content=("character",),
+                                  description="An elfin woman with long white hair.")
+        result = project.plan_project(context.DirectorContext(idea="She sings.", project_seconds=4, items=(elf,), mode="ref2va"), 10, NONE)
+        self.assertIn("<Subject 1> is an elfin woman with long white hair, shown in <Picture 1>.", result.compiled[0].prompt)
+
     def test_a_manual_prompt_is_text_enough(self):
         empty = context.DirectorContext(shots_text="", project_seconds=8)
         self.assertIn("no_text", {i.code for i in project.plan_project(empty, 10, NONE).issues})
