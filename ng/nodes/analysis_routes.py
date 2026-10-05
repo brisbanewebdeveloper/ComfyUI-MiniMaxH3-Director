@@ -8,6 +8,7 @@ from server import PromptServer
 from ..adapters.analysis import analyze
 from ..adapters.analyze_all import analyze_all
 from ..adapters.auto_direct import direct
+from ..adapters.builder import plan
 from ..adapters.part_writer import write
 
 
@@ -48,5 +49,14 @@ async def write_part_prompt(request):
     """Prompts per render part: the AI writes one part's prompt out from the compiled one; it is checked before it is shown."""
     try:
         return _answer({"suggestion": await write(await request.json())})
+    except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
+        return _failure(error)
+
+
+@PromptServer.instance.routes.post("/ng/build_plan")
+async def build_plan(request):
+    """Make H3 prompt, first step: the whole video planned from the direction, the pictures and the optional request."""
+    try:
+        return _answer({"suggestion": await plan(await request.json())})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)

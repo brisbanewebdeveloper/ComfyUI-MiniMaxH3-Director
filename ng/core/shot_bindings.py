@@ -40,8 +40,9 @@ def scoped_context(context, chunk):
     records = read_document(context.shots_text)
     if records is None:
         return context, ()
+    # Only Content placed on a shot is scoped to it. A figure that merely speaks in one shot stays in every part: counted
+    # as bound, the mage who said one line in shot 1 lost her reference picture in every later part (2026-10-05).
     bound = {b["context_id"] for record in records for b in record.get("media", [])}
-    bound.update(s["speaker_id"] for record in records for s in record.get("spoken", []) if s.get("speaker_id"))
     clips = read_audio_clips(context.shots_text)
     bound.update(clip.context_id for clip in clips)
     selected = {item.id for item in context.items if item.id not in bound}
@@ -97,7 +98,9 @@ def spoken_text(shot, context):
             issues.append(Issue("shot_speaker_unknown", "Speaker '%s' is disconnected; the exact line is kept as a narrator."
                                 % spoken.speaker_id, shot.shot_id))
         subject = subjects.get(spoken.speaker_id)
-        speaker = "@" + subject.name if subject else "@voice(%s)" % (spoken.voice or "a narrator")
+        voice = spoken.voice or "a narrator"
+        # Each line is a sentence of its own: "... looks forward. A narrator (S1) whispers", not "a narrator".
+        speaker = "@" + subject.name if subject else "@voice(%s)" % (voice[:1].upper() + voice[1:])
         if item and not subject:
             issues.append(Issue("shot_speaker_unbound", "Speaker '%s' has no image Subject; narrator voice is used." % item.name, shot.shot_id))
         lines.append("%s [%s] %s: %s" % (speaker, spoken.language or "English", spoken.delivery or "says", spoken.text))

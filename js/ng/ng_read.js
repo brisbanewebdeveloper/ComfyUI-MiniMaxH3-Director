@@ -46,19 +46,24 @@ export function upstreamNode(graph, input) {
 }
 
 // The context nodes wired into the Director's autogrow inputs, in socket order.
-export function readContexts(director) {
+// The Context nodes behind a Director (through its Connector) or a Connector, in input order.
+export function contextNodes(director) {
   if (director.comfyClass === "NGH3Director") {
     const connector = upstreamNode(director.graph, director.inputs?.find((input) => input.name === "context"));
-    return connector?.comfyClass === "NGContextConnector" ? readContexts(connector) : [];
+    return connector?.comfyClass === "NGContextConnector" ? contextNodes(connector) : [];
   }
   const found = [];
   for (const input of director.inputs || []) {
     if (!input.name.startsWith("contexts.") && !/^context_(image|video|audio|text)\./.test(input.name)) continue;
     const source = upstreamNode(director.graph, input);
     const media = source && mediaOf(source);
-    if (media) found.push({ media, widgets: widgetValues(source) });
+    if (media) found.push({ media, node: source });
   }
   return found;
+}
+
+export function readContexts(director) {
+  return contextNodes(director).map(({ media, node }) => ({ media, widgets: widgetValues(node) }));
 }
 
 export function connectedProvider(node) {

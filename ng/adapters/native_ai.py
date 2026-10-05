@@ -6,6 +6,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from ... import minimax_media as media
 from ..core.analysis import analysis_prompt, parse_suggestion
 from ..core.auto_direct import direct_tokens, direction_prompt, parse_direction, timing_hints
+from ..core.builder import SYSTEM as BUILD_SYSTEM, parse_plan, plan_prompt, plan_tokens, read_quick
 from ..core.fields import need_dict, read_number, read_str
 from ..core.part_prompt import SYSTEM as WRITE_SYSTEM, write_tokens
 from ..core.part_writer import brief, finish, write_prompt
@@ -32,8 +33,11 @@ def conditioning_file(name, model_type):
 
 
 def _write_facts(payload):
-    return brief(need_dict(payload["director"], "director"), payload["contexts"], int(read_number(payload, "part", "request", minimum=0)),
-                 probe.duration_seconds)
+    # The native encoder takes one picture at most; a part is written from the cards' descriptions instead.
+    facts = brief(need_dict(payload["director"], "director"), payload["contexts"], int(read_number(payload, "part", "request", minimum=0)),
+                  probe.duration_seconds, read_quick(payload))
+    facts["shown"] = []
+    return facts
 
 
 def request_prompt(action, payload, config):
@@ -46,6 +50,11 @@ def request_prompt(action, payload, config):
         return direction_prompt(idea, seconds, payload["contexts"], read_str(director, "shots", "director", ""), timing), None
     if action == "write":
         return write_prompt(_write_facts(payload)), None
+    if action == "build":
+        director = need_dict(payload["director"], "director")
+        timing = timing_hints(director, payload["contexts"], probe.duration_seconds)
+        return plan_prompt(read_quick(payload), read_str(director, "idea", "director", ""),
+                           read_number(director, "project_seconds", "director", minimum=0.1), payload["contexts"], False, *timing), None
     if action != "analyze":
         raise ValueError("Choose Analyze or Auto Direct.")
     media, widgets = payload["media"], need_dict(payload["widgets"], "context.widgets")
@@ -77,7 +86,8 @@ def native_request(provider, action, request_json):
     # A connected clip is only a link here; whether it is the conditioning encoder is known once it is loaded.
     clip = graph.node("NGAICheckEncoder", clip=clip).out(0)
     max_length = (direct_tokens(provider.config.max_tokens) if action == "direct"
-                  else write_tokens(provider.config.max_tokens) if action == "write" else provider.config.max_tokens)
+                  else write_tokens(provider.config.max_tokens) if action == "write"
+                  else plan_tokens(provider.config.max_tokens) if action == "build" else provider.config.max_tokens)
     inputs = dict(clip=clip, prompt=prompt, max_length=max_length,
                   sampling_mode="off", thinking=False, use_default_template=True,
                   # The role comes from system_prompts.py and the schema framing from there too, so
@@ -85,7 +95,7 @@ def native_request(provider, action, request_json):
                   # framing with the wrong role produced answers that read as the wrong task.
                   # "write" is the exception and carries no schema framing: its answer is the prose of a
                   # render part's prompt, labelled fields rather than JSON.
-                  system_prompt=(WRITE_SYSTEM if action == "write"
+                  system_prompt=(WRITE_SYSTEM if action == "write" else BUILD_SYSTEM if action == "build"
                                  # The card's medium, not `media` (which only says what is sent along and is None for a
                                  # text note): with None a Text card got the generic role and Qwen3-VL 4B lost the JSON.
                                  else framed(for_node("director" if action == "direct" else "context", payload.get("media")))))
@@ -107,6 +117,9 @@ def parse_result(text, action, request_json):
                          "use another encoder (qwen3vl_4b_bf16 answered reliably) or Ollama.")
     if action == "write":
         return finish(text, _write_facts(payload))
+    if action == "build":
+        _, sung = timing_hints(payload["director"], payload["contexts"], probe.duration_seconds)
+        return parse_plan(text, float(payload["director"]["project_seconds"]), payload["contexts"], read_quick(payload), sung)
     # Generic Qwen CLIP tokenizers can decode the assistant role header with the answer.
     text = text.removeprefix("assistant\n").strip()
     if action == "analyze":

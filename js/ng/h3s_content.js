@@ -1,5 +1,6 @@
 // Prompt field and the Content cards that come from the Context nodes in the graph.
 import { h, icon } from "./h3s_dom.js";
+import { quickView } from "./h3s_quick.js";
 
 const KIND = { image: "Image", video: "Video", audio: "Audio", text: "Text" };
 const BG = { image: "#172338", video: "#2A2414", audio: "#221A33", text: "#13291F" };
@@ -52,7 +53,7 @@ function visual(entry, thumb) {
 
 export function promptView(S, actions) {
   const shots = S.shots.length > 0;
-  return h("section", { class: "h3s-card" },
+  return h("section", { class: "h3s-card" }, quickView(S, actions),
     h("div", { class: "h3s-row" }, h("label", { class: "h3s-strong", for: "h3s-prompt" }, "Prompt"),
       h("span", { class: "h3s-lbl" }, shots ? "The story. H3 gets the shots made from it, plus the Look." : "Describe what should happen. Nothing else is needed."),
       h("span", { class: "h3s-grow" }),

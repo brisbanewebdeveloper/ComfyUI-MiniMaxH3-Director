@@ -15,7 +15,7 @@ import re
 SECTIONS = ("subject_definitions", "summary", "retention_analysis", "detailed_description", "integrated_multimodal_description",
             "overall_soundscape", "non_diegetic_music")
 HEADER_RE = re.compile(r"(?m)^(%s):[ \t]*" % "|".join(SECTIONS))
-ANSWER_RE = re.compile(r"(?mi)^\s*\**\s*(description|detailed_description|integrated_multimodal_description|overall_soundscape|non_diegetic_music)\s*\**\s*:[ \t]*")
+ANSWER_RE = re.compile(r"(?mi)^\s*\**\s*(summary|description|detailed_description|integrated_multimodal_description|overall_soundscape|non_diegetic_music)\s*\**\s*:[ \t]*")
 DIALOGUE_RE = re.compile(r"<d>.*?</d>", re.S)
 CUT_RE = re.compile(r"\[Shot (\d+)\](?:\s*At (\d{2}:\d{2}\.\d{3}))?")
 LABEL_RE = re.compile(r"<(?:Subject|Picture|Video|Audio) \d+>")
@@ -25,7 +25,7 @@ WRITE_TOKENS = 2048
 MIN_WORDS = 40
 SYSTEM = ("You write the description of one render part of a MiniMax H3 video. You keep the planner's structure, cut times, "
           "labels and spoken or sung lines exactly, and make the description concrete, visual and detailed. You answer with the "
-          "three labelled fields only.")
+          "labelled fields asked for, and nothing else.")
 
 
 def prompt_key(prompt):
@@ -62,18 +62,54 @@ def _body_name(sections):
     return "detailed_description" if "detailed_description" in sections else "integrated_multimodal_description"
 
 
-def request(compiled, mode, seconds, story="", figures="", continues=False, part=(1, 1)):
-    """The user turn for the writer: rules, the compiled draft, and the story and figures as material for detail only."""
+def _summary_rule(sections):
+    labels = ", ".join(sorted(set(LABEL_RE.findall(sections.get("subject_definitions", "")))))
+    # qwen3.5:9b summed up the pictures instead of the part ("then widens to ... finally settles on her seated") for a part
+    # of one shot; the summary has to say what this part's description says.
+    return ("summary: one or two English sentences that sum up this part's description (the same events, nothing else) and "
+            "what each reference contributes (%s). No square brackets, no spoken words." % labels)
+
+
+def _extra_rules(head, reference, guidance, pictures):
+    """Rules for keyframes, the chosen direction and the attached pictures."""
+    rules = []
+    if not reference and "Picture 2" in head:
+        # base-en 3.2: the body supplies the path between the two frames, it does not describe two still pictures.
+        rules.append("Picture 1 is the first and Picture 2 the last frame: begin in the position and framing established by Picture 1, "
+                     "describe the movement in between, and settle into the pose and composition established by Picture 2.")
+    elif not reference and "Picture 1" in head:
+        rules.append("<Picture 1> is the %s frame: %s" % (("last", "the last shot arrives at what it shows.") if "aligns with" in head
+                                                          else ("first", "begin with what it shows and develop forward from it.")))
+    if guidance:
+        rules.append("Direction: " + guidance)
+    named = [label for label in pictures if label]
+    if named:
+        rules.append("The attached pictures are, in order: %s. Describe what they show concretely and never against them: faces, "
+                     "hair, clothing, colours, the place and its light." % ", ".join(named))
+    elif pictures:
+        rules.append("The attached pictures show how the characters and the place look; describe that in words, without labels.")
+    return rules
+
+
+def request(compiled, mode, seconds, story="", figures="", continues=False, part=(1, 1), guidance="", pictures=()):
+    """The user turn for the writer: rules, the compiled draft, and the story and figures as material for detail only.
+
+    guidance: what the chosen direction wants the description to dwell on (Make H3 prompt); pictures: the labels of the
+    pictures attached to the request, in order ("" for a picture shown only for its look)."""
     head, sections = split_sections(compiled)
     body = sections.get(_body_name(sections), "")
     labels = sorted(set(LABEL_RE.findall(compiled)))
     reference = mode == "ref2va"
+    fields = ("summary", "description", "overall_soundscape", "non_diegetic_music") if reference else (
+        "description", "overall_soundscape", "non_diegetic_music")
     rules = [
-        "Rewrite the description of part %d of %d of a MiniMax H3 video (%s, %.2f s). Return exactly these three labelled fields "
-        "and nothing else:\ndescription: ...\noverall_soundscape: ...\nnon_diegetic_music: ..." % (part[0], part[1], mode.upper(), seconds),
+        "Rewrite the description of part %d of %d of a MiniMax H3 video (%s, %.2f s). Return exactly these %s labelled fields "
+        "and nothing else:\n%s" % (part[0], part[1], mode.upper(), seconds, "four" if reference else "three",
+                                    "\n".join(name + ": ..." for name in fields)),
         "description: " + ("start with one or two sentences of the overall visual style, then [Shot 1]." if reference
                            else "start with [Shot 1], then the visual style and the opening composition in one sentence, then what happens."),
-        "Keep every shot marker and cut time exactly as in the draft (for example [Shot 2] At 00:04.500, the camera cuts to ...); add no cuts.",
+        "Keep every shot marker and cut time exactly as in the draft (for example [Shot 2] At 00:04.500, the camera cuts to ...); "
+        "this part has exactly %s: add no shot and no cut." % ("1 shot" if len(CUT_RE.findall(body)) < 2 else "%d shots" % len(CUT_RE.findall(body))),
         "Copy every <d>...</d> block exactly as written in the draft, with its speaker in front of it, in the same order. "
         "Add no other spoken or sung words and never write lyrics outside <d>.%s" % (
             " The lines, each to be written exactly like this where it is heard:\n" + "\n".join("- " + line for line in vocal_lines(body))
@@ -90,6 +126,9 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
     ]
     if continues:
         rules.append("This part continues the previous part: open by continuing the same action, do not introduce the scene again.")
+    if reference:
+        rules.insert(1, _summary_rule(sections))
+    rules += _extra_rules(head, reference, guidance, pictures)
     draft = "\n".join(part_ for part_ in (head, "description: " + body, "overall_soundscape: " + sections.get("overall_soundscape", ""),
                                           "non_diegetic_music: " + sections.get("non_diegetic_music", "")) if part_)
     out = "\n".join(rules) + "\n\nDraft:\n" + draft
@@ -143,6 +182,15 @@ def repair(written, body):
     gives it no time), "(S1) sings" without the "<Subject 1>" in front, and a lyric line with changed punctuation. Anything
     else - a moved cut, a changed or extra word, a lost line - is not repaired; the answer is refused instead."""
     written = re.sub(r"\[Shot 1\]\s*At 00:00\.000,?\s*", "[Shot 1] ", written)
+    if not DIALOGUE_RE.search(body):
+        # A part without words got an invented line (music video, 25 s test): the sentence carrying it goes.
+        written = re.sub(r"[^.!?\]]*<d>.*?</d>[^.!?\[]*[.!?]?\s*", "", written, flags=re.S)
+    written = re.sub(r"\[Shot 1\] ([a-z])", lambda m: "[Shot 1] " + m.group(1).upper(), written)
+    planned, found = CUT_RE.findall(body), CUT_RE.findall(written)
+    if len(found) > len(planned) and [n for n, _ in found[:len(planned)]] == [n for n, _ in planned]:
+        # qwen3.5:9b added a [Shot 3] to a two-shot part (25 s test); its text stays as the end of the last planned shot.
+        extra = r"\[Shot (?:%s)\](?:\s*At \d{2}:\d{2}\.\d{3},?)?\s*(?:the (?:camera|shot) cuts to\s*)?" % "|".join(n for n, _ in found[len(planned):])
+        written = re.sub(extra + r"(\w?)", lambda m: m.group(1).upper(), written)
     times = dict(CUT_RE.findall(body))
     written = re.sub(r"\[Shot (\d+)\](?!\s*At )", lambda m: "[Shot %s] At %s," % (m.group(1), times[m.group(1)])
                      if times.get(m.group(1)) else m.group(0), written)
@@ -169,13 +217,43 @@ def repair(written, body):
     return written
 
 
+def _summary(sections, written):
+    """The planner's task type ("[reference generation]") with the AI's sentences after it, when they only name defined
+    labels and hold no spoken words; otherwise the planner's summary as it was. A weak summary never refuses a part."""
+    planned = sections["summary"]
+    prefix = re.match(r"\[[^\]]*\]", planned)
+    written = re.sub(r"^\s*\[[^\]]*\]\s*", "", written or "").strip()
+    defined = set(LABEL_RE.findall(sections.get("subject_definitions", "")))
+    if (not prefix or not 5 <= len(written.split()) <= 120 or "<d>" in written or NESTED_RE.search(written)
+            or not set(LABEL_RE.findall(written)) <= defined):
+        return planned
+    return "%s %s" % (prefix.group(0), written)
+
+
+def _anchors(written, head):
+    """Name the keyframes in the description as the guide's examples do, when the writer left them out: FL2VA begins "in the
+    position and framing established by Picture 1" and settles into "the pose and composition established by Picture 2";
+    I2VA begins from <Picture 1>."""
+    def opening(sentence):
+        found = re.search(r"\[Shot 1\] [^.]*\.\s*", written)
+        return written[:found.end()] + sentence + " " + written[found.end():] if found else written
+    if "Picture 2" in head and "<Picture" not in head:
+        if "Picture 1" not in written:
+            written = opening("The shot begins in the position and framing established by Picture 1.")
+        if "Picture 2" not in written:
+            written = written.rstrip() + " At the end, the scene settles into the pose and composition established by Picture 2."
+    elif "<Picture 1>" in head and "fully referenced" in head and "<Picture 1>" not in written:
+        written = opening("The shot begins from <Picture 1>.")
+    return written
+
+
 def check(compiled, answer):
     """(final prompt, problems). With problems the final prompt is None and the compiled prompt is to be kept."""
     head, sections = split_sections(compiled)
     name = _body_name(sections)
     body = sections.get(name, "")
     fields = _answer_fields(answer)
-    written = repair(fields.get("description", ""), body)
+    written = _anchors(repair(fields.get("description", ""), body), head)
     problems = []
     if len(written.split()) < MIN_WORDS:
         problems.append("the description is missing or shorter than %d words" % MIN_WORDS)
@@ -191,11 +269,13 @@ def check(compiled, answer):
         problems.append("a planned subject label is missing")
     if not set(SPEAKER_RE.findall(body)) <= set(SPEAKER_RE.findall(written)):
         problems.append("a speaker ID such as (S1) is missing")
-    if NESTED_RE.search(written):
+    if NESTED_RE.search(written) or ("summary" in fields and "summary" not in sections):
         problems.append("it nests another prompt section inside the description")
     if problems:
         return None, problems
     parts = [head] if head else []
+    if "summary" in sections:
+        sections = {**sections, "summary": _summary(sections, fields.get("summary", ""))}
     for key in ("subject_definitions", "summary", "retention_analysis"):
         if key in sections:
             parts.append("%s:%s%s" % (key, "\n" if key != "summary" else " ", sections[key]))

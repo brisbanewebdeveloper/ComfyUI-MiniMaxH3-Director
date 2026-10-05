@@ -13,7 +13,7 @@ class NGAIRequest(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(node_id="NGAIRequest", display_name="H3 AI Request", category=CATEGORY + "/Technical",
                          is_output_node=True, enable_expand=True,
-                         inputs=[NGAI.Input("ai_provider"), io.Combo.Input("action", options=["analyze", "direct", "write"]),
+                         inputs=[NGAI.Input("ai_provider"), io.Combo.Input("action", options=["analyze", "direct", "write", "build"]),
                                  io.String.Input("request_json", default="{}")], outputs=[io.String.Output()])
 
     @classmethod

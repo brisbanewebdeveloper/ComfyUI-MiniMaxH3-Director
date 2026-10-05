@@ -89,6 +89,7 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-switch.on{background:#FF7A45}
 .h3s-switch.on::after{left:21px}
 .h3s-item{display:flex;align-items:center;gap:8px;border:1px solid #2E3848;border-radius:8px;padding:6px 6px 6px 10px;background:#121722}
+.h3s-quick{border:1px solid #4B3F78;background:#17142A;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .h3s-suggest{border:1px solid #4B3F78;background:#1B1730;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .h3s-foot{border-top:1px solid #222A37;background:#121620;padding:10px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
 .h3s-foot-row{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}

@@ -2,16 +2,17 @@
 // node's own widgets, so saving, loading and queueing stay ComfyUI's; the shot document keeps shots, clips and lanes.
 import { h, icon, keepKeys } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt, setPartPrompt } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt, setPartPrompt, clipToFit } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
-import { contentEntries, promptView, contentView } from "./h3s_content.js";
+import { contentEntries, promptView, contentView, contextId } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
 import { sideView } from "./h3s_side.js";
 import { footerView } from "./h3s_footer.js";
 import { drawerView } from "./h3s_prompts.js";
 import { studioAI, basis as aiBasis } from "./h3s_ai.js";
+import { readQuick, changeQuick } from "./h3s_quick.js";
 import { values, applyValues, request } from "./ng_widgets.js";
-import { readPayload, readContexts, connectedProvider } from "./ng_read.js";
+import { readPayload, readContexts, connectedProvider, contextNodes } from "./ng_read.js";
 import { contextColor } from "./ng_identity.js";
 import { hasRenderPath, projectRenderIds } from "./ng_graph.js";
 import { attachProgress } from "./ng_studio_progress.js";
@@ -30,7 +31,8 @@ function load(S) {
   S.docError = project.error;
   if (project.skipped?.length) S.notice = { error: true, text: `The saved data has ${project.skipped.length} invalid audio clip(s) (${project.skipped.join(", ")}). `
     + "They are left out here and removed with your next edit; everything else is kept." };
-  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes, look: project.look, partPrompts: project.partPrompts });
+  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes, look: project.look, partPrompts: project.partPrompts,
+    quick: readQuick(S.node) });
 }
 
 // With a host the Studio lives in it (the node); "Full screen" lifts the same Studio over the window and Esc puts it back.
@@ -65,6 +67,13 @@ export function openStudio(node, app, api, host = null) {
     write({ [name]: value }); node.graph?.change?.();
     S.values = values(node); schedulePlan();
     if (rerender) render();
+  }
+  // The plan of what is saved right now, for a step that needs it before going on (Make H3 prompt writes each part of it).
+  async function planNow() {
+    clearTimeout(timer); const mine = ++serial;
+    const data = await request(api, "/ng/plan", readPayload(node));
+    if (mine === serial && !closed) { S.plan = data; S.planError = ""; }
+    return data;
   }
   function schedulePlan() {
     clearTimeout(timer); const mine = ++serial;
@@ -268,6 +277,37 @@ export function openStudio(node, app, api, host = null) {
       S.partPrompts = []; S.partDrafts = {};
       S.ghosts = []; S.ghostSound = null; setItems("shot", shots, shots[0]?.id);
     },
+    setQuick(key, value) { S.quick = changeQuick(S.quick, key, value); node.properties.ng_quick = S.quick; node.graph?.change?.(); render(); },
+    async buildPrompt() {
+      const before = { shots: S.shots, look: S.look, partPrompts: S.partPrompts, soundscape: S.values.soundscape, music: S.values.music, cards: [] };
+      const apply = (plan) => {
+        // A picture without a description gets the plan's: the compiler names the figure with it in every part.
+        for (const { media, node: card } of contextNodes(node)) {
+          const text = plan.descriptions?.[contextId(values(card), media)];
+          if (media !== "image" || !text || (values(card).description || "").trim()) continue;
+          before.cards.push(card); applyValues(card, { description: text });
+        }
+        S.shots = clipToFit(readProject(plan.shots || "").shots, S.values.project_seconds).map((shot) => ({ ...newShot(shot.start, shot.end, []),
+          text: shot.text, media: shot.media || [], spoken: shot.spoken || [] }));
+        S.look = (plan.look || "").trim(); S.partPrompts = []; S.partDrafts = {}; S.ghosts = []; S.ghostSound = null; S.selected = null;
+        write({ soundscape: (plan.soundscape || "").trim(), music: (plan.music || "").trim() });
+        save(); render();
+      };
+      const keep = (index, draft) => { S.partPrompts = setPartPrompt(S.partPrompts, index, draft.key, draft.text, "ai"); save(); };
+      const result = await ai.build(apply, planNow, keep);
+      if (!result) return;
+      const undo = () => { Object.assign(S, { shots: before.shots, look: before.look, partPrompts: before.partPrompts });
+        for (const card of before.cards) applyValues(card, { description: "" });
+        write({ soundscape: before.soundscape, music: before.music }); save(); render(); };
+      const notes = [result.refused && `${result.refused} part${result.refused === 1 ? "" : "s"} kept the compiled prompt because the AI's text broke a rule`,
+        result.unchanged && `${result.unchanged} part${result.unchanged === 1 ? "" : "s"} came back unchanged`,
+        result.unseen.length && `the AI could not look at ${result.unseen.join(", ")} and used the card descriptions`,
+        before.cards.length && `${before.cards.length} picture card${before.cards.length === 1 ? "" : "s"} got a description`].filter(Boolean);
+      S.promptOpen = true;
+      S.notice = { text: `H3 prompt ready: ${result.written} of ${result.parts} part${result.parts === 1 ? "" : "s"} written by the AI`
+        + (notes.length ? ` (${notes.join("; ")})` : "") + ". See Prompts per render part below; Write with AI tries a part again.", undo };
+      render();
+    },
     dropGhosts() { S.ghosts = []; S.ghostSound = null; render(); },
     setClip(id, key, value) {
       const clip = S.audio.find((entry) => entry.id === id), lane = S.audio.filter((entry) => entry.lane === clip.lane);
@@ -335,7 +375,8 @@ export function openStudio(node, app, api, host = null) {
   function floating() {
     const items = [];
     if (S.busy) items.push(h("div", { class: "h3s-toast busy", role: "status" }, icon("spark"),
-      h("span", {}, S.busy === "split" ? "AI is splitting the prompt into shots …" : "AI is writing a text for this shot …"),
+      h("span", {}, S.busy === "build" ? S.buildStep : S.busy === "split" ? "AI is splitting the prompt into shots …"
+        : S.busy.startsWith("write") ? "AI is writing the part's prompt …" : "AI is writing a text for this shot …"),
       h("span", { class: "h3s-ai-clock h3s-muted" }, aiClock()), h("button", { class: "h3s-btn ghost small", onclick: actions.cancelAI }, "Cancel")));
     if (S.notice) items.push(h("div", { class: S.notice.error ? "h3s-toast error" : "h3s-toast", role: S.notice.error ? "alert" : "status" },
       h("span", {}, S.notice.text), S.notice.undo ? h("button", { class: "h3s-btn small", onclick: () => { const undo = S.notice.undo; S.notice = null; undo(); } }, "Undo") : null,

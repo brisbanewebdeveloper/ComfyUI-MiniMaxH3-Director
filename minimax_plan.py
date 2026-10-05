@@ -163,6 +163,12 @@ def fmt_seconds(value):
 
 
 CHAR_TAG_RE = re.compile(r"@(?:character|char|ref)(\d+)")
+# base-en 4.2: a later shot opens "At 00:03.500, the camera cuts to ..."; these are the guide's words for a cut or transition.
+CUT_PHRASE_RE = re.compile(r"(?:the (?:camera|shot) (?:cuts|transitions|changes|switches)|(?:a )?(?:cross-dissolve|dissolve|fade|wipe))\b",
+                           re.IGNORECASE)
+# A shot text that opens with its framing ("A close-up of", "Wide shot showing") continues the cut words directly.
+FRAMING_RE = re.compile(r"(?:(a|an|the)\s+)?((?:(?!(?:a|an|the)\s)[\w-]+\s+){0,3}?(?:close-up|closeup)\b"
+                        r"|(?:(?!(?:a|an|the)\s)[\w-]+\s+){1,3}?(?:shot|view|angle)\b)", re.IGNORECASE)
 
 
 def substitute_char_tags(text, replacements, later=None, seen=None):
@@ -767,6 +773,16 @@ def compile_storyboard_minimax(global_prompt, shots, soundscape="", music="",
         if index == 0:
             body.append("[Shot 1] %s" % " ".join(part for part in (opening, text) if part))
         else:
+            if opening_in_shot and text and not CUT_PHRASE_RE.match(text):
+                # NG shot text is what is seen ("A close-up of ..."); the cut words are the compiler's, so the user's
+                # text reads "At 00:03.000, the camera cuts to a close-up of ..." as in the guide.
+                framing = FRAMING_RE.match(text)
+                if framing:
+                    article = (framing.group(1) or ("an" if framing.group(2)[0] in "AEIOUaeiou" else "a")).lower()
+                    text = "the camera cuts to %s %s%s" % (article, framing.group(2)[0].lower() + framing.group(2)[1:],
+                                                           text[framing.end():])
+                else:
+                    text = "the camera cuts to a new shot. " + text
             body.append("[Shot %d] At %s, %s"
                         % (index + 1, fmt_timestamp(shot["start_sec"]), text))
     if body:

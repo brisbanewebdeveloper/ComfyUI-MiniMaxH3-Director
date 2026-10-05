@@ -95,7 +95,7 @@ export function studioAI(S, app, api, done) {
       const mine = ++serial;
       S.busy = `write${index}`; S.aiStarted = Date.now(); S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; done();
       try {
-        const data = await aiAction(app, api, "write", { director: values(S.node), contexts: readContexts(S.node), provider, part: index }, controller.signal);
+        const data = await aiAction(app, api, "write", { director: values(S.node), contexts: readContexts(S.node), provider, part: index, quick: S.quick }, controller.signal);
         if (mine !== serial) return false;
         S.partDrafts[index] = data.suggestion;
         return true;
@@ -104,6 +104,40 @@ export function studioAI(S, app, api, done) {
         return false;
       } finally {
         if (mine === serial) { S.busy = ""; controller = null; done(); }
+      }
+    },
+    // Make H3 prompt: plan the whole video, put the plan in (apply returns nothing; the Studio keeps the undo), then write
+    // every part out and keep each checked answer. A refused or unchanged part keeps its compiled prompt.
+    async build(apply, replan, keep) {
+      const provider = connectedProvider(S.node);
+      if (!provider || S.busy) return null;
+      controller = new AbortController();
+      const mine = ++serial, signal = controller.signal;
+      const step = (text) => { S.buildStep = text; S.aiStarted = Date.now(); done(); };
+      S.busy = "build"; S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; step("Planning the shots …");
+      try {
+        const director = { ...values(S.node), shots: writeProject({ shots: [], audio: S.audio, lanes: S.lanes }) };
+        const plan = await aiAction(app, api, "build", { director, contexts: readContexts(S.node), provider, quick: S.quick }, signal);
+        if (mine !== serial) return null;
+        apply(plan.suggestion);
+        const view = await replan();
+        const result = { parts: view.chunks.length, written: 0, refused: 0, unchanged: 0, unseen: plan.suggestion.unseen_pictures || [] };
+        for (const chunk of view.chunks) {
+          step(view.chunks.length > 1 ? `Writing part ${chunk.index + 1} of ${view.chunks.length} …` : "Writing the prompt …");
+          const data = await aiAction(app, api, "write", { director: values(S.node), contexts: readContexts(S.node), provider,
+            part: chunk.index, quick: S.quick }, signal);
+          if (mine !== serial) return null;
+          const draft = data.suggestion;
+          if (draft.problems.length) result.refused++;
+          else if (draft.unchanged || draft.key !== chunk.prompt_key) result.unchanged++;
+          else { keep(chunk.index, draft); result.written++; }
+        }
+        return result;
+      } catch (error) {
+        if (mine === serial) S.notice = failure(error, provider);
+        return null;
+      } finally {
+        if (mine === serial) { S.busy = ""; S.buildStep = ""; controller = null; done(); }
       }
     },
     cancel() { serial++; controller?.abort(); controller = null; S.busy = ""; S.notice = { text: "AI cancelled, nothing changed.", error: false }; done(); },
