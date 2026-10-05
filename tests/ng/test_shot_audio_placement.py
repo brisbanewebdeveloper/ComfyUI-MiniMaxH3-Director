@@ -108,6 +108,17 @@ class NativeLockPlacement(unittest.TestCase):
         self.assertTrue(torch.all(mix[..., 200:400] == .25))
         self.assertTrue(torch.all(mix[..., 400:] == 0))
 
+    def test_the_lock_track_fills_whole_audio_latent_steps(self):
+        # A 209-frame chunk is 348.33 steps at 40/s; with a partial last step the locked song came back garbled for the
+        # whole chunk (rendered: 0.3 correlation with the song; padded: 0.95 like 192 and 243 frames).
+        ref = compile_.MediaRef("lock", "a", "a.wav", 0, 209)
+        with patch.object(media, "load_audio", return_value={"waveform": torch.full((1, 2, 300000), .25), "sample_rate": 32000}):
+            padded = builder._locked_waveform((ref,), 209, 32000, 40)["waveform"]
+            plain = builder._locked_waveform((ref,), 209, 32000)["waveform"]
+        self.assertEqual(padded.shape[-1], 349 * 800, "whole steps of 800 samples at 32 kHz")
+        self.assertEqual(plain.shape[-1], round(209 / 24 * 32000))
+        self.assertEqual(builder._locked_waveform((), 243, 32000, 40)["waveform"].shape[-1], 405 * 800, "already whole: unchanged")
+
     def test_overlapping_stereo_and_mono_sum_then_clip_independent_of_order(self):
         refs = (compile_.MediaRef("lock", "a", "a.wav", 24, 48), compile_.MediaRef("lock", "b", "b.wav", 48, 48))
         def loaded(ref):

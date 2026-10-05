@@ -56,9 +56,16 @@ def _frame_conditioning(mm, job, clip, vae, resize_method):
                                             length=job.chunk.sampled_frames, first_frame=frame("first_frame"), last_frame=frame("last_frame"))
 
 
-def _locked_waveform(locks, sampled_frames, sample_rate):
-    """All locked clips laid onto one silent track as long as the clip, at their positions."""
-    track = torch.zeros(1, 2, int(round(sampled_frames / float(FPS) * sample_rate)))
+def _locked_waveform(locks, sampled_frames, sample_rate, steps_per_second=None):
+    """All locked clips laid onto one silent track as long as the clip, at their positions.
+
+    With `steps_per_second` (the audio latent rate) the track is padded up to whole latent steps. A chunk whose frame count
+    is not a multiple of 3 (209 frames = 348.33 steps at 40/s) otherwise reached the audio VAE with a partial last step,
+    and the locked song came back garbled for that whole chunk (measured: 0.3 correlation at 209 frames, 0.95 at 192/243)."""
+    seconds = sampled_frames / float(FPS)
+    if steps_per_second:
+        seconds = math.ceil(round(seconds * steps_per_second, 6)) / float(steps_per_second)
+    track = torch.zeros(1, 2, int(round(seconds * sample_rate)))
     for ref in locks:
         audio = media.load_audio(ref)
         wave = audio["waveform"]
@@ -74,7 +81,8 @@ def _locked_waveform(locks, sampled_frames, sample_rate):
 def _hold_locked_audio(mm, latent, locks, sampled_frames, audio_vae):
     if audio_vae is None:
         raise ValueError("an audio item is set to lock, which needs the audio VAE: connect minimax_h3_audio_vae to 'audio_vae'")
-    mix = _locked_waveform(locks, sampled_frames, legacy.AUDIO_SR)
+    # Built at the VAE's own rate, so whole latent steps are whole samples (32 kHz / 40 = 800) and no resampling rounds them.
+    mix = _locked_waveform(locks, sampled_frames, getattr(audio_vae, "audio_sample_rate", legacy.AUDIO_SR), mm.AUDIO_LATENT_FPS)
     encoded, _ = mm._encode_ref_audio(audio_vae, mix)
     spans = [(r.start_f / float(FPS), (r.start_f + r.length_f) / float(FPS)) for r in locks]
     return lock_audio_latent(latent, encoded, spans, mm.AUDIO_LATENT_FPS)
