@@ -171,14 +171,19 @@ def analysis_prompt(media, content, offer=None):
     # A Text card's stored content ("rules" by default) is not something its user chose; as a focus it made a 4B model
     # call a character description a rule. Each role is named with what it means, so a small model can choose.
     focus = content if media != "text" and content else "observable features"
+    # The description becomes the Subject's definition in Ref2VA: one sentence ("an elfin woman with white hair holds
+    # a staff") lost the dress, choker, earrings and fangs that keep the elf recognizable.
+    told = {"image": "one or two sentences naming what keeps it recognizable: for a figure the face, hair, eyes, build, "
+                     "clothing with colours, accessories and props; otherwise the place or the thing",
+            "video": "one or two sentences: the movement, where it starts and where it ends"}.get(media, "one concise sentence")
     return ("Describe %s as a reference for a video director. Focus on %s. Return only JSON with "
-            "description (one concise sentence), %susage (exactly one of: %s) "
+            "description (%s), %susage (exactly one of: %s) "
             "and why (one short sentence naming the visible reason for that choice). Answer with one object for the whole %s, "
             "not one per picture. Use the words of the lists exactly. Do not invent facts. Shape: %s"
-            % (scope[media], focus, content_part, "; ".join("%s = %s" % (role, USAGE_MEANING[media][role]) for role in roles),
+            % (scope[media], focus, told, content_part, "; ".join("%s = %s" % (role, USAGE_MEANING[media][role]) for role in roles),
                {"image": "picture", "video": "clip", "audio": "sound", "text": "text"}[media],
                # Qwen3-VL 4B left usage out, or wrote the role as a key ({"constraint": "..."}); a shape to copy helps it.
-               '{"description": "<one sentence>", %s"usage": "<one word from the usage list>", "why": "<one sentence>"}'
+               '{"description": "<the description>", %s"usage": "<one word from the usage list>", "why": "<one sentence>"}'
                % ("" if not content_part else '"content": "<one word from the content list>", ')))
 
 

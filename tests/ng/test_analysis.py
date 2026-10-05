@@ -54,6 +54,9 @@ class ContentRoles(unittest.TestCase):
         self.assertIn("content (exactly one of: character, face)", prompt)
         self.assertIn("usage (exactly one of: reference = keep this figure or thing recognizable; first_frame = the opening picture)", prompt)
         self.assertNotIn("how the director should use it", prompt)
+        # The image description becomes the Subject definition; one sentence lost the elf's dress, choker and fangs.
+        self.assertIn("clothing with colours, accessories and props", prompt)
+        self.assertIn("one concise sentence", core.analysis_prompt("audio", ""))
         self.assertNotIn("content (", core.analysis_prompt("text", "", {"content": [], "usage": ["rule"]}), "the Text card shows no content choice")
         for media, roles in core.USAGE_BY_MEDIA.items():
             self.assertEqual(set(core.USAGE_MEANING[media]), set(roles), "every %s role is explained to the model" % media)
