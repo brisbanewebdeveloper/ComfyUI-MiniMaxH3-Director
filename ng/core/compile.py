@@ -16,6 +16,8 @@ from .asset_prompt import apply_asset_relations
 from .shot_bindings import scoped_context
 from .media_ref import KINDS, MediaRef
 from .guide_timing import plan_guides
+from .part_prompt import prompt_key
+from .shot_document import read_part_prompts
 
 
 @dataclass(frozen=True)
@@ -26,6 +28,8 @@ class CompiledChunk:
     refs: tuple = ()           # MediaRef in the order the labels <Picture N>/<Video N>/<Audio N> number them
     issues: tuple = ()
     prompt_labels: tuple = ()  # (native label, owning context ID); optional display metadata for v1 saves
+    key: str = ""              # of the compiled prompt; a part's own prompt is valid only for this key
+    source: str = "compiled"   # compiled | ai | user (the part's own prompt) | manual (prompt_override)
     SCHEMA_VERSION = 1
 
     def of_kind(self, kind):
@@ -34,7 +38,7 @@ class CompiledChunk:
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "index": self.index, "mode": self.mode, "prompt": self.prompt,
                 "refs": [r.to_dict() for r in self.refs], "issues": [i.to_dict() for i in self.issues],
-                "prompt_labels": dict(self.prompt_labels)}
+                "prompt_labels": dict(self.prompt_labels), "key": self.key, "source": self.source}
 
     @classmethod
     def from_dict(cls, data, path="compiled"):
@@ -44,7 +48,8 @@ class CompiledChunk:
                    prompt=fields.read_str(data, "prompt", path),
                    refs=tuple(MediaRef.from_dict(d, "%s.refs[%d]" % (path, n)) for n, d in enumerate(fields.read_list(data, "refs", path))),
                    issues=tuple(Issue.from_dict(d) for d in fields.read_list(data, "issues", path)),
-                   prompt_labels=read_prompt_labels(data, path))
+                   prompt_labels=read_prompt_labels(data, path), key=fields.read_str(data, "key", path, ""),
+                   source=fields.read_choice(data, "source", path, ("compiled", "ai", "user", "manual"), "compiled"))
 
 
 def _picture_refs(result, mapping):
@@ -117,7 +122,23 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     labels = prompt_labels(result, mapping, context, refs)
     prompt, guide_issues = (prompt, ()) if context.prompt_override.strip() else resolve_guide_mentions(prompt, context, refs, labels)
     prompt, lock_issues = (prompt, ()) if context.prompt_override.strip() else resolve_lock_mentions(prompt, context, refs)
-    return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=context.prompt_override.strip() or prompt, refs=tuple(refs),
-                         issues=binding_issues + timing_issues + tuple(voice_notes) + relation_issues + guide_issues + lock_issues + tuple(_issues(context, chunk, result, continuity)),
-                         prompt_labels=labels)
+    final, source, own_issues = _own_prompt(original, chunk, prompt)
+    return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=final, refs=tuple(refs),
+                         issues=binding_issues + timing_issues + tuple(voice_notes) + relation_issues + guide_issues + lock_issues + own_issues + tuple(_issues(context, chunk, result, continuity)),
+                         prompt_labels=labels, key=prompt_key(prompt), source=source)
+
+
+def _own_prompt(context, chunk, compiled):
+    """The prompt that goes to the sampler: the manual one, else the part's own if it was written from this very compiled
+    prompt, else the compiled one. An own prompt from before a plan change is kept for the user but not used."""
+    if context.prompt_override.strip():
+        return context.prompt_override.strip(), "manual", ()
+    own = read_part_prompts(context.shots_text).get(chunk.index)
+    if own is None:
+        return compiled, "compiled", ()
+    key, text, by = own
+    if key == prompt_key(compiled) and text.strip():
+        return text.strip(), by, ()
+    return compiled, "compiled", (Issue("part_prompt_outdated", "The plan changed after this part's own prompt was written, so the "
+                                        "compiled prompt is used. Rewrite or edit it in Prompts per render part.", "chunk %d" % (chunk.index + 1)),)
 

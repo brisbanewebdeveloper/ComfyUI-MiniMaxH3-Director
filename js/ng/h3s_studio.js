@@ -2,12 +2,13 @@
 // node's own widgets, so saving, loading and queueing stay ComfyUI's; the shot document keeps shots, clips and lanes.
 import { h, icon, keepKeys } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt, setPartPrompt } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
 import { sideView } from "./h3s_side.js";
-import { footerView, drawerView } from "./h3s_footer.js";
+import { footerView } from "./h3s_footer.js";
+import { drawerView } from "./h3s_prompts.js";
 import { studioAI, basis as aiBasis } from "./h3s_ai.js";
 import { values, applyValues, request } from "./ng_widgets.js";
 import { readPayload, readContexts, connectedProvider } from "./ng_read.js";
@@ -29,7 +30,7 @@ function load(S) {
   S.docError = project.error;
   if (project.skipped?.length) S.notice = { error: true, text: `The saved data has ${project.skipped.length} invalid audio clip(s) (${project.skipped.join(", ")}). `
     + "They are left out here and removed with your next edit; everything else is kept." };
-  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes, look: project.look });
+  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes, look: project.look, partPrompts: project.partPrompts });
 }
 
 // With a host the Studio lives in it (the node); "Full screen" lifts the same Studio over the window and Esc puts it back.
@@ -40,7 +41,7 @@ export function openStudio(node, app, api, host = null) {
   const root = h("div", { class: full ? "h3s full" : "h3s", tabindex: "-1", role: full ? "dialog" : "region", "aria-label": "H3 Director Studio" });
   const page = h("div", { class: "h3s-page" });
   root.append(page);
-  const S = { node, root, selected: null, ghosts: [], ghostSound: null, suggestions: {}, plan: null, planError: "", promptOpen: false,
+  const S = { node, root, selected: null, ghosts: [], ghostSound: null, suggestions: {}, partDrafts: {}, partEdit: null, plan: null, planError: "", promptOpen: false,
     sizeOpen: false, furtherOpen: false, busy: "", toast: "", notice: null, suggestionBase: {}, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
   load(S);
   let timer = null, serial = 0, toastTimer = null, tick = null, closed = false;
@@ -52,7 +53,7 @@ export function openStudio(node, app, api, host = null) {
   function write(changes) { echo = true; try { applyValues(node, changes); } finally { echo = false; } }
   const labels = () => new Map(sorted(S.shots).map((shot, index) => [shot.id, `Shot ${index + 1}`]));
   function save() {
-    const text = S.docError ? null : writeProject({ shots: S.shots, audio: S.audio, lanes: S.lanes, look: S.look });
+    const text = S.docError ? null : writeProject({ shots: S.shots, audio: S.audio, lanes: S.lanes, look: S.look, partPrompts: S.partPrompts });
     if (text !== null && text !== (values(node).shots || "")) { write({ shots: text }); node.graph?.change?.(); }
     S.values = values(node); schedulePlan();
   }
@@ -238,6 +239,24 @@ export function openStudio(node, app, api, host = null) {
     cancelAI: () => ai.cancel(),
     splitPrompt: () => ai.split(),
     setLook(text) { S.look = text; save(); },
+    // Prompts per render part. An AI version and an edit are kept with the key of the compiled prompt they belong to.
+    writePart: (index) => ai.writePart(index),
+    async writeAllParts() { for (const chunk of S.plan?.chunks || []) if (!(await ai.writePart(chunk.index))) break; },
+    acceptPart(index) {
+      const draft = S.partDrafts[index], chunk = S.plan?.chunks?.[index];
+      delete S.partDrafts[index];
+      if (!draft || !chunk || draft.key !== chunk.prompt_key) { S.notice = STALE; render(); return; }
+      S.partPrompts = setPartPrompt(S.partPrompts, index, draft.key, draft.text, "ai"); save(); render();
+    },
+    dropPart(index) { delete S.partDrafts[index]; render(); },
+    editPart(index, text = "") { S.partEdit = index === null ? null : { index, text }; render(); },
+    savePart(index) {
+      const chunk = S.plan?.chunks?.[index], edit = S.partEdit;
+      S.partEdit = null;
+      if (!chunk || !edit) { render(); return; }
+      S.partPrompts = setPartPrompt(S.partPrompts, index, chunk.prompt_key, edit.text, "user"); save(); render();
+    },
+    resetPart(index) { S.partPrompts = setPartPrompt(S.partPrompts, index, "", "", "user"); save(); render(); },
     promptAsShot() { const shot = newShot(0, S.values.project_seconds); shot.text = S.values.idea || ""; S.ghosts = []; setItems("shot", [shot], shot.id); },
     acceptGhosts() {
       if (S.ghostBasis !== aiBasis(node, true)) { S.ghosts = []; S.ghostSound = null; S.notice = STALE; render(); return; }

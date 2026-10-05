@@ -184,6 +184,10 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   assert.equal(model.readProject(model.writeProject({ shots: [shot], audio: [], lanes: [] })).look, "", "no look, no key");
   assert.ok(model.writeProject({ shots: [], audio: [], lanes: [], look: "kept" }).includes('"look":"kept"'), "a look alone is kept for later shots");
   assert.equal(model.readProject("0-4: A walk.").look, "", "timed text has no look");
+  const parts = model.setPartPrompt(model.setPartPrompt([], 1, "k1", "second", "ai"), 0, "k0", "first", "user");
+  assert.deepEqual(parts.map((entry) => entry.index), [0, 1]);
+  assert.deepEqual(model.readProject(model.writeProject({ shots: [shot], audio: [], lanes: [], partPrompts: parts })).partPrompts, parts);
+  assert.deepEqual(model.setPartPrompt(parts, 0, "", "", "user").map((entry) => entry.index), [1], "empty text removes the part's own prompt");
 }
 
 console.log("h3s model ok");

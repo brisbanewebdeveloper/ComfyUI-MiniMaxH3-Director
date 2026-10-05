@@ -38,23 +38,33 @@ function validClip(clip) {
 }
 
 // shots: the Story editor's records; audio: lane clips; lanes: lane order, including empty lanes; look: what every
-// render part shares (style, place, light), sent in place of the Prompt once there are shots.
+// render part shares (style, place, light), sent in place of the Prompt once there are shots; partPrompts: a render
+// part's own prompt {index, key, text, by}, used while `key` is still that of the part's compiled prompt.
 // skipped: ids of audio clips that are invalid or repeat an id; they are left out, the rest stays editable.
 export function readProject(text) {
   const story = readStory(text || "");
-  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], look: "", skipped: [], error: story.error };
+  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], look: "", partPrompts: [], skipped: [], error: story.error };
   const data = JSON.parse(text), audio = [], skipped = [], seen = new Set();
   for (const clip of Array.isArray(data.audio) ? data.audio : []) {
     if (validClip(clip) && !seen.has(clip.id)) { seen.add(clip.id); audio.push({ offset: 0, mode: "ref", lane: "", ...clip }); }
     else skipped.push(typeof clip?.id === "string" && clip.id ? clip.id : "(no id)");
   }
   const lanes = [...new Set([...(data.audio_lanes || []), ...audio.map((clip) => clip.lane)])].filter(Boolean);
-  return { shots: story.shots, audio, lanes, look: typeof data.look === "string" ? data.look : "", skipped, error: "" };
+  const partPrompts = (Array.isArray(data.part_prompts) ? data.part_prompts : [])
+    .filter((entry) => Number.isInteger(entry?.index) && entry.index >= 0 && typeof entry.key === "string" && typeof entry.text === "string");
+  return { shots: story.shots, audio, lanes, look: typeof data.look === "string" ? data.look : "", partPrompts, skipped, error: "" };
 }
 
-export function writeProject({ shots, audio, lanes, look = "" }) {
-  if (!shots.length && !audio.length && !lanes.length && !look.trim()) return "";
-  return JSON.stringify({ format: SHOT_FORMAT, schema_version: 1, shots, audio, audio_lanes: lanes, ...(look.trim() ? { look } : {}) });
+export function writeProject({ shots, audio, lanes, look = "", partPrompts = [] }) {
+  if (!shots.length && !audio.length && !lanes.length && !look.trim() && !partPrompts.length) return "";
+  return JSON.stringify({ format: SHOT_FORMAT, schema_version: 1, shots, audio, audio_lanes: lanes, ...(look.trim() ? { look } : {}),
+    ...(partPrompts.length ? { part_prompts: partPrompts } : {}) });
+}
+
+// A part's own prompt replaces any earlier one of that part; text "" removes it.
+export function setPartPrompt(list, index, key, text, by) {
+  const rest = (list || []).filter((entry) => entry.index !== index);
+  return text.trim() ? [...rest, { index, key, text, by }].sort((a, b) => a.index - b.index) : rest;
 }
 
 export function newShot(start, end, media = []) {

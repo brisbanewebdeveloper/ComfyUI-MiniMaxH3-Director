@@ -70,7 +70,7 @@ async function nativeAction(app,api,action,payload,signal) {
 // Each action names its own endpoint. "prompt" is the Text card's build button; it is listed here
 // rather than folded into the fallback, because a misrouted action would send a note to the analyze
 // endpoint and hand back a field suggestion where a prompt was expected.
-const ENDPOINTS = { direct: "/ng/direct", prompt: "/ng/h3prompt" };
+const ENDPOINTS = { direct: "/ng/direct", prompt: "/ng/h3prompt", write: "/ng/write_part" };
 
 export async function aiAction(app,api,action,payload,signal) {
   if(payload.provider.source==="clip") {

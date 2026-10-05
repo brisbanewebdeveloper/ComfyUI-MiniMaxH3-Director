@@ -9,6 +9,7 @@ from ..adapters.analysis import analyze
 from ..adapters.analyze_all import analyze_all
 from ..adapters.auto_direct import direct
 from ..adapters.h3_prompt import build
+from ..adapters.part_writer import write
 
 
 def _answer(data):
@@ -39,6 +40,15 @@ async def analyze_every_context(request):
 async def direct_scenes(request):
     try:
         return _answer({"suggestion": await direct(await request.json())})
+    except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
+        return _failure(error)
+
+
+@PromptServer.instance.routes.post("/ng/write_part")
+async def write_part_prompt(request):
+    """Prompts per render part: the AI writes one part's prompt out from the compiled one; it is checked before it is shown."""
+    try:
+        return _answer({"suggestion": await write(await request.json())})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)
 

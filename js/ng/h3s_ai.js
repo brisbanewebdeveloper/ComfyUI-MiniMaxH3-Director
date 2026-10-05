@@ -87,6 +87,25 @@ export function studioAI(S, app, api, done) {
       if (!S.suggestions[shotId]) S.notice = { text: "The AI answered, but suggested no new text for this shot.", error: true };
       done();
     },
+    // One render part written out by the AI from its compiled prompt; the server has checked it, Accept stores it.
+    async writePart(index) {
+      const provider = connectedProvider(S.node);
+      if (!provider || S.busy) return false;
+      controller = new AbortController();
+      const mine = ++serial;
+      S.busy = `write${index}`; S.aiStarted = Date.now(); S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; done();
+      try {
+        const data = await aiAction(app, api, "write", { director: values(S.node), contexts: readContexts(S.node), provider, part: index }, controller.signal);
+        if (mine !== serial) return false;
+        S.partDrafts[index] = data.suggestion;
+        return true;
+      } catch (error) {
+        if (mine === serial) S.notice = failure(error, provider);
+        return false;
+      } finally {
+        if (mine === serial) { S.busy = ""; controller = null; done(); }
+      }
+    },
     cancel() { serial++; controller?.abort(); controller = null; S.busy = ""; S.notice = { text: "AI cancelled, nothing changed.", error: false }; done(); },
     dispose() { serial++; controller?.abort(); },
   };

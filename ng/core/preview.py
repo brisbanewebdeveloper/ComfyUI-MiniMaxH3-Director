@@ -32,6 +32,7 @@ def _chunk_view(chunk, compiled, context):
             "end_s": round(frames.frames_to_seconds(chunk.story_end_f), 3), "delivered_frames": chunk.delivered_frames,
             "story_start_f": chunk.story_start_f, "story_end_f": chunk.story_end_f,
             "sampled_frames": chunk.sampled_frames, "head_frames": chunk.head_frames, "mode": compiled.mode, "prompt": compiled.prompt,
+            "prompt_key": compiled.key, "prompt_source": compiled.source,
             "refs": [{"kind": r.kind, "ctx_id": r.ctx_id, "name": _name(context, r)} for r in compiled.refs],
             "prompt_labels": dict(compiled.prompt_labels), "shots": [s.to_dict() for s in chunk.shots]}
 

@@ -1,7 +1,6 @@
-// Fixed settings bar, its two fold-outs (picture size, further settings) and the prompt drawer per render part.
+// Fixed settings bar and its two fold-outs (picture size, further settings).
 import { h, icon, field, select } from "./h3s_dom.js";
-import { DURATIONS, fmt, partColor, chunkBudget } from "./h3s_model.js";
-import { issueLine } from "./h3s_issues.js";
+import { DURATIONS, fmt } from "./h3s_model.js";
 import { PRESET_GROUPS, ASPECTS, RESIZE, presetValue, nearestAspect, canvasInfo, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 
 const CONTINUITY = [["video_audio", "Continue picture and sound"], ["video", "Continue picture only"], ["none", "Hard cuts"]];
@@ -90,30 +89,4 @@ export function footerView(S, actions) {
     h("span", { class: "h3s-lbl" }, `${v.mode === "fl2va" ? "FL2VA" : v.mode === "ref2va" ? "Ref2VA" : "Auto"}${v.turbo ? " Turbo" : ""} · 24 FPS · ${v.steps} steps · CFG 1 · ${v.sampler_name}`)),
     S.sizeOpen ? sizeMore(S, actions) : null,
     S.furtherOpen ? furtherMore(S, actions) : null);
-}
-
-export function drawerView(S, actions) {
-  const chunks = S.plan?.chunks || [], issues = S.plan?.issues || [];
-  const head = h("button", { class: "h3s-drawer-head", "aria-expanded": String(S.promptOpen), onclick: () => actions.toggle("promptOpen") },
-    h("span", { style: { display: "inline-flex", color: "#9AA4B5", transform: `rotate(${S.promptOpen ? 90 : 0}deg)` } }, icon("chevron")),
-    h("span", { class: "h3s-strong" }, "Prompts per render part"),
-    chunks.map((chunk) => { const [color] = partColor(chunk.index);
-      return h("span", { class: "h3s-chip", style: { border: `1px solid ${color}`, display: "inline-flex", alignItems: "center", gap: "6px" } },
-        h("span", { class: "h3s-swatch", style: { background: color } }), `Part ${chunk.index + 1}`); }),
-    issues.length ? h("span", { class: "h3s-chip h3s-warn", style: { border: "1px solid #6B4A2E" } }, `${issues.length} note${issues.length === 1 ? "" : "s"}`) : null,
-    h("span", { class: "h3s-lbl" }, "Exactly the prompt that goes to the sampler."));
-  if (!S.promptOpen) return h("section", { class: "h3s-drawer" }, head);
-  return h("section", { class: "h3s-drawer" }, head,
-    issues.length ? h("div", { class: "h3s-issues", style: { padding: "0 20px 12px" } },
-      issues.map((issue) => h("span", {}, `⚠ ${issueLine(issue)}`))) : null,
-    h("div", { class: "h3s-prompts" }, chunks.map((chunk) => {
-      const [color, bg] = partColor(chunk.index), use = chunkBudget(chunk);
-      return h("div", { class: "h3s-prompt", style: { borderColor: color } },
-        h("div", { class: "h3s-prompt-head", style: { background: bg } }, h("span", { class: "h3s-swatch", style: { background: color, width: "10px", height: "10px" } }),
-          h("strong", {}, `Part ${chunk.index + 1}`), h("span", { class: "h3s-muted", style: { fontSize: "12px" } }, `${fmt(chunk.start_s)} – ${fmt(chunk.end_s)}`),
-          h("span", { class: "h3s-grow" }), h("span", { class: "h3s-lbl" }, chunk.mode.toUpperCase())),
-        h("span", { class: "h3s-lbl", style: { padding: "6px 12px 0" }, title: "Reference slots H3 gets in this part (the model's limits)" },
-          `Images ${use.image}/9 · Video ${use.video}/3 · Audio ${use.audio}/3 · total ${use.total}/12`),
-        h("pre", {}, chunk.prompt));
-    })));
 }

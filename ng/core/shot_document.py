@@ -120,6 +120,22 @@ def read_look(text):
     return fields.read_str(data, "look", "shots", "").strip() if data else ""
 
 
+PROMPT_SOURCES = ("ai", "user")
+
+
+def read_part_prompts(text):
+    """{render part index: (key of the compiled prompt it was written from, text, "ai" | "user")}."""
+    data = _load(text)
+    out = {}
+    for index, entry in enumerate(fields.read_list(data or {}, "part_prompts", "shots")):
+        path = "shots.part_prompts[%d]" % index
+        fields.need_dict(entry, path)
+        part = int(fields.read_number(entry, "index", path, minimum=0))
+        out[part] = (fields.read_str(entry, "key", path), fields.read_str(entry, "text", path),
+                     fields.read_choice(entry, "by", path, PROMPT_SOURCES, "user"))
+    return out
+
+
 def has_shots(text):
     """Whether the user wrote Shots. A document that only holds audio clips leaves the Prompt to carry the video."""
     data = _load(text)

@@ -5,7 +5,8 @@ import { installDom } from "./fake_dom.mjs";
 installDom();
 const { timelineView } = await import("../../../js/ng/h3s_timeline.js");
 const { sideView } = await import("../../../js/ng/h3s_side.js");
-const { footerView, drawerView } = await import("../../../js/ng/h3s_footer.js");
+const { footerView } = await import("../../../js/ng/h3s_footer.js");
+const { drawerView } = await import("../../../js/ng/h3s_prompts.js");
 const { contentView, promptView, contentEntries } = await import("../../../js/ng/h3s_content.js");
 const { issueLine } = await import("../../../js/ng/h3s_issues.js");
 
@@ -122,6 +123,22 @@ function recorder() {
   assert.ok(drawer.innerText.includes("Images 1/9 · Video 0/3 · Audio 0/3"));
   assert.ok(drawer.innerText.includes("Gap between shots (shot 2): there is a gap."));
   assert.equal(issueLine({ code: "new_code", text: "x" }), "Note: x");
+  // Each part: write it with the AI, edit it, reset it; an own prompt of an older plan is flagged.
+  const { actions: parts, calls: asked } = recorder();
+  const own = { ...plan, chunks: [{ ...plan.chunks[0], prompt_key: "k0", prompt_source: "ai" }, { ...plan.chunks[1], prompt_key: "k1", prompt_source: "compiled" }] };
+  const view = drawerView(state({ promptOpen: true, ai: true, plan: own, partPrompts: [{ index: 0, key: "k0", text: "mine", by: "ai" }, { index: 1, key: "old", text: "x", by: "user" }] }), parts);
+  assert.ok(view.innerText.includes("AI-written") && view.innerText.includes("own prompt outdated"), view.innerText);
+  view.button("Write all parts with AI").onclick();
+  assert.deepEqual(asked.at(-1), ["writeAllParts"]);
+  view.find((node) => node.tagName === "BUTTON" && node.innerText.endsWith("Write with AI"))[1].onclick();
+  assert.deepEqual(asked.at(-1), ["writePart", 1]);
+  view.button("Edit").onclick();
+  assert.deepEqual(asked.at(-1), ["editPart", 0, "first prompt"]);
+  view.button("Reset").onclick();
+  assert.deepEqual(asked.at(-1), ["resetPart", 0]);
+  const refused = drawerView(state({ promptOpen: true, plan: own, partDrafts: { 1: { key: "k1", text: "", problems: ["the cut times differ"] } } }), parts);
+  assert.ok(refused.innerText.includes("was not used: the cut times differ"));
+  assert.equal(refused.button("Accept"), undefined, "a refused version cannot be accepted");
   // Any duration, and a music video's length in one click (a 27 s song had no matching entry in the old list).
   const { actions: act, calls } = recorder();
   const withSong = footerView(state({ lengths: new Map([["song", 27.0106]]) }), act);
