@@ -130,8 +130,10 @@ def _speech_rule(quick, sung, played, has_request):
     if played:
         return ("Speech: the singer sings along to the soundtrack, whose words are not known: write no lines ([]) and show the "
                 "singing performance (mouth, breath, expression) in the action.")
-    return ("Speech: the character sings.%s Otherwise write short original lyrics in %s: one or two lines per shot, each a "
-            "short sung phrase. speaker is the exact name of the singer (without @); delivery is sings." % (given, language))
+    # A rendered 10 s song (2026-10-06) sang every word, but the 6-word line of a 2 s last shot was cut off at the end.
+    return ("Speech: the character sings.%s Otherwise write short original lyrics in %s: a sung line of 4 to 7 words takes "
+            "about 3 seconds, so give each shot one line per 3 seconds of its length, and none to a shot shorter than 3 "
+            "seconds. speaker is the exact name of the singer (without @); delivery is sings." % (given, language))
 
 
 def _frame_rule(found):
