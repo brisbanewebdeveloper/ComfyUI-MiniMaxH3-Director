@@ -89,7 +89,7 @@ CFG stays 1 in both cases: every official H3 template uses BasicGuider.
 Below it is the panel of the selected item:
 
 - **Shot**: start/end, **What happens?**, the Content assigned to this shot, and its spoken lines in order, each with
-  speaker (or narrator), language and text; **+ Spoken line** adds one, × removes one. **AI: suggest / improve text** asks the
+  speaker (or narrator), language, delivery (says, sings, whispers, shouts, murmurs; a song needs *sings*) and text; **+ Spoken line** adds one, × removes one. **AI: suggest / improve text** asks the
   provider for this shot's text; the suggestion is shown with **Accept** / **Discard** and changes nothing until accepted.
   The panel lists the render parts the shot falls into.
 - **Audio clip**: start/end on the story, the offset in the file and how H3 uses it:
@@ -100,7 +100,8 @@ Below it is the panel of the selected item:
 
 The bar under the timeline has two rows that are always visible:
 
-- **Video**: duration, render-part length (Auto = about 10 s), resolution preset, width/height, **Picture size** fold-out, FPS (H3 is 24 fps).
+- **Video**: duration in seconds (any value on the 0.1 s grid; **= <audio card>** takes the length of the longest connected audio,
+  e.g. a 27 s song; a longer duration lets the shot that reached the old end run on), render-part length (Auto = about 10 s), resolution preset, width/height, **Picture size** fold-out, FPS (H3 is 24 fps).
 - **Sampling**: seed with random toggle, steps, sampler, scheduler, **More settings** fold-out.
 
 Resolution follows the Legacy Director: presets **Native** (short side 768), **Fast** (short side 480) and **Above native** (1920×1088), **From first picture (H3 chooses)**,

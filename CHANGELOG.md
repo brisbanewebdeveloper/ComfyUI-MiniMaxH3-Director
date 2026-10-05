@@ -2,6 +2,13 @@
 
 ## 1.0.0 (unreleased)
 
+**A music video end to end** (2026-10-05): the user's 27 s elf song (picture, MP3, prompt with lyrics) rendered in both modes.
+
+- Duration is any value on the 0.1 s grid with "= <audio card>" for the song's length (the list had no 27 s); a longer duration lets the last shot run on, so the added render parts keep their text.
+- Spoken lines can be sung (says / sings / whispers / shouts / murmurs).
+- Build H3 prompt keeps sung or spoken words verbatim and has room for a full storyboard (at least 1536 tokens).
+- An image analysis names what keeps a figure recognizable (clothing, accessories), and the Subject sentence reads "<Subject 1> is an elfin woman", not "is An".
+
 **Every AI function checked with real models** (2026-10-05): Context cards, Text card, Studio and the Legacy Enhance node, with Qwen3-VL 4B (Load CLIP and installed encoder) and Ollama.
 
 - The Text card has ✦ Analyze ("Use as" from the note); Build H3 prompt over CLIP reaches the card; a Text card's native analysis gets its own role prompt.
