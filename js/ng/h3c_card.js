@@ -6,6 +6,7 @@ import { studioUses, TEMPLATES, usableFields, offerFor } from "./h3c_model.js";
 import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box } from "./h3c_parts.js";
 import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
+import { lyricsBox, stampLine } from "./h3c_lyrics.js";
 import { values, applyValues, newContextId, analysisFingerprint, request } from "./ng_widgets.js";
 import { contextOptions, setOptions, selectedRoles } from "./ng_context_controls.js";
 import { hideNative } from "./ng_editor_fields.js";
@@ -41,7 +42,7 @@ function layout(S, actions) {
   if (S.media === "video") parts.push(videoBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), suggestionBox(S, actions),
     two(videoSoundBox(S, actions), ownerBox(S, actions, "E.g. a walk cycle for a figure.")), descriptionBox(S, actions));
   if (S.media === "audio") parts.push(audioBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), suggestionBox(S, actions),
-    two(speakerBox(S, actions), listenBox(S, actions)), descriptionBox(S, actions));
+    two(speakerBox(S, actions), listenBox(S, actions)), lyricsBox(S, actions), descriptionBox(S, actions));
   if (S.media === "text") parts.push(...textBody(S, actions));
   parts.push(presetRow(S, actions), usesLine(S));
   return parts.filter(Boolean);
@@ -172,6 +173,24 @@ function attach(node, media) {
       node.graph?.change?.(); say("Accepted the AI suggestion.");
     },
     discard() { S.suggestion = null; render(); },
+    // Lyrics: Whisper times the lines that are there (or writes down what it hears); the words stay the user's.
+    async timeLyrics() {
+      if (S.busy) return;
+      S.busy = "lyrics"; say("");
+      try {
+        const data = await request(api, "/ng/lyrics", { source: values(node).audio, lyrics: S.els.lyrics?.value ?? contextOptions(node).lyrics ?? "" });
+        setOptions(node, { lyrics: data.lrc });
+        say(`Timed ${data.lines} line(s) (${data.language}, ${data.device.startsWith("cpu") ? "CPU while a render runs" : "GPU"}). Check them while the song plays.`);
+      } catch (error) { say(`Lyrics: ${error.message}`, true); }
+      finally { S.busy = ""; render(); }
+    },
+    stampLyric() {
+      const editor = S.els.lyrics, text = editor?.value ?? "";
+      if (!editor) return;
+      const result = stampLine(text, editor.selectionStart ?? 0, S.els.audio.currentTime || 0);
+      setOptions(node, { lyrics: result.text }); render();
+      queueMicrotask(() => { S.els.lyrics?.focus(); S.els.lyrics?.setSelectionRange(result.caret, result.caret); });
+    },
     cancel() { controller?.abort(); },
     // Text card: the note and the built prompt are both kept; the switch decides which one the Director reads.
     setNote(text) {

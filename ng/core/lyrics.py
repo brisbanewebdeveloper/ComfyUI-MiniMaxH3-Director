@@ -5,6 +5,7 @@ an empty stamped line ends the line before it (a pause). Where the card plays ex
 Shot or the whole project), each line is sung at a known story time, so every render part gets exactly the lines sung in
 it instead of the whole song. The 27 s elf song put all eight lines into each of its three 9 s parts.
 """
+import difflib
 import re
 from dataclasses import dataclass
 
@@ -64,6 +65,61 @@ def to_lrc(language, lines):
         if following is None or following - line.end > 1.0:
             out.append(stamp(line.end))
     return "\n".join(out)
+
+
+def plain_lines(text):
+    """The words of each lyric line, stamps and language tag removed; empty lines dropped."""
+    out = []
+    for raw in (text or "").splitlines():
+        if LANGUAGE_RE.match(raw):
+            continue
+        while STAMP_RE.match(raw):
+            raw = raw[STAMP_RE.match(raw).end():]
+        if raw.strip():
+            out.append(raw.strip())
+    return out
+
+
+def _tokens(text):
+    return re.findall(r"\w+", text.lower())
+
+
+def align(known, words):
+    """Give the user's own lines the times of the recognised words: [(word, start, end)] from speech recognition.
+
+    The words stay the user's (recognition mishears sung words); only the timing comes from the recogniser. A line none of
+    whose words were heard is placed between its neighbours by its share of the words."""
+    tokens = [(index, token) for index, line in enumerate(known) for token in _tokens(line)]
+    heard = [(token, start, end) for word, start, end in words for token in _tokens(word)]
+    matcher = difflib.SequenceMatcher(None, [t for _, t in tokens], [t for t, _, _ in heard], autojunk=False)
+    spans = {}
+    for block in matcher.get_matching_blocks():
+        for offset in range(block.size):
+            line = tokens[block.a + offset][0]
+            _, start, end = heard[block.b + offset]
+            first, last = spans.get(line, (start, end))
+            spans[line] = (min(first, start), max(last, end))
+    counts = [max(1, len(_tokens(line))) for line in known]
+    times = [spans.get(index) for index in range(len(known))]
+    total_end = max((end for _, _, end in heard), default=LAST_LINE_SECONDS * len(known))
+    for index, found in enumerate(times):
+        if found:
+            continue
+        before = next((times[i][1] for i in range(index - 1, -1, -1) if times[i]), 0.0)
+        after_index = next((i for i in range(index + 1, len(known)) if times[i]), None)
+        after = times[after_index][0] if after_index is not None else total_end
+        gap = range(index, after_index if after_index is not None else len(known))
+        share = max(0.0, after - before) / float(sum(counts[i] for i in gap))
+        start = before
+        for i in gap:
+            times[i] = (start, start + share * counts[i])
+            start = times[i][1]
+    lines, previous = [], 0.0
+    for line, (start, end) in zip(known, times):
+        start = max(start, previous)
+        lines.append(LyricLine(round(start, 2), round(max(end, start), 2), line))
+        previous = start
+    return tuple(lines)
 
 
 def _spans(context, item):

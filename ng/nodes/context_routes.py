@@ -4,7 +4,9 @@ import asyncio
 from aiohttp import web
 from server import PromptServer
 
-from ..adapters import keys, models, presets, preview_media, waveform
+import comfy.model_management
+
+from ..adapters import keys, lyrics_timing, models, presets, preview_media, waveform
 from ..core import providers
 from ..core.context_build import item_from_widgets
 from ..core.presets import ContextPreset, widget_values
@@ -131,4 +133,18 @@ async def media_waveform(request):
         data = await asyncio.to_thread(waveform.envelope, request.query["source"])
         return web.json_response({"ok": True, **data})
     except (OSError, ValueError, KeyError) as error:
+        return web.json_response({"ok": False, "error": str(error)}, status=400)
+
+
+@PromptServer.instance.routes.post("/ng/lyrics")
+async def time_lyrics(request):
+    """Time a song card's lyrics with Whisper. While a render runs it stays off the GPU (CPU is slower, not in the way)."""
+    try:
+        data = await request.json()
+        busy = PromptServer.instance.prompt_queue.get_tasks_remaining() > 0
+        device = "cpu" if busy else comfy.model_management.get_torch_device()
+        result = await asyncio.to_thread(lyrics_timing.time_lyrics, data["source"], data.get("lyrics", ""), device)
+        comfy.model_management.soft_empty_cache()
+        return web.json_response({"ok": True, "device": str(device), **result})
+    except (OSError, ValueError, KeyError, TypeError) as error:
         return web.json_response({"ok": False, "error": str(error)}, status=400)

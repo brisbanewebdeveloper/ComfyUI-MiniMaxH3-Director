@@ -67,6 +67,29 @@ class Parse(unittest.TestCase):
         self.assertNotIn("lyrics", opts.ContextOptions().to_dict())
 
 
+class Align(unittest.TestCase):
+    # Whisper small on the user's song (2026-10-05) heard all eight lines; a misheard word must not move a line.
+    WORDS = [(" My", 0.0, 0.4), (" master,", 0.4, 1.2), (" where", 1.3, 1.6), (" did", 1.6, 1.8), (" your", 1.8, 2.0),
+             (" footsteps", 2.0, 2.6), (" fade?", 2.6, 3.2), (" I", 3.48, 3.6), (" still", 3.6, 4.0), (" wade", 4.0, 4.3),
+             (" where", 4.3, 4.6), (" your", 4.6, 4.8), (" shadow", 4.8, 5.4), (" stayed", 5.4, 6.4)]
+
+    def test_the_users_words_keep_the_recognised_times(self):
+        lines = lyrics.align(["My master, where did your footsteps fade?", "I still wait where your shadow stayed."], self.WORDS)
+        self.assertEqual([l.text for l in lines], ["My master, where did your footsteps fade?", "I still wait where your shadow stayed."])
+        self.assertEqual([(l.start, l.end) for l in lines], [(0.0, 3.2), (3.48, 6.4)])
+
+    def test_an_unheard_line_sits_between_its_neighbours(self):
+        lines = lyrics.align(["My master, where did your footsteps fade?", "La la la la", "I still wait where your shadow stayed."],
+                             self.WORDS)
+        self.assertEqual(lines[1].start, 3.2)
+        self.assertEqual(lines[1].end, 3.48)
+        self.assertEqual(lines[2].start, 3.48)
+
+    def test_plain_lines_drop_stamps_language_and_blank_lines(self):
+        self.assertEqual(lyrics.plain_lines(SONG)[:2], ["My master, where did your footsteps fade?", "I still wait where your shadow stayed."])
+        self.assertEqual(len(lyrics.plain_lines(SONG)), 5)
+
+
 class Placement(unittest.TestCase):
     def prompts(self, result):
         return [c.prompt for c in result.compiled]
