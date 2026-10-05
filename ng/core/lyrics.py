@@ -136,10 +136,19 @@ def _spans(context, item):
     return [(0, seconds_to_frames(context.project_seconds), source)]
 
 
-def sung_lines(context, chunk):
-    """[(local frame where the line is sung, speaker item id, language, text)] for this chunk, in time order.
+@dataclass(frozen=True)
+class StoryLine:
+    start_f: int        # story frames where the song sings it
+    end_f: int
+    middle_f: int
+    speaker: str        # the card's speaker (a figure's context id) or ""
+    language: str
+    text: str
+    song: str           # the card's name
 
-    A line belongs to the part where its middle is sung; a part's carried-over head was rendered by the part before."""
+
+def story_lines(context):
+    """Every timed line of every exactly played song, at its story time, in time order."""
     out = []
     for item in context.by_media("audio"):
         language, lines = parse(item.options.lyrics)
@@ -147,8 +156,18 @@ def sung_lines(context, chunk):
             continue
         for origin, end, offset in _spans(context, item):
             for line in lines:
+                start = origin + seconds_to_frames(line.start) - offset
                 middle = origin + seconds_to_frames((line.start + line.end) / 2.0) - offset
-                if origin <= middle < end and chunk.story_start_f <= middle < chunk.story_end_f:
-                    local = middle - (chunk.story_start_f - chunk.head_frames)
-                    out.append((local, item.speaker, language or "English", line.text))
-    return sorted(out, key=lambda entry: entry[0])
+                if origin <= middle < end:
+                    out.append(StoryLine(start, min(end, origin + seconds_to_frames(line.end) - offset), middle, item.speaker,
+                                         language or "English", line.text, item.name))
+    return sorted(out, key=lambda line: line.start_f)
+
+
+def sung_lines(context, chunk):
+    """[(local frame where the line is sung, speaker item id, language, text)] for this chunk, in time order.
+
+    A line belongs to the part where its middle is sung; a part's carried-over head was rendered by the part before."""
+    window = chunk.story_start_f - chunk.head_frames
+    return [(line.middle_f - window, line.speaker, line.language, line.text) for line in story_lines(context)
+            if chunk.story_start_f <= line.middle_f < chunk.story_end_f]

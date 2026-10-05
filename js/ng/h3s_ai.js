@@ -40,7 +40,8 @@ export function studioAI(S, app, api, done) {
     S.busy = kind; S.aiStarted = Date.now(); S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; done();
     const before = basis(S.node);
     try {
-      const payload = { director: { ...values(S.node), shots: shots === null ? "" : writeProject({ shots, audio: [], lanes: [] }) },
+      // A split starts from the Prompt, but takes the audio lanes along: the plan then knows when the song sings each line.
+      const payload = { director: { ...values(S.node), shots: writeProject({ shots: shots || [], audio: S.audio, lanes: S.lanes }) },
         contexts: readContexts(S.node), provider, mode: "auto", keep };
       const data = await aiAction(app, api, "direct", payload, controller.signal);
       if (mine !== serial) return null;
@@ -62,8 +63,8 @@ export function studioAI(S, app, api, done) {
       const suggestion = await run("split", null, ownLines(S));
       if (!suggestion) return;
       const proposed = clipToFit(readProject(suggestion.shots || "").shots, S.values.project_seconds);
-      S.ghosts = proposed.map(({ start, end, text }) => ({ start, end, text }));
-      S.ghostSound = { soundscape: suggestion.soundscape || "", music: suggestion.music || "" };
+      S.ghosts = proposed.map(({ start, end, text, spoken }) => ({ start, end, text, spoken: spoken || [] }));
+      S.ghostSound = { soundscape: suggestion.soundscape || "", music: suggestion.music || "", look: suggestion.look || "" };
       S.ghostBasis = basis(S.node, true);
       if (!S.ghosts.length) S.notice = { text: "The AI answered, but proposed no shots. Try again or split by hand.", error: true };
       else {

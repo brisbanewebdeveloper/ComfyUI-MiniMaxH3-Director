@@ -29,7 +29,7 @@ function load(S) {
   S.docError = project.error;
   if (project.skipped?.length) S.notice = { error: true, text: `The saved data has ${project.skipped.length} invalid audio clip(s) (${project.skipped.join(", ")}). `
     + "They are left out here and removed with your next edit; everything else is kept." };
-  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes });
+  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes, look: project.look });
 }
 
 // With a host the Studio lives in it (the node); "Full screen" lifts the same Studio over the window and Esc puts it back.
@@ -52,7 +52,7 @@ export function openStudio(node, app, api, host = null) {
   function write(changes) { echo = true; try { applyValues(node, changes); } finally { echo = false; } }
   const labels = () => new Map(sorted(S.shots).map((shot, index) => [shot.id, `Shot ${index + 1}`]));
   function save() {
-    const text = S.docError ? null : writeProject({ shots: S.shots, audio: S.audio, lanes: S.lanes });
+    const text = S.docError ? null : writeProject({ shots: S.shots, audio: S.audio, lanes: S.lanes, look: S.look });
     if (text !== null && text !== (values(node).shots || "")) { write({ shots: text }); node.graph?.change?.(); }
     S.values = values(node); schedulePlan();
   }
@@ -237,12 +237,14 @@ export function openStudio(node, app, api, host = null) {
     dropSuggestion(id) { delete S.suggestions[id]; render(); },
     cancelAI: () => ai.cancel(),
     splitPrompt: () => ai.split(),
+    setLook(text) { S.look = text; save(); },
     promptAsShot() { const shot = newShot(0, S.values.project_seconds); shot.text = S.values.idea || ""; S.ghosts = []; setItems("shot", [shot], shot.id); },
     acceptGhosts() {
       if (S.ghostBasis !== aiBasis(node, true)) { S.ghosts = []; S.ghostSound = null; S.notice = STALE; render(); return; }
-      const shots = S.ghosts.map((ghost) => ({ ...newShot(ghost.start, ghost.end), text: ghost.text }));
+      const shots = S.ghosts.map((ghost) => ({ ...newShot(ghost.start, ghost.end), text: ghost.text, spoken: ghost.spoken || [] }));
       const sound = S.ghostSound || {};
       for (const name of ["soundscape", "music"]) if (sound[name]?.trim()) write({ [name]: sound[name].trim() });
+      if (sound.look?.trim()) S.look = sound.look.trim();
       S.ghosts = []; S.ghostSound = null; setItems("shot", shots, shots[0]?.id);
     },
     dropGhosts() { S.ghosts = []; S.ghostSound = null; render(); },

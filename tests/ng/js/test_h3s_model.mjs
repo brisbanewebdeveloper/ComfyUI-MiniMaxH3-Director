@@ -176,4 +176,14 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   assert.deepEqual(model.growToDuration(items, 20, 15).grown, [], "shorter is trimToDuration's job");
 }
 
+// The Look rides in the shot document; with shots it opens every render part in place of the Prompt.
+{
+  const shot = { ...model.newShot(0, 8), text: "She sings." };
+  const back = model.readProject(model.writeProject({ shots: [shot], audio: [], lanes: [], look: "Gothic hall, anime style." }));
+  assert.equal(back.look, "Gothic hall, anime style.");
+  assert.equal(model.readProject(model.writeProject({ shots: [shot], audio: [], lanes: [] })).look, "", "no look, no key");
+  assert.ok(model.writeProject({ shots: [], audio: [], lanes: [], look: "kept" }).includes('"look":"kept"'), "a look alone is kept for later shots");
+  assert.equal(model.readProject("0-4: A walk.").look, "", "timed text has no look");
+}
+
 console.log("h3s model ok");

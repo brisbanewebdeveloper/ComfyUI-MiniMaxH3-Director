@@ -51,16 +51,21 @@ function visual(entry, thumb) {
 }
 
 export function promptView(S, actions) {
+  const shots = S.shots.length > 0;
   return h("section", { class: "h3s-card" },
     h("div", { class: "h3s-row" }, h("label", { class: "h3s-strong", for: "h3s-prompt" }, "Prompt"),
-      h("span", { class: "h3s-lbl" }, "Describe what should happen. Nothing else is needed."), h("span", { class: "h3s-grow" }),
+      h("span", { class: "h3s-lbl" }, shots ? "The story. H3 gets the shots made from it, plus the Look." : "Describe what should happen. Nothing else is needed."),
+      h("span", { class: "h3s-grow" }),
       h("button", { class: "h3s-btn ai", disabled: !S.ai || Boolean(S.busy), onclick: actions.splitPrompt,
         title: S.ai ? "The AI suggests shots; you accept or discard them." : "Connect an H3 AI Loader to the Connector for this." },
         icon("spark"), S.busy === "split" ? "AI working …" : "AI: split into shots"),
       S.busy === "split" ? h("button", { class: "h3s-btn ghost", onclick: actions.cancelAI }, "Cancel") : null,
       h("button", { class: "h3s-btn", onclick: actions.promptAsShot }, "Whole prompt = one shot")),
     h("textarea", { class: "h3s-in", id: "h3s-prompt", rows: 3, value: S.values.idea || "", placeholder: "A young woman plays outside with a red ball …",
-      oninput: (event) => actions.setWidget("idea", event.target.value, false) }));
+      oninput: (event) => actions.setWidget("idea", event.target.value, false) }),
+    h("div", { class: "h3s-row" }, h("label", { class: "h3s-lbl", for: "h3s-look", title: "Style, place and light that every render part shares; it opens each part's prompt." }, "Look (every part)"),
+      h("input", { class: "h3s-in", id: "h3s-look", value: S.look || "", placeholder: shots ? "Dark gothic hall, cinematic anime style, warm amber rim light …" : "Used once there are shots",
+        style: { flex: "1" }, oninput: (event) => actions.setLook(event.target.value) })));
 }
 
 export function contentView(S, actions) {

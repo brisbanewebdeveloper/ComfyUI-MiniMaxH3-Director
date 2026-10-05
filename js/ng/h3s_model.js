@@ -37,23 +37,24 @@ function validClip(clip) {
     && clip.end > clip.start && CLIP_MODES.includes(clip.mode ?? "ref") && (clip.offset === undefined || (Number.isFinite(clip.offset) && clip.offset >= 0));
 }
 
-// shots: the Story editor's records; audio: lane clips; lanes: lane order, including empty lanes.
+// shots: the Story editor's records; audio: lane clips; lanes: lane order, including empty lanes; look: what every
+// render part shares (style, place, light), sent in place of the Prompt once there are shots.
 // skipped: ids of audio clips that are invalid or repeat an id; they are left out, the rest stays editable.
 export function readProject(text) {
   const story = readStory(text || "");
-  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], skipped: [], error: story.error };
+  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], look: "", skipped: [], error: story.error };
   const data = JSON.parse(text), audio = [], skipped = [], seen = new Set();
   for (const clip of Array.isArray(data.audio) ? data.audio : []) {
     if (validClip(clip) && !seen.has(clip.id)) { seen.add(clip.id); audio.push({ offset: 0, mode: "ref", lane: "", ...clip }); }
     else skipped.push(typeof clip?.id === "string" && clip.id ? clip.id : "(no id)");
   }
   const lanes = [...new Set([...(data.audio_lanes || []), ...audio.map((clip) => clip.lane)])].filter(Boolean);
-  return { shots: story.shots, audio, lanes, skipped, error: "" };
+  return { shots: story.shots, audio, lanes, look: typeof data.look === "string" ? data.look : "", skipped, error: "" };
 }
 
-export function writeProject({ shots, audio, lanes }) {
-  if (!shots.length && !audio.length && !lanes.length) return "";
-  return JSON.stringify({ format: SHOT_FORMAT, schema_version: 1, shots, audio, audio_lanes: lanes });
+export function writeProject({ shots, audio, lanes, look = "" }) {
+  if (!shots.length && !audio.length && !lanes.length && !look.trim()) return "";
+  return JSON.stringify({ format: SHOT_FORMAT, schema_version: 1, shots, audio, audio_lanes: lanes, ...(look.trim() ? { look } : {}) });
 }
 
 export function newShot(start, end, media = []) {

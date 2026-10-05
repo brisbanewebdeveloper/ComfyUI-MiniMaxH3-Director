@@ -4,64 +4,68 @@ import unittest
 from _pack import module
 
 direction = module("ng.core.auto_direct")
+MAGE = {"media": "image", "widgets": {"name": "Mage", "context_id": "ctx_mage"}}
+
+
+def shots_of(result):
+    data = json.loads(result["shots"])
+    assert data["format"] == "h3-director-shots"
+    return data["shots"]
 
 
 class SceneSuggestion(unittest.TestCase):
     def answer(self):
-        return {"shots": [{"start_s": 0, "end_s": 4, "action": "@Alice enters.", "camera": "Slow dolly", "dialogue": ""},
-                          {"start_s": 4, "end_s": 8, "action": "@Alice turns.", "camera": "Close-up", "dialogue": "@Alice says: Hello."}],
+        return {"look": "Dark gothic hall, cinematic anime style.",
+                "shots": [{"start_s": 0, "end_s": 4, "action": "@Alice enters.", "camera": "Slow dolly", "lines": []},
+                          {"start_s": 4, "end_s": 8, "action": "@Alice turns.", "camera": "Close-up",
+                           "lines": [{"speaker": "Alice", "delivery": "whispers", "language": "German", "text": "Hallo."}]}],
                 "soundscape": "Room tone", "music": "N/A"}
 
-    def test_suggestion_keeps_editable_times_camera_and_dialogue(self):
-        result = direction.parse_direction("```json\n" + json.dumps(self.answer()) + "\n```", 8)
-        self.assertIn("0.000-4.000: @Alice enters.", result["shots"])
-        self.assertIn("Camera: Slow dolly", result["shots"])
-        self.assertIn("@Alice says: Hello.", result["shots"])
+    def test_the_proposal_is_a_shot_document_with_look_camera_and_real_spoken_lines(self):
+        result = direction.parse_direction("```json\n" + json.dumps(self.answer()) + "\n```", 8,
+                                           [{"media": "image", "widgets": {"name": "Alice", "context_id": "ctx_a"}}])
+        shots = shots_of(result)
+        self.assertEqual([(s["start"], s["end"]) for s in shots], [(0, 4), (4, 8)])
+        self.assertEqual(shots[0]["text"], "@Alice enters.\nCamera: Slow dolly")
+        self.assertEqual(shots[1]["spoken"], [{"schema_version": 1, "text": "Hallo.", "speaker_id": "ctx_a", "voice": "a narrator",
+                                               "language": "German", "delivery": "whispers"}])
+        self.assertEqual(result["look"], "Dark gothic hall, cinematic anime style.")
+        self.assertEqual(json.loads(result["shots"])["look"], result["look"])
         self.assertEqual(result["music"], "N/A")
 
-    def test_manual_dialogue_survives_a_scene_proposal(self):
-        # A proposal may rewrite action and camera, but a line the user typed must not disappear.
-        suggested = "0.000-4.000: @Alice enters.\n4.000-8.000: @Alice turns."
-        current = "0.000-4.000: Alice enters.\n@Alice says: Hello.\n4.000-8.000: Alice turns.\nCamera: Close-up."
-        merged, kept = direction.keep_manual_dialogue(suggested, current)
-        self.assertIn("@Alice says: Hello.", merged)
-        self.assertIn(merged.splitlines()[0], "0.000-4.000: @Alice enters.")
-        self.assertEqual(kept, ["@Alice says: Hello."])
+    def test_a_song_becomes_one_sung_line_per_line(self):
+        # Elf song (2026-10-05): eight lines arrived as one "says" line and seven lines of prose.
+        answer = {"shots": [{"start_s": 0, "end_s": 8, "action": "@Mage sings.", "lines": [
+            {"speaker": "@Mage", "delivery": "sings", "language": "English", "text": "My master, where did your footsteps fade?\nI still wait where your shadow stayed."}]}]}
+        spoken = shots_of(direction.parse_direction(json.dumps(answer), 8, [MAGE]))[0]["spoken"]
+        self.assertEqual([(l["text"], l["delivery"], l["speaker_id"]) for l in spoken],
+                         [("My master, where did your footsteps fade?", "sings", "ctx_mage"), ("I still wait where your shadow stayed.", "sings", "ctx_mage")])
+
+    def test_lines_the_song_already_sings_are_not_doubled_and_odd_values_are_tamed(self):
+        answer = {"shots": [{"start_s": 0, "end_s": 8, "action": "She sings.", "lines": [
+            {"speaker": "", "delivery": "sings", "text": "My master, where did your footsteps fade?"},
+            {"speaker": "A stranger (far away)", "delivery": "yells", "language": "Eng[lish]", "text": "Wait!"}]}]}
+        sung = ((0.0, 3.5, "Song", "My master, where did your footsteps fade?"),)
+        spoken = shots_of(direction.parse_direction(json.dumps(answer), 8, [], sung=sung))[0]["spoken"]
+        self.assertEqual(len(spoken), 1)
+        self.assertEqual((spoken[0]["voice"], spoken[0]["delivery"], spoken[0]["language"]), ("A stranger far away", "says", "Eng lish"))
 
     def test_the_users_own_line_replaces_the_one_the_ai_wrote_for_that_speaker(self):
         # Real gemma split: "@Mage says: Welcome back." came back as "@Mage says: Welcome... settle your spirit."
-        suggested = ("0.000-3.000: The mage stands.\n@Mage says: Welcome... settle your spirit.\n"
-                     "3.000-8.000: Close up.\n@Mage says: Find the quiet.")
-        merged, kept = direction.keep_manual_dialogue(suggested, "", "@Mage says: Welcome back.")
-        self.assertEqual(merged, "0.000-3.000: The mage stands.\n@Mage says: Welcome back.\n3.000-8.000: Close up.")
-        self.assertEqual(kept, ["@Mage says: Welcome back."])
-        result = direction.finish_direction(json.dumps({"shots": [{"start_s": 0, "end_s": 8, "action": "The mage stands.", "dialogue": "@Mage says: Hi."}]}),
-                                            8, [{"widgets": {"name": "Mage"}}], "", "@Mage says: Welcome back.")
-        self.assertIn("@Mage says: Welcome back.", result["shots"]); self.assertNotIn("Hi.", result["shots"])
+        answer = {"shots": [{"start_s": 0, "end_s": 3, "action": "The mage stands.", "lines": [{"speaker": "Mage", "text": "Welcome... settle your spirit."}]},
+                            {"start_s": 3, "end_s": 8, "action": "Close up.", "lines": [{"speaker": "Mage", "text": "Find the quiet."}]}]}
+        result = direction.parse_direction(json.dumps(answer), 8, [MAGE], keep="@Mage says: Welcome back.\nNarrator says: Long ago.")
+        shots = shots_of(result)
+        self.assertEqual([l["text"] for l in shots[0]["spoken"]], ["Welcome back."])
+        self.assertEqual(shots[1]["spoken"][0]["text"], "Long ago.")
+        self.assertEqual(shots[1]["spoken"][0]["speaker_id"], "")
+        self.assertEqual(result["kept_dialogue"], ["Welcome back.", "Long ago."])
 
-    def test_dialogue_the_proposal_repeats_is_not_written_twice(self):
-        suggested = "0.000-8.000: @Alice enters.\n@Alice says: Hello."
-        merged, kept = direction.keep_manual_dialogue(suggested, "0.000-8.000: Alice enters.\n@Alice says: Hello.")
-        self.assertEqual(kept, [])
-        self.assertEqual(merged, suggested)
-
-    def test_nothing_is_kept_without_dialogue_or_without_shots(self):
-        suggested = "0.000-8.000: @Alice enters."
-        for current in ("", "0.000-8.000: Alice enters.\nCamera: Close-up.", "no times here"):
-            with self.subTest(current=current):
-                self.assertEqual(direction.keep_manual_dialogue(suggested, current), (suggested, []))
-        # A line before the first timed shot is not a shot; parse_shots already reports that separately.
-        self.assertEqual(direction.keep_manual_dialogue("", "0.000-8.000: x\n@Bob says: Hi."), ("", []))
-
-    def test_a_saved_proposal_still_parses_as_shots(self):
-        # The kept line is written as a timed block, so parse_shots accepts it like any other shot text.
-        from _pack import module
+    def test_a_proposal_parses_as_the_studio_and_the_planner_read_it(self):
         shots = module("ng.core.shots")
-        suggested = "0.000-8.000: @Alice enters."
-        merged, _ = direction.keep_manual_dialogue(suggested, "0.000-8.000: Alice enters.\n@Alice says: Hello.")
-        parsed, issues = shots.parse_shots(merged, 8 * 24)
+        parsed, issues = shots.parse_shots(direction.parse_direction(json.dumps(self.answer()), 8)["shots"], 8 * 24)
         self.assertEqual(issues, ())
-        self.assertTrue(any("@Alice says: Hello." in shot.text for shot in parsed))
+        self.assertEqual(len(parsed), 2)
 
     def test_invalid_times_do_not_change_the_project(self):
         # Still refused: a shot that ends before it starts or before the previous one, no number, no action.
@@ -85,40 +89,43 @@ class SceneSuggestion(unittest.TestCase):
         self.assertEqual(direction.direct_tokens(512), 2048)
         self.assertEqual(direction.direct_tokens(4096), 4096)
 
-    def test_prompt_sends_meanings_without_local_file_paths_or_credentials(self):
+    def test_prompt_sends_meanings_parts_and_sung_lines_without_local_file_paths(self):
         context = {"media": "image", "widgets": {"name": "Alice", "description": "a woman", "image": "private/file.png", "usage": "reference"}}
-        prompt = direction.direction_prompt("She walks.", 8, [context])
+        prompt = direction.direction_prompt("She walks.", 27, [context], "", (((0, 8.7), (8.7, 17.9), (17.9, 27.1)),
+                                                                              ((0.0, 3.48, "Song", "My master, where did your footsteps fade?"),)))
         self.assertIn("Alice", prompt)
         self.assertNotIn("private/file.png", prompt)
         self.assertIn("Do not claim generation", prompt)
+        self.assertIn("0-8.7 s, 8.7-17.9 s, 17.9-27.1 s", prompt)
+        self.assertIn('0-3.5 s "My master, where did your footsteps fade?"', prompt)
+        self.assertNotIn("rendered in parts", direction.direction_prompt("She walks.", 8, [context]))
 
     def test_gaps_overlaps_and_a_short_end_are_laid_end_to_end_unknown_mentions_become_words(self):
         # Qwen3-VL 4B ended a 10 s project at 5 s; the whole proposal used to be thrown away for it.
         for change in ({"start_s": 5}, {"start_s": 3}, {"end_s": 7}, {"end_s": 9}):
-            answer=self.answer();answer["shots"][1].update(change)
-            result = direction.parse_direction(json.dumps(answer),8)
-            self.assertIn("0.000-4.000: @Alice enters.",result["shots"]); self.assertIn("4.000-8.000: @Alice turns.",result["shots"])
+            answer = self.answer(); answer["shots"][1].update(change)
+            result = direction.parse_direction(json.dumps(answer), 8)
+            self.assertEqual([(s["start"], s["end"]) for s in shots_of(result)], [(0, 4), (4, 8)])
             self.assertTrue(result["timing_adjusted"], change)
-        self.assertNotIn("timing_adjusted", direction.parse_direction(json.dumps(self.answer()),8))
+        self.assertNotIn("timing_adjusted", direction.parse_direction(json.dumps(self.answer()), 8))
         one = {"shots": [{"start_s": 0, "end_s": 5, "action": "She sings."}]}
-        self.assertEqual(direction.parse_direction(json.dumps(one), 10)["shots"], "0.000-10.000: She sings.")
+        self.assertEqual([(s["start"], s["end"]) for s in shots_of(direction.parse_direction(json.dumps(one), 10))], [(0, 10)])
         past = self.answer(); past["shots"][0]["end_s"] = 12
-        filled = direction.parse_direction(json.dumps(past), 8)["shots"]
-        self.assertTrue(filled.startswith("0.000-8.000: @Alice enters.") and "turns" not in filled, "a shot past the end fills it; later ones are dropped")
-        # An @name of no Content no longer throws the whole proposal away; it becomes a plain word and is named.
-        plain = direction.parse_direction(json.dumps(self.answer()),8,[])
-        self.assertIn("Alice enters.",plain["shots"]); self.assertNotIn("@Alice",plain["shots"])
-        self.assertEqual(plain["unknown_mentions"],["Alice"])
-        self.assertIn("Alice",direction.parse_direction(json.dumps(self.answer()),8,[{"widgets":{"name":"Alice"}}])["shots"])
+        filled = shots_of(direction.parse_direction(json.dumps(past), 8))
+        self.assertEqual([(s["start"], s["end"]) for s in filled], [(0, 8)], "a shot past the end fills it; later ones are dropped")
+        # An @name of no Content becomes a plain word and is named.
+        plain = direction.parse_direction(json.dumps(self.answer()), 8, [])
+        self.assertEqual(shots_of(plain)[0]["text"].splitlines()[0], "Alice enters.")
+        self.assertEqual(plain["unknown_mentions"], ["Alice"])
 
     def test_context_names_with_spaces_and_prefixes_are_resolved(self):
         answer = self.answer()
         answer["shots"][0]["action"] = "@Alice Cooper enters. @Alice follows."
         contexts = [{"widgets": {"name": "Alice"}}, {"widgets": {"name": "Alice Cooper"}}]
-        self.assertIn("@Alice Cooper", direction.parse_direction(json.dumps(answer), 8, contexts)["shots"])
+        self.assertIn("@Alice Cooper", shots_of(direction.parse_direction(json.dumps(answer), 8, contexts))[0]["text"])
         answer["shots"][0]["action"] = "@AliceX enters. @Name waves."
         result = direction.parse_direction(json.dumps(answer), 8, contexts)
-        self.assertIn("AliceX enters. Name waves.", result["shots"])
+        self.assertIn("AliceX enters. Name waves.", shots_of(result)[0]["text"])
         self.assertEqual(result["unknown_mentions"], ["AliceX", "Name"])
 
     def test_the_prompt_names_the_mentions_it_allows_instead_of_a_placeholder(self):
@@ -130,7 +137,11 @@ class SceneSuggestion(unittest.TestCase):
             self.assertNotIn("@Name", prompt)
             self.assertIn("@Alice", prompt)
         self.assertIn("write no @ mentions", direction.direction_prompt("She walks.", 8, []))
-        self.assertNotIn("exact words", direction.direction_prompt("She walks.", 8, [alice]), "no sample line to copy")
+
+    def test_a_document_with_only_audio_lanes_is_split_from_the_prompt(self):
+        # The Studio sends its lanes along so the plan knows when the song sings; that is not an existing shot list.
+        lanes = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": [], "audio": [], "audio_lanes": ["l1"]})
+        self.assertIn('"look"', direction.direction_prompt("She sings.", 8, [], lanes))
 
 
 if __name__ == "__main__":

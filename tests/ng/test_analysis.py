@@ -598,7 +598,7 @@ class ProviderTransport(unittest.IsolatedAsyncioTestCase):
                                  "soundscape": "wind", "music": "N/A"})
         payload = {"provider": self.payload("text", max_tokens=1024)["provider"], "director": {"idea": "Alice walks.", "project_seconds": 8}, "contexts": []}
         result = await adapter.direct(payload)
-        self.assertIn("0.000-8.000: Alice walks.", result["shots"])
+        self.assertEqual([(s["start"], s["end"], s["text"]) for s in json.loads(result["shots"])["shots"]], [(0, 8, "Alice walks.\nCamera: Static")])
         self.assertEqual(self.requests[0][1], "Bearer test-key")
         # A shot list cut off at the loader's Max tokens is useless JSON: Auto Direct asks for at least 2048.
         self.assertEqual(self.requests[0][2]["max_tokens"], 2048)

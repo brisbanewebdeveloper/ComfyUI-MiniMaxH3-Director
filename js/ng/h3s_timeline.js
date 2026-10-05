@@ -96,7 +96,7 @@ export function timelineView(S, actions) {
     for (const ghost of S.ghosts)
       track.append(h("div", { class: "h3s-shot ghost", style: { left: pct(ghost.start), width: pct(ghost.end - ghost.start) } },
         h("span", { style: { fontSize: "12px", color: "#C9BBFF", fontWeight: 600 } }, `Suggestion · ${span(ghost.start, ghost.end)}`),
-        h("span", { class: "h3s-shot-text", style: { color: "#C9BBFF" } }, ghost.text)));
+        h("span", { class: "h3s-shot-text", style: { color: "#C9BBFF" } }, [ghost.text, ...(ghost.spoken || []).map((line) => `“${line.text}”`)].join(" "))));
     return track;
   }
 

@@ -6,10 +6,10 @@ from comfy_execution.graph_utils import GraphBuilder
 from ... import minimax_enhance as enhance
 from ... import minimax_media as media
 from ..core.analysis import analysis_prompt, parse_suggestion
-from ..core.auto_direct import direct_tokens, direction_prompt, finish_direction
+from ..core.auto_direct import direct_tokens, direction_prompt, parse_direction, timing_hints
 from ..core.fields import need_dict, read_number, read_str
 from ..core.system_prompts import framed, for_node
-from . import h3_prompt
+from . import h3_prompt, probe
 from .ai_provider import NativeAIProvider
 
 # MiniMax H3's own text encoder is cut to 50 of Qwen3-VL-32B's 64 layers and ships no final norm and no lm_head
@@ -36,7 +36,8 @@ def request_prompt(action, payload, config):
         director = need_dict(payload["director"], "director")
         seconds = read_number(director, "project_seconds", "director", minimum=0.1)
         idea = read_str(director, "idea", "director").strip()
-        return direction_prompt(idea, seconds, payload["contexts"], read_str(director, "shots", "director", "")), None
+        timing = timing_hints(director, payload["contexts"], probe.duration_seconds)
+        return direction_prompt(idea, seconds, payload["contexts"], read_str(director, "shots", "director", ""), timing), None
     if action == "prompt":
         # The Text card's own action. It answers with prose that goes straight into the prompt,
         # not with the JSON the other two need, so it carries its own role and no schema framing.
@@ -115,5 +116,6 @@ def parse_result(text, action, request_json):
     if action == "analyze":
         # The medium decides which content roles the answer may name: a picture cannot be dialogue.
         return parse_suggestion(text, payload.get("media", "text")).to_dict()
-    return finish_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"],
-                            payload["director"].get("shots", ""), payload.get("keep", ""))
+    _, sung = timing_hints(payload["director"], payload["contexts"], probe.duration_seconds)
+    return parse_direction(text, float(payload["director"]["project_seconds"]), payload["contexts"],
+                           payload["director"].get("shots", ""), payload.get("keep", ""), sung)
