@@ -241,14 +241,21 @@ def _fl2va_pictures(context):
     if context.mode != "fl2va":
         return context, []
     # A picture that has its own role in every shot it is placed on does not fall back (the shot's role wins anyway).
-    own, plain = set(), set()
+    own, plain, opening = set(), set(), False
+    pictures = {item.id for item in context.by_media("image")}
     for record in read_document(context.shots_text) or []:
         for binding in record.get("media", []):
             (own if binding.get("role", "context") in USAGE_BY_MEDIA["image"] else plain).add(binding.get("context_id"))
+            opening = opening or (float(record.get("start", 0)) <= 0 and binding.get("context_id") in pictures)
     items, names = [], []
     for item in context.items:
         usage = item.effective_usage
         if item.id in own and item.id not in plain:
+            items.append(item)
+            continue
+        if opening and item.id not in own | plain:
+            # A card on no shot would open the video; when the first shot opens on its own picture, it took frame 0 from
+            # it (real test 2026-10-11: the video opened on the wrong picture).
             items.append(item)
             continue
         if item.media == "image" and item.source and "reference" in usage and not set(usage) & {"first_frame", "last_frame", "keyframe", "storyboard"}:

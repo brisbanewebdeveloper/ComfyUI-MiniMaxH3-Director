@@ -156,6 +156,16 @@ class ShotGuides(unittest.TestCase):
         self.assertLessEqual(abs(shown - 240), 8, "the keyframe moves at most half a grid step")
         self.assertIn("keyframe_moved", {i.code for i in result.issues})
 
+    def test_fl2va_reference_card_on_no_shot_does_not_replace_the_first_shots_picture(self):
+        # Real test 2026-10-11: a Reference card left on no shot became the global First frame and opened the video
+        # instead of shot 1's own picture.
+        record = shot("one", 0, 20, [("a", "first_frame"), ("z", "last_frame")])
+        document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": [record]})
+        result = project.plan_project(ctx.DirectorContext(shots_text=document, items=(image("a"), image("loose"), image("z")),
+                                                          project_seconds=20, mode="fl2va"), 12, chunks.ContinuityPlan())
+        first = [r.ctx_id for c in result.compiled for r in c.refs if r.kind == "first_frame"]
+        self.assertEqual(first, ["a"])
+
     def test_a_keyframe_at_the_part_length_gives_two_parts_not_three(self):
         record = shot("one", 0, 20, [("a", "first_frame"), ("k", "keyframe"), ("z", "last_frame")])
         record["media"][1]["at_s"] = 10.0

@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**FL2VA: a loose Reference card no longer replaces shot 1's picture** (2026-10-11):
+
+- In First / last frame mode a Reference picture on no shot opens the video as First frame only when the first shot has no picture of its own. A real test opened on the loose card's picture instead of shot 1's.
+
 **One part for a section just over the part length** (2026-10-11):
 
 - A section up to one H3 grid step (17 frames) longer than the part length stays one render part. A keyframe at 10 s with 10 s parts ended its part at 10.08 s on the grid, and the 243 frames were split into two parts of 5 s.
