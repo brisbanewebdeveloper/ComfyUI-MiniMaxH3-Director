@@ -25,7 +25,7 @@ def _shown(facts, contexts):
     return shown, data
 
 
-async def write(payload):
+async def write(payload, *, api_key=None):
     need_dict(payload, "request")
     config = ProviderConfig.from_dict(payload["provider"])
     director = need_dict(payload["director"], "director")
@@ -34,7 +34,7 @@ async def write(payload):
                   read_quick(payload))
     shown, data = (await asyncio.to_thread(_shown, facts, contexts)) if sees(config) else ([], [])
     facts["shown"] = shown
-    key = legacy.resolve_api_key({"api_key_env": config.api_key_env})
+    key = legacy.resolve_api_key({"api_key_env": config.api_key_env}) if api_key is None else api_key
     try:
         entry, url, model = endpoint(config)
         answer = await legacy.vlm_generate(data, write_prompt(facts), config.provider, url, model, api_key=key, auth=entry.auth,

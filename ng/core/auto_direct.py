@@ -1,8 +1,9 @@
 """Validate an editable scene suggestion before it can change a user's project."""
 import json
 
-from . import fields
+from .ai_json import read_object
 from .context import DirectorContext
+from .context_build import widget_text
 from .lyrics import story_lines
 from .preview import plan_preview
 from .shot_draft import current_records, draft_prompt, parse_draft
@@ -40,7 +41,7 @@ def _meanings(contexts):
 
 def story(idea, contexts):
     """What the video is about: the Prompt, and every Text card used as Scene. Either place works for the AI."""
-    notes = [entry["widgets"].get("text", "").strip() for entry in contexts
+    notes = [widget_text(entry["widgets"], "text").strip() for entry in contexts
              if entry.get("media") == "text" and "scene" in _roles(entry["widgets"])]
     return "\n\n".join(text for text in [idea.strip(), *notes] if text)
 
@@ -67,17 +68,7 @@ def direction_prompt(idea, seconds, contexts, current_shots="", timing=((), ()))
 def parse_direction(text, seconds, contexts=None, current_shots="", keep="", sung=()):
     if not isinstance(text, str):
         raise ValueError("Auto Direct needs a JSON text response.")
-    if text.strip().startswith("```"):
-        # A cut-off answer has no closing fence; its last line is content, not the fence.
-        lines = text.strip().splitlines()[1:]
-        text = "\n".join(lines[:-1] if lines and lines[-1].startswith("```") else lines)
-    try:
-        data = fields.need_dict(json.loads(text), "direction")
-    except json.JSONDecodeError:
-        if text.lstrip().startswith("{") and not text.rstrip().endswith("}"):
-            raise ValueError("The AI's answer stopped before its JSON was complete. Raise Max tokens on the AI Loader "
-                             "and try again.") from None
-        raise ValueError("The AI did not return valid JSON. Retry with a generative model.") from None
+    data = read_object(text, "direction", "The AI did not return valid JSON. Retry with a generative model.")
     records = current_records(current_shots, seconds)
     if records:
         return parse_draft(data, records, seconds, contexts)

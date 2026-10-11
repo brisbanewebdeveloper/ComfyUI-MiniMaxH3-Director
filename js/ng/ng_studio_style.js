@@ -51,8 +51,6 @@ const CSS = `
 .ng-studio .ng-warning { color:#e0bd80; font-size:11px; margin:5px 0; white-space:pre-wrap; }
 .ng-studio .ng-error, .ng-studio-context .ng-error { color:#ed9d98; white-space:pre-wrap; }
 .ng-studio pre { font:11px/1.5 monospace; white-space:pre-wrap; color:#c3d2df; }
-.ng-studio .ng-live-preview { display:block; max-height:130px; max-width:100%; border-radius:6px; margin:7px auto; }
-.ng-studio .ng-live-preview[hidden] { display:none; }
 .ng-studio-context { --ng-accent:#73aaa8; box-sizing:border-box; width:100%; height:100%; overflow:auto; background:#20252c;
   color:#e4e8ed; border:1px solid #444e5b; border-radius:9px; padding:11px; font:12px/1.45 Inter,system-ui,sans-serif; }
 .ng-studio-context .ng-context-title { font-weight:600; font-size:14px; }

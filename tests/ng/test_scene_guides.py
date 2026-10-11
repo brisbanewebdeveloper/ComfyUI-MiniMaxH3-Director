@@ -48,6 +48,22 @@ class SceneGuides(unittest.TestCase):
         self.assertEqual(calls[1]["positive"], "next")
         self.assertTrue(torch.equal(calls[1]["image"], frames[-1:]))
 
+    def test_global_ref_first_last_are_timed_guides_without_duplicating_fl_anchors(self):
+        import torch
+        refs = (self.compile.MediaRef("first_frame", "first", "first.png", start_f=0),
+                self.compile.MediaRef("last_frame", "last", "last.png", start_f=123))
+        calls = []
+        def execute(**kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(args=("next",))
+        native = SimpleNamespace(MiniMaxH3AddGuide=SimpleNamespace(execute=execute))
+        with patch.object(self.adapter.media, "load_picture", return_value=torch.zeros(1, 2, 2, 3)):
+            for mode, expected in (("ref2va", [0, 123]), ("fl2va", [])):
+                calls.clear()
+                job = SimpleNamespace(compiled=self.compile.CompiledChunk(0, mode, "", refs))
+                self.adapter.apply_guides(native, job, "positive", "latent", "vae")
+                self.assertEqual([call["frame_idx"] for call in calls], expected)
+
 
 if __name__ == "__main__":
     unittest.main()

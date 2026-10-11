@@ -47,7 +47,7 @@ class ProductNodes(unittest.TestCase):
     def test_registered_schemas_have_native_model_ports_and_distinct_ai_type(self):
         connector = self.nodes["NGContextConnector"].GET_SCHEMA()
         inputs = {value.id: value for value in connector.inputs}
-        for name in ("model_fl2va", "model_ref2va", "clip", "vae", "audio_vae"):
+        for name in ("model_fl2va", "model_ref2va", "clip", "vae", "audio_vae", "preview_vae"):
             self.assertTrue(inputs[name].rawLink)
             self.assertTrue(inputs[name].lazy, "raw links must also be lazy to avoid evaluating both loaders")
         self.assertEqual(inputs["model_fl2va"].io_type, "MODEL")
@@ -61,7 +61,7 @@ class ProductNodes(unittest.TestCase):
         from comfy.samplers import KSampler
         self.assertEqual([value.io_type for value in outputs],
                          ["MODEL", "CONDITIONING", "CONDITIONING", "LATENT", "FLOAT", "INT", "INT", "STRING", "NG_DIRECTOR_RESULT", "INT",
-                          "INT", "FLOAT", KSampler.SAMPLERS, KSampler.SCHEDULERS, "SAMPLER", "SIGMAS"])
+                          "INT", "FLOAT", KSampler.SAMPLERS, KSampler.SCHEDULERS, "SAMPLER", "SIGMAS", "VAE"])
 
     def test_media_contexts_load_files_directly_without_external_media_ports(self):
         for media in ("image", "video", "audio"):

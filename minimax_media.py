@@ -500,12 +500,15 @@ def normalize_base_url(url, fallback=""):
 
 
 def chat_completions_url(base_url):
-    """The chat endpoint for an OpenAI-compatible base address, with or without `/v1`.
+    """The chat endpoint for an OpenAI-compatible base, including Google's `/openai` root.
 
     Providers document their base URL both ways (Anthropic and LM Studio include `/v1`),
     and appending `/v1/chat/completions` to one that already has it asks for `/v1/v1/...`
     and gets a 404 (issue #31).
     """
+    base_url = base_url.rstrip("/")
+    if base_url.endswith("/v1beta/openai"):
+        return "%s/chat/completions" % base_url
     root = base_url[:-3] if base_url.endswith("/v1") else base_url
     return "%s/v1/chat/completions" % root
 

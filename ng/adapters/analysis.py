@@ -8,8 +8,8 @@ from ... import minimax_media as legacy
 from ..core import providers
 from ..core.analysis import ProviderConfig, analysis_prompt, parse_suggestion
 from ..core.fields import need_dict
+from ..core.context_build import widget_text
 from ..core.system_prompts import framed, for_node
-from . import keys as key_store
 from . import preview_media
 
 
@@ -100,7 +100,7 @@ def _capability_error(config, media):
     return None
 
 
-async def analyze(payload):
+async def analyze(payload, *, api_key=None):
     need_dict(payload, "request")
     config = ProviderConfig.from_dict(payload["provider"])
     media, widgets = payload["media"], payload["widgets"]
@@ -111,14 +111,14 @@ async def analyze(payload):
     if refused:
         raise ValueError(refused)
     prompt = analysis_prompt(media, widgets.get("content", ""), payload.get("offer"))
-    key = legacy.resolve_api_key({"api_key_env": config.api_key_env})
+    key = legacy.resolve_api_key({"api_key_env": config.api_key_env}) if api_key is None else api_key
     try:
         if media == "audio":
             answer = await audio_generate(config, prompt, widgets.get("audio", ""), key)
         else:
             image_list = await asyncio.to_thread(images, media, widgets.get(media, "")) if media in ("image", "video") else []
             if media == "text":
-                prompt += "\n\nContext text:\n" + widgets.get("text", "")
+                prompt += "\n\nContext text:\n" + widget_text(widgets, "text")
             entry, url, model = endpoint(config)
             answer = await legacy.vlm_generate(
                 image_list, prompt, config.provider, url, model, api_key=key, auth=entry.auth,

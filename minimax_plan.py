@@ -166,6 +166,8 @@ CHAR_TAG_RE = re.compile(r"@(?:character|char|ref)(\d+)")
 # base-en 4.2: a later shot opens "At 00:03.500, the camera cuts to ..."; these are the guide's words for a cut or transition.
 CUT_PHRASE_RE = re.compile(r"(?:the (?:camera|shot) (?:cuts|transitions|changes|switches)|(?:a )?(?:cross-dissolve|dissolve|fade|wipe))\b",
                            re.IGNORECASE)
+NO_CUT_RE = re.compile(r"\b(?:without\s+(?:any\s+)?cut(?:s|ting)?|no\s+(?:camera\s+)?cuts?"
+                       r"|(?:single|continuous|unbroken)\s+(?:shot|take))\b", re.IGNORECASE)
 # A shot text that opens with its framing ("A close-up of", "Wide shot showing") continues the cut words directly.
 FRAMING_RE = re.compile(r"(?:(a|an|the)\s+)?((?:(?!(?:a|an|the)\s)[\w-]+\s+){0,3}?(?:close-up|closeup)\b"
                         r"|(?:(?!(?:a|an|the)\s)[\w-]+\s+){1,3}?(?:shot|view|angle)\b)", re.IGNORECASE)
@@ -773,7 +775,7 @@ def compile_storyboard_minimax(global_prompt, shots, soundscape="", music="",
         if index == 0:
             body.append("[Shot 1] %s" % " ".join(part for part in (opening, text) if part))
         else:
-            if opening_in_shot and text and not CUT_PHRASE_RE.match(text):
+            if opening_in_shot and text and not CUT_PHRASE_RE.match(text) and not NO_CUT_RE.search(gp + " " + text):
                 # NG shot text is what is seen ("A close-up of ..."); the cut words are the compiler's, so the user's
                 # text reads "At 00:03.000, the camera cuts to a close-up of ..." as in the guide.
                 framing = FRAMING_RE.match(text)

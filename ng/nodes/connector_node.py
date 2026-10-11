@@ -26,11 +26,13 @@ class NGContextConnector(io.ComfyNode):
                                  io.Vae.Input("audio_vae", display_name="audio VAE", raw_link=True, lazy=True),
                                  NGAI.Input("ai_provider", display_name="AI provider", optional=True),
                                  context_group("text", 15), context_group("image", 15),
-                                 context_group("video", 15), context_group("audio", 15)],
+                                 context_group("video", 15), context_group("audio", 15),
+                                 io.Vae.Input("preview_vae", display_name="preview VAE", raw_link=True, lazy=True, optional=True,
+                                              tooltip="Optional VAE for Preview Override (live), available at H3 Director Output.")],
                          outputs=[NGInputs.Output(display_name="H3 context")])
 
     @classmethod
-    def execute(cls, clip, vae, audio_vae, model_fl2va=None, model_ref2va=None, ai_provider=None, **groups):
+    def execute(cls, clip, vae, audio_vae, model_fl2va=None, model_ref2va=None, ai_provider=None, preview_vae=None, **groups):
         if model_fl2va is None and model_ref2va is None:
             raise ValueError("Connect an H3 model to model or model ref.")
         items = []
@@ -40,7 +42,8 @@ class NGContextConnector(io.ComfyNode):
                     raise ValueError("Connect a %s Context node to context %s." % (media, media))
                 items.append(item)
         require_unique(items)
-        return io.NodeOutput(DirectorInputs(clip, vae, audio_vae, model_fl2va, model_ref2va, tuple(items), ai_provider))
+        return io.NodeOutput(DirectorInputs(clip, vae, audio_vae, model_fl2va, model_ref2va, tuple(items), ai_provider,
+                                           preview_vae=preview_vae))
 
 
 NODES = [NGContextConnector]

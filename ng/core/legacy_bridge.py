@@ -182,6 +182,7 @@ def _audio_segments(context, chunk, voices):
             for mode in ("lock", "copy"):
                 if item.id in lanes[mode]:
                     segments.extend(timed_segments(item, chunk, lanes[mode], _AUDIO_RETENTION[mode], in_file=True))
+            segments.extend(_lane_references(item, chunk, lanes["ref"].get(item.id, ())))
             continue
         if any(item.id in spans for spans in lanes.values()):
             for mode in ("lock", "copy"):
@@ -207,9 +208,10 @@ def _motion_segments(context):
     out = []
     for item in context.by_media("video"):
         if item.source and set(item.effective_usage) & {"motion", "camera", "structure"}:
-            length = int(round(((item.options.end_s or item.length_s or 5.0) - item.options.start_s) * 24))
+            source_start, available = source_window(item)
+            length = available if available is not None else 120
             out.append({"type": "video", "videoFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,
-                        "trimStart": int(round(item.options.start_s * 24)), "retention": _RETENTION[item.preserve],
+                        "trimStart": source_start, "retention": _RETENTION[item.preserve],
                         "ng_item": item.id, "paired_audio": item.options.video_audio == "reference"})
     return out
 

@@ -8,6 +8,7 @@ import json
 import re
 
 from . import fields
+from .ai_json import read_object
 from .auto_direct import story
 from .directions import DIRECTIONS, LANGUAGES, SPEECH, check_adults, direction, shot_count
 from .split import _seconds, parse_split
@@ -337,18 +338,7 @@ def read_answer(text):
     """The JSON object of an answer, with the same tolerance as AI: split into shots (fences, a cut-off answer)."""
     if not isinstance(text, str):
         raise ValueError("Make H3 prompt needs a JSON text response.")
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
-    if text.startswith("```"):
-        lines = text.splitlines()[1:]
-        text = "\n".join(lines[:-1] if lines and lines[-1].startswith("```") else lines)
-    start = text.find("{")
-    try:
-        return fields.need_dict(json.loads(text[start:] if start > 0 else text), "plan")
-    except json.JSONDecodeError:
-        if text.lstrip().startswith("{") and not text.rstrip().endswith("}"):
-            raise ValueError("The AI's answer stopped before its JSON was complete. Raise Max tokens on the AI Loader "
-                             "and try again.") from None
-        raise ValueError("The AI did not return valid JSON. Try again, or use a larger model.") from None
+    return read_object(text, "plan", "The AI did not return valid JSON. Try again, or use a larger model.")
 
 
 def parse_plan(text, seconds, contexts, quick, sung=()):

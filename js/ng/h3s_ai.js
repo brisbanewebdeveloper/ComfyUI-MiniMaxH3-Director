@@ -12,6 +12,13 @@ function failure(error, provider) {
   return { text: `AI failed: ${error.message}${slow}`, error: true };
 }
 
+function buildFailure(error, provider, undo) {
+  const notice = failure(error, provider);
+  if (!undo) return notice;
+  const text = error.message === "AI action cancelled." ? "AI cancelled." : notice.text;
+  return { ...notice, text: text + " The plan was applied; Undo restores the previous project.", undo };
+}
+
 // What an answer was asked about. If any of it changed while the AI worked, the answer no longer fits and is dropped.
 // Shots are left out for text proposals: their own shot's text is checked on Accept, and accepting one text must not
 // invalidate the proposals for the other shots.
@@ -30,7 +37,7 @@ export function ownLines(S) {
 }
 
 export function studioAI(S, app, api, done) {
-  let controller = null, serial = 0;
+  let controller = null, serial = 0, buildUndo = null;
 
   async function run(kind, shots, keep = "") {
     const provider = connectedProvider(S.node);
@@ -106,13 +113,14 @@ export function studioAI(S, app, api, done) {
         if (mine === serial) { S.busy = ""; controller = null; done(); }
       }
     },
-    // Make H3 prompt: plan the whole video, put the plan in (apply returns nothing; the Studio keeps the undo), then write
+    // Make H3 prompt: plan the whole video, put the plan in (apply returns the Studio's undo), then write
     // every part out and keep each checked answer. A refused or unchanged part keeps its compiled prompt.
     async build(apply, replan, keep, describe) {
       const provider = connectedProvider(S.node);
       if (!provider || S.busy) return null;
       controller = new AbortController();
       const mine = ++serial, signal = controller.signal;
+      buildUndo = null;
       const step = (text) => { S.buildStep = text; S.aiStarted = Date.now(); done(); };
       S.busy = "build"; S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; step("Planning the shots …");
       try {
@@ -121,11 +129,18 @@ export function studioAI(S, app, api, done) {
         // A small model sometimes answers with broken JSON; one more try is cheaper than sending the user back.
         const plan = await ask().catch((error) => { if (/JSON/.test(error.message) && mine === serial) return ask(); throw error; });
         if (mine !== serial) return null;
-        apply(plan.suggestion);
+        buildUndo = apply(plan.suggestion);
         // A picture still without a description (the plan's answer may leave "describe" out) is analyzed like ✦ Analyze.
-        await describe((extra) => { step("Describing the pictures …"); return aiAction(app, api, "analyze", { ...extra, provider }, signal); });
+        await describe(async (extra) => {
+          if (mine !== serial) throw new Error("AI action cancelled.");
+          step("Describing the pictures …");
+          const data = await aiAction(app, api, "analyze", { ...extra, provider }, signal);
+          if (mine !== serial) throw new Error("AI action cancelled.");
+          return data;
+        });
         if (mine !== serial) return null;
         const view = await replan();
+        if (mine !== serial) return null;
         const result = { parts: view.chunks.length, written: 0, refused: 0, unchanged: 0, unseen: plan.suggestion.unseen_pictures || [] };
         for (const chunk of view.chunks) {
           step(view.chunks.length > 1 ? `Writing part ${chunk.index + 1} of ${view.chunks.length} …` : "Writing the prompt …");
@@ -140,15 +155,16 @@ export function studioAI(S, app, api, done) {
           else { keep(chunk.index, draft); result.written++; }
         }
         await replan(); // the parts' own prompts are in now; without this the drawer showed "outdated" until the next plan
-        return result;
+        return mine === serial ? result : null;
       } catch (error) {
-        if (mine === serial) S.notice = failure(error, provider);
+        if (mine === serial) S.notice = buildFailure(error, provider, buildUndo);
         return null;
       } finally {
-        if (mine === serial) { S.busy = ""; S.buildStep = ""; controller = null; done(); }
+        if (mine === serial) { S.busy = ""; S.buildStep = ""; controller = null; buildUndo = null; done(); }
       }
     },
-    cancel() { serial++; controller?.abort(); controller = null; S.busy = ""; S.notice = { text: "AI cancelled, nothing changed.", error: false }; done(); },
+    cancel() { serial++; controller?.abort(); controller = null; S.busy = ""; S.buildStep = "";
+      S.notice = buildFailure(new Error("AI action cancelled."), connectedProvider(S.node) || {}, buildUndo); buildUndo = null; done(); },
     dispose() { serial++; controller?.abort(); },
   };
 }

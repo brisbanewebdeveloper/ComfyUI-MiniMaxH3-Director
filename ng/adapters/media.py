@@ -44,6 +44,15 @@ def load_audio(ref: MediaRef):
     return clip
 
 
+def load_audio_source(ref: MediaRef, sample_rate):
+    """Decode the source at the output rate before sample-accurate Lock placement."""
+    _require_file(ref, "audio")
+    waveform = legacy._decode_audio_stereo(input_path(ref.source), target_sr=sample_rate)
+    if waveform is None:
+        raise MediaError("the audio '%s' (%s) could not be loaded" % (ref.ctx_id, ref.source))
+    return waveform.unsqueeze(0)
+
+
 def numbered(prefix, tensors):
     """The core nodes take references as ref_image_1, ref_image_2, ... in label order."""
     return {"%s_%d" % (prefix, n): t for n, t in enumerate(tensors, 1)} or None

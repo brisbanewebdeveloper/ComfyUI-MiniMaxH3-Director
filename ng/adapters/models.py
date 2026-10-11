@@ -5,6 +5,8 @@ everything OpenAI-compatible answers /v1/models with {"data": [{"id": ...}]}. A 
 reply we cannot read yields an empty list and a reason naming the address, so a wrong base URL
 says so instead of looking like a server with nothing installed.
 """
+import asyncio
+
 import aiohttp
 
 from ... import minimax_media as legacy
@@ -23,6 +25,8 @@ def _address(base_url, path):
         raise ValueError("Enter the provider's address first; that is what the models are asked from.")
     if path.startswith("/api/"):
         return base + path
+    if base.endswith("/v1beta/openai") and path.startswith("/v1/"):
+        return base + path[3:]
     root = base[:-3] if base.endswith("/v1") else base
     return "%s%s" % (root, path)
 
@@ -74,6 +78,8 @@ async def listing(provider, base_url, api_key=None, timeout=15):
                 if response.status != 200:
                     return [], "The provider answered HTTP %s for %s." % (response.status, url)
                 payload = await response.json(content_type=None)
+    except asyncio.TimeoutError:
+        return [], "Could not reach %s (request timed out). Check the address and whether the server is running." % url
     except aiohttp.ClientError as error:
         return [], "Could not reach %s (%s). Check the address and whether the server is running." % (url, error)
     except (ValueError, TypeError):

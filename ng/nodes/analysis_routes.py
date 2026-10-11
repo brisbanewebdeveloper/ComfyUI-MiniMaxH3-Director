@@ -5,11 +5,16 @@ import aiohttp
 from aiohttp import web
 from server import PromptServer
 
+from ... import minimax_media as legacy
+from ..adapters import keys
 from ..adapters.analysis import analyze
 from ..adapters.analyze_all import analyze_all
 from ..adapters.auto_direct import direct
 from ..adapters.builder import plan
 from ..adapters.part_writer import write
+from ..core.analysis import ProviderConfig
+from ..core.fields import need_dict
+from .context_routes import key_root
 
 
 def _answer(data):
@@ -20,10 +25,17 @@ def _failure(error):
     return web.json_response({"ok": False, "error": str(error)}, status=400)
 
 
+def _api_key(request, payload):
+    config = ProviderConfig.from_dict(need_dict(payload, "request")["provider"])
+    fallback = legacy.resolve_api_key({"api_key_env": config.api_key_env})
+    return keys.resolve(key_root(request), config.provider, fallback) or ""
+
+
 @PromptServer.instance.routes.post("/ng/analyze")
 async def analyze_context(request):
     try:
-        return _answer({"suggestion": await analyze(await request.json())})
+        payload = await request.json()
+        return _answer({"suggestion": await analyze(payload, api_key=_api_key(request, payload))})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)
 
@@ -31,7 +43,9 @@ async def analyze_context(request):
 @PromptServer.instance.routes.post("/ng/analyze_all")
 async def analyze_every_context(request):
     try:
-        return _answer(await analyze_all(await request.json()))
+        payload = await request.json()
+        key = None if isinstance(payload, dict) and payload.get("mode") == "manual" else _api_key(request, payload)
+        return _answer(await analyze_all(payload, api_key=key))
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)
 
@@ -39,7 +53,8 @@ async def analyze_every_context(request):
 @PromptServer.instance.routes.post("/ng/direct")
 async def direct_scenes(request):
     try:
-        return _answer({"suggestion": await direct(await request.json())})
+        payload = await request.json()
+        return _answer({"suggestion": await direct(payload, api_key=_api_key(request, payload))})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)
 
@@ -48,7 +63,8 @@ async def direct_scenes(request):
 async def write_part_prompt(request):
     """Prompts per render part: the AI writes one part's prompt out from the compiled one; it is checked before it is shown."""
     try:
-        return _answer({"suggestion": await write(await request.json())})
+        payload = await request.json()
+        return _answer({"suggestion": await write(payload, api_key=_api_key(request, payload))})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)
 
@@ -57,6 +73,7 @@ async def write_part_prompt(request):
 async def build_plan(request):
     """Make H3 prompt, first step: the whole video planned from the direction, the pictures and the optional request."""
     try:
-        return _answer({"suggestion": await plan(await request.json())})
+        payload = await request.json()
+        return _answer({"suggestion": await plan(payload, api_key=_api_key(request, payload))})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)

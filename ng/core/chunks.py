@@ -163,6 +163,11 @@ def plan_lengths(total_frames, chunk_target_frames, head):
     first_options, next_options = _delivered_options(0), _delivered_options(head)
     longest = max(next_options)
     count = max(1, -(-total_frames // max(min(chunk_target_frames, longest), 1)))
+    # The target is a preference; it cannot require more minimum-size clips
+    # than the project fits, or fewer clips than its maximum lengths can hold.
+    least = max(1, 1 + -(-(total_frames - max(first_options)) // longest))
+    most = max(1, 1 + (total_frames - min(first_options)) // min(next_options))
+    count = max(least, min(count, most))
     lengths, remaining = [], total_frames
     for position in range(count):
         options = first_options if position == 0 else next_options

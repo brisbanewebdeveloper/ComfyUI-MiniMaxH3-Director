@@ -49,14 +49,24 @@ def clip_windows(context, modes):
 def locked_spans(context):
     """Story spans (start f, end f) whose sound is pinned to a file by Lock: on an audio lane, a Shot, or the whole project,
     each ending where its file ends."""
-    spans = [(start, end) for windows in clip_windows(context, ("lock",)).values() for start, end, _ in windows]
+    spans = []
+    for identity, windows in clip_windows(context, ("lock",)).items():
+        item = context.item(identity)
+        if not item or item.media != "audio" or not item.source:
+            continue
+        _, available = file_window(item)
+        for start, end, offset in windows:
+            last = min(end, start + available - offset) if available is not None else end
+            if last > start:
+                spans.append((start, last))
     laned, bound = set(clip_windows(context, ("lock", "copy", "ref"))), shot_windows(context) or {}
     total = seconds_to_frames(context.project_seconds)
     for item in context.by_media("audio"):
         if item.id in laned or "lock" not in item.effective_usage or not item.source:
             continue
-        last = seconds_to_frames(item.length_s - item.options.start_s) if item.length_s > 0 else total
-        spans += [(start, min(end, start + last)) for start, end, _ in bound.get(item.id, [(0, total, 0)])]
+        _, available = source_window(item)
+        last = available if available is not None else total
+        spans += [(start, min(end, start + last)) for start, end, _ in bound.get(item.id, [(0, total, 0)]) if last > 0]
     return spans
 
 

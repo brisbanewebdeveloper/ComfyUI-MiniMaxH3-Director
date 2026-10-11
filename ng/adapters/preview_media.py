@@ -33,8 +33,9 @@ def video_images(source):
         if not container.streams.video:
             raise ValueError("Choose a video with a picture stream.")
         stream = container.streams.video[0]
-        duration = (stream.duration or 0) * float(stream.time_base)
-        end = min(duration, PREVIEW_SECONDS)
+        duration = (float(stream.duration * stream.time_base) if stream.duration and stream.time_base
+                    else float(container.duration or 0) / av.time_base)
+        end = min(max(0.0, duration), PREVIEW_SECONDS)
         images = []
         for seconds in (0.0, end / 2, max(0.0, end - 0.2)):
             container.seek(int(seconds * av.time_base), backward=True)

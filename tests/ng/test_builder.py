@@ -176,6 +176,27 @@ class Compile(unittest.TestCase):
         self.assertIn("At 00:04.000, the camera cuts to a close-up on her hands.", prompt)
         self.assertIn("At 00:08.000, the camera cuts to a new shot. <Subject 1> turns.", prompt)
 
+    def test_a_later_continuous_shot_does_not_get_an_automatic_cut(self):
+        for text in ("@Mage turns without cutting.", "Close-up on her hands, no camera cuts.",
+                     "A continuous shot of @Mage turning."):
+            with self.subTest(text=text):
+                result = plan([shot("a", 0, 4, "@Mage waits."), shot("b", 4, 10, text)], (self.MAGE,), 10)
+                self.assertNotIn("the camera cuts", result.compiled[0].prompt)
+
+    def test_a_global_continuous_shot_does_not_get_automatic_cuts(self):
+        data = {"format": "h3-director-shots", "schema_version": 1,
+                "shots": [shot("a", 0, 4, "@Mage waits."), shot("b", 4, 10, "Close-up on her hands.")]}
+        rule = ctx.ContextItem("camera_rule", "Camera rule", "text", "No camera cuts.", usage=("rule",))
+        context = ctx.DirectorContext(idea="", shots_text=json.dumps(data), project_seconds=10,
+                                      mode="ref2va", items=(self.MAGE, rule))
+        result = project.plan_project(context, 10, chunks.ContinuityPlan("none"))
+        self.assertNotIn("the camera cuts", result.compiled[0].prompt)
+
+    def test_an_explicit_cut_is_not_rewritten(self):
+        text = "The camera cuts to her hands, then holds without cutting."
+        result = plan([shot("a", 0, 4, "@Mage waits."), shot("b", 4, 10, text)], (self.MAGE,), 10)
+        self.assertIn(text, result.compiled[0].prompt)
+
 
 class Frontend(unittest.TestCase):
     def test_the_studio_offers_the_same_directions(self):

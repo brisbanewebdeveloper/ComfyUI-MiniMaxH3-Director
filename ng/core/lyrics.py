@@ -160,7 +160,7 @@ def story_lines(context):
                 start = origin + seconds_to_frames(line.start) - offset
                 middle = origin + seconds_to_frames((line.start + line.end) / 2.0) - offset
                 if origin <= middle < end:
-                    out.append(StoryLine(start, min(end, origin + seconds_to_frames(line.end) - offset), middle, item.speaker,
+                    out.append(StoryLine(max(origin, start), min(end, origin + seconds_to_frames(line.end) - offset), middle, item.speaker,
                                          language or "English", line.text, item.name))
     return sorted(out, key=lambda line: line.start_f)
 

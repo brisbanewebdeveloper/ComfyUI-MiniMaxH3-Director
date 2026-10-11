@@ -135,6 +135,8 @@ function neighbours(items, id, total) {
 // clips and edge drags stay between their neighbours.
 export function dragTo(items, drag, delta, total) {
   const ds = r1(delta), length = drag.end - drag.start;
+  const source = items.find((item) => item.id === drag.id);
+  const fileClip = CLIP_MODES.includes(source?.mode) && Number.isFinite(source?.offset);
   let start = drag.start, end = drag.end, target = null;
   if (drag.mode === "move" && drag.reorder) {
     start = snapWithin(drag.start + ds, 0, total - length) ?? drag.start;
@@ -148,10 +150,14 @@ export function dragTo(items, drag, delta, total) {
     if (drag.mode === "move") {
       start = snapWithin(drag.start + ds, room.prev, room.next - length) ?? drag.start;
       end = start === drag.start ? drag.end : Math.min(exact(start + length), room.next);
-    } else if (drag.mode === "left") start = snapWithin(drag.start + ds, room.prev, drag.end - MIN_LENGTH) ?? drag.start;
+    } else if (drag.mode === "left") {
+      const earliest = fileClip ? Math.max(room.prev, drag.start - source.offset) : room.prev;
+      start = snapWithin(drag.start + ds, earliest, drag.end - MIN_LENGTH) ?? drag.start;
+    }
     else end = snapWithin(drag.end + ds, drag.start + MIN_LENGTH, room.next) ?? drag.end;
   }
-  return { items: items.map((item) => (item.id === drag.id ? { ...item, start, end } : item)), target };
+  const offset = fileClip && drag.mode === "left" ? { offset: exact(source.offset + start - drag.start) } : {};
+  return { items: items.map((item) => (item.id === drag.id ? { ...item, start, end, ...offset } : item)), target };
 }
 
 // Drop a carried shot at `target` among the others; lengths stay and the gaps of the layout before the drag are kept.
@@ -196,7 +202,10 @@ export function growToDuration(items, from, total) {
 }
 
 export function clipToFit(items, total) {
-  return items.filter((item) => item.start < total - MIN_LENGTH / 2).map((item) => ({ ...item, end: Math.min(item.end, total) }));
+  // Preserve short imported items that fit whole; do not create new fragments
+  // below the editor's minimum when the project end cuts through an item.
+  return items.filter((item) => item.start < total && (item.end <= total || total - item.start >= MIN_LENGTH - 1e-9))
+    .map((item) => ({ ...item, end: Math.min(item.end, total) }));
 }
 
 // Native reference slots one render part uses. A shared image is presented once per Subject and takes a slot each time;

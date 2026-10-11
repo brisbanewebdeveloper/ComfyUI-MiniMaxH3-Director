@@ -104,7 +104,6 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-prompt pre{margin:0;padding:10px 12px;white-space:pre-wrap;font:12px/1.5 "IBM Plex Mono",Consolas,monospace;color:#D3DAE6}
 .h3s-warn{color:#F2B98A}
 .h3s-issues{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#F2B98A}
-.h3s-live{max-width:260px;max-height:150px;border-radius:8px;border:1px solid #2A3342}
 `;
 
 export function ensureStudioStyle() {

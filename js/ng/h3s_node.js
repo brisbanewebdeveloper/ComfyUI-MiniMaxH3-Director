@@ -36,9 +36,16 @@ function followRenames(node) {
   if (!project.error && !(now.shots || "").trimStart().startsWith("{")) {
     const text = renameReferences(now.shots || "", previous, entries);
     if (text !== (now.shots || "")) changes.shots = text;
-  } else if (!project.error && project.shots.length) {
-    const shots = project.shots.map((shot) => ({ ...shot, text: renameReferences(shot.text, previous, entries) }));
-    if (shots.some((shot, index) => shot.text !== project.shots[index].text)) changes.shots = writeProject({ ...project, shots });
+  } else if (!project.error) {
+    const rename = (text) => renameReferences(text, previous, entries);
+    const look = rename(project.look);
+    const partPrompts = project.partPrompts.map((part) => ({ ...part, text: rename(part.text) }));
+    const shots = project.shots.map((shot) => ({ ...shot, text: rename(shot.text),
+      spoken: shot.spoken.map((line) => typeof line.text === "string" ? { ...line, text: rename(line.text) } : line) }));
+    const changed = look !== project.look || partPrompts.some((part, index) => part.text !== project.partPrompts[index].text)
+      || shots.some((shot, index) => shot.text !== project.shots[index].text
+        || shot.spoken.some((line, at) => line.text !== project.shots[index].spoken[at].text));
+    if (changed) changes.shots = writeProject({ ...project, shots, look, partPrompts });
   }
   node.properties.ng_context_names = Object.fromEntries(entries.filter((entry) => entry.widgets.context_id && entry.widgets.name)
     .map((entry) => [entry.widgets.context_id, entry.widgets.name]));

@@ -110,7 +110,8 @@ class NGCollect(io.ComfyNode):
         project = _jobs_of(chunks)
         decode_audio = audio_nodes().vae_decode_audio
         frames, sound, issues = collect.collect_chunks(
-            latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}))
+            latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}),
+            restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate))
         return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues), float(FPS))
 
 
@@ -140,7 +141,8 @@ class NGCollectVideo(io.ComfyNode):
         path = os.path.join(folder_paths.get_temp_directory(), "ng_collect_%s.mp4" % uuid.uuid4().hex)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         issues = collect.write_video(path, latents, project.plan, lambda video: _decode_video(vae[0], video),
-                                     lambda audio: decode_audio(audio_vae[0], {"samples": audio}))
+                                     lambda audio: decode_audio(audio_vae[0], {"samples": audio}),
+                                     restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate))
         return io.NodeOutput(InputImpl.VideoFromFile(path), "\n".join(str(i) for i in issues))
 
 

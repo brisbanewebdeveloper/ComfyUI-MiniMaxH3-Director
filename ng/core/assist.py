@@ -108,13 +108,13 @@ def batch_plan(contexts, mode, provider_connected):
             skipped.append((index, "no supported medium"))
             continue
         if media == "text" and not str(widgets.get("text", "")).strip():
-            skipped.append((index, "%s: the text is empty" % (widgets.get("name") or "Text")))
+            skipped.append((index, "the text is empty"))
             continue
         if media != "text" and not str(widgets.get(media, "")).strip():
-            skipped.append((index, "%s: no file chosen" % (widgets.get("name") or media)))
+            skipped.append((index, "no file chosen"))
             continue
         if widgets.get("analyzed"):
-            skipped.append((index, "%s: already analyzed" % (widgets.get("name") or media)))
+            skipped.append((index, "already analyzed"))
             continue
         targets.append(index)
     return targets, ["%s: %s" % (_label(entries, index), reason) for index, reason in skipped]

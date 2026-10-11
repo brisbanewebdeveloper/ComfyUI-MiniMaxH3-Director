@@ -1,10 +1,10 @@
 """Declared provider capabilities and editable analysis suggestions, independent of transport."""
-import json
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from . import fields
 from . import providers
+from .ai_json import read_object
 from .context import CONTENT_BY_MEDIA, CONTENT_KINDS, USAGE_BY_MEDIA
 
 # The fields an analysis may fill. Everything else on a card stays the user's own text.
@@ -198,18 +198,14 @@ def parse_suggestion(text, media="text"):
     if not isinstance(text, str):
         raise ValueError("The provider must return a JSON text suggestion.")
     allowed = CONTENT_BY_MEDIA.get(media) or CONTENT_KINDS
-    text = text.strip()
-    if text.startswith("```"):
-        lines = text.splitlines()
-        text = "\n".join(lines[1:-1]) if lines[-1].strip() == "```" else text
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError as error:
-        # A reasoning model can spend its whole token budget thinking and return nothing usable.
-        # Saying "invalid JSON" hides that, so the message names the likelier cause.
-        raise ValueError("The provider's answer was not readable JSON (%s). It may have run out of "
-                         "Max tokens before answering; try more tokens or another model." % error.msg) from error
-    fields.need_dict(data, "analysis")
+        data = read_object(text, "analysis", "The provider's answer was not readable JSON. "
+                           "Try another model or describe it manually.")
+    except ValueError as error:
+        if str(error).startswith("The AI's answer stopped before its JSON was complete."):
+            # Preserve the analysis error category and reserve the token hint for a real cutoff.
+            raise ValueError("The provider's answer was not readable JSON. " + str(error)) from None
+        raise
     if "description" not in data:
         # Qwen3-VL 4B answered a video per still ({"stills": [{...}, {...}, {...}]}) instead of one object for the clip.
         # The descriptions are kept in order; the roles and the reason come from the first still.
@@ -217,6 +213,9 @@ def parse_suggestion(text, media="text"):
         if len(lists) == 1 and all(isinstance(item.get("description"), str) for item in lists[0]):
             data = {**lists[0][0], "description": " ".join(item["description"].strip() for item in lists[0])}
     usage = fields.read_str(data, "usage", "analysis", "").strip()
+    role, separator, _meaning = usage.partition("=")
+    if separator and role.strip() in USAGE_BY_MEDIA.get(media, ()):
+        usage = role.strip()
     if not usage:
         # The role written as a key, as Qwen3-VL 4B did: {"constraint": "Never show any text ..."}.
         keyed = [key for key in data if key in USAGE_BY_MEDIA.get(media, ())]

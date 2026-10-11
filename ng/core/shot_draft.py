@@ -4,6 +4,7 @@ import re
 
 from . import fields
 from .context import USAGE_BY_MEDIA
+from .context_build import widget_text
 from .frames import seconds_to_frames
 from .shot_document import LOCK_FIELDS, MediaBinding, SpokenLine, read_document
 from .shots import parse_shots
@@ -59,7 +60,7 @@ def plain_mentions(text, contexts):
     reviews a proposal before it changes anything. Returns the text and the names that were not Content."""
     if contexts is None:
         return text, []
-    names = {entry["widgets"].get("name", "").casefold() for entry in contexts}
+    names = {widget_text(entry["widgets"], "name").casefold() for entry in contexts}
     known = sorted((re.escape(name) for name in names if name), key=len, reverse=True)
     pattern = r"@(" + "|".join(known + [r"voice\([^)]*\)", r"ref\d+", r"audio\d+", r"[\w-]+"]) + r")(?![\w])"
     unknown = []

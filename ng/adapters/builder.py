@@ -32,7 +32,7 @@ def picture_data(contexts, limit=MAX_PICTURES):
     return out, []
 
 
-async def plan(payload):
+async def plan(payload, *, api_key=None):
     need_dict(payload, "request")
     config = ProviderConfig.from_dict(payload["provider"])
     director = need_dict(payload["director"], "director")
@@ -42,7 +42,7 @@ async def plan(payload):
     parts, sung = timing_hints(director, contexts, probe.duration_seconds)
     shown, _ = (await asyncio.to_thread(picture_data, contexts)) if sees(config) else ([], [])
     prompt = plan_prompt(quick, read_str(director, "idea", "director", ""), seconds, contexts, len(shown), parts, sung)
-    key = legacy.resolve_api_key({"api_key_env": config.api_key_env})
+    key = legacy.resolve_api_key({"api_key_env": config.api_key_env}) if api_key is None else api_key
     try:
         entry, url, model = endpoint(config)
         answer = await legacy.vlm_generate(shown, prompt, config.provider, url, model, api_key=key,

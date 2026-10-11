@@ -1,4 +1,4 @@
-"""Restore declared source audio before each native sampler, including split schedules."""
+"""Restore declared source audio at native sampler stages and inside output Lock spans."""
 from dataclasses import dataclass
 
 import torch
@@ -7,6 +7,8 @@ from comfy.patcher_extension import WrappersMP
 from comfy.utils import pack_latents, unpack_latents
 
 from ...minimax_core import core
+from ..core.limits import FPS
+from . import media
 from .chunk_builder import _hold_locked_audio
 from .latents import validate_chunk
 
@@ -46,3 +48,32 @@ def bind_source(model, job, audio_vae):
     bound.add_wrapper_with_key(WrappersMP.OUTER_SAMPLE, "ng_audio_lock",
                                AudioLockSource(refs, job.chunk.sampled_frames, audio_vae))
     return bound
+
+
+def restore_waveform(job, wave, sample_rate):
+    """Use source samples inside Lock spans; keep decoded model sound everywhere else."""
+    refs = job.compiled.of_kind("lock")
+    if not refs:
+        return wave
+    chunk = job.chunk
+    origin = round(chunk.story_start_f / float(FPS) * sample_rate)
+    window_start = chunk.story_start_f - chunk.head_frames
+    mix = torch.zeros_like(wave)
+    covered = torch.zeros_like(wave[:, :1], dtype=torch.bool)
+    for ref in refs:
+        start_f = window_start + ref.start_f
+        first = max(origin, round(start_f / float(FPS) * sample_rate))
+        last = min(origin + wave.shape[-1], round((start_f + ref.length_f) / float(FPS) * sample_rate))
+        if last <= first:
+            continue
+        source = media.load_audio_source(ref, sample_rate).to(wave)
+        if wave.shape[1] == 1:
+            source = source.mean(dim=1, keepdim=True)
+        offset = round((ref.trim_start_f - start_f) / float(FPS) * sample_rate)
+        source_start = first + offset
+        destination = first - origin
+        covered[..., destination:destination + last - first] = True
+        count = min(last - first, source.shape[-1] - source_start)
+        if count > 0:
+            mix[..., destination:destination + count] += source[..., source_start:source_start + count]
+    return torch.where(covered, mix.clamp(-1, 1), wave)

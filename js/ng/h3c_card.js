@@ -26,6 +26,11 @@ const { api } = window.comfyAPI.api;
 const MEDIA = { NGContextImage: "image", NGContextVideo: "video", NGContextAudio: "audio", NGContextText: "text" };
 const WIDTH = { image: 660, video: 660, audio: 700, text: 780 };
 
+function repairNullableText(node) {
+  for (const widget of node.widgets || [])
+    if (["name", "description", "speaker", "color"].includes(widget.name) && widget.value == null) widget.value = "";
+}
+
 function speakerBox(S, actions) {
   const choose = h("select", { class: "h3c-in", "aria-label": "Whose voice", onchange: (event) => actions.set("speaker", event.target.value) },
     h("option", { value: "" }, "— nobody (narrator)"), S.speakers.map((entry) => h("option", { value: entry.id }, entry.name)));
@@ -50,6 +55,7 @@ function layout(S, actions) {
 
 function attach(node, media) {
   ensureCardStyle();
+  repairNullableText(node);
   node.properties ||= {};
   for (const key of ["ng_context_expanded"]) delete node.properties[key];
   const identity = () => node.widgets?.find((widget) => widget.name === "context_id");
@@ -254,6 +260,7 @@ function attach(node, media) {
   const configured = node.onConfigure;
   node.onConfigure = function (...args) {
     const result = configured?.apply(this, args);
+    repairNullableText(node);
     restoreAssetWidget(node);
     // Old workflows end after ID/colour; browser upload widgets must not fill newly added JSON fields.
     const saved = args[0]?.widgets_values;

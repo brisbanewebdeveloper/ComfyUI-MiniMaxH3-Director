@@ -18,6 +18,7 @@ class DirectorInputs:
     model_ref2va: object = None
     contexts: tuple = ()
     ai_provider: ProviderConfig | NativeAIProvider | None = None
+    preview_vae: object = None
 
     def links(self):
         return {name: getattr(self, name) for name in ("clip", "vae", "audio_vae", "model_fl2va", "model_ref2va")}
@@ -73,7 +74,8 @@ def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_si
     sigmas = graph.node("BasicScheduler", "sigmas", model=conditioning.out(0), scheduler=settings.scheduler, steps=settings.steps, denoise=1.0)
     outputs = (conditioning.out(0), conditioning.out(1), negative.out(0), conditioning.out(2),
                24.0, context.width, context.height, conditioning.out(3), result, chunk_seed,
-               settings.steps, 1.0, settings.sampler_name, settings.scheduler, sampler.out(0), sigmas.out(0))
+               settings.steps, 1.0, settings.sampler_name, settings.scheduler, sampler.out(0), sigmas.out(0),
+               result.inputs.preview_vae)
     return graph.finalize(), outputs
 
 

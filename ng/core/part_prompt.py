@@ -62,6 +62,13 @@ def _body_name(sections):
     return "detailed_description" if "detailed_description" in sections else "integrated_multimodal_description"
 
 
+def _labels(compiled, head):
+    labels = set(LABEL_RE.findall(compiled))
+    if head.startswith("How the reference pictures align with the target video"):
+        labels.update("<Picture %s>" % number for number in re.findall(r"\bPicture ([1-9]\d*)\b", head))
+    return labels
+
+
 def _summary_rule(sections):
     labels = ", ".join(sorted(set(LABEL_RE.findall(sections.get("subject_definitions", "")))))
     # qwen3.5:9b summed up the pictures instead of the part ("then widens to ... finally settles on her seated") for a part
@@ -73,11 +80,12 @@ def _summary_rule(sections):
 def _extra_rules(head, reference, guidance, pictures):
     """Rules for keyframes, the chosen direction and the attached pictures."""
     rules = []
-    if not reference and "Picture 2" in head:
+    labels = _labels(head, head)
+    if not reference and "<Picture 2>" in labels:
         # base-en 3.2: the body supplies the path between the two frames, it does not describe two still pictures.
         rules.append("Picture 1 is the first and Picture 2 the last frame: begin in the position and framing established by Picture 1, "
                      "describe the movement in between, and settle into the pose and composition established by Picture 2.")
-    elif not reference and "Picture 1" in head:
+    elif not reference and "<Picture 1>" in labels:
         rules.append("<Picture 1> is the %s frame: %s" % (("last", "the last shot arrives at what it shows.") if "aligns with" in head
                                                           else ("first", "begin with what it shows and develop forward from it.")))
     if guidance:
@@ -99,7 +107,7 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
     pictures attached to the request, in order ("" for a picture shown only for its look)."""
     head, sections = split_sections(compiled)
     body = sections.get(_body_name(sections), "")
-    labels = sorted(set(LABEL_RE.findall(compiled)))
+    labels = sorted(_labels(compiled, head))
     reference = mode == "ref2va"
     fields = ("summary", "description", "overall_soundscape", "non_diegetic_music") if reference else (
         "description", "overall_soundscape", "non_diegetic_music")
@@ -145,8 +153,14 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
 
 def _answer_fields(text):
     text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S).removeprefix("assistant\n").strip()
-    if text.startswith("```"):
-        text = "\n".join(line for line in text.splitlines() if not line.startswith("```"))
+    if "```" in text:
+        fences = list(re.finditer(r"(?m)^[ \t]*```([^\n\r`]*)\r?$", text))
+        # Only one complete block supplies a prompt. Never merge ambiguous blocks or use an unfinished one.
+        if len(fences) != 2 or fences[1].group(1).strip():
+            return {}
+        text = text[fences[0].end():fences[1].start()].strip()
+        if "```" in text:
+            return {}
     found = list(ANSWER_RE.finditer(text))
     fields = {}
     for index, match in enumerate(found):
@@ -266,8 +280,9 @@ def check(compiled, answer):
         problems.append("the description does not start with [Shot 1]")
     if DIALOGUE_RE.findall(written) != DIALOGUE_RE.findall(body):
         problems.append("the spoken or sung lines (<d>) are not exactly the planned ones")
-    if not set(LABEL_RE.findall(written)) <= set(LABEL_RE.findall(compiled)):
-        problems.append("it uses labels the plan does not have: %s" % ", ".join(sorted(set(LABEL_RE.findall(written)) - set(LABEL_RE.findall(compiled)))))
+    labels = _labels(compiled, head)
+    if not set(LABEL_RE.findall(written)) <= labels:
+        problems.append("it uses labels the plan does not have: %s" % ", ".join(sorted(set(LABEL_RE.findall(written)) - labels)))
     if not {l for l in LABEL_RE.findall(body) if l.startswith("<Subject")} <= set(LABEL_RE.findall(written)):
         problems.append("a planned subject label is missing")
     if not set(SPEAKER_RE.findall(body)) <= set(SPEAKER_RE.findall(written)):

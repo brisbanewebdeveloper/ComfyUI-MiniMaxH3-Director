@@ -2,6 +2,44 @@
 
 ## 1.0.0 (unreleased)
 
+**H3 latent audit fixes** (2026-10-11):
+
+- Global First/Last Frame cards now supply timed native guides in Ref2VA; FL2VA anchors are not duplicated.
+- Explicit continuous-camera instructions prevent an automatically inserted cut; explicit transitions remain unchanged.
+- NG Collect and NG Collect Video restore source waveform samples inside Lock spans, preserving offsets and mixed overlapping tracks without the short native-grid silence gaps.
+- The accompanying local ComfyUI reference-node fix preserves all selected video frames and limits paired audio to the same reference window.
+- The accompanying H3 encoder fix uses the released processor's image/video pixel bounds, including the minimum size for small references.
+
+**Explicit preview VAE and external player** (2026-10-10):
+
+- Context Connector accepts an optional `preview VAE`; Director Output exposes it as an appended VAE output without moving existing output slots.
+- Live playback exists only on a connected Preview Override node. The Director/player and automatically inserted sequence previews are removed; `enabled` is removed.
+- Preview decoding uses the VAE connected from a normal Load VAE node, with native device/dtype/offloading. The normal video/audio VAEs remain separate.
+
+**TAEHV workflow loading fix** (2026-10-10):
+
+- Loading an older preview node now creates plain input descriptors for added ports. Native slots and widgets contain node references and must not enter serialized workflow data.
+- Regression tests cover native JSON cloning, connected MODEL/FPS inputs and saving/reloading migrated settings.
+
+**TAEHV live preview** (2026-10-09):
+
+- NG sequence rendering now attaches the H3 preview inside its native sampler loop. The Legacy Preview ID remains loadable.
+- TAEHV is the only preview decoder; the RGB projection, full-VAE option and animated WebP/VHS paths are removed.
+- Complete temporal decoding supports all 24 output frames per second with the original clip duration; spatial limits apply before decode.
+- Studio and preview nodes share buffered playback with pause, scrubbing and separate update/cadence status. Step updates preserve playback phase.
+- Saved widget layouts and link slots migrate on load, including the Director's connected FLOAT fps output.
+- One CPU worker and one pending snapshot per sample avoid a growing preview backlog and GPU decoder offload during H3 sampling.
+
+**Verified bug fixes** (2026-10-09):
+
+- Every HTTP AI action uses the requesting user's saved API key. Google AI Studio uses its documented compatibility endpoints.
+- Make H3 prompt retains Undo after Cancel or a part failure; late cancelled answers cannot change picture descriptions.
+- Typing the first spoken line immediately reveals its add/remove controls without replacing the input.
+- Analyze accepts an offered role returned as a role/meaning pair. FL2VA writer rules and checks agree on paired picture labels.
+- Timed lyrics start at the selected clip's beginning, and a figure named Narrator remains separate from the anonymous narrator.
+- Video analysis uses container duration when stream timing is missing. Split and Build accept complete JSON with surrounding prose while still rejecting ambiguous answers.
+- Optional Director prompt inputs treat a connected `None` value as empty text before planning.
+
 **Make H3 prompt** (2026-10-06): one button in the Studio for a finished H3 prompt from a direction and the pictures.
 
 - Choose a direction (music video, song, story, action, calm, dance, horror, comedy, romance, Spicy 18+ for adults only) and

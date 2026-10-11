@@ -893,66 +893,48 @@ storyboard is not a workaround: H3's Qwen3-VL encoder was trained on exactly thi
 
 ## Live preview while sampling
 
-ComfyUI ships `latent_rgb_factors` for H3, so previews work — but `Latent2RGBPreviewer`
-renders `x0[0, :, 0]`, the **first latent frame only**. You watch a still image while a
-five-second shot is being sampled. KJNodes' Preview Override does the good version of
-this, but its video paths are gated on LTX checks and nothing there unpacks H3's packed AV
-latent, so on MiniMax it falls through to the same single frame.
+**🎯 Preview Override (live)** uses the connected tiny H3 TAEHV VAE. Connect Director
+Output's `MODEL` through this node to your guider. The Director has no preview player
+and sequence rendering does not insert a preview node automatically. The existing
+`MiniMaxH3PreviewOverrideCS` ID and the `NGH3Preview` alias use the same runtime and player.
 
-**MiniMax H3 Preview Override** goes between the Director's `model` output and the sampler
-and renders the whole shot as it denoises.
+Place a compatible H3 checkpoint in `ComfyUI/models/vae_approx/taeh3.safetensors`.
+The tested [official TAEHV checkpoint](https://github.com/madebyollin/taehv/blob/011dfc2112197741c540e0bdd5b7b67bcc930771/safetensors/taeh3.safetensors)
+has SHA256 `4fd022bfcab08772fe0536b17ea1a3bbb5625be11e397868d1c5d891863d4c13`
+and uses the [MIT license](https://github.com/madebyollin/taehv/blob/011dfc2112197741c540e0bdd5b7b67bcc930771/LICENSE).
+It needs current ComfyUI H3 TAEHV support (24 latent channels, patch size 2).
+Select `taeh3.safetensors` in a normal **Load VAE** node. Connect it to Context Connector's
+`preview VAE`, then Director Output's `preview VAE` to the Preview Override's `vae` input.
+The separate video/audio VAEs still perform conditioning and final output decoding.
+The preview node never downloads or secretly loads another model; an incompatible VAE
+is rejected with a message identifying the required H3 TAEHV checkpoint.
 
-<img src="docs/images/preview-override-node.png" alt="The Preview Override node" width="360">
-
+The player has Play/Pause, a timeline slider, elapsed/total time, sampler step, resolution,
+display cadence and update cost. New step buffers keep the current playback position.
+At 24 FPS all decoded video frames are retained: 37 H3 latent frames become 124 images,
+played over 5.167 seconds. Spatial resolution is bounded before decoding; temporal
+latents are always kept intact. The preview is an approximation; final output still
+uses the full video VAE.
 
 | Widget | What it does |
 |---|---|
-| `decode` | `latent2rgb (fast)` — one matmul, ~10 ms, rough colours. `vae (quality)` — the real decoder, true colours, real cost. |
-| `preview_target` | `node` shows it on this node — always available. `sampler (VHS)` puts it in the sampler's usual preview slot and needs [VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) installed; `both` does both. |
-| `preview_frames` | Cap on **latent** frames used, thinned evenly across the shot, so it shortens nothing. The main cost knob. |
-| `preview_fps` | The shot's frame rate. A FLOAT, so the Director's `fps` output wires straight in. |
-| `playback` | `true speed` (default) spreads the sampled frames across the shot's real length, so the preview lasts as long as the finished clip. `source fps` plays them at `preview_fps` flat, like ComfyUI's own preview. |
-| `max_resolution` | Long edge of the preview image, as a **target** — latent2rgb frames arrive at latent size (a 1344×768 shot is an 84×48 grid), so this upscales them smoothly. |
-| `webp_quality` | Quality of the animation sent to the browser. |
-| `every_n_steps` | Never preview more often than every N sampler steps. |
-| `max_preview_overhead` | Share of render time previews may use, in percent (default 25). After a preview costing C seconds the next waits `C·(100/P − 1)` s. 0 disables. |
-| `suppress_default_preview` | Hides ComfyUI's built-in single-frame preview. |
+| `max_resolution` | Maximum long edge, default 768 px. Larger previews cost more decode time and memory. |
+| `preview_fps` | Display cadence up to H3's native 24 FPS; lower values preserve the full duration. Accepts the Director's FLOAT fps output. |
+| `jpeg_quality` | Frame transport quality, default 90. |
+| `every_n_steps` | Minimum step interval between preview requests. |
+| `max_preview_overhead` | Decoder duty limit, default 25%; 0 allows continuous updates. |
+| `suppress_default_preview` | Hides this sampler callback's built-in single-frame preview. |
 
-The time in the status line (`render 9.9s`) is **server-side**: how long ComfyUI took to
-decode, scale and encode that preview. Not browser time, not the sampler. With
-`latent2rgb` it is tens of milliseconds; with `vae (quality)` at 1344×768 it can be 20–25 s,
-because the real decoder expands 37 latent frames into 124 output frames through a 5 GB
-VAE. Capping the frame *rate* would not help — rate only sets playback speed. The cost
-knobs are `preview_frames` (try 4–8 for VAE), `max_resolution` and `every_n_steps`.
+The connected VAE owns its device, dtype and offloading. Native decoding runs on the
+sampler thread; one CPU worker encodes JPEGs and keeps at most one pending RGB buffer.
+Playback runs independently in the browser; 24 FPS playback does not mean 24 new
+diffusion previews per second. Update latency depends on the VAE device, clip length
+and resolution. Browser load can reduce the displayed cadence.
 
-**Why the badge says `4.7fps of 24`.** With `true speed` the rate is derived, not set: the
-frames that survive thinning are spread across the shot's real length. In `latent2rgb`
-there is one image per latent frame and H3 compresses time about 3.35×, so a 124-frame shot
-has 37 images to show and the rate cannot pass `preview_fps / 3.35` — measured, 7.16 fps at
-24. That is not a setting being ignored; other packs show a round 24 because they play the
-same frames without correcting for the compression, which runs the preview 3.35× too fast.
-Switch `playback` to `source fps` if that is the trade you want: motion at normal speed,
-clip over early.
-
-`vae (quality)` is the answer to "is there a small preview VAE, like LTX 2.3?" — there is
-not. MiniMax has not released a TAESD-style decoder (`latent_format.taesd_decoder_name` is
-`None`), so the choice is the cheap RGB approximation or the real video VAE.
-
-<details>
-<summary>Two non-obvious details, both of which produced real bugs here</summary>
-
-**The latent is not the video.** `CFGGuider.sample` packs video and audio into one flat
-tensor and only *then* wraps the callback with the nested view — and that wrapper sits
-behind any `OUTER_SAMPLE` wrapper. What reaches a preview is the flat pack, which has to
-be unpacked with core's `unpack_latents` first.
-
-**Latent frames are not output frames.** H3 compresses time ~3.35× (17k+5 output frames
-become 5k+2 latent frames), so a 124-frame shot is 37 latent frames. Playing those at 24
-fps runs the preview three times too fast. The playback rate is derived from the *output*
-duration — `shown_frames × fps ÷ output_frames` — so the preview lasts exactly as long as
-the finished shot, thinning included.
-
-</details>
+Old saved Preview nodes migrate their widget values and named links when loaded.
+MODEL, VAE and FPS links remain connected. The obsolete `enabled` widget and RGB/full-VAE
+decoder choices are removed. Connecting the node enables its preview; bypassing it
+uses the original model. The original workflow file remains unchanged until saved.
 
 ## Writing the prompt for you
 
@@ -1070,12 +1052,11 @@ the **audio** VAE. Swapping the two VAEs is the usual cause.
 **The finished video is a flat, featureless grey, but the audio is fine and the live
 preview looked right.**
 The latent is good and the video VAE is producing NaN. Flat grey — not noise, not black,
-every pixel the same value — is what NaN looks like after clamping. `latent2rgb` previews
-keep working because they never touch the VAE.
+every pixel the same value — is what NaN looks like after clamping. The TAEHV preview
+uses a separate tiny VAE, so a working live preview does not verify the full video VAE.
 
-Confirm it in a minute instead of a full render: set the Preview Override's `decode` to
-`vae (quality)`. That runs the same video VAE, so if the preview goes grey too, the VAE
-is where it breaks.
+Check the sampler's same LATENT through `VAEDecode` with your video VAE. The Preview
+Override accepts only H3 TAEHV and cannot be switched to the full video decoder.
 
 The thing to try is precision. `minimax_h3_video_vae_fp16` runs in fp16, and ComfyUI's own
 help text for `--fp16-vae` says it "might cause black images". Start ComfyUI with
@@ -1089,9 +1070,10 @@ paths than on CUDA. Not reproduced on CUDA, and the fp32 remedy is not yet confi
 the reporter — if you hit this, please say whether it helped.
 
 **Out of memory.**
-Lower the resolution first (768 short edge is native, but 480 works), then `length`. With
-`vae (quality)` previews, lower `preview_frames` to 4 — a VAE preview allocates as much as
-a real decode. Consider the `_pruned_fp8_scaled` checkpoints if you are on `_bf16`.
+Lower the resolution first (768 short edge is native, but 480 works), then `length`.
+For TAEHV live previews, lower `max_resolution`; increase `every_n_steps` or lower
+`max_preview_overhead` to reduce update work. Consider the `_pruned_fp8_scaled`
+checkpoints if you are on `_bf16`.
 
 **"neither model input is connected".**
 The Director has two model inputs on purpose: `model (t2v/i2v)` for `fl2va` and

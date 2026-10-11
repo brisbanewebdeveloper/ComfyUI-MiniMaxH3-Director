@@ -54,11 +54,12 @@ class NGH3Director(io.ComfyNode):
 
     @classmethod
     def execute(cls, context, **values):
+        text_inputs = {name: "" if values.get(name) is None else values[name]
+                       for name in ("prepend_text", "prompt_override")}
         director = DirectorContext(idea=values["idea"], project_seconds=values["project_seconds"],
                                    width=values["width"], height=values["height"], mode=values["mode"],
                                    shots_text=values["shots"], soundscape=values["soundscape"], music=values["music"],
-                                   prepend_text=values.get("prepend_text", ""), items=context.contexts,
-                                   style=values.get("style", ""), prompt_override=values.get("prompt_override", ""))
+                                   items=context.contexts, style=values.get("style", ""), **text_inputs)
         continuity = ContinuityPlan(mode=values["continuity"], video_frames=int(values["pin_frames"]), audio_frames=PIN_AUDIO_DEFAULT)
         project = plan_project(director, values["chunk_seconds"], continuity, image_size)
         settings = RenderSettings(**{name: values[name] for name in RenderSettings.__dataclass_fields__ if name in values})

@@ -110,7 +110,7 @@ async def write_preset(request):
 @PromptServer.instance.routes.get("/ng/preset")
 async def read_preset(request):
     try:
-        preset = await asyncio.to_thread(presets.load, preset_root(request), request.query["name"])
+        preset = await asyncio.to_thread(presets.load, preset_root(request), request.query["name"], request.query["media"])
         if preset.item.media != request.query["media"]:
             raise ValueError("Choose a preset for this context's media type.")
         return web.json_response({"ok": True, "widgets": widget_values(preset.item)})

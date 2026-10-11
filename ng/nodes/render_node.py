@@ -42,7 +42,7 @@ class NGRenderSequence(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="NGRenderSequence", display_name="NG Chunk Sequence", category=CATEGORY + "/Technical",
-                         description="Connect the Director's chunks and your models. Renders and joins the entire sequence using native sampling, previews and interrupt.",
+                         description="Connect the Director's chunks and your models. Renders and joins the entire sequence using native sampling, progress and interrupt.",
                          inputs=[NGChunk.Input("chunks", raw_link=True), *model_inputs(), *sampling_inputs()],
                          outputs=render_outputs(), enable_expand=True)
 

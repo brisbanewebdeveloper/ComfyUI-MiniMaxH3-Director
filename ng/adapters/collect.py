@@ -24,7 +24,7 @@ def _pad_to(wave, samples):
     return torch.nn.functional.pad(wave, (0, short)), short
 
 
-def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues):
+def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *, restore_audio=None):
     """Each chunk's delivered (frames [n,H,W,3], waveform [1,C,S], sample rate), decoded only when it is asked for."""
     if len(chunk_latents) != len(plan.chunks):
         raise ValueError("the plan has %d chunks but %d were generated" % (len(plan.chunks), len(chunk_latents)))
@@ -40,26 +40,28 @@ def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues):
         # Use absolute story boundaries so fractional samples do not accumulate at the joins.
         samples = round(chunk.story_end_f / float(FPS) * rate) - round(chunk.story_start_f / float(FPS) * rate)
         wave, padded = _pad_to(wave[..., :samples], samples)
+        if restore_audio is not None:
+            wave = restore_audio(chunk.index, wave, rate)
         # up to one audio step (25 ms) short is the grid's normal rounding (E11: 266 samples at 32 kHz = 8 ms), not worth a warning
         if padded > rate / float(AUDIO_HZ):
-            issues.append(Issue("audio_short", "the sound of chunk %d was %d samples short and was padded with silence." % (chunk.index + 1, padded)))
+            issues.append(Issue("audio_short", "the decoded sound of chunk %d was %d samples short." % (chunk.index + 1, padded)))
         yield frames, wave, rate
 
 
-def collect_chunks(chunk_latents, plan, decode_video, decode_audio):
+def collect_chunks(chunk_latents, plan, decode_video, decode_audio, *, restore_audio=None):
     """chunk_latents: list of AV latents in chunk order. plan: SequencePlan. Returns (frames [N,H,W,3], audio dict, issues)."""
     pictures, waves, issues, rate = [], [], [], None
-    for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues):
+    for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, restore_audio=restore_audio):
         pictures.append(frames)
         waves.append(wave)
     return torch.cat(pictures, 0), {"waveform": torch.cat(waves, -1), "sample_rate": rate}, tuple(issues)
 
 
-def write_video(path, chunk_latents, plan, decode_video, decode_audio, crf=17):
+def write_video(path, chunk_latents, plan, decode_video, decode_audio, crf=17, *, restore_audio=None):
     """The same join written chunk by chunk into an MP4 (H.264, AAC): only one chunk is ever decoded at a time."""
     issues, video_stream, audio_stream, sample = [], None, None, 0
     with av.open(path, mode="w", format="mp4") as output:
-        for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues):
+        for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, restore_audio=restore_audio):
             layout = "stereo" if wave.shape[1] == 2 else "mono"
             if video_stream is None:
                 video_stream = output.add_stream("libx264", rate=Fraction(FPS, 1))

@@ -91,13 +91,15 @@ class ContentRoles(unittest.TestCase):
         got = core.parse_suggestion('{"description": "just a sentence"}', "image")
         self.assertIsNone(got.content)
 
-    def test_an_unreadable_answer_names_the_likely_cause(self):
-        """A reasoning model can spend its whole budget thinking and return nothing; saying only
-        'invalid JSON' hides the one thing the user can change."""
-        with self.assertRaisesRegex(ValueError, "Max tokens"):
-            core.parse_suggestion("", "image")
-        with self.assertRaisesRegex(ValueError, "Max tokens"):
-            core.parse_suggestion("I cannot help with that.", "image")
+    def test_unreadable_answers_distinguish_refusal_syntax_and_cutoff(self):
+        for answer in ("", "I cannot help with that.", "{not JSON"):
+            with self.subTest(answer=answer):
+                with self.assertRaisesRegex(ValueError, "not readable JSON") as caught:
+                    core.parse_suggestion(answer, "image")
+                self.assertNotIn("Max tokens", str(caught.exception))
+        with self.assertRaisesRegex(ValueError, "not readable JSON") as caught:
+            core.parse_suggestion('{"description": "A woman', "image")
+        self.assertIn("Max tokens", str(caught.exception))
 
     def test_the_nodes_and_the_core_share_one_list(self):
         """The parse checks against core, so the node's dropdown has to be the very same list."""

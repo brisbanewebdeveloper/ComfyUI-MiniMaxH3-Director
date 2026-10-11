@@ -89,9 +89,9 @@ function output(node) {
     field.sync();shift.sync();return result;};
 }
 function render(node) {
-  const {root,header,widget}=shell(node,"▶ H3 RENDER SEQUENCE","#5ba9ff",[480,245]),status=element("span","ng-ai-badge","Awaiting sequence"),preview=element("img","ng-live-preview");preview.hidden=true;preview.alt="Live sampling preview";
-  header.append(status);root.append(element("p","ng-muted","Native loop · sampler · continuity · final collect"),preview);
-  const progress=attachProgress(node,api,status,preview);widget.computeLayoutSize=()=>({minHeight:110,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});node.setSize([480,245]);
+  const {root,header,widget}=shell(node,"▶ H3 RENDER SEQUENCE","#5ba9ff",[480,245]),status=element("span","ng-ai-badge","Awaiting sequence");
+  header.append(status);root.append(element("p","ng-muted","Native loop · sampler · continuity · final collect"));
+  const progress=attachProgress(node,api,status);widget.computeLayoutSize=()=>({minHeight:110,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});node.setSize([480,245]);
   const removed=node.onRemoved;node.onRemoved=function(...args){progress.dispose();return removed?.apply(this,args);};
 }
 app.registerExtension({name:"mmxd.ng.product_nodes",beforeRegisterNodeDef(nodeType,nodeData){

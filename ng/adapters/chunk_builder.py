@@ -36,13 +36,14 @@ def _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size):
     pictures = [media.load_picture(r) for r in compiled.of_kind("picture")]
     videos = [media.load_video(r) for r in compiled.of_kind("video")]
     audios = [media.load_audio(r) for r in compiled.of_kind("audio")]
-    if audios and audio_vae is None:
+    soundtracks = scene_guides.video_soundtracks(job)
+    if (audios or soundtracks) and audio_vae is None:
         raise ValueError("audio references need the audio VAE: connect minimax_h3_audio_vae to 'audio_vae', "
                          "or remove the voice and audio items")
     return mm.MiniMaxH3ReferenceToVideo.execute(
         clip=clip, vae=vae, audio_vae=audio_vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
         length=job.chunk.sampled_frames, ref_image_size=ref_image_size, ref_images=media.numbered("ref_image", pictures),
-        ref_videos=media.numbered("ref_video", videos), ref_video_audios=scene_guides.video_soundtracks(job), ref_audios=media.numbered("ref_audio", audios))
+        ref_videos=media.numbered("ref_video", videos), ref_video_audios=soundtracks, ref_audios=media.numbered("ref_audio", audios))
 
 
 def _frame_conditioning(mm, job, clip, vae, resize_method):

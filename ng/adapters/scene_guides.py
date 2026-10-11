@@ -14,7 +14,8 @@ def video_soundtracks(job):
 
 
 def apply_guides(mm, job, positive, latent, vae):
-    guides = [(ref, media.load_picture(ref), ref.start_f) for ref in job.compiled.of_kind("keyframe")]
+    roles = ("keyframe", "first_frame", "last_frame") if job.compiled.mode == "ref2va" else ("keyframe",)
+    guides = [(ref, media.load_picture(ref), ref.start_f) for ref in job.compiled.refs if ref.kind in roles]
     guides += [(ref, media.load_video(ref)[-1:].clone(), ref.start_f) for ref in job.compiled.of_kind("continue_video")]
     for _ref, image, frame in guides:
         output = mm.MiniMaxH3AddGuide.execute(positive=positive, latent=latent, frame_idx=frame, vae=vae, image=image)

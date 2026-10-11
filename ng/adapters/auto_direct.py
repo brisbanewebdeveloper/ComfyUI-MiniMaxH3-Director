@@ -7,7 +7,7 @@ from . import probe
 from .analysis import endpoint, wire
 
 
-async def direct(payload):
+async def direct(payload, *, api_key=None):
     need_dict(payload, "request")
     config = ProviderConfig.from_dict(payload["provider"])
     director = need_dict(payload["director"], "director")
@@ -17,7 +17,7 @@ async def direct(payload):
     current = read_str(director, "shots", "director", "")
     parts, sung = timing_hints(director, contexts, probe.duration_seconds)
     prompt = direction_prompt(idea, seconds, contexts, current, (parts, sung))
-    key = legacy.resolve_api_key({"api_key_env": config.api_key_env})
+    key = legacy.resolve_api_key({"api_key_env": config.api_key_env}) if api_key is None else api_key
     try:
         # The provider registry owns address, model and auth; _PROVIDER_DEFAULTS knows only the local three.
         entry, url, model = endpoint(config)

@@ -52,7 +52,8 @@ class NGDirectorOutput(io.ComfyNode):
                                   _choice("sampler_name", KSampler.SAMPLERS, "The Director's sampler, for KSampler or KSamplerSelect."),
                                   _choice("scheduler", KSampler.SCHEDULERS, "The Director's scheduler, for KSampler or BasicScheduler."),
                                   io.Sampler.Output(display_name="sampler", tooltip="Ready for SamplerCustomAdvanced."),
-                                  io.Sigmas.Output(display_name="sigmas", tooltip="Steps and scheduler on this chunk's model, ready for SamplerCustomAdvanced.")],
+                                  io.Sigmas.Output(display_name="sigmas", tooltip="Steps and scheduler on this chunk's model, ready for SamplerCustomAdvanced."),
+                                  io.Vae.Output(display_name="preview VAE", tooltip="The Context Connector's optional VAE for Preview Override (live).")],
                          enable_expand=True)
 
     @classmethod
@@ -65,7 +66,7 @@ class NGProjectRender(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="NGProjectRender", display_name="H3 Render Sequence", category=CATEGORY,
-                         description="Render the complete planned project through ComfyUI's native loop and sampler, with preview, progress and interrupt.",
+                         description="Render the complete planned project through ComfyUI's native loop and sampler, with progress and interrupt.",
                          inputs=[NGResult.Input("sequence")], outputs=render_outputs(), enable_expand=True)
 
     @classmethod

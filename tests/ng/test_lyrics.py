@@ -36,8 +36,8 @@ def lane(start=0.0, end=27.0, offset=0.0, mode="lock"):
     return {"schema_version": 1, "id": "c1", "context_id": "song", "start": start, "end": end, "offset": offset, "mode": mode, "lane": "l1"}
 
 
-def song(text=SONG, usage=("voice",), speaker=""):
-    return ctx.ContextItem("song", "Song", "audio", "song.mp3", usage=usage, length_s=27.0, speaker=speaker,
+def song(text=SONG, usage=("voice",), speaker="", length=27.0):
+    return ctx.ContextItem("song", "Song", "audio", "song.mp3", usage=usage, length_s=length, speaker=speaker,
                            options=opts.ContextOptions(lyrics=text))
 
 
@@ -133,10 +133,17 @@ class Placement(unittest.TestCase):
         self.assertNotIn("<d>", "".join(self.prompts(result)))
 
     def test_a_song_locked_over_the_whole_video_is_no_dulling_chain(self):
-        long = plan(doc([shot("s1", 0, 177)], [lane(end=177.0)]), (song(),), seconds=177.0)
+        # A full-video lock requires a file long enough to cover that video (BUG-083).
+        long = plan(doc([shot("s1", 0, 177)], [lane(end=177.0)]), (song(length=177.0),), seconds=177.0)
         self.assertNotIn("audio_dulling", {i.code for i in long.issues})
-        unlocked = plan(doc([shot("s1", 0, 177)], [lane(end=60.0)]), (song(),), seconds=177.0)
+        unlocked = plan(doc([shot("s1", 0, 177)], [lane(end=60.0)]), (song(length=177.0),), seconds=177.0)
         self.assertIn("audio_dulling", {i.code for i in unlocked.issues}, "generated sound after 60 s is still carried")
+
+    def test_a_short_song_cannot_lock_sound_past_its_file_end(self):
+        result = plan(doc([shot("s1", 0, 177)], [lane(end=177.0)]), (song(),), seconds=177.0)
+        self.assertIn("audio_dulling", {i.code for i in result.issues})
+        timing = module("ng.core.audio_timing")
+        self.assertEqual(timing.locked_spans(result.context), [(0, 648)])
 
     def test_a_carried_shot_keeps_its_timed_lines(self):
         result = plan(doc([shot("s1", 0, 27)], [lane()]), (song(),))

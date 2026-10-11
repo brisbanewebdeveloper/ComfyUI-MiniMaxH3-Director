@@ -13,7 +13,8 @@ chunks = module("ng.core.chunks")
 
 class ContextDetails(unittest.TestCase):
     def plan(self, item):
-        director = ctx.DirectorContext(idea="A woman walks.", project_seconds=8, items=(item,))
+        # Two H3 parts need at least 214 frames; 8 seconds is correctly one part (BUG-064).
+        director = ctx.DirectorContext(idea="A woman walks.", project_seconds=10, items=(item,))
         return project.plan_project(director, 5, chunks.ContinuityPlan("none"))
 
     def test_multi_content_usage_and_preserve_survive_preset_and_widget_roundtrip(self):
@@ -61,6 +62,14 @@ class ContextDetails(unittest.TestCase):
         guide = plan.compiled[1].of_kind("keyframe")[0]
         self.assertEqual(guide.start_f, 144 - plan.plan.chunks[1].story_start_f)
         self.assertNotIn("usage_pending", {issue.code for issue in plan.issues})
+
+    def test_eight_seconds_keeps_its_duration_and_keyframe_in_one_valid_part(self):
+        image = ctx.ContextItem("k", "Key", "image", "key.png", usage=("keyframe",), options=options.ContextOptions(anchor_s=6))
+        director = ctx.DirectorContext(idea="A woman walks.", project_seconds=8, items=(image,))
+        plan = project.plan_project(director, 5, chunks.ContinuityPlan("none"))
+        self.assertEqual(plan.plan.total_frames, 192)
+        self.assertEqual(len(plan.compiled), 1)
+        self.assertEqual(plan.compiled[0].of_kind("keyframe")[0].start_f, 144)
 
     def test_video_continuation_and_soundtrack_options_are_explicit(self):
         video = ctx.ContextItem("v", "Continue", "video", "video.mp4", usage=("continue",), length_s=10,

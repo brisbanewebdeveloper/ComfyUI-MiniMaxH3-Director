@@ -7,6 +7,7 @@ import json
 import re
 
 from . import fields
+from .context_build import widget_text
 from .shot_draft import plain_mentions
 
 DELIVERIES = ("says", "sings", "whispers", "shouts", "murmurs")
@@ -71,7 +72,7 @@ def _owner(speaker, contexts):
     name = speaker.strip().lstrip("@").casefold()
     for entry in contexts or ():
         widgets = entry.get("widgets", {})
-        if name and widgets.get("name", "").casefold() == name and widgets.get("context_id"):
+        if name and widget_text(widgets, "name").casefold() == name and widgets.get("context_id"):
             return widgets["context_id"], "a narrator"
     voice = " ".join(DELIMITERS.sub(" ", speaker.lstrip().lstrip("@")).split())
     return "", voice or "a narrator"
@@ -97,13 +98,14 @@ def _keep(shots, keep, contexts):
     where the AI first gave that speaker a line, else in the last shot. Returns the user's lines the AI did not have."""
     own = {}
     for line in (keep or "").splitlines():
-        found = re.match(r"^\s*@?([^:]+?)\s+says:\s*(.+)$", line)
+        found = re.match(r"^\s*(@?)([^:]+?)\s+says:\s*(.+)$", line)
         if found:
-            name = found.group(1).strip()
-            own.setdefault(("" if name.casefold() == "narrator" else name).casefold(), []).append(found.group(2).strip())
+            name = found.group(2).strip()
+            narrator = name.casefold() == "narrator" and not (found.group(1) and _owner(name, contexts)[0])
+            own.setdefault("" if narrator else name.casefold(), []).append(found.group(3).strip())
     if not own:
         return []
-    names = {entry["widgets"].get("context_id"): entry["widgets"].get("name", "").casefold() for entry in contexts or ()}
+    names = {entry["widgets"].get("context_id"): widget_text(entry["widgets"], "name").casefold() for entry in contexts or ()}
     key = lambda line: names.get(line["speaker_id"], "") if line["speaker_id"] else ""
     proposed = {_norm(line["text"]) for shot in shots for line in shot["spoken"]}
     for speaker, texts in own.items():

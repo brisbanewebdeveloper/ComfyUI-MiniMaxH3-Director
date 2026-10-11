@@ -48,8 +48,8 @@ export function openStudio(node, app, api, host = null) {
     sizeOpen: false, furtherOpen: false, busy: "", toast: "", notice: null, suggestionBase: {}, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
   load(S);
   let timer = null, serial = 0, toastTimer = null, tick = null, closed = false;
-  const status = h("span", { class: "h3s-lbl" }), live = h("img", { class: "h3s-live", hidden: true, alt: "Live preview" });
-  const progress = attachProgress(node, api, status, live, () => projectRenderIds(node));
+  const status = h("span", { class: "h3s-lbl" });
+  const progress = attachProgress(node, api, status, () => projectRenderIds(node));
   const ai = studioAI(S, app, api, () => render());
 
   let echo = false;
@@ -281,6 +281,9 @@ export function openStudio(node, app, api, host = null) {
     setQuick(key, value) { S.quick = changeQuick(S.quick, key, value); node.properties.ng_quick = S.quick; node.graph?.change?.(); render(); },
     async buildPrompt() {
       const before = { shots: S.shots, look: S.look, partPrompts: S.partPrompts, soundscape: S.values.soundscape, music: S.values.music, cards: [] };
+      const undo = () => { Object.assign(S, { shots: before.shots, look: before.look, partPrompts: before.partPrompts });
+        for (const card of before.cards) applyValues(card, { description: "" });
+        write({ soundscape: before.soundscape, music: before.music }); save(); render(); };
       const apply = (plan) => {
         // A picture without a description gets the plan's: the compiler names the figure with it in every part.
         for (const { media, node: card } of contextNodes(node)) {
@@ -292,7 +295,7 @@ export function openStudio(node, app, api, host = null) {
           text: shot.text, media: shot.media || [], spoken: shot.spoken || [] }));
         S.look = (plan.look || "").trim(); S.partPrompts = []; S.partDrafts = {}; S.ghosts = []; S.ghostSound = null; S.selected = null;
         write({ soundscape: (plan.soundscape || "").trim(), music: (plan.music || "").trim() });
-        save(); render();
+        save(); render(); return undo;
       };
       const keep = (index, draft) => { S.partPrompts = setPartPrompt(S.partPrompts, index, draft.key, draft.text, "ai"); save(); };
       const describe = async (ask) => {
@@ -304,9 +307,6 @@ export function openStudio(node, app, api, host = null) {
       };
       const result = await ai.build(apply, planNow, keep, describe);
       if (!result) return;
-      const undo = () => { Object.assign(S, { shots: before.shots, look: before.look, partPrompts: before.partPrompts });
-        for (const card of before.cards) applyValues(card, { description: "" });
-        write({ soundscape: before.soundscape, music: before.music }); save(); render(); };
       const notes = [result.refused && `${result.refused} part${result.refused === 1 ? "" : "s"} kept the compiled prompt because the AI's text broke a rule`,
         result.unchanged && `${result.unchanged} part${result.unchanged === 1 ? "" : "s"} came back unchanged`,
         result.unseen.length && `the AI could not look at ${result.unseen.join(", ")} and used the card descriptions`,
@@ -340,7 +340,7 @@ export function openStudio(node, app, api, host = null) {
     return h("header", { class: "h3s-head" }, back,
       ...(full ? [h("span", { style: { width: "1px", height: "24px", background: "#2A3342" } }),
         h("span", { class: "h3s-title" }, "H3 Director"), h("span", { class: "h3s-muted" }, "Studio")] : []),
-      h("span", { class: "h3s-grow" }), status, live,
+      h("span", { class: "h3s-grow" }), status,
       h("span", { class: "h3s-row", style: { gap: "6px" }, title: "Green when an H3 AI Loader is connected to the Context Connector" },
         h("span", { class: "h3s-swatch", style: { background: S.ai ? "#5BD08A" : "#6B7383", borderRadius: "50%" } }), S.ai ? "AI connected" : "AI off"),
       h("button", { class: "h3s-btn", onclick: () => actions.toggle("promptOpen") }, icon("doc"), S.promptOpen ? "Hide prompts" : "Show prompts"),
