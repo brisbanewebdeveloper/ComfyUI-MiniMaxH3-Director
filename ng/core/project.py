@@ -2,6 +2,7 @@
 
 This is what the Director node does with its inputs, kept free of ComfyUI so it can be tested and reused by a preview endpoint.
 """
+import json
 import math
 import re
 from dataclasses import dataclass, replace
@@ -9,9 +10,10 @@ from dataclasses import dataclass, replace
 from . import frames, limits
 from .chunks import ContinuityPlan, SequencePlan, plan_chunks
 from .compile import compile_chunk
-from .context import ContextItem, DirectorContext
+from .context import USAGE_BY_MEDIA, ContextItem, DirectorContext
 from .context_checks import check_context, check_guide_times
 from .issues import Issue
+from .legacy_bridge import decide_mode
 from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
 from .shot_document import has_shots, read_document
@@ -136,17 +138,76 @@ def _prepare(context):
     return ctx, relationship_issues + issues + canvas_issues + checks
 
 
+def _opens_on_picture(context, shot):
+    """A First frame picture is bound to the shot, by the binding's role or, for a plain binding, by the card's usage."""
+    for binding in shot.media:
+        item = context.item(binding.context_id)
+        if item and item.media == "image" and item.source:
+            roles = (binding.role,) if binding.role in USAGE_BY_MEDIA["image"] else item.effective_usage
+            if "first_frame" in roles:
+                return True
+    return False
+
+
+def _opening_cuts(context, shots, total):
+    """Render-part starts for shots that open on their own First frame picture: (cut frames, {shot id: cut}, issues).
+
+    Inside a pinned part H3 takes such a picture as the end of the running take and cuts after it (measured 2026-10-11:
+    picture hit at its frame, cut one frame later). A part of its own puts the picture on frame 0, where the model is
+    trained to start from it. A part starts on H3's grid, so the shot start moves to the nearest grid frame."""
+    shortest = frames.snap_up(limits.SAMPLED_MIN_FRAMES)
+    cuts, moved, issues, previous = [], {}, [], 0
+    for shot in shots:
+        if shot.start_f <= 0 or not _opens_on_picture(context, shot):
+            continue
+        cut = previous + frames.snap_nearest(shot.start_f - previous)
+        if cut - previous < shortest or total - cut < shortest:
+            issues.append(Issue("opening_too_close", "opens on a First frame picture but is too close to the previous opening "
+                                "or the end for a render part of its own; the picture is used inside the running part.", "shot %d" % shot.index))
+            continue
+        cuts.append(cut)
+        previous = cut
+        if cut != shot.start_f:
+            moved[shot.id] = cut
+            issues.append(Issue("opening_moved", "starts at %.2fs instead of %.2fs so that its First frame picture opens a render part."
+                                % (frames.frames_to_seconds(cut), frames.frames_to_seconds(shot.start_f)), "shot %d" % shot.index))
+    return cuts, moved, issues
+
+
+def _move_shot_starts(shots_text, moved):
+    """The shots document with the given shots starting at a new frame; the shot before each one ends there."""
+    data = json.loads(shots_text)
+    records = sorted(data["shots"], key=lambda r: float(r["start"]))
+    for before, record in zip([None] + records[:-1], records):
+        if record["id"] not in moved:
+            continue
+        old, new = float(record["start"]), frames.frames_to_seconds(moved[record["id"]])
+        if before is not None and (float(before["end"]) >= new or abs(float(before["end"]) - old) < 1e-6):
+            before["end"] = new
+        record["start"] = new
+    return json.dumps(data)
+
+
 def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan, image_size=None) -> ProjectPlan:
     context, canvas_issues = auto_canvas(context, image_size)
     context, issues = _prepare(context)
     issues = canvas_issues + issues
     total = frames.seconds_to_frames(context.project_seconds)
+    cuts = ()
     if has_shots(context.shots_text):
         shots, shot_issues = parse_shots(context.shots_text, total)
+        if continuity.head and decide_mode(context) == "fl2va":
+            cuts, moved, opening_issues = _opening_cuts(context, shots, total)
+            issues = issues + opening_issues
+        else:
+            moved = {}
+        if moved:
+            context = replace(context, shots_text=_move_shot_starts(context.shots_text, moved))
+            shots, shot_issues = parse_shots(context.shots_text, total)
     else:
         shots, shot_issues = auto_shots(context.idea, total), ()
     chunk_frames = frames.seconds_to_frames(chunk_seconds or limits.DEFAULT_CHUNK_SECONDS)
-    plan = plan_chunks(total, chunk_frames, continuity, shots)
+    plan = plan_chunks(total, chunk_frames, continuity, shots, cuts)
     # A song locked over the whole video is put back into every part from its file, so a long chain does not dull it
     # (elf song: 0.97-0.98 against the song in every part). A last second past the song's end is no chain.
     if covers(locked_spans(context), plan.total_frames, limits.FPS):

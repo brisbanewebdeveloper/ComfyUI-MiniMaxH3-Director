@@ -95,6 +95,32 @@ class ShotGuides(unittest.TestCase):
         issue = next(i for i in result.issues if i.code == "anchor_multiple")
         self.assertIn("global", issue.text); self.assertIn("bound", issue.text)
 
+    def test_fl2va_shot_opening_on_its_first_frame_starts_an_unpinned_part(self):
+        # User plan (2026-10-11): three shots, each opening on its own picture. Inside a pinned part H3 took the picture as
+        # the end of the running take and cut one frame later; a part of its own puts it on the trained frame 0.
+        records = [shot("one", 0, 20, [("a", "first_frame")]), shot("two", 20, 40, [("b", "first_frame")]),
+                   shot("three", 40, 60, [("c", "first_frame")])]
+        pictures = tuple(image(k, usage=("first_frame",)) for k in "abc")
+        result = plan(records, pictures, 60, 6.67, chunks.ContinuityPlan())
+        parts = result.plan.chunks
+        opening = [c for c in parts if not c.head_frames]
+        self.assertEqual(len(opening), 3)
+        self.assertTrue(all(c.head_frames == 22 for c in parts if c not in opening), "inside a shot the parts continue")
+        starts = [s.start_f for s in module("ng.core.shots").parse_shots(result.context.shots_text, 1440)[0]]
+        self.assertEqual([c.story_start_f for c in opening], starts, "each shot starts where its part starts")
+        for chunk in opening:
+            compiled = result.compiled[chunk.index]
+            self.assertEqual(compiled.mode, "fl2va")
+            self.assertIn(("first_frame", 0), [(r.kind, r.start_f) for r in compiled.refs])
+        self.assertTrue(all(abs(start - 480 * k) <= 8 for k, start in enumerate(starts)))
+        self.assertIn("opening_moved", {i.code for i in result.issues})
+        self.assertNotIn("late_change", {i.code for i in result.issues})
+
+    def test_ref2va_keeps_a_shot_first_frame_inside_the_running_part(self):
+        records = [shot("one", 0, 20, []), shot("two", 20, 40, [("b", "first_frame")])]
+        result = plan(records, (image("b", usage=("first_frame",)), image("s")), 40, 6.67, chunks.ContinuityPlan())
+        self.assertEqual(sum(not c.head_frames for c in result.plan.chunks), 1)
+
     def test_repeat_continue_keeps_a_subsecond_source_window_and_saved_offsets(self):
         video = ctx.ContextItem("v", "Video", "video", "v.mp4", length_s=4,
                                 options=opts.ContextOptions(start_s=2, end_s=2 + 1/24))

@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**FL2VA shots open on their First frame** (2026-10-11):
+
+- In FL2VA with continuity, a shot bound to its own First frame picture starts a render part without a pin and gets the picture as the native first frame. Inside a pinned part H3 reached such a picture and cut one frame later, so the shot did not open on it. The shot start snaps to the nearest grid frame (`opening_moved` note); Ref2VA is unchanged.
+
 **Seamless picture at render-part joins** (2026-10-11):
 
 - NG Collect and NG Collect Video decode the picture of pinned parts as one continuous latent (regenerated heads dropped), window by window. Decoding each part alone ended it on the VAE's unblended lookahead clip and restarted the decoder at the next part: a one-frame brightness/contrast jump at every join (real minute: up to +0.013 luma). Sound handling is unchanged.

@@ -7,7 +7,7 @@ A continued chunk is sampled with the previous clip's tail pinned in front of it
 
 Everything here is plain arithmetic over frames, so it can be tested without a GPU.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from . import fields, frames, limits
 from .boundaries import align_to_shots
@@ -205,6 +205,8 @@ def _plan_issues(requested, planned, count, continuity):
 def _late_changes(shots, chunks):
     issues = []
     for chunk in chunks[1:]:
+        if not chunk.head_frames:
+            continue                    # nothing is pinned in front of it, so nothing holds the previous action
         for shot in shots:
             offset = shot.start_f - chunk.story_start_f
             if 0 <= offset < limits.LATE_CHANGE_FRAMES:
@@ -213,17 +215,25 @@ def _late_changes(shots, chunks):
     return issues
 
 
-def plan_chunks(project_frames, chunk_target_frames, continuity, shots=()):
-    """Split `project_frames` into chunks. Returns a SequencePlan; corrections are in plan.issues."""
+def plan_chunks(project_frames, chunk_target_frames, continuity, shots=(), cuts=()):
+    """Split `project_frames` into chunks. Returns a SequencePlan; corrections are in plan.issues.
+
+    `cuts` are story frames where a chunk starts without a pinned head, like the first one: a shot that opens on a First
+    frame picture of its own. Each cut must leave whole grid lengths before it (see project._opening_cuts)."""
     if project_frames < 1:
         raise ValueError("the project needs at least one frame")
     head = continuity.head
-    lengths = plan_lengths(project_frames, max(chunk_target_frames, 1), head)
-    if head and shots:
-        lengths = align_to_shots(lengths, head, shots)
+    edges = [0, *cuts, project_frames]
+    lengths, heads = [], []
+    for start, end in zip(edges, edges[1:]):
+        part = plan_lengths(end - start, max(chunk_target_frames, 1), head)
+        if head and shots:
+            part = align_to_shots(part, head, [replace(s, start_f=s.start_f - start) for s in shots if start < s.start_f < end])
+        lengths += part
+        heads += [0] + [head] * (len(part) - 1)
     chunks, cursor = [], 0
     for index, delivered in enumerate(lengths):
-        this_head = head if index else 0
+        this_head = heads[index]
         chunks.append(Chunk(index=index, story_start_f=cursor, delivered_frames=delivered, head_frames=this_head,
                             shots=_shots_for_chunk(shots, cursor, cursor + delivered, this_head), is_last=index == len(lengths) - 1))
         cursor += delivered
