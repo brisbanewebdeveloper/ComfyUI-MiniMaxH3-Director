@@ -1,4 +1,4 @@
-import {element,values,applyValues} from "./ng_widgets.js";
+import {element,values,applyValues,contextId} from "./ng_widgets.js";
 import {section} from "./ng_editor_fields.js";
 import {relatedContexts} from "./ng_read.js";
 
@@ -16,14 +16,15 @@ export function referenceSubject(entry){
 
 export function assetChoices(entries,current=[],selfId=""){
   const choices=new Map();
-  for(const entry of entries||[])if(referenceSubject(entry)&&entry.widgets.context_id&&entry.widgets.context_id!==selfId)
-    choices.set(entry.widgets.context_id,{id:entry.widgets.context_id,name:entry.widgets.name||"Subject"});
+  // An empty Context ID field gets the id the plan gives it (BUG-051), so a figure card without one is offered too.
+  for(const entry of entries||[]){const id=contextId(entry.widgets,entry.media);
+    if(referenceSubject(entry)&&id!==selfId)choices.set(id,{id,name:entry.widgets.name||"Subject"});}
   for(const id of current)if(!choices.has(id))choices.set(id,{id,name:id+" (not connected or not a Subject)"});
   return [...choices.values()];
 }
 
 export function relationNames(entry,entries){
-  const names=new Map(entries.map(item=>[item.widgets.context_id,item.widgets.name||item.widgets.context_id]));
+  const names=new Map(entries.map(item=>[contextId(item.widgets,item.media),item.widgets.name||contextId(item.widgets,item.media)]));
   return assetSubjects(entry).map(id=>names.get(id)||id).join(" + ");
 }
 

@@ -62,7 +62,7 @@ class VoiceSlot(unittest.TestCase):
                                               shots_text=document("voice_a"),
                                               items=(picture(), voice("")))
         voices, extra = legacy_bridge._voices_by_speaker(context)
-        issues = legacy_bridge.extra_voice_issues(extra)
+        issues = legacy_bridge.extra_voice_issues(extra, context)
         print("Slot:", {k: v.name for k, v in voices.items()})
         print("Issues:", [str(i) for i in issues])
         self.assertEqual([v.name for v in voices.values()], ["Stimme A"],

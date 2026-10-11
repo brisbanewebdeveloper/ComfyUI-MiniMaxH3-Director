@@ -1,3 +1,4 @@
+import {contextId} from "./ng_widgets.js";
 // Reads what the Director and its context nodes currently say, straight from their widgets, for the live plan panel.
 
 const CONTEXT_PREFIX = "NGContext";
@@ -110,7 +111,8 @@ export function relatedContexts(node) {
   for(const id of node.outputs?.[0]?.links||[]) {
     const link=node.graph?.links?.[id],target=link&&node.graph.getNodeById(link.target_id);
     if(target?.comfyClass!=="NGContextConnector")continue;
-    for(const entry of readContexts(target))found.set(entry.widgets.context_id||entry.widgets.name,entry);
+    // Keyed like the plan keys them: cards with an empty Context ID no longer collapse into one (BUG-054).
+    for(const entry of readContexts(target))found.set(contextId(entry.widgets,entry.media),entry);
   }
   return [...found.values()];
 }

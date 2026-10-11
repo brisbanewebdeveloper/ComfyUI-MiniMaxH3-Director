@@ -2,7 +2,7 @@
 from . import fields, frames
 from .chunks import ContinuityPlan
 from .context import DirectorContext
-from .context_build import item_from_widgets
+from .context_build import distinct, item_from_widgets
 from .issues import SchemaError
 from .limits import DEFAULT_SOUNDSCAPE, PIN_AUDIO_DEFAULT, FPS
 from .project import plan_project
@@ -19,7 +19,7 @@ def _items(contexts, probe):
         fields.need_dict(widgets, "contexts[].widgets")
         length = probe(widgets.get(media, "")) if probe and media in ("audio", "video") else 0.0
         items.append(item_from_widgets(media, widgets, length))
-    return tuple(items)
+    return distinct(items)
 
 
 def _name(context, ref):

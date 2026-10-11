@@ -10,6 +10,7 @@ import re
 from . import fields
 from .ai_json import read_object
 from .auto_direct import story
+from .context_build import card_id
 from .directions import DIRECTIONS, LANGUAGES, SPEECH, check_adults, direction, shot_count
 from .split import _seconds, parse_split
 
@@ -66,7 +67,7 @@ def kinds(contexts):
     """{card name: (kind, owner name)} of the pictures: "frame" (a first/last frame or keyframe), "view" (another picture of
     a subject, "Belongs to"), "place" (a place or thing) or "figure". Only figures and places are named with @ in a shot;
     a view is named by its subject and bound to the shots that use it (uses)."""
-    names = {entry["widgets"].get("context_id"): entry["widgets"].get("name") for entry in contexts}
+    names = {card_id(entry): entry["widgets"].get("name") for entry in contexts}
     out = {}
     for entry, usage, content in pictures(contexts):
         widgets = entry["widgets"]
@@ -287,7 +288,7 @@ def _uses(data, contexts):
 def _bind(result, contexts, uses):
     """Bind each used view or place picture to its shots, so a part without them does not get them as references."""
     data = json.loads(result["shots"])
-    ids = {entry["widgets"].get("name"): entry["widgets"].get("context_id") for entry in contexts}
+    ids = {entry["widgets"].get("name"): card_id(entry) for entry in contexts}
     # A figure seen only as a first/last frame is no reference Subject; its lines are spoken by a voice with its name.
     frames = {ids.get(name): name for name, (sort, _) in kinds(contexts).items() if sort == "frame" and ids.get(name)}
     for shot, names in zip(data["shots"], uses):
@@ -329,8 +330,8 @@ def _descriptions(data, contexts):
     for entry, _, _ in pictures(contexts):
         widgets = entry["widgets"]
         text = given.get((widgets.get("name") or "").casefold())
-        if widgets.get("context_id") and not (widgets.get("description") or "").strip() and isinstance(text, str) and text.strip():
-            out[widgets["context_id"]] = " ".join(text.split())[:500]
+        if not (widgets.get("description") or "").strip() and isinstance(text, str) and text.strip():
+            out[card_id(entry)] = " ".join(text.split())[:500]
     return out
 
 

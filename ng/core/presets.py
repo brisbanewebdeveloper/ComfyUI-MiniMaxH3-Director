@@ -29,8 +29,16 @@ class ContextPreset:
         return cls(name, ContextItem.from_dict(data.get("item"), path + ".item"))
 
 
+def _own_id(item):
+    """The card's own Context ID, or "" when the stored one was only derived from an empty field (BUG-018): written back,
+    a derived `image_mage` turned the loading card into another object than its shot bindings expect."""
+    from .context_build import card_id
+    derived = card_id({"media": item.media, "widgets": {"name": item.name, item.media if item.media != "text" else "text": item.source}})
+    return "" if item.id == derived else item.id
+
+
 def widget_values(item):
-    return {"context_id": item.id, "name": item.name, "description": item.description,
+    return {"context_id": _own_id(item), "name": item.name, "description": item.description,
             "content": item.content[0] if item.content else "", "usage": item.effective_usage[0], "preserve": item.preserve,
             item.media if item.media != "text" else "text": item.source, "speaker": item.speaker, "color": item.color,
             "content_roles": json.dumps(list(item.content)), "usage_roles": json.dumps(list(item.effective_usage)),

@@ -11,7 +11,8 @@ def media_labels(context, refs):
     audio_number = 0
     for number, ref in enumerate(videos, 1):
         labels.append(("<Video %d>" % number, ref.ctx_id))
-        if context.item(ref.ctx_id).options.video_audio == "reference":
+        item = context.item(ref.ctx_id)     # a video of a removed or ID-less card has no card: no soundtrack label (BUG-032)
+        if item is not None and item.options.video_audio == "reference":
             audio_number += 1
             labels.append(("<Audio %d>" % audio_number, ref.ctx_id))
     for number, ref in enumerate((ref for ref in refs if ref.kind == "audio"), audio_number + 1):

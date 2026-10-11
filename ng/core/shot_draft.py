@@ -4,7 +4,7 @@ import re
 
 from . import fields
 from .context import USAGE_BY_MEDIA
-from .context_build import widget_text
+from .context_build import card_id, widget_text
 from .frames import seconds_to_frames
 from .shot_document import LOCK_FIELDS, MediaBinding, SpokenLine, read_document
 from .shots import parse_shots
@@ -83,7 +83,7 @@ def keep_inline_words(proposed, original):
 
 
 def _field_value(key, value, record, seconds, contexts):
-    by_id = {entry["widgets"].get("context_id"): entry for entry in contexts or ()}
+    by_id = {card_id(entry): entry for entry in contexts or ()}
     if key == "text":
         text = fields.read_str({key: value}, key, "draft.fields").strip()
         if not text:

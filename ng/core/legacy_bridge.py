@@ -91,16 +91,38 @@ def _voices_by_speaker(context):
     """
     voices = {}
     subjects = {item.id for item in _subject_items(context)}
+    inferred = _inferred_speakers(context, subjects)
     for item in context.by_media("audio"):
-        if "voice" in item.effective_usage and item.speaker in subjects and item.source:
-            voices.setdefault(item.speaker, []).append(item)
+        speaker = item.speaker or inferred.get(item.id, "")
+        if "voice" in item.effective_usage and speaker in subjects and item.source:
+            voices.setdefault(speaker, []).append(item)
     return {subject: takes[0] for subject, takes in voices.items()}, \
            {subject: takes[1:] for subject, takes in voices.items() if len(takes) > 1}
 
 
-def extra_voice_issues(extra):
-    """One Issue per further take, naming the subject it was meant for."""
+def _inferred_speakers(context, subjects):
+    """{voice card id: subject id} for a voice card without "Whose voice" that a shot names as the speaker of a line,
+    when that shot shows exactly one figure: the line is spoken there, so the voice is that figure's. Without this the
+    voice reached no slot and nothing said so (BUG-019)."""
+    out = {}
+    for record in read_document(context.shots_text) or []:
+        figures = {b.get("context_id") for b in record.get("media", []) if b.get("context_id") in subjects}
+        for line in record.get("spoken", []):
+            item = context.item(line.get("speaker_id", ""))
+            if item and item.media == "audio" and not item.speaker and len(figures) == 1:
+                out.setdefault(item.id, next(iter(figures)))
+    return out
+
+
+def extra_voice_issues(extra, context=None):
+    """One Issue per further take, naming the subject it was meant for; and one per voice whose figure was inferred."""
     out = []
+    if context is not None:
+        subjects = {item.id for item in _subject_items(context)}
+        for voice, subject in _inferred_speakers(context, subjects).items():
+            out.append(Issue("voice_speaker_inferred", "has no \"Whose voice\"; it speaks for '%s' because a shot showing only "
+                             "that figure gives it a line. Set \"Whose voice\" on the card to make this fixed."
+                             % context.item(subject).name, context.item(voice).name))
     for takes in extra.values():
         for item in takes:
             out.append(Issue("voice_extra_take",
@@ -334,5 +356,5 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
             continue
         by_source.setdefault(item.source, item.id)
     voice_items = {number: voices[s.id].id for number, s in enumerate(subjects, 1) if s.id in voices}
-    notes = extra_voice_issues(extra_voices) + [issue for shot in chunk.shots for issue in spoken_text(shot, context)[1]]
+    notes = extra_voice_issues(extra_voices, context) + [issue for shot in chunk.shots for issue in spoken_text(shot, context)[1]]
     return tdata, Mapping([s.id for s in subjects], by_source, voice_items), notes

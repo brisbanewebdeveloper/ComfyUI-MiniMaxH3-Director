@@ -356,7 +356,8 @@ console.log("ng js: all checks passed");
   assert.deepEqual(subjectChoices([alice],"ctx_gone"),[{id:"ctx_a",name:"Alice"},{id:"ctx_gone",name:"ctx_gone (not connected)"}]);
   assert.deepEqual(subjectChoices([], "ctx_gone"),[{id:"ctx_gone",name:"ctx_gone (not connected)"}]);
   assert.deepEqual(subjectChoices(null),[]);
-  assert.deepEqual(subjectChoices([{media:"image",widgets:{name:"No id",image:"x.png"}}]),[]);
+  // A card with an empty Context ID is offered under the id the plan gives it (context_build.card_id), BUG-051.
+  assert.deepEqual(subjectChoices([{media:"image",widgets:{name:"No id",image:"x.png"}}]),[{id:"image_no_id",name:"No id"}]);
 
   const voices=[alice,
     {media:"audio",widgets:{context_id:"v1",name:"Take 1",audio:"1.wav",speaker:"ctx_a"}},

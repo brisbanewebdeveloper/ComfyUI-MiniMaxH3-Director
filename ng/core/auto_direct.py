@@ -3,7 +3,7 @@ import json
 
 from .ai_json import read_object
 from .context import DirectorContext
-from .context_build import widget_text
+from .context_build import card_id, widget_text
 from .lyrics import story_lines
 from .preview import plan_preview
 from .shot_draft import current_records, draft_prompt, parse_draft
@@ -35,7 +35,7 @@ def timing_hints(director, contexts, probe=None):
 def _meanings(contexts):
     return [{"name": entry["widgets"].get("name", ""), "media": entry["media"],
              "description": entry["widgets"].get("description", ""), "usage": entry["widgets"].get("usage", ""),
-             "speaker": entry["widgets"].get("speaker", ""), "context_id": entry["widgets"].get("context_id", ""),
+             "speaker": entry["widgets"].get("speaker", ""), "context_id": card_id(entry),
              "subject_ids": entry["widgets"].get("subject_ids", "")} for entry in contexts]
 
 

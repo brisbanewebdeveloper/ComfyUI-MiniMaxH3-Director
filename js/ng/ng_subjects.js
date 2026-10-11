@@ -1,6 +1,7 @@
 // Which context items are figures a voice or an asset can belong to. Pure functions, so they can be checked
 // with `node` without a browser; the panels in ng_cards.js only render what these decide.
 import {referenceSubject} from "./ng_asset_relations.js";
+import {contextId} from "./ng_widgets.js";
 
 export const SUBJECT_ROLES = ["character", "face", "animal"];
 
@@ -17,14 +18,14 @@ export function isSubject(entry) {
 }
 
 // The dropdown a voice card shows: every connected figure, named, with its id as the stored value.
-// Only the real context_id is offered: the Python side matches `speaker` against item ids, so falling back to the
-// name here would save a value that can never resolve to a figure.
+// The Python side matches `speaker` against item ids; a card with an empty ID field has the derived id there
+// (`image_<name>`), so that id is offered and resolves.
 export function subjectChoices(entries, current = "") {
   const found = new Map();
   for (const entry of entries || []) {
     if (!isSubject(entry)) continue;
-    const id = entry.widgets.context_id;
-    if (!id || found.has(id)) continue;
+    const id = contextId(entry.widgets, entry.media);     // the id the plan gives a card with an empty field (BUG-051)
+    if (found.has(id)) continue;
     found.set(id, { id, name: entry.widgets.name || "Figure" });
   }
   const list = [...found.values()];

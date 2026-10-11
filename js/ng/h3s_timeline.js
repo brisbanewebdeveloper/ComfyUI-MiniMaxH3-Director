@@ -149,7 +149,9 @@ export function timelineView(S, actions) {
         title: `Part ${chunk.index + 1}: ${chunk.delivered_frames} frames${chunk.head_frames ? `, preceded by ${chunk.head_frames} frames of the previous part for continuity` : ""}` },
         h("span", { class: "h3s-swatch", style: { background: color } }), `Part ${chunk.index + 1} · ${span(chunk.start_s, chunk.end_s)}`));
     }
-    if (!S.plan) track.append(h("span", { class: "h3s-empty", style: { fontSize: "12px" } }, S.planError || "Planning …"));
+    // A failed plan is said in warning colour: in grey small print it read like "still planning" (2026-10-11).
+    if (!S.plan) track.append(S.planError ? h("span", { class: "h3s-warn", role: "alert", style: { fontSize: "13px", padding: "4px 8px" } },
+      `The plan failed: ${S.planError}`) : h("span", { class: "h3s-empty", style: { fontSize: "12px" } }, "Planning …"));
     return lane(h("span", { class: "h3s-lane-name" }, "Render parts"), track);
   }
 

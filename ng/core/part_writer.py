@@ -2,6 +2,7 @@
 import json
 
 from .context import DirectorContext
+from .context_build import card_id
 from .directions import direction
 from .part_prompt import check, request
 from .preview import plan_preview
@@ -34,8 +35,7 @@ def _pictures(chunk, contexts):
                    key=lambda item: int(item[0][9:-1]))
     if named:
         return named
-    return [("", entry["widgets"]["context_id"]) for entry in contexts
-            if entry.get("media") == "image" and entry["widgets"].get("image") and entry["widgets"].get("context_id")][:4]
+    return [("", card_id(entry)) for entry in contexts if entry.get("media") == "image" and entry["widgets"].get("image")][:4]
 
 
 def brief(director, contexts, index, probe=None, quick=None):

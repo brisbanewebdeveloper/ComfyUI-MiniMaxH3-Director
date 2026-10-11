@@ -3,6 +3,7 @@ from comfy_api.latest import io
 
 from ..adapters.director_packets import DirectorInputs
 from ..core.context import ContextItem, require_unique
+from ..core.context_build import distinct
 from .context_nodes import CATEGORY, NGContext
 from .provider_node import NGAI
 
@@ -41,6 +42,7 @@ class NGContextConnector(io.ComfyNode):
                 if not isinstance(item, ContextItem) or item.media != media:
                     raise ValueError("Connect a %s Context node to context %s." % (media, media))
                 items.append(item)
+        items = list(distinct(items))
         require_unique(items)
         return io.NodeOutput(DirectorInputs(clip, vae, audio_vae, model_fl2va, model_ref2va, tuple(items), ai_provider,
                                            preview_vae=preview_vae))

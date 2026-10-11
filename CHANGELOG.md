@@ -2,6 +2,14 @@
 
 ## 1.0.0 (unreleased)
 
+**Layout, turbo LoRA and open audit bugs** (2026-10-11):
+
+- The Studio and the Context cards no longer collapse to one narrow, very tall column. Showing a node in ComfyUI's right panel (Parameters) wrote the panel's width (about 100 px) into the widget, and the node then laid out 80 px wide; our widgets now always take the node's width.
+- The Director's turbo LoRA leaves out pieces that do not fit the model, with one note in the log. The full-model turbo LoRA (`minimax_h3_turbo_4step_ckpt500`) on a pruned H3 model logged "ERROR lora ...adaln_proj..." 51 times per step.
+- A card with an empty Context ID keeps its bindings, speakers and descriptions in Make H3 prompt, the part writer, AI split and shot drafts, and is offered in "Belongs to" and "Whose voice" (BUG-047/049/050/051/052/053/054/056).
+- Two cards whose names come only from their file (e.g. `scene1.png` and `scene1.wav`, or one picture twice) get a free name ("scene1 2") instead of stopping the plan (BUG-067); a failed plan shows in warning colour in the Studio.
+- A video reference without a card no longer crashes the labels (BUG-032); a preset no longer writes a derived ID into the card (BUG-018); a voice card without "Whose voice" that a shot gives a line speaks for the one figure that shot shows, with a note (BUG-019).
+
 **Keyframes at their own time inside a shot** (2026-10-11):
 
 - In the Studio a picture in a shot can take its own role there (Reference, First frame, Last frame, Keyframe) instead of its card's. A Keyframe gets **Seconds after shot start** (new ones start in the middle); the panel shows the video time and where the plan put it, and a diamond marks it on the shot. Moving the shot takes it along.

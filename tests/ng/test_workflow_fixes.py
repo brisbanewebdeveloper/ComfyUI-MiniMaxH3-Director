@@ -120,19 +120,17 @@ class ChunkLengths(unittest.TestCase):
 
 
 class DuplicateNameContract(unittest.TestCase):
-    def test_paired_automatic_names_are_real_but_receive_actionable_rejection(self):
-        # Real UI leaves names blank and generates two distinct persistent IDs.
-        # Matching source stems then produce the same public mention name.
+    def test_paired_automatic_names_get_a_free_name_instead_of_stopping_the_plan(self):
+        # Real UI leaves names blank and generates two distinct persistent IDs; matching source stems give the same
+        # derived name. Since BUG-067 (2026-10-11) the later card gets a free name, as a copied card does ("Mage 2").
         raw = [{"media": medium, "widgets": {medium: "scene1." + extension, "name": "", "context_id": identity}}
                for medium, extension, identity in (("image", "png", "ctx_image"), ("audio", "wav", "ctx_audio"))]
-        items = [build.item_from_widgets(entry["media"], entry["widgets"]) for entry in raw]
-        self.assertEqual([item.name for item in items], ["scene1", "scene1"])
-        self.assertEqual(len({item.id for item in items}), 2)
-        with self.assertRaisesRegex(ValueError, "use distinct names for @mentions and speakers"):
-            context.require_unique(items)
+        items = build.distinct([build.item_from_widgets(entry["media"], entry["widgets"]) for entry in raw])
+        self.assertEqual([item.name for item in items], ["scene1", "scene1 2"])
+        self.assertEqual([item.id for item in items], ["ctx_image", "ctx_audio"], "real IDs stay")
+        context.require_unique(items)
         response = preview.plan_preview({"director": {"idea": "A scene", "project_seconds": 5}, "contexts": raw})
-        self.assertFalse(response["ok"])
-        self.assertIn("use distinct names", response["error"])
+        self.assertTrue(response["ok"], response.get("error"))
 
     def test_rename_the_audio_card_preserves_both_media_and_speaker(self):
         raw = [{"media": "image", "widgets": {"image": "scene1.png", "name": "", "context_id": "ctx_image"}},

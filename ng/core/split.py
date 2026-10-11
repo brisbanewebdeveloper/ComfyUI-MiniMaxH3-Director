@@ -7,7 +7,7 @@ import json
 import re
 
 from . import fields
-from .context_build import widget_text
+from .context_build import card_id, widget_text
 from .shot_draft import plain_mentions
 
 DELIVERIES = ("says", "sings", "whispers", "shouts", "murmurs")
@@ -72,8 +72,8 @@ def _owner(speaker, contexts):
     name = speaker.strip().lstrip("@").casefold()
     for entry in contexts or ():
         widgets = entry.get("widgets", {})
-        if name and widget_text(widgets, "name").casefold() == name and widgets.get("context_id"):
-            return widgets["context_id"], "a narrator"
+        if name and widget_text(widgets, "name").casefold() == name:
+            return card_id(entry), "a narrator"
     voice = " ".join(DELIMITERS.sub(" ", speaker.lstrip().lstrip("@")).split())
     return "", voice or "a narrator"
 
@@ -105,7 +105,7 @@ def _keep(shots, keep, contexts):
             own.setdefault("" if narrator else name.casefold(), []).append(found.group(3).strip())
     if not own:
         return []
-    names = {entry["widgets"].get("context_id"): widget_text(entry["widgets"], "name").casefold() for entry in contexts or ()}
+    names = {card_id(entry): widget_text(entry["widgets"], "name").casefold() for entry in contexts or ()}
     key = lambda line: names.get(line["speaker_id"], "") if line["speaker_id"] else ""
     proposed = {_norm(line["text"]) for shot in shots for line in shot["spoken"]}
     for speaker, texts in own.items():

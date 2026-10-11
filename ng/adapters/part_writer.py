@@ -4,6 +4,7 @@ import asyncio
 from ... import minimax_media as legacy
 from ..core.analysis import ProviderConfig
 from ..core.builder import read_quick
+from ..core.context_build import card_id
 from ..core.fields import need_dict, read_list, read_number
 from ..core.part_prompt import SYSTEM, write_tokens
 from ..core.part_writer import brief, finish, write_prompt
@@ -14,7 +15,7 @@ from .builder import sees
 
 def _shown(facts, contexts):
     """The part's pictures that could be loaded, and their JPEGs in the same order."""
-    files = {entry["widgets"].get("context_id"): entry["widgets"].get("image") for entry in contexts if entry.get("media") == "image"}
+    files = {card_id(entry): entry["widgets"].get("image") for entry in contexts if entry.get("media") == "image"}
     shown, data = [], []
     for label, context_id in facts["pictures"]:
         try:

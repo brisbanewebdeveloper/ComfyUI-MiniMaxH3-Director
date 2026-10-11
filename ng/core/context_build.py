@@ -1,5 +1,6 @@
 """Build a ContextItem from what a context node's widgets say. Shared by the nodes and by the preview endpoint, so both name things alike."""
 import os
+from dataclasses import replace
 
 from . import fields
 from .context import ContextItem
@@ -17,6 +18,45 @@ def widget_text(widgets, key):
     if widgets.get(key) is None:
         return ""
     return fields.read_str(widgets, key, "context.widgets", "")
+
+
+def _label(media, widgets, name):
+    if media == "text":
+        return name or str(widgets.get("text", "") or "")[:24].strip() or "note"
+    return name or os.path.splitext(os.path.basename(_clean_source(str(widgets.get(media, "") or ""))))[0] or media
+
+
+def card_id(entry):
+    """The Context ID of a card as the Connector gives it: its own, or for an empty field `<media>_<slug of its label>`.
+
+    The AI helpers (Make H3 prompt, part writer, split, shot draft) read the raw widget and lost every binding, speaker
+    and description of a card whose ID field was empty (BUG-047/049/050/052/053/056)."""
+    widgets, media = entry.get("widgets") or {}, entry.get("media") or "image"
+    if widgets.get("context_id"):
+        return str(widgets["context_id"])
+    return "%s_%s" % (media, slug(_label(media, widgets, str(widgets.get("name") or "").strip())))
+
+
+def distinct(items):
+    """Cards whose name was only derived from their file (the Name field left empty) get a free name, "scene1 2", when
+    another card already has it; an ID derived the same way follows. Two unnamed cards of one picture, or scene1.png and
+    scene1.wav, stopped the Connector and the Studio plan with "name used twice" (BUG-067). Names a user typed must stay
+    unique: those still fail in require_unique with that message."""
+    names, ids, out = set(), set(), []
+    for item in items:
+        name, identity = item.name, item.id
+        if name == _label(item.media, {item.media if item.media != "text" else "text": item.source}, "") and name.casefold() in names:
+            n = 2
+            while ("%s %d" % (item.name, n)).casefold() in names:
+                n += 1
+            name = "%s %d" % (item.name, n)
+            if identity == "%s_%s" % (item.media, slug(item.name)) or identity in ids:
+                identity = "%s_%s" % (item.media, slug(name))
+            item = replace(item, name=name, id=identity)
+        names.add(item.name.casefold())
+        ids.add(item.id)
+        out.append(item)
+    return tuple(out)
 
 
 def item_from_widgets(media, widgets, length_s=0.0):

@@ -1,6 +1,7 @@
 // Prompt field and the Content cards that come from the Context nodes in the graph.
 import { h, icon } from "./h3s_dom.js";
 import { quickView } from "./h3s_quick.js";
+import { contextId } from "./ng_widgets.js";
 
 const KIND = { image: "Image", video: "Video", audio: "Audio", text: "Text" };
 const BG = { image: "#172338", video: "#2A2414", audio: "#221A33", text: "#13291F" };
@@ -22,14 +23,7 @@ function usageOf(widgets, media) {
   return (Array.isArray(usage) ? usage : []).filter(Boolean).length ? usage.filter(Boolean) : [{ image: "reference", video: "motion", audio: "voice", text: "style" }[media]];
 }
 
-// The id ng/core/context_build.py gives a card whose Context ID field is empty: media and a slug of its label.
-export function contextId(widgets, media) {
-  if (widgets.context_id) return String(widgets.context_id);
-  const name = String(widgets.name || "").trim(), source = String(widgets[media] || "");
-  const file = source.replace(" [input]", "").trim().split(/[\\/]/).pop().replace(/\.[^.]*$/, "");
-  const label = name || (media === "text" ? source.slice(0, 24).trim() || "note" : file || media);
-  return `${media}_${label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "item"}`;
-}
+export { contextId } from "./ng_widgets.js";
 
 // One plain record per connected Context node; the cards, panels and timeline all read these.
 export function contentEntries(raw, colorOf) {
