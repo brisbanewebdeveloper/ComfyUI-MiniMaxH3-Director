@@ -7,7 +7,7 @@ import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, sugges
 import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
 import { lyricsBox, stampLine } from "./h3c_lyrics.js";
-import { values, applyValues, newContextId, analysisFingerprint, request } from "./ng_widgets.js";
+import { values, applyValues, newContextId, ownIdentity, analysisFingerprint, request } from "./ng_widgets.js";
 import { contextOptions, setOptions, selectedRoles } from "./ng_context_controls.js";
 import { hideNative } from "./ng_editor_fields.js";
 import { contextProvider, relatedContexts } from "./ng_read.js";
@@ -80,6 +80,17 @@ function attach(node, media) {
 
   const say = (text, warn = false) => { S.status = text; S.statusWarn = warn; render(); };
   const directors = () => downstreamNodes(node).filter((entry) => entry.comfyClass === "NGH3Director").map((entry) => values(entry));
+  // Cards earlier in the graph keep their ID and name (a loaded workflow); a pasted card, or a preset loaded here, gives way.
+  function keepOwnIdentity(all = false) {
+    const nodes = node.graph?._nodes || [], at = nodes.indexOf(node);
+    const others = nodes.filter((other, index) => other !== node && (all || at < 0 || index < at)
+      && other.widgets?.some((widget) => widget.name === "context_id")).map(values);
+    const before = values(node), changes = ownIdentity(before, others);
+    if (!Object.keys(changes).length) return;
+    applyValues(node, changes);
+    if (changes.context_id) assignColor(true);
+    say(`Another card already had ${changes.name ? `the name “${before.name}”` : "this ID"}; this card is now ${changes.name ? `“${changes.name}”` : "its own"}.`, true);
+  }
 
   function load() {
     S.values = values(node);
@@ -153,6 +164,7 @@ function attach(node, media) {
       try {
         const data = await request(api, "/ng/preset?" + new URLSearchParams({ media, name }));
         applyValues(node, data.widgets); node.properties.ng_preset_name = S.presetName = name; say(`Loaded preset “${name}”.`);
+        keepOwnIdentity(true);
       } catch (error) { say(error.message, true); }
     },
     async analyze() {
@@ -268,6 +280,7 @@ function attach(node, media) {
       for (const widget of node.widgets || []) if (["content_roles", "usage_roles", "context_options"].includes(widget.name)) widget.value = "";
     if (identity() && !identity().value) identity().value = newContextId();
     assignColor(); delete node.properties.ng_context_expanded;
+    queueMicrotask(() => { if (!removed) keepOwnIdentity(); });
     // Saved by the former, narrower Context node: the card needs the room once, and the nodes around it move along.
     if (node.size?.[0] < WIDTH[media] - 20) { noteGrowth(node, [...node.size]); node.setSize([WIDTH[media], Math.max(node.size[1], measured)]); }
     S.presetName = node.properties.ng_preset_name || ""; S.listen = node.properties.ng_preview_settings ||= { volume: 1, fade_in: 0, fade_out: 0 };

@@ -7,6 +7,21 @@ export function newContextId(source = typeof crypto === "undefined" ? null : cry
   return "ctx_" + Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+// A copied card, or a preset loaded onto a second card, carried the first card's ID and name: the Connector then
+// stopped the run with "id used twice (Mage and Mage)". The card that came later gets its own ID and name.
+export function ownIdentity(own, others, makeId = newContextId) {
+  const changes = {};
+  if (own.context_id && others.some((other) => other.context_id === own.context_id)) changes.context_id = makeId();
+  const taken = new Set(others.map((other) => String(other.name || "").trim().toLowerCase()).filter(Boolean));
+  const name = String(own.name || "").trim();
+  if (name && taken.has(name.toLowerCase())) {
+    let n = 2;
+    while (taken.has(`${name} ${n}`.toLowerCase())) n++;
+    changes.name = `${name} ${n}`;
+  }
+  return changes;
+}
+
 export function values(node) {
   return Object.fromEntries((node.widgets || []).filter((w) => w.name).map((w) => [w.name, w.value]));
 }

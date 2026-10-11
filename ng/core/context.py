@@ -108,7 +108,9 @@ def require_unique(items):
     names = set()
     for item in items:
         if item.id in seen:
-            raise SchemaError("context.%s" % item.id, "id used twice (%s and %s)" % (seen[item.id], item.name))
+            raise SchemaError("context.%s" % item.id, "id used twice (%s and %s): two cards share one ID, as a copied card or a "
+                              "preset loaded twice does; reload the workflow (the later card gets its own ID) or remove one"
+                              % (seen[item.id], item.name))
         seen[item.id] = item.name
         name = item.name.casefold()
         if name in names:

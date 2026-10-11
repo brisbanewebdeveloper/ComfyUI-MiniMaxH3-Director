@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**A copied card gets its own ID and name** (2026-10-11):
+
+- A pasted or duplicated Context card, or a preset loaded onto a second card, kept the first card's ID and name, and the Context Connector stopped the run: `id used twice (Mage and Mage)`. The later card now gets a new ID and a free name ("Mage 2") with a note on the card; a saved workflow that already has such a pair is repaired when it is opened. The Connector's message says what happened and how to fix it.
+
 **Camera moves are not repeated in later parts of a shot** (2026-10-11):
 
 - A written shot that continues into a later render part gets the continuation sentence there and loses its camera-move sentences; spoken lines were already dropped. Each part had taken "the camera pushes in" as a new push: a 20 s shot over three parts zoomed in until H3 cut to a glossy 3D-looking close-up (real FL2VA minute, cut at 33.4 s). With the same seed the cut and the look change are gone.
