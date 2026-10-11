@@ -135,6 +135,42 @@ class ShotGuides(unittest.TestCase):
             self.assertEqual(part.head_frames, 0 if part.index % 2 == 0 else 22)
         self.assertNotIn("reference_disabled", {i.code for i in result.issues})
 
+    def fl2va_keyframe(self, at_s, seconds=20, end=20):
+        record = shot("one", 0, end, [("a", "first_frame"), ("k", "keyframe"), ("z", "last_frame")])
+        record["media"][1]["at_s"] = at_s
+        document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": [record]})
+        return project.plan_project(ctx.DirectorContext(shots_text=document, items=(image("a"), image("k"), image("z")),
+                                                         project_seconds=seconds, mode="fl2va"), 12, chunks.ContinuityPlan())
+
+    def test_fl2va_keyframe_inside_a_shot_ends_a_pinned_part_on_its_last_frame(self):
+        # Measured 2026-10-11: H3 hits a picture inside a part but cuts one frame later; the last frame is a trained slot.
+        result = self.fl2va_keyframe(10.0)
+        parts = result.plan.chunks
+        self.assertEqual([p.head_frames for p in parts], [0, 22], "the part after the keyframe keeps its pin: the shot runs on")
+        kinds = [[(r.kind, r.ctx_id, r.start_f) for r in compiled.refs] for compiled in result.compiled]
+        self.assertEqual(kinds[0], [("first_frame", "a", 0), ("last_frame", "k", parts[0].sampled_frames - 1)])
+        self.assertEqual(kinds[1], [("last_frame", "z", parts[1].sampled_frames - 1)])
+        shown = parts[0].story_end_f - 1
+        self.assertLessEqual(abs(shown - 240), 8, "the keyframe moves at most half a grid step")
+        self.assertIn("keyframe_moved", {i.code for i in result.issues})
+
+    def test_a_keyframe_on_the_grid_is_not_moved(self):
+        result = self.fl2va_keyframe(242 / 24.0)        # a first part of 17*14+5 = 243 frames ends on frame 242
+        self.assertEqual(result.plan.chunks[0].story_end_f, 243)
+        self.assertNotIn("keyframe_moved", {i.code for i in result.issues})
+        record = json.loads(result.context.shots_text)["shots"][0]
+        self.assertAlmostEqual(record["media"][1]["at_s"], 242 / 24.0)
+
+    def test_a_keyframe_too_close_to_the_shot_end_stays_inside_the_part(self):
+        result = self.fl2va_keyframe(18.5)
+        self.assertIn("keyframe_too_close", {i.code for i in result.issues})
+        self.assertNotIn(("last_frame", "k"), {(r.kind, r.ctx_id) for c in result.compiled for r in c.refs})
+
+    def test_a_keyframe_time_survives_the_document_round_trip(self):
+        binding = module("ng.core.shot_document").MediaBinding
+        self.assertEqual(binding.from_dict({"schema_version": 1, "context_id": "k", "role": "keyframe", "at_s": 4.5}).to_dict()["at_s"], 4.5)
+        self.assertNotIn("at_s", binding.from_dict({"schema_version": 1, "context_id": "k"}).to_dict(), "old documents stay as they were")
+
     def test_ref2va_keeps_a_shot_first_frame_inside_the_running_part(self):
         records = [shot("one", 0, 20, []), shot("two", 20, 40, [("b", "first_frame")])]
         result = plan(records, (image("b", usage=("first_frame",)), image("s")), 40, 6.67, chunks.ContinuityPlan())

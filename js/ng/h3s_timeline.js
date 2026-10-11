@@ -1,7 +1,7 @@
 // Timeline: picture track with shots, free audio lanes and the render parts the plan produced.
 // During a mouse drag only the dragged block is moved; the project is written once, on release.
 import { h, icon } from "./h3s_dom.js";
-import { dragTo, reorder, sorted, span, fmt, partColor, r1 } from "./h3s_model.js";
+import { dragTo, reorder, sorted, span, fmt, partColor, r1, isKeyframe, keyframeAt } from "./h3s_model.js";
 
 const MODE_SHORT = { lock: "locked", copy: "copy", ref: "reference" };
 const DEFAULT_HINT = "Drag = move, or put before/after another shot · edges = length · 0.1 s grid";
@@ -77,6 +77,15 @@ export function timelineView(S, actions) {
     block.ondrop = (event) => { event.preventDefault(); event.stopPropagation(); actions.assign(shot.id, actions.takeDragged()); };
     const chips = shot.media.map((binding) => S.byId.get(binding.context_id)).filter(Boolean)
       .map((entry) => h("span", { class: "h3s-chip", style: { background: entry.bg, color: entry.color } }, entry.name));
+    // A Keyframe in the shot: a diamond at its time, so moving the shot visibly takes it along.
+    // A binding whose card is not connected (yet) has no entry: no mark, as no chip.
+    const marks = shot.media.filter((binding) => S.byId.has(binding.context_id) && isKeyframe(binding, S.byId.get(binding.context_id))).map((binding) => {
+      const entry = S.byId.get(binding.context_id), at = keyframeAt(binding, shot), length = shot.end - shot.start;
+      return h("span", { class: "h3s-keymark", title: `${entry.name}: Keyframe at ${fmt(shot.start + at)}`,
+        style: { position: "absolute", top: "2px", left: `calc(${length ? (at / length) * 100 : 0}% - 5px)`, width: "10px", height: "10px",
+          transform: "rotate(45deg)", background: entry.color, border: "1px solid #0B0E13", pointerEvents: "none" } });
+    });
+    block.append(...marks);
     block.append(grip("left"),
       h("span", { class: "h3s-row", style: { gap: "8px", fontSize: "12px" } }, h("strong", {}, actions.shotLabel(shot.id)),
         h("span", { class: "h3s-muted", style: { fontFamily: "IBM Plex Mono, Consolas, monospace" } }, span(shot.start, shot.end)),

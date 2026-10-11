@@ -1,6 +1,6 @@
 // Right column: how H3 works (FL2VA / Ref2VA, Turbo) and the panel of the selected shot or audio clip.
 import { h, icon, field, select } from "./h3s_dom.js";
-import { span, clipParts, sorted } from "./h3s_model.js";
+import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding } from "./h3s_model.js";
 
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
 // How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
@@ -69,6 +69,31 @@ function spokenLines(S, actions, shot, showAdd) {
   });
 }
 
+// One Content in a shot. A picture can take another role in this shot than on its card; a Keyframe gets its time
+// in seconds after the shot's start, with the video time next to it and where the plan put it.
+function bindingRow(S, actions, shot, binding, entry) {
+  const picture = entry?.media === "image";
+  const roles = PICTURE_ROLES.map(([value, label]) => [value, value === "context" ? `${label} (${entry?.role || "–"})` : label]);
+  const row = h("div", { class: "h3s-item" }, h("span", { class: "h3s-swatch", style: { background: entry?.color || "#ffc273" } }),
+    h("span", { class: "h3s-strong" }, entry?.name || "Not connected"),
+    picture ? select(roles, binding.role || "context", (value) => actions.setBinding(shot.id, binding.context_id, { role: value }),
+      { "aria-label": `Role of ${entry.name} in this shot`, style: { width: "auto", padding: "2px 6px", fontSize: "12px" } })
+      : h("span", { class: "h3s-lbl" }, entry ? `${entry.kind} · ${entry.role}` : binding.context_id),
+    h("span", { class: "h3s-grow" }), h("button", { class: "h3s-btn ghost small", title: "Remove from shot", "aria-label": "Remove from shot",
+      onclick: () => actions.unassign(shot.id, binding.context_id) }, icon("close", 14)));
+  if (!picture || !isKeyframe(binding, entry)) return row;
+  const at = keyframeAt(binding, shot), landing = keyframeLanding(S.plan, shot.id, binding.context_id);
+  const where = !landing ? `= ${fmt(shot.start + at)} in the video`
+    : landing.inside ? `= ${fmt(shot.start + at)} in the video · inside render part ${landing.part}${S.plan?.mode === "fl2va" ? ": H3 may cut right after it" : ""}`
+      : `= ${fmt(shot.start + at)} in the video · shown at ${landing.seconds.toFixed(2)} s, end of render part ${landing.part}`;
+  const time = h("input", { class: "h3s-in", type: "number", step: "0.1", min: "0", max: String(shot.end - shot.start), value: at,
+    style: { width: "90px" }, "aria-label": `Seconds after the start of the shot for ${entry.name}`,
+    onchange: (event) => actions.setBinding(shot.id, binding.context_id, { at_s: Number(event.target.value) }) });
+  return h("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } }, row,
+    h("div", { class: "h3s-row", style: { gap: "8px", paddingLeft: "18px" } }, h("span", { class: "h3s-lbl" }, "Seconds after shot start"), time,
+      h("span", { class: landing?.inside && S.plan?.mode === "fl2va" ? "h3s-warn" : "h3s-muted", style: { fontSize: "12px" } }, where)));
+}
+
 function shotPanel(S, actions, shot) {
   const add = h("button", { class: "h3s-btn small", onclick: () => actions.addSpoken(shot.id) }, icon("plus", 14), "Spoken line");
   const addBox = h("span", { style: { alignSelf: "flex-start" } });
@@ -97,10 +122,7 @@ function shotPanel(S, actions, shot) {
     S.ai ? null : h("span", { class: "h3s-lbl" }, "No AI Loader connected. Everything still works by hand."),
     h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } }, h("span", { class: "h3s-lbl" }, "Content in this shot"),
       media.length ? null : h("span", { class: "h3s-muted", style: { fontSize: "13px" } }, "None: a text-only shot. Click Content above or drag it onto the shot."),
-      media.map(([binding, entry]) => h("div", { class: "h3s-item" }, h("span", { class: "h3s-swatch", style: { background: entry?.color || "#ffc273" } }),
-        h("span", { class: "h3s-strong" }, entry?.name || "Not connected"), h("span", { class: "h3s-lbl" }, entry ? `${entry.kind} · ${entry.role}` : binding.context_id),
-        h("span", { class: "h3s-grow" }), h("button", { class: "h3s-btn ghost small", title: "Remove from shot", "aria-label": "Remove from shot",
-          onclick: () => actions.unassign(shot.id, binding.context_id) }, icon("close", 14))))),
+      media.map(([binding, entry]) => bindingRow(S, actions, shot, binding, entry))),
     h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, h("span", { class: "h3s-lbl" }, "Spoken (optional, used word for word, in this order)"),
       spokenLines(S, actions, shot, showAdd),
       S.values.mode === "fl2va" ? h("span", { class: "h3s-lbl" }, "First / last frame mode has no character references, so a line is spoken by a described voice, "

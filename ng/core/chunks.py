@@ -158,9 +158,11 @@ def _pick(options, ideal):
     return min(options, key=lambda v: (abs(v - ideal), v))
 
 
-def plan_lengths(total_frames, chunk_target_frames, head):
-    """Delivered frames per chunk. Error diffusion: each chunk takes the grid length nearest to what is still needed per chunk."""
-    first_options, next_options = _delivered_options(0), _delivered_options(head)
+def plan_lengths(total_frames, chunk_target_frames, head, first_head=0):
+    """Delivered frames per chunk. Error diffusion: each chunk takes the grid length nearest to what is still needed per chunk.
+
+    `first_head` is the first chunk's own pin: 0 at the start of the video or of an unpinned part, `head` after a join."""
+    first_options, next_options = _delivered_options(first_head), _delivered_options(head)
     longest = max(next_options)
     count = max(1, -(-total_frames // max(min(chunk_target_frames, longest), 1)))
     # The target is a preference; it cannot require more minimum-size clips
@@ -215,22 +217,24 @@ def _late_changes(shots, chunks):
     return issues
 
 
-def plan_chunks(project_frames, chunk_target_frames, continuity, shots=(), cuts=()):
+def plan_chunks(project_frames, chunk_target_frames, continuity, shots=(), cuts=(), joins=()):
     """Split `project_frames` into chunks. Returns a SequencePlan; corrections are in plan.issues.
 
     `cuts` are story frames where a chunk starts without a pinned head, like the first one: a shot that opens on a First
-    frame picture of its own. Each cut must leave whole grid lengths before it (see project._opening_cuts)."""
+    frame picture of its own. `joins` are story frames where a chunk must start but keeps its pin: the chunk before ends
+    on a Keyframe picture. Each edge must leave whole grid lengths before it (see project._part_edges)."""
     if project_frames < 1:
         raise ValueError("the project needs at least one frame")
     head = continuity.head
-    edges = [0, *cuts, project_frames]
+    edges = sorted({0, *cuts, *joins, project_frames})
     lengths, heads = [], []
     for start, end in zip(edges, edges[1:]):
-        part = plan_lengths(end - start, max(chunk_target_frames, 1), head)
+        first_head = head if start in joins and start not in cuts else 0
+        part = plan_lengths(end - start, max(chunk_target_frames, 1), head, first_head)
         if head and shots:
             part = align_to_shots(part, head, [replace(s, start_f=s.start_f - start) for s in shots if start < s.start_f < end])
         lengths += part
-        heads += [0] + [head] * (len(part) - 1)
+        heads += [first_head] + [head] * (len(part) - 1)
     chunks, cursor = [], 0
     for index, delivered in enumerate(lengths):
         this_head = heads[index]

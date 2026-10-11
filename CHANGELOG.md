@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**Keyframes at their own time inside a shot** (2026-10-11):
+
+- In the Studio a picture in a shot can take its own role there (Reference, First frame, Last frame, Keyframe) instead of its card's. A Keyframe gets **Seconds after shot start** (new ones start in the middle); the panel shows the video time and where the plan put it, and a diamond marks it on the shot. Moving the shot takes it along.
+- In First / last frame mode with continuity a render part ends on the keyframe as its last frame and the next part keeps its pin, so the shot runs on through the picture. Real 20 s test (First frame → keyframe at 10 s → Last frame): all three pictures hit (RMSE 0.044 / 0.049 / 0.046), no jump at the join, no cut. Parts end on H3's grid, so the keyframe moves up to a third of a second (`keyframe_moved`); one too close to the shot's start, end or another picture stays inside the part with a warning (`keyframe_too_close`).
+- A Keyframe placed on a shot no longer warns "Set a scene time". The card hint for a Reference picture in First / last frame mode now says it opens its shot as First frame; the fallback note lists only pictures without a role of their own in their shots.
+
 **A copied card gets its own ID and name** (2026-10-11):
 
 - A pasted or duplicated Context card, or a preset loaded onto a second card, kept the first card's ID and name, and the Context Connector stopped the run: `id used twice (Mage and Mage)`. The later card now gets a new ID and a free name ("Mage 2") with a note on the card; a saved workflow that already has such a pair is repaired when it is opened. The Connector's message says what happened and how to fix it.

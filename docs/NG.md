@@ -244,7 +244,16 @@ its card, so cards never overlap their neighbours.
 **Belongs to** (an outfit or pose picture presented together with a figure; empty = the picture is a figure of its own)
 and a description. First / last frame open or end the video, or the shot the picture is dropped on in the Studio.
 Global first / last frame cards also become timed native guides in References mode; they do not guarantee pixel-exact output.
-Keyframe and storyboard guide the start of the shot they are dropped on; a time stored on an older card still wins.
+A Keyframe dropped on a shot gets a time in the shot: **Seconds after shot start** in the shot's Content list (new ones
+start in the middle; the video time and where the plan put it are shown next to it, and a diamond marks it on the shot).
+Moving the shot takes the keyframe along. In First / last frame mode with continuity the Director ends a render part on
+the keyframe, as that part's last frame, and the next part keeps its pin, so the shot runs on through the picture. H3 is
+trained on pictures at the first and last frame; one inside a part was hit and then cut away one frame later (measured
+2026-10-11). Parts end on H3's grid, so the keyframe moves up to a third of a second (`keyframe_moved`); one closer than
+about 3.5 s to the shot's start, its end or another picture stays inside the running part (`keyframe_too_close`).
+In each shot's Content list a picture can also take another role than its card has (Reference, First frame, Last frame,
+Keyframe), e.g. one picture that ends one shot and opens the next. A storyboard guides the start of its shot; a keyframe
+without a time in the shot uses a time stored on an older card, else the shot's start.
 Guide time is sampled on H3's latent grid.
 The accompanying H3 encoder uses the released image processor's 65,536–16,777,216 pixel bounds. Video blocks share
 the released video's 4,096–25,165,824 pixel budget across all selected reference frames, including odd-frame padding.

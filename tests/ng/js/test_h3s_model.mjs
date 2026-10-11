@@ -191,3 +191,23 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
 }
 
 console.log("h3s model ok");
+
+// Keyframes in a shot: own role or the card's, a time in seconds after the shot's start, and where the plan put it.
+{
+  const shot = { id: "s1", start: 20, end: 40 };
+  const keyCard = { usage: ["keyframe"] }, refCard = { usage: ["reference"] };
+  assert.equal(model.isKeyframe({ role: "context" }, keyCard), true, "the card's role counts when the shot keeps it");
+  assert.equal(model.isKeyframe({ role: "keyframe" }, refCard), true, "a role chosen in the shot wins");
+  assert.equal(model.isKeyframe({ role: "first_frame" }, keyCard), false);
+  assert.equal(model.middleOf(shot), 10);
+  assert.equal(model.keyframeAt({ at_s: 12.5 }, shot), 12.5);
+  assert.equal(model.keyframeAt({ at_s: 99 }, shot), 20, "never past the shot's end");
+  assert.equal(model.keyframeAt({}, shot), 0, "an older binding without a time sits at the shot's start");
+  const plan = { fps: 24, chunks: [
+    { index: 0, story_end_f: 723, shots: [{ shot_id: "s1" }], refs: [{ kind: "first_frame", ctx_id: "a" }, { kind: "last_frame", ctx_id: "k" }] },
+    { index: 1, story_end_f: 961, shots: [{ shot_id: "s1" }], refs: [{ kind: "last_frame", ctx_id: "z" }] }] };
+  assert.deepEqual(model.keyframeLanding(plan, "s1", "k"), { seconds: 30.08, part: 1, inside: false });
+  plan.chunks[0].refs[1].kind = "keyframe";
+  assert.deepEqual(model.keyframeLanding(plan, "s1", "k"), { seconds: null, part: 1, inside: true });
+  assert.equal(model.keyframeLanding(null, "s1", "k"), null);
+}

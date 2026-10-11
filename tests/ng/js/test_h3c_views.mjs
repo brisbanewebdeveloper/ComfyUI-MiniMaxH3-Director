@@ -36,7 +36,8 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   view.button("Last frame").onclick();
   assert.deepEqual(calls.at(-1), ["pickUsage", "last_frame"]);
   assert.ok(!view.byClass("h3c-warn").length);
-  assert.ok(parts.usageBox(state({ mode: "fl2va" }), actions).byClass("h3c-warn").length, "a reference in FL2VA is flagged");
+  // FL2VA has no references; since 2026-10-11 the picture opens its shot as First frame, so it is explained, not flagged.
+  assert.ok(!parts.usageBox(state({ mode: "fl2va" }), actions).byClass("h3c-warn").length, "a reference in FL2VA is used as First frame");
 }
 
 // Keep in the video: stored level is highlighted; background has its own words.

@@ -2,7 +2,7 @@
 // node's own widgets, so saving, loading and queueing stay ComfyUI's; the shot document keeps shots, clips and lanes.
 import { h, icon, keepKeys } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt, setPartPrompt, clipToFit } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt, setPartPrompt, clipToFit, isKeyframe, middleOf } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView, contextId } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -150,9 +150,25 @@ export function openStudio(node, app, api, host = null) {
     assign(shotId, id) {
       if (!id || id === "__text" || !S.byId.has(id)) return;
       const shot = S.shots.find((entry) => entry.id === shotId);
-      if (!shot.media.some((binding) => binding.context_id === id))
-        patchShot(shotId, { media: [...shot.media, { schema_version: 1, context_id: id, role: "context" }] }, false);
+      if (!shot.media.some((binding) => binding.context_id === id)) {
+        const binding = { schema_version: 1, context_id: id, role: "context" };
+        if (isKeyframe(binding, S.byId.get(id))) binding.at_s = middleOf(shot);      // a Keyframe starts in the shot's middle
+        patchShot(shotId, { media: [...shot.media, binding] }, false);
+      }
       S.selected = { kind: "shot", id: shotId }; render();
+    },
+    setBinding(shotId, id, change) {
+      const shot = S.shots.find((entry) => entry.id === shotId);
+      const media = shot.media.map((binding) => {
+        if (binding.context_id !== id) return binding;
+        const next = { ...binding, ...change };
+        // A typed time is kept inside the shot; a binding that becomes a Keyframe without one starts in the middle.
+        if (isKeyframe(next, S.byId.get(id))) next.at_s = snapWithin(Number.isFinite(Number(next.at_s)) && next.at_s !== undefined && next.at_s !== ""
+          ? Number(next.at_s) : middleOf(shot), 0, r1(shot.end - shot.start));
+        else delete next.at_s;
+        return next;
+      });
+      patchShot(shotId, { media });
     },
     unassign(shotId, id) {
       const shot = S.shots.find((entry) => entry.id === shotId);

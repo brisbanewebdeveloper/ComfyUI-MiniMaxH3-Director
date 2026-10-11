@@ -83,8 +83,9 @@ def _issues(context, chunk, result, continuity):
     resumed = any(s.carried for s in chunk.shots)
     out = [Issue("planner", text, "chunk %d" % (chunk.index + 1)) for text in result["ref_warnings"]
            if not (resumed and "has no spoken line" in text)]
+    placed = {b.context_id for shot in chunk.shots for b in shot.media}     # a Keyframe on a shot has its time there
     for item in context.items:
-        out.extend(check_item(item))
+        out.extend(i for i in check_item(item) if not (i.code == "usage_pending" and item.id in placed))
     # A manual prompt replaces the generated one, so a missing idea or shot text is no gap then; nor is it when a Text
     # card of this chunk carries the text (BUG-036: the note was in the prompt while the warning said "bare placeholder").
     noted = any(item.media == "text" and item.source.strip() for item in context.items)

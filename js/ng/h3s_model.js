@@ -67,6 +67,29 @@ export function setPartPrompt(list, index, key, text, by) {
   return text.trim() ? [...rest, { index, key, text, by }].sort((a, b) => a.index - b.index) : rest;
 }
 
+// A picture's role in one shot: its own choice, or the card's ("context"). Only pictures have a choice here.
+export const PICTURE_ROLES = [["context", "Card's role"], ["reference", "Reference"], ["first_frame", "First frame"],
+  ["last_frame", "Last frame"], ["keyframe", "Keyframe"]];
+export function isKeyframe(binding, entry) {
+  return binding.role === "keyframe" || ((binding.role || "context") === "context" && Boolean(entry?.usage?.includes("keyframe")));
+}
+// A Keyframe sits at its own time in the shot (seconds after the shot's start); new ones start in the middle.
+export const middleOf = (shot) => r1((shot.end - shot.start) / 2);
+export function keyframeAt(binding, shot) {
+  return Number(binding.at_s) >= 0 ? Math.min(Number(binding.at_s), shot.end - shot.start) : 0;
+}
+// Where the plan put it: the last frame of a render part (FL2VA: the trained slot, the shot runs on), or inside one.
+export function keyframeLanding(plan, shotId, contextId) {
+  for (const chunk of plan?.chunks || []) {
+    if (!chunk.shots.some((entry) => entry.shot_id === shotId)) continue;
+    const ref = chunk.refs.find((entry) => entry.ctx_id === contextId && ["last_frame", "keyframe"].includes(entry.kind));
+    if (ref?.kind === "last_frame")
+      return { seconds: Math.round((chunk.story_end_f - 1) / (plan.fps || 24) * 100) / 100, part: chunk.index + 1, inside: false };
+    if (ref) return { seconds: null, part: chunk.index + 1, inside: true };
+  }
+  return null;
+}
+
 export function newShot(start, end, media = []) {
   return createShot({ start, end, media: media.map((id) => ({ schema_version: 1, context_id: id, role: "context" })) });
 }

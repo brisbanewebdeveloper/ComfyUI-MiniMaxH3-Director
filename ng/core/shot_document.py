@@ -18,10 +18,14 @@ CLIP_MODES = ("lock", "copy", "ref")
 class MediaBinding:
     context_id: str
     role: str = "context"
+    at_s: float = -1.0      # a Keyframe's time in seconds after the shot's start; -1 = not set
     SCHEMA_VERSION = 1
 
     def to_dict(self):
-        return {"schema_version": 1, "context_id": self.context_id, "role": self.role}
+        data = {"schema_version": 1, "context_id": self.context_id, "role": self.role}
+        if self.at_s >= 0:
+            data["at_s"] = self.at_s
+        return data
 
     @classmethod
     def from_dict(cls, data, path="binding"):
@@ -30,7 +34,8 @@ class MediaBinding:
         identity = fields.read_str(data, "context_id", path)
         if not identity.strip():
             raise SchemaError(path + ".context_id", "must not be empty")
-        return cls(identity, fields.read_str(data, "role", path, "context"))
+        at_s = fields.read_number(data, "at_s", path, -1.0)
+        return cls(identity, fields.read_str(data, "role", path, "context"), float(at_s) if at_s >= 0 else -1.0)
 
 
 @dataclass(frozen=True)

@@ -82,7 +82,11 @@ def scoped_context(context, chunk):
     # A lane clip adds its mode to the card's roles for this chunk; lane and Shot binding both play, so that
     # second role is not the "only the first role is applied" case the check warns about.
     laned = {item.name for item in context.items if item.id in {clip.context_id for clip in clips} and len(item.effective_usage) <= 1}
-    checked = [issue for issue in check_context(scoped) if not (issue.code == "audio_roles" and issue.ref in laned)]
+    # A Keyframe placed on a shot has its time there (the shot's start, or its own time in the shot); "set a scene time"
+    # is only for a card that is not on any shot.
+    placed = {context.item(b.context_id).name for shot in chunk.shots for b in shot.media if context.item(b.context_id)}
+    checked = [issue for issue in check_context(scoped) if not (issue.code == "audio_roles" and issue.ref in laned)
+               and not (issue.code == "usage_pending" and issue.ref in placed)]
     return scoped, tuple(issues + checked)
 
 

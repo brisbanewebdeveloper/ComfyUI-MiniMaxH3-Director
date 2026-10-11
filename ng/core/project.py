@@ -149,36 +149,84 @@ def _opens_on_picture(context, shot):
     return False
 
 
-def _opening_cuts(context, shots, total):
-    """Render-part starts for shots that open on their own First frame picture: (cut frames, {shot id: cut}, issues).
-
-    Inside a pinned part H3 takes such a picture as the end of the running take and cuts after it (measured 2026-10-11:
-    picture hit at its frame, cut one frame later). A part of its own puts the picture on frame 0, where the model is
-    trained to start from it. A part starts on H3's grid, so the shot start moves to the nearest grid frame."""
-    shortest = frames.snap_up(limits.SAMPLED_MIN_FRAMES)
-    cuts, moved, issues, previous = [], {}, [], 0
-    for shot in shots:
-        if shot.start_f <= 0 or not _opens_on_picture(context, shot):
-            continue
-        cut = previous + frames.snap_nearest(shot.start_f - previous)
-        if cut - previous < shortest or total - cut < shortest:
-            issues.append(Issue("opening_too_close", "opens on a First frame picture but is too close to the previous opening "
-                                "or the end for a render part of its own; the picture is used inside the running part.", "shot %d" % shot.index))
-            continue
-        cuts.append(cut)
-        previous = cut
-        if cut != shot.start_f:
-            moved[shot.id] = cut
-            issues.append(Issue("opening_moved", "starts at %.2fs instead of %.2fs so that its First frame picture opens a render part."
-                                % (frames.frames_to_seconds(cut), frames.frames_to_seconds(shot.start_f)), "shot %d" % shot.index))
-    return cuts, moved, issues
+def _keyframes(context, shot):
+    """The shot's Keyframe pictures that carry a time of their own (seconds after the shot's start), earliest first."""
+    out = []
+    for binding in shot.media:
+        item = context.item(binding.context_id)
+        if item and item.media == "image" and item.source and binding.at_s >= 0:
+            roles = (binding.role,) if binding.role in USAGE_BY_MEDIA["image"] else item.effective_usage
+            if "keyframe" in roles:
+                out.append(binding)
+    return sorted(out, key=lambda b: b.at_s)
 
 
-def _move_shot_starts(shots_text, moved):
-    """The shots document with the given shots starting at a new frame; the shot before each one ends there."""
+def _shortest(head):
+    """The shortest part that can follow an edge, with this pin."""
+    low, high = frames.delivered_bounds(head)
+    return min(frames.delivered_candidates(low, head, low, high))
+
+
+def _edge(previous, previous_head, wanted):
+    """The grid frame nearest to `wanted` at which a part that started at `previous` (with that pin) can end."""
+    residue, step = frames.delivered_residue(previous_head), limits.GRID_STEP
+    low = previous + residue + (wanted - previous - residue) // step * step
+    return min((low, low + step), key=lambda f: (abs(f - wanted), f))
+
+
+def _part_edges(context, shots, total, head):
+    """Where render parts must start in FL2VA: (cuts, joins, moved shot starts, moved keyframes, issues).
+
+    A shot opening on its own First frame picture starts an unpinned part (cut): inside a pinned part H3 took such a
+    picture as the end of the running take and cut one frame later (measured 2026-10-11). A Keyframe picture inside a
+    shot ends a part on its last frame, the trained place for a picture; the next part keeps its pin (join), so the
+    shot runs on. Parts start on H3's grid, so a shot start or keyframe moves to the nearest grid frame."""
+    cuts, joins, moved, moved_keys, issues = [], [], {}, {}, []
+    previous, previous_head = 0, 0
+    for number, shot in enumerate(shots):
+        start = shot.start_f
+        following = shots[number + 1] if number + 1 < len(shots) else None
+        # the next part edge after this shot's keyframes: the next shot's own opening, else the end of the video
+        until = following.start_f if following and _opens_on_picture(context, following) else total
+        if start > 0 and _opens_on_picture(context, shot):
+            cut = _edge(previous, previous_head, start)
+            if cut - previous < _shortest(previous_head) or total - cut < _shortest(0):
+                issues.append(Issue("opening_too_close", "opens on a First frame picture but is too close to the previous opening "
+                                    "or the end for a render part of its own; the picture is used inside the running part.", "shot %d" % shot.index))
+            else:
+                cuts.append(cut)
+                previous, previous_head = cut, 0
+                if cut != start:
+                    moved[shot.id] = start = cut
+                    issues.append(Issue("opening_moved", "starts at %.2fs instead of %.2fs so that its First frame picture opens a render part."
+                                        % (frames.frames_to_seconds(cut), frames.frames_to_seconds(shot.start_f)), "shot %d" % shot.index))
+        for binding in _keyframes(context, shot):
+            name = context.item(binding.context_id).name
+            wanted = start + frames.seconds_to_frames(binding.at_s) + 1      # the part ends on the keyframe; the next one starts after it
+            join = _edge(previous, previous_head, wanted)
+            if join - previous < _shortest(previous_head) or until - join < _shortest(head):
+                issues.append(Issue("keyframe_too_close", "'%s' at %.2fs is too close to the shot's start, end or another picture to end a "
+                                    "render part there; it is used inside the running part, where H3 may cut right after it."
+                                    % (name, frames.frames_to_seconds(wanted - 1)), "shot %d" % shot.index))
+                continue
+            joins.append(join)
+            previous, previous_head = join, head
+            if join != wanted:
+                moved_keys[(shot.id, binding.context_id)] = frames.frames_to_seconds(join - 1 - start)
+                issues.append(Issue("keyframe_moved", "'%s' is shown at %.2fs instead of %.2fs: a render part ends on it, and parts end on H3's grid."
+                                    % (name, frames.frames_to_seconds(join - 1), frames.frames_to_seconds(wanted - 1)), "shot %d" % shot.index))
+    return cuts, joins, moved, moved_keys, issues
+
+
+def _move_shot_starts(shots_text, moved, moved_keys=None):
+    """The shots document with the given shots starting at a new frame (the shot before each one ends there) and the
+    given keyframes at a new time after their shot's start."""
     data = json.loads(shots_text)
     records = sorted(data["shots"], key=lambda r: float(r["start"]))
     for before, record in zip([None] + records[:-1], records):
+        for binding in record.get("media") or []:
+            if (record["id"], binding.get("context_id")) in (moved_keys or {}):
+                binding["at_s"] = moved_keys[(record["id"], binding["context_id"])]
         if record["id"] not in moved:
             continue
         old, new = float(record["start"]), frames.frames_to_seconds(moved[record["id"]])
@@ -192,9 +240,17 @@ def _fl2va_pictures(context):
     """FL2VA has no reference slots: with the mode set to fl2va, a Reference picture opens its shot (or the video) as First frame."""
     if context.mode != "fl2va":
         return context, []
+    # A picture that has its own role in every shot it is placed on does not fall back (the shot's role wins anyway).
+    own, plain = set(), set()
+    for record in read_document(context.shots_text) or []:
+        for binding in record.get("media", []):
+            (own if binding.get("role", "context") in USAGE_BY_MEDIA["image"] else plain).add(binding.get("context_id"))
     items, names = [], []
     for item in context.items:
         usage = item.effective_usage
+        if item.id in own and item.id not in plain:
+            items.append(item)
+            continue
         if item.media == "image" and item.source and "reference" in usage and not set(usage) & {"first_frame", "last_frame", "keyframe", "storyboard"}:
             item = replace(item, usage=usage + ("first_frame",))     # still the figure the text names
             names.append(item.name)
@@ -211,21 +267,21 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
     context, issues = _prepare(context)
     issues = canvas_issues + issues
     total = frames.seconds_to_frames(context.project_seconds)
-    cuts = ()
+    cuts = joins = ()
     if has_shots(context.shots_text):
         shots, shot_issues = parse_shots(context.shots_text, total)
         if continuity.head and decide_mode(context) == "fl2va":
-            cuts, moved, opening_issues = _opening_cuts(context, shots, total)
-            issues = issues + opening_issues
+            cuts, joins, moved, moved_keys, edge_issues = _part_edges(context, shots, total, continuity.head)
+            issues = issues + edge_issues
         else:
-            moved = {}
-        if moved:
-            context = replace(context, shots_text=_move_shot_starts(context.shots_text, moved))
+            moved, moved_keys = {}, {}
+        if moved or moved_keys:
+            context = replace(context, shots_text=_move_shot_starts(context.shots_text, moved, moved_keys))
             shots, shot_issues = parse_shots(context.shots_text, total)
     else:
         shots, shot_issues = auto_shots(context.idea, total), ()
     chunk_frames = frames.seconds_to_frames(chunk_seconds or limits.DEFAULT_CHUNK_SECONDS)
-    plan = plan_chunks(total, chunk_frames, continuity, shots, cuts)
+    plan = plan_chunks(total, chunk_frames, continuity, shots, cuts, joins)
     # A song locked over the whole video is put back into every part from its file, so a long chain does not dull it
     # (elf song: 0.97-0.98 against the song in every part). A last second past the song's end is no chain.
     if covers(locked_spans(context), plan.total_frames, limits.FPS):
