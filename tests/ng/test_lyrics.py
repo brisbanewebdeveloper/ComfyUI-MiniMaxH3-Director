@@ -154,9 +154,10 @@ class Placement(unittest.TestCase):
 class Look(unittest.TestCase):
     def test_the_prompt_is_not_pasted_into_every_part_once_shots_exist(self):
         result = plan(doc([shot("s1", 0, 27)], look="Dark gothic fantasy, cinematic anime style."), ())
-        for prompt in (c.prompt for c in result.compiled):
+        for n, prompt in enumerate(c.prompt for c in result.compiled):
             self.assertNotIn("An elf mage sings a sad song.", prompt)
-            self.assertIn("integrated_multimodal_description: [Shot 1] Dark gothic fantasy, cinematic anime style. She sings", prompt)
+            go_on = "Continue the same scene and action from the preceding video, preserving the subject and setting. " if n else ""
+            self.assertIn("integrated_multimodal_description: [Shot 1] Dark gothic fantasy, cinematic anime style. %sShe sings" % go_on, prompt)
 
     def test_a_scene_note_is_story_and_other_notes_go_into_every_part(self):
         # User (2026-10-05): the prompt in H3 Context Text was "not understood" - it was pasted, whole, into every part.

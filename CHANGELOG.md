@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**Camera moves are not repeated in later parts of a shot** (2026-10-11):
+
+- A written shot that continues into a later render part gets the continuation sentence there and loses its camera-move sentences; spoken lines were already dropped. Each part had taken "the camera pushes in" as a new push: a 20 s shot over three parts zoomed in until H3 cut to a glossy 3D-looking close-up (real FL2VA minute, cut at 33.4 s). With the same seed the cut and the look change are gone.
+
 **FL2VA shots open on their First frame** (2026-10-11):
 
 - With the mode set to FL2VA, a Reference picture is used as First frame (FL2VA has no reference pictures; they were dropped before). It stays the figure its text names.

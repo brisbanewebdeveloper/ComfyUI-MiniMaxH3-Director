@@ -110,6 +110,21 @@ class Chunks(unittest.TestCase):
         self.assertIn("kneads", out[1].prompt)      # still running in the pinned head
         self.assertIn("sits down", out[1].prompt)
 
+    def test_a_written_shot_continues_without_repeating_its_camera_move(self):
+        ctx = context.DirectorContext(idea="", items=(), project_seconds=20, shots_text=(
+            "0-20: The baker kneads dough. The camera pushes in slowly with small amplitude. Flour drifts in the light."))
+        _, out = build(ctx)
+        self.assertIn("pushes in", out[0].prompt)
+        self.assertNotIn("Continue the same scene", out[0].prompt)
+        self.assertNotIn("pushes in", out[1].prompt)        # the part before made the push; a second one compounds it
+        self.assertIn("Continue the same scene", out[1].prompt)
+        self.assertIn("Flour drifts", out[1].prompt)
+
+    def test_a_held_camera_stays_in_a_continued_shot(self):
+        ctx = context.DirectorContext(idea="", items=(), project_seconds=20, shots_text="0-20: The baker kneads dough. The camera holds a stable side view.")
+        _, out = build(ctx)
+        self.assertIn("stable side view", out[1].prompt)
+
     def test_spoken_lines_are_not_repeated_in_the_next_chunk(self):
         ctx = context.DirectorContext(idea="", items=(ALICE, VOICE), project_seconds=20,
                                       shots_text="0-12: @Alice walks through the market.\n@Alice says: Hello there.\n12-20: @Alice sits down.")

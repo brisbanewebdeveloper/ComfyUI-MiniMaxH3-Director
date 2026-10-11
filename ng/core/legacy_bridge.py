@@ -216,13 +216,28 @@ def _motion_segments(context):
     return out
 
 
+CONTINUE_SCENE = "Continue the same scene and action from the preceding video, preserving the subject and setting. "
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+_CAMERA_MOVE = re.compile(r"\bcamera\b.*\b(push|pull|dolly|dollies|zoom|pan|tilt|orbit|track|crane|move|moving|rise|rising|"
+                          r"lower|circle|circling|drift|approach|follow|sweep|swing|arc)", re.IGNORECASE)
+
+
+def _without_camera_moves(text):
+    return "\n".join(" ".join(s for s in _SENTENCE.split(line) if not _CAMERA_MOVE.search(s)) for line in text.splitlines())
+
+
 def _shot_text(shot, substitute, automatic=False, context=None):
-    """A shot that began in an earlier chunk keeps its action but not its spoken lines: those belong to where the shot starts."""
+    """A shot that began in an earlier chunk keeps its action but not its spoken lines: those belong to where the shot starts.
+
+    Nor its camera move: the part before already made it, and each part read "the camera pushes in" as a new push, so a
+    20 s shot over three parts pushed in three times and lost its look (AUDIT-010, measured 2026-10-11)."""
     text = substitute(spoken_text(shot, context)[0] if context else shot.text)
     if shot.carried:
         text = "\n".join(line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip()))
-        if automatic and text.strip():
-            text = "Continue the same scene and action from the preceding video, preserving the subject and setting. " + text
+        if not automatic:
+            text = _without_camera_moves(text)
+        if text.strip():
+            text = CONTINUE_SCENE + text
     return text
 
 
