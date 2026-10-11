@@ -11,7 +11,8 @@ def turbo_models(graph, inputs, settings):
     for name in ("model_fl2va", "model_ref2va"):
         lora = settings.get("turbo_lora_" + name[len("model_"):], "none")
         if out.get(name) is not None and lora != "none":
-            out[name] = graph.node("LoraLoaderModelOnly", "turbo_" + name, model=out[name], lora_name=lora, strength_model=1.0).out(0)
+            # NGTurboLora leaves out pieces that do not fit (a full-model LoRA on a pruned H3 model logged 51 errors per step)
+            out[name] = graph.node("NGTurboLora", "turbo_" + name, model=out[name], lora_name=lora, strength=1.0).out(0)
     return out
 
 

@@ -1,5 +1,5 @@
 // Product nodes outside the Director: AI Loader, Context Connector, Director Output, Render Sequence.
-import { element, values } from "./ng_widgets.js";
+import { element, values, followNodeWidth } from "./ng_widgets.js";
 import { control, hideNative, section } from "./ng_editor_fields.js";
 import { ensureStudioStyle } from "./ng_studio_style.js";
 import { connectedProvider, readContexts } from "./ng_read.js";
@@ -32,7 +32,7 @@ function shell(node, title, accent, size, brand) {
     // its own explanation. A button in the header that changes the layout is a surprise.
   } else header.append(element("strong", "ng-context-title", title));
   root.append(header);
-  const widget = node.addDOMWidget("ng_product", "ng_product", root, { serialize: false, hideOnZoom: false });
+  const widget = followNodeWidth(node.addDOMWidget("ng_product", "ng_product", root, { serialize: false, hideOnZoom: false }));
   widget.computeSize=undefined;
   // Only the minimum width is fixed; the height comes from the panel, which measures its own
   // content. The panel sizes itself through computeLayoutSize, so fall back to the passed minimum

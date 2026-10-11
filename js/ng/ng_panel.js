@@ -1,4 +1,5 @@
 // Live plan panel on the NG Director: chunks, notes and the prompt of every chunk, updated as widgets and wires change.
+import { followNodeWidth } from "./ng_widgets.js";
 import { ensureStyle } from "./ng_style.js";
 import { isContextNode, readPayload } from "./ng_read.js";
 import { renderPlan } from "./ng_view.js";
@@ -67,7 +68,7 @@ function attach(node) {
     schedule(panel);
     return result;
   };
-  const widget = node.addDOMWidget("ng_plan", "ng_plan", root, { serialize: false, hideOnZoom: false });
+  const widget = followNodeWidth(node.addDOMWidget("ng_plan", "ng_plan", root, { serialize: false, hideOnZoom: false }));
   widget.computeSize = (width) => [width, 260];
   const panel = { node, root, timer: null, serial: 0 };
   panels.set(node, panel);

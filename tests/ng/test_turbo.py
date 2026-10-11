@@ -23,7 +23,7 @@ class Turbo(unittest.TestCase):
 
     def loras(self, expand):
         return {value["inputs"]["model"][0]: value["inputs"]["lora_name"]
-                for value in expand.values() if value["class_type"] == "LoraLoaderModelOnly"}
+                for value in expand.values() if value["class_type"] == "NGTurboLora"}
 
     def test_director_offers_turbo_after_every_earlier_widget(self):
         names = [item.id for item in self.nodes["NGH3Director"].GET_SCHEMA().inputs]
@@ -51,7 +51,7 @@ class Turbo(unittest.TestCase):
         render = self.nodes["NGProjectRender"].execute(sequence=result)
         self.assertEqual(self.loras(render.expand), {"fl": "fl.safetensors", "ref": "ref.safetensors"})
         conditioning = next(v for v in render.expand.values() if v["class_type"] == "NGChunkConditioning")["inputs"]
-        lora_ids = {key for key, value in render.expand.items() if value["class_type"] == "LoraLoaderModelOnly"}
+        lora_ids = {key for key, value in render.expand.items() if value["class_type"] == "NGTurboLora"}
         self.assertEqual({conditioning["model_fl2va"][0], conditioning["model_ref2va"][0]}, lora_ids)
         steps = next(v for v in render.expand.values() if v["class_type"] == "BasicScheduler")["inputs"]["steps"]
         self.assertEqual(steps, 4)

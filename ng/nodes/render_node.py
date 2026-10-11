@@ -3,6 +3,9 @@ from comfy_api.latest import io
 from comfy.samplers import KSampler
 from comfy_extras.nodes_custom_sampler import RandomNoise
 
+import logging
+
+from ..adapters import lora_fit
 from ..adapters.render_graph import render_sequence
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
@@ -66,4 +69,25 @@ class NGChunkNoise(io.ComfyNode):
         return RandomNoise.execute(noise_seed=(int(seed) + job.index) % (1 << 64))
 
 
-NODES = [NGRenderSequence, NGChunkNoise]
+class NGTurboLora(io.ComfyNode):
+    """The Director's turbo LoRA, without the pieces that do not fit the model (see adapters/lora_fit.py)."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="NGTurboLora", display_name="NG Turbo LoRA", category=CATEGORY + "/Technical",
+                         inputs=[io.Model.Input("model"), io.String.Input("lora_name"),
+                                 io.Float.Input("strength", default=1.0, min=-10.0, max=10.0)],
+                         outputs=[io.Model.Output()])
+
+    @classmethod
+    def execute(cls, model, lora_name, strength):
+        import comfy.utils
+        import folder_paths
+        lora = comfy.utils.load_torch_file(folder_paths.get_full_path_or_raise("loras", lora_name), safe_load=True)
+        patched, left_out = lora_fit.apply(model, lora, strength)
+        if left_out:
+            logging.warning("[H3 Director] turbo LoRA '%s': %d piece(s) do not fit this model and were left out (%s, ...). "
+                            "A pruned H3 model takes the LoRA made for it (name with 'pruned').", lora_name, len(left_out), left_out[0])
+        return io.NodeOutput(patched)
+
+
+NODES = [NGRenderSequence, NGChunkNoise, NGTurboLora]

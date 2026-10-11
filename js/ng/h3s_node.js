@@ -4,7 +4,7 @@ import { h } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
 import { readProject, writeProject } from "./h3s_model.js";
 import { openStudio, closeStudio } from "./h3s_studio.js";
-import { values, applyValues } from "./ng_widgets.js";
+import { values, applyValues, followNodeWidth } from "./ng_widgets.js";
 import { readContexts } from "./ng_read.js";
 import { renameReferences } from "./ng_references.js";
 import { hideNative } from "./ng_editor_fields.js";
@@ -59,7 +59,7 @@ function attach(node) {
   node.color = "#172a48"; node.bgcolor = "#101a2c";
   const host = h("div", { class: "h3s-host" });
   hideNative(node, (node.widgets || []).map((widget) => widget.name));
-  const dom = node.addDOMWidget("h3_director", "h3_director", host, { serialize: false, hideOnZoom: false });
+  const dom = followNodeWidth(node.addDOMWidget("h3_director", "h3_director", host, { serialize: false, hideOnZoom: false }));
   // The node is as tall as its Studio, so the DOM never spills over the nodes below it. ComfyUI hides DOM widgets of
   // nodes outside the view; a hidden Studio measures 0, so only a visible one is measured, again whenever it resizes.
   let measured = 900, removed = false;

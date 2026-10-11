@@ -7,7 +7,7 @@ import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, sugges
 import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
 import { lyricsBox, stampLine } from "./h3c_lyrics.js";
-import { values, applyValues, newContextId, ownIdentity, analysisFingerprint, request } from "./ng_widgets.js";
+import { values, applyValues, newContextId, ownIdentity, analysisFingerprint, request, followNodeWidth } from "./ng_widgets.js";
 import { contextOptions, setOptions, selectedRoles } from "./ng_context_controls.js";
 import { hideNative } from "./ng_editor_fields.js";
 import { contextProvider, relatedContexts } from "./ng_read.js";
@@ -254,7 +254,7 @@ function attach(node, media) {
   watcher?.observe(root);
 
   const names = () => (node.widgets || []).filter((widget) => widget !== dom).map((widget) => widget.name);
-  const dom = node.addDOMWidget("h3c_card", "h3c_card", root, { serialize: false, hideOnZoom: false });
+  const dom = followNodeWidth(node.addDOMWidget("h3c_card", "h3c_card", root, { serialize: false, hideOnZoom: false }));
   dom.computeSize = undefined;
   dom.computeLayoutSize = () => ({ minHeight: measured, maxHeight: measured, minWidth: WIDTH[media] - 20 });
   hideNative(node, names());

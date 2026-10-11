@@ -22,6 +22,24 @@ export function ownIdentity(own, others, makeId = newContextId) {
   return changes;
 }
 
+// ComfyUI draws a DOM widget (widget.width ?? node.width) wide. Showing the widget in a side panel (Workflow Overview,
+// node properties) writes that panel's width (about 100 px) into widget.width, and it stuck: the Studio and the Context
+// cards then lay out 80 px wide, in one column, thousands of pixels tall (user report, 2026-10-11). Our widgets are always
+// as wide as their node; the panel passes its width to draw() itself.
+export function followNodeWidth(widget) {
+  Object.defineProperty(widget, "width", { configurable: true, enumerable: false, get: () => undefined, set: () => {} });
+  return widget;
+}
+
+// The id ng/core/context_build.py (card_id) gives a card whose Context ID field is empty: media and a slug of its label.
+export function contextId(widgets, media) {
+  if (widgets.context_id) return String(widgets.context_id);
+  const name = String(widgets.name || "").trim(), source = String(widgets[media] || "");
+  const file = source.replace(" [input]", "").trim().split(/[\\/]/).pop().replace(/\.[^.]*$/, "");
+  const label = name || (media === "text" ? source.slice(0, 24).trim() || "note" : file || media);
+  return `${media}_${label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "item"}`;
+}
+
 export function values(node) {
   return Object.fromEntries((node.widgets || []).filter((w) => w.name).map((w) => [w.name, w.value]));
 }
