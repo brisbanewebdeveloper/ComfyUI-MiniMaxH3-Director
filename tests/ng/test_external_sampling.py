@@ -161,9 +161,9 @@ class ExternalSampling(unittest.TestCase):
         plan = self.result().project.plan
         returned = [av_latent(c.sampled_frames) for c in plan.chunks]
         sound = lambda audio: {"waveform": torch.full((1, 2, 200000), .1), "sample_rate": 32000}
+        pixel_frames = sys.modules["mmxd_full_pack.ng.core.pin"].pixel_frames
         def decoder():
-            sizes = iter(c.sampled_frames for c in plan.chunks)
-            return lambda video: torch.full((next(sizes), 64, 64, 3), .5)
+            return lambda video: torch.full((pixel_frames(video.shape[2]), 64, 64, 3), .5)
         frames, wave, _ = self.chunk_module.collect.collect_chunks(returned, plan, decoder(), sound)
         with tempfile.TemporaryDirectory() as folder:
             path = os.path.join(folder, "song.mp4")

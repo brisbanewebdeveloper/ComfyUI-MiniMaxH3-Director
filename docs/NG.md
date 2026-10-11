@@ -307,7 +307,9 @@ Loading, connecting and rendering never trigger provider requests.
 ## Continuity and verification
 
 `video_audio` pins a previous part's video tail and about a second of audio before the next part; `video` pins only picture,
-and `none` renders independent clips. The collector removes pinned heads. The planner tries to place boundaries away from new story actions
+and `none` renders independent clips. The collector removes pinned heads. With a pin, the picture is decoded across the joins
+as one latent (each part's regenerated head dropped), one window at a time, so the video VAE's clip blending runs over the seam
+instead of restarting at every part; sound is still decoded per part. The planner tries to place boundaries away from new story actions
 and warns when it cannot. Audio on a lane is cut per part at its story position, so it continues across the seam.
 
 Read [NG-validation.md](NG-validation.md) for automated checks and native GPU runs. Single-seed functional runs show feasibility;

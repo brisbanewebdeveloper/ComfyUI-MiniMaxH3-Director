@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**Seamless picture at render-part joins** (2026-10-11):
+
+- NG Collect and NG Collect Video decode the picture of pinned parts as one continuous latent (regenerated heads dropped), window by window. Decoding each part alone ended it on the VAE's unblended lookahead clip and restarted the decoder at the next part: a one-frame brightness/contrast jump at every join (real minute: up to +0.013 luma). Sound handling is unchanged.
+
 **H3 latent audit fixes** (2026-10-11):
 
 - Global First/Last Frame cards now supply timed native guides in Ref2VA; FL2VA anchors are not duplicated.

@@ -41,10 +41,3 @@ def check_same_canvas(video, previous_video):
     if here != there or video.shape[1] != previous_video.shape[1]:
         raise ValueError("the previous chunk was %dx%d but this one is %dx%d; return a same-resolution continuity latent to the loop "
                          "or adapt the H3 pins for this sampling stage" % (there[1] * 16, there[0] * 16, here[1] * 16, here[0] * 16))
-
-
-def trim_head(frames, wave, sample_rate, head_frames, fps):
-    """Drop the pinned head from decoded picture and sound together, then cut the sound to the picture length."""
-    frames = frames[head_frames:]
-    wave = wave[..., int(round(head_frames / float(fps) * sample_rate)):]
-    return frames, wave[..., :int(round(frames.shape[0] / float(fps) * sample_rate))]

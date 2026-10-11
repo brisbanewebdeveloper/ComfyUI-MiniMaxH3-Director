@@ -69,14 +69,5 @@ class Pin(unittest.TestCase):
             latents.split_av({"samples": torch.zeros(1, 4, 8, 8)})
 
 
-@unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
-class TrimHead(unittest.TestCase):
-    def test_picture_and_sound_end_equal(self):
-        frames, wave = torch.zeros(100, 8, 8, 3), torch.zeros(1, 2, int(32000 * 100 / 24.0) + 260)
-        f, w = latents.trim_head(frames, wave, 32000, 22, 24)
-        self.assertEqual(f.shape[0], 78)
-        self.assertEqual(w.shape[-1], int(round(78 / 24.0 * 32000)))
-
-
 if __name__ == "__main__":
     unittest.main()

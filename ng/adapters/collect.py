@@ -1,4 +1,5 @@
-"""Join the sampled chunks into one video: decode each, cut the pinned head off picture and sound together, concatenate.
+"""Join the sampled chunks into one video: the picture is decoded across the joins in latent space (the pinned head dropped), the sound
+of each chunk is decoded with its head cut off, then both are concatenated.
 
 The decoders are passed in, so the arithmetic is testable without a VAE. The sound is always taken from the delivered part of each chunk,
 never from the pinned reconstruction at its start (E2/E6), and it is cut to exactly the picture length at every join so that Bild
@@ -12,9 +13,12 @@ from fractions import Fraction
 import av
 import torch
 
+from ..core import pin
 from ..core.issues import Issue
 from ..core.limits import AUDIO_HZ, FPS
 from . import latents
+
+VAE_CLIP_STEPS, VAE_CLIP_FRAMES = 5, 17
 
 
 def _pad_to(wave, samples):
@@ -24,19 +28,64 @@ def _pad_to(wave, samples):
     return torch.nn.functional.pad(wave, (0, short)), short
 
 
+def _joined_runs(videos, plan):
+    """Chunks joined in latent space, as [(pieces, chunks)]. A pinned head is the regenerated copy of the previous chunk's tail and
+    covers whole steps from a cycle start, so the steps after it continue the previous chunk's 1-4-4-4-4 rhythm unbroken.
+    A chunk without a head is an independent clip and starts a new run."""
+    runs = []
+    for video, chunk in zip(videos, plan.chunks):
+        if chunk.head_frames and runs:
+            runs[-1][0].append(video[:, :, pin.steps_for_frames(chunk.head_frames):])
+            runs[-1][1].append(chunk)
+        else:
+            runs.append(([video], [chunk]))
+    return runs
+
+
+def _steps(pieces, start, stop):
+    out, at = [], 0
+    for piece in pieces:
+        if at < stop and start < at + piece.shape[2]:
+            out.append(piece[:, :, max(start - at, 0):stop - at])
+        at += piece.shape[2]
+    return torch.cat(out, 2)
+
+
+def delivered_pictures(videos, plan, decode_video):
+    """Each chunk's delivered frames, decoded from its run's joined latent one window at a time.
+
+    The video VAE decodes 17-frame clips of 5 steps and blends the first 5 frames of each clip with the previous clip's lookahead.
+    Decoding every chunk alone ended it on an unblended lookahead and restarted the decoder on the regenerated head: a one-frame
+    brightness and contrast jump at every join (measured on a real minute: up to +0.011 luma, +0.005 contrast). A window that starts
+    one clip early and runs through the clip that covers the chunk's last frame gives the frames a decode of the whole run would."""
+    for pieces, run in _joined_runs(videos, plan):
+        total, origin = sum(p.shape[2] for p in pieces), run[0].story_start_f
+        for chunk in run:
+            first = (chunk.story_start_f - origin) // VAE_CLIP_FRAMES
+            last = (chunk.story_end_f - origin - 1) // VAE_CLIP_FRAMES
+            start = max(first - 1, 0) * VAE_CLIP_STEPS
+            stop = min((last + 1) * VAE_CLIP_STEPS + 2, total)
+            frames = decode_video(_steps(pieces, start, stop))
+            if frames.shape[0] != pin.pixel_frames(stop - start):
+                raise ValueError("chunk %d: %d latent steps decoded to %d frames, expected %d"
+                                 % (chunk.index + 1, stop - start, frames.shape[0], pin.pixel_frames(stop - start)))
+            offset = chunk.story_start_f - origin - start // VAE_CLIP_STEPS * VAE_CLIP_FRAMES
+            # Keep owned outputs across subsequent VAE calls, including decoders that reuse their buffers.
+            yield frames[offset:offset + chunk.delivered_frames].clone()
+
+
 def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *, restore_audio=None):
     """Each chunk's delivered (frames [n,H,W,3], waveform [1,C,S], sample rate), decoded only when it is asked for."""
     if len(chunk_latents) != len(plan.chunks):
         raise ValueError("the plan has %d chunks but %d were generated" % (len(plan.chunks), len(chunk_latents)))
-    for latent, chunk in zip(chunk_latents, plan.chunks):
-        video, audio = latents.validate_chunk(latent, chunk.sampled_frames, "Chunk %d" % (chunk.index + 1))
-        # Keep owned outputs across subsequent VAE calls, including decoders that reuse their buffers.
-        frames = decode_video(video).clone()
+    streams = [latents.validate_chunk(latent, chunk.sampled_frames, "Chunk %d" % (chunk.index + 1))
+               for latent, chunk in zip(chunk_latents, plan.chunks)]
+    pictures = delivered_pictures([video for video, _ in streams], plan, decode_video)
+    for (_, audio), chunk, frames in zip(streams, plan.chunks, pictures):
         decoded = decode_audio(audio)
         wave, rate = decoded["waveform"].clone(), int(decoded["sample_rate"])
-        if frames.shape[0] != chunk.sampled_frames:
-            raise ValueError("chunk %d decoded to %d frames but the plan sampled %d" % (chunk.index + 1, frames.shape[0], chunk.sampled_frames))
-        frames, wave = latents.trim_head(frames, wave, rate, chunk.head_frames, FPS)
+        wave = wave[..., int(round(chunk.head_frames / float(FPS) * rate)):]
+        wave = wave[..., :int(round(chunk.delivered_frames / float(FPS) * rate))]
         # Use absolute story boundaries so fractional samples do not accumulate at the joins.
         samples = round(chunk.story_end_f / float(FPS) * rate) - round(chunk.story_start_f / float(FPS) * rate)
         wave, padded = _pad_to(wave[..., :samples], samples)

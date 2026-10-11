@@ -8,6 +8,7 @@ if HAVE_COMFY:
     from comfy.nested_tensor import NestedTensor
 
 chunks = module("ng.core.chunks")
+pin = module("ng.core.pin")
 collect = module("ng.adapters.collect")
 
 RATE = 32000
@@ -19,11 +20,21 @@ def fake_latent(frames, marker):
     return {"samples": NestedTensor((video, audio))}
 
 
-def decode_video_factory(frames_by_marker):
-    def decode(video):
-        marker = int(video.flatten()[0].item())
-        return torch.full((frames_by_marker[marker], 4, 4, 3), float(marker))
-    return decode
+def decode_video(video, missing=0):
+    """Pixel frames on the VAE's 1-4-4-4-4 grid, each valued by the step it comes from."""
+    values = video[0, 0, :, 0, 0]
+    steps = [values[k] for k in range(values.shape[0]) for _ in range(pin.FRAMES_PER_STEP[k % 5])]
+    return torch.stack(steps[:len(steps) - missing]).view(-1, 1, 1, 1).expand(-1, 4, 4, 3).clone()
+
+
+def context_decode(video):
+    """Each step's pixel frames, valued by the step and the one before it inside the decoded window."""
+    values = video[0, 0, :, 0, 0]
+    out = []
+    for k, offset in enumerate(pin.step_offsets(values.shape[0])):
+        before = values[k - 1] if k else values[k]
+        out += [values[k] + before / 4096.0] * pin.FRAMES_PER_STEP[k % 5]
+    return torch.stack(out).view(-1, 1, 1, 1).expand(-1, 4, 4, 3).clone()
 
 
 def decode_audio_factory(frames_by_marker, extra_samples=0):
@@ -42,7 +53,7 @@ class Collect(unittest.TestCase):
     def run_collect(self, plan, extra_samples=0):
         sizes = {c.index: c.sampled_frames for c in plan.chunks}
         latents = [fake_latent(c.sampled_frames, c.index) for c in plan.chunks]
-        return collect.collect_chunks(latents, plan, decode_video_factory(sizes), decode_audio_factory(sizes, extra_samples))
+        return collect.collect_chunks(latents, plan, decode_video, decode_audio_factory(sizes, extra_samples))
 
     def test_length_equals_the_plan_and_sound_equals_picture(self):
         plan = self.plan()
@@ -95,16 +106,31 @@ class Collect(unittest.TestCase):
         self.assertEqual(audio["waveform"].shape[-1], round(plan.total_frames / 24.0 * RATE))
         self.assertTrue(issues and issues[0].code == "audio_short")
 
+    def test_joins_are_decoded_like_one_continuous_latent(self):
+        # Real minute (fixed_minute_ref2va, 2026-10-11): each part decoded alone ended on the VAE's unblended lookahead clip and
+        # restarted the decoder on the regenerated head, a one-frame jump at every join (29.958 s: luma +0.0110, contrast +0.0049).
+        # A decoder whose frames depend on the step before them stands in for the VAE's clip-to-clip blend.
+        plan = self.plan(total=900)
+        steps = [pin.steps_for_frames(c.sampled_frames) for c in plan.chunks]
+        videos = [torch.arange(n, dtype=torch.float32).add(1000 * c.index).view(1, 1, n, 1, 1).expand(1, 24, n, 2, 2).clone()
+                  for n, c in zip(steps, plan.chunks)]
+        latents = [{"samples": NestedTensor((v, torch.zeros(1, 32, 2, round(c.sampled_frames / 24.0 * 40))))} for v, c in zip(videos, plan.chunks)]
+        head = pin.steps_for_frames(plan.continuity.head)
+        joined = torch.cat([videos[0]] + [v[:, :, head:] for v in videos[1:]], 2)
+        expected = context_decode(joined)
+        sizes = {c.index: c.sampled_frames for c in plan.chunks}
+        frames, _, _ = collect.collect_chunks(latents, plan, context_decode, decode_audio_factory(sizes))
+        self.assertEqual(frames.shape[0], expected.shape[0])
+        self.assertTrue(torch.equal(frames, expected))
+
     def test_wrong_number_of_chunks_or_frames_is_refused(self):
         plan = self.plan()
         sizes = {c.index: c.sampled_frames for c in plan.chunks}
         with self.assertRaises(ValueError):
-            collect.collect_chunks([fake_latent(124, 0)], plan, decode_video_factory(sizes), decode_audio_factory(sizes))
-        wrong = dict(sizes)
-        wrong[0] = sizes[0] - 17
+            collect.collect_chunks([fake_latent(124, 0)], plan, decode_video, decode_audio_factory(sizes))
         latents = [fake_latent(c.sampled_frames, c.index) for c in plan.chunks]
         with self.assertRaises(ValueError):
-            collect.collect_chunks(latents, plan, decode_video_factory(wrong), decode_audio_factory(sizes))
+            collect.collect_chunks(latents, plan, lambda video: decode_video(video, missing=17), decode_audio_factory(sizes))
 
 
 if __name__ == "__main__":
