@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**One part for a section just over the part length** (2026-10-11):
+
+- A section up to one H3 grid step (17 frames) longer than the part length stays one render part. A keyframe at 10 s with 10 s parts ended its part at 10.08 s on the grid, and the 243 frames were split into two parts of 5 s.
+
 **Studio fixes from the open JS bugs** (2026-10-11):
 
 - Removing an audio lane takes its clips with it, so the lane does not come back on load (BUG-023).

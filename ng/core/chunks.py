@@ -164,7 +164,9 @@ def plan_lengths(total_frames, chunk_target_frames, head, first_head=0):
     `first_head` is the first chunk's own pin: 0 at the start of the video or of an unpinned part, `head` after a join."""
     first_options, next_options = _delivered_options(first_head), _delivered_options(head)
     longest = max(next_options)
-    count = max(1, -(-total_frames // max(min(chunk_target_frames, longest), 1)))
+    # One grid step over the target is no reason for another part: a keyframe at 10 s with 10 s parts ends its part on
+    # H3's grid at 10.08 s, and 243 of 240 frames made two parts of 5 s instead of one (2026-10-11).
+    count = max(1, -(-(total_frames - limits.GRID_STEP) // max(min(chunk_target_frames, longest), 1)))
     # The target is a preference; it cannot require more minimum-size clips
     # than the project fits, or fewer clips than its maximum lengths can hold.
     least = max(1, 1 + -(-(total_frames - max(first_options)) // longest))

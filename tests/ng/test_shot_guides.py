@@ -156,6 +156,14 @@ class ShotGuides(unittest.TestCase):
         self.assertLessEqual(abs(shown - 240), 8, "the keyframe moves at most half a grid step")
         self.assertIn("keyframe_moved", {i.code for i in result.issues})
 
+    def test_a_keyframe_at_the_part_length_gives_two_parts_not_three(self):
+        record = shot("one", 0, 20, [("a", "first_frame"), ("k", "keyframe"), ("z", "last_frame")])
+        record["media"][1]["at_s"] = 10.0
+        document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": [record]})
+        result = project.plan_project(ctx.DirectorContext(shots_text=document, items=(image("a"), image("k"), image("z")),
+                                                          project_seconds=20, mode="fl2va"), 10, chunks.ContinuityPlan())
+        self.assertEqual(len(result.plan.chunks), 2, "243 frames for a 240 frame target is one part, not two")
+
     def test_a_keyframe_on_the_grid_is_not_moved(self):
         result = self.fl2va_keyframe(242 / 24.0)        # a first part of 17*14+5 = 243 frames ends on frame 242
         self.assertEqual(result.plan.chunks[0].story_end_f, 243)
