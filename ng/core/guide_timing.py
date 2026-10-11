@@ -2,7 +2,7 @@
 from .context import USAGE_BY_MEDIA
 from .frames import seconds_to_frames
 from .issues import Issue
-from .limits import FPS
+from .limits import FPS, GRID_STEP
 from .media_ref import MediaRef
 from .shot_document import read_document, bound_media_ids
 from .shots import parse_shots
@@ -42,6 +42,9 @@ def _global_guides(context, chunk, bound):
 def _bound_ref(item, role, shot, chunk, mode):
     if item.media == "image" and role in ("first_frame", "last_frame"):
         frame = shot.start_f if role == "first_frame" else shot.end_f - 1
+        if role == "last_frame" and chunk.is_last and abs(shot.end_f - chunk.story_end_f) < GRID_STEP:
+            # the last shot ends where the project ends; the video itself ends on H3's grid, up to 16 frames off
+            frame = chunk.story_end_f - 1
     elif item.media == "image" and role in ("keyframe", "storyboard"):
         # Placed on a shot in the Studio, a keyframe guides that shot's start; a time stored on an older card still wins.
         frame = seconds_to_frames(item.options.anchor_s) if item.options.anchor_s >= 0 else shot.start_f

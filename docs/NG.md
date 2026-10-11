@@ -312,7 +312,8 @@ as one latent (each part's regenerated head dropped), one window at a time, so t
 instead of restarting at every part; sound is still decoded per part. In FL2VA with a pin, a shot with a First frame picture of
 its own opens a new part without a pin, so the picture is the part's real first frame; the shot start moves to the nearest H3
 grid frame (a plan note says by how much). Inside a pinned part H3 takes such a picture as the end of the running take
-instead. The planner tries to place boundaries away from new story actions
+instead. A shot with a First and a Last frame is anchored at both ends; with the mode set to FL2VA a Reference picture counts
+as First frame. The planner tries to place boundaries away from new story actions
 and warns when it cannot. Audio on a lane is cut per part at its story position, so it continues across the seam.
 
 Read [NG-validation.md](NG-validation.md) for automated checks and native GPU runs. Single-seed functional runs show feasibility;

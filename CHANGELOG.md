@@ -4,6 +4,8 @@
 
 **FL2VA shots open on their First frame** (2026-10-11):
 
+- With the mode set to FL2VA, a Reference picture is used as First frame (FL2VA has no reference pictures; they were dropped before). It stays the figure its text names.
+- A Last frame bound to the last shot lands on the video's last frame, also when the video ends a few grid frames before or after the project length.
 - In FL2VA with continuity, a shot bound to its own First frame picture starts a render part without a pin and gets the picture as the native first frame. Inside a pinned part H3 reached such a picture and cut one frame later, so the shot did not open on it. The shot start snaps to the nearest grid frame (`opening_moved` note); Ref2VA is unchanged.
 
 **Seamless picture at render-part joins** (2026-10-11):

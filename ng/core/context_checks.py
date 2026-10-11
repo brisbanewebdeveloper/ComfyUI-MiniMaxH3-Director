@@ -28,7 +28,7 @@ def check_context(context):
             issues.append(Issue("audio_roles", "Only the first supported audio usage is applied; use one role per card.", item.name))
         if item.media == "audio" and "voice" in item.effective_usage and item.speaker and item.speaker not in subjects:
             issues.append(Issue("voice_unbound", "Speaker is not a reference image; this voice is sent as an unbound audio reference.", item.name))
-        reference = (item.media == "image" and "reference" in item.effective_usage) or item.media == "video" or (
+        reference = (item.media == "image" and "reference" in item.effective_usage and "first_frame" not in item.effective_usage) or item.media == "video" or (
             item.media == "audio" and bool(set(item.effective_usage) & {"voice", "copy", "music_style", "rhythm", "sound_reference"}))
         if context.mode == "fl2va" and reference:
             issues.append(Issue("reference_disabled", "Is omitted by explicit fl2va mode; choose auto or ref2va to use it.", item.name))

@@ -188,8 +188,26 @@ def _move_shot_starts(shots_text, moved):
     return json.dumps(data)
 
 
+def _fl2va_pictures(context):
+    """FL2VA has no reference slots: with the mode set to fl2va, a Reference picture opens its shot (or the video) as First frame."""
+    if context.mode != "fl2va":
+        return context, []
+    items, names = [], []
+    for item in context.items:
+        usage = item.effective_usage
+        if item.media == "image" and item.source and "reference" in usage and not set(usage) & {"first_frame", "last_frame", "keyframe", "storyboard"}:
+            item = replace(item, usage=usage + ("first_frame",))     # still the figure the text names
+            names.append(item.name)
+        items.append(item)
+    issues = [Issue("reference_as_first_frame", "FL2VA has no reference pictures; these open their shot (or the video) as "
+                    "First frame: %s." % ", ".join(names))] if names else []
+    return replace(context, items=tuple(items)), issues
+
+
 def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan, image_size=None) -> ProjectPlan:
     context, canvas_issues = auto_canvas(context, image_size)
+    context, fallback_issues = _fl2va_pictures(context)
+    canvas_issues = canvas_issues + fallback_issues
     context, issues = _prepare(context)
     issues = canvas_issues + issues
     total = frames.seconds_to_frames(context.project_seconds)

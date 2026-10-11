@@ -1,4 +1,5 @@
 """Shot anchors must become actual native guide rows, not project-boundary promises."""
+import json
 import unittest
 from unittest.mock import patch
 from _pack import comfy_available, module, stub_prompt_server
@@ -55,7 +56,8 @@ class ShotGuides(unittest.TestCase):
     def test_normalized_overlap_and_end_clipping_control_anchor_time(self):
         records = [shot("one", 0, 4, []), shot("late", 3, 20, [("a", "first_frame"), ("b", "last_frame")])]
         result = plan(records, (image("a"), image("b")), 10, 10)
-        self.assertEqual([(r.kind, r.start_f) for r in result.compiled[0].refs], [("keyframe", 96), ("keyframe", 239)])
+        # the clipped last shot ends with the video, which ends on H3's grid (243 frames): its picture is the real last frame
+        self.assertEqual([(r.kind, r.start_f) for r in result.compiled[0].refs], [("keyframe", 96), ("last_frame", 242)])
         self.assertTrue({"shot_overlap", "shot_clipped"} <= {i.code for i in result.issues})
 
     def test_ref2va_subjects_survive_a_bound_opening_guide(self):
@@ -115,6 +117,23 @@ class ShotGuides(unittest.TestCase):
         self.assertTrue(all(abs(start - 480 * k) <= 8 for k, start in enumerate(starts)))
         self.assertIn("opening_moved", {i.code for i in result.issues})
         self.assertNotIn("late_change", {i.code for i in result.issues})
+
+    def test_fl2va_shots_anchored_on_both_ends_two_parts_each(self):
+        # User plan: six shots of two parts, picture k opens shot k and closes shot k-1. Reference cards in fl2va mode fall
+        # back to First frame (FL2VA has no reference slots; they were dropped with "reference_disabled").
+        names = "abcdefg"
+        records = [shot("s%d" % k, 10 * k, 10 * k + 10, [(names[k], "context"), (names[k + 1], "last_frame")]) for k in range(6)]
+        document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": records})
+        result = project.plan_project(ctx.DirectorContext(shots_text=document, items=tuple(image(n) for n in names),
+                                                          project_seconds=60, mode="fl2va"), 5, chunks.ContinuityPlan())
+        parts = result.plan.chunks
+        self.assertEqual(len(parts), 12)
+        for part, compiled in zip(parts, result.compiled):
+            expected = [("first_frame", names[part.index // 2], 0)] if part.index % 2 == 0 else \
+                       [("last_frame", names[part.index // 2 + 1], part.sampled_frames - 1)]
+            self.assertEqual([(r.kind, r.ctx_id, r.start_f) for r in compiled.refs], expected)
+            self.assertEqual(part.head_frames, 0 if part.index % 2 == 0 else 22)
+        self.assertNotIn("reference_disabled", {i.code for i in result.issues})
 
     def test_ref2va_keeps_a_shot_first_frame_inside_the_running_part(self):
         records = [shot("one", 0, 20, []), shot("two", 20, 40, [("b", "first_frame")])]
