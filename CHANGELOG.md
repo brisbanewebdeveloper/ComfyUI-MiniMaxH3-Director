@@ -2,6 +2,13 @@
 
 ## 1.0.0 (unreleased)
 
+**Dialogue, songs, drafts and the rest of the audit bugs** (2026-10-11):
+
+- A written spoken line ("@Alice [English] says: ...") of a First / last frame figure becomes a proper dialogue line in First / last frame mode, also after prose on the same line (BUG-090); in References mode a shot-bound First / Last frame is that slot with its anchor text, as a global card is (BUG-091).
+- AI split keeps the user's own lines with any delivery and a language tag (BUG-084), binds a speaker only to a figure picture (BUG-087/088, keeping the name as written) and no longer mixes figures without a card with the narrator (BUG-089). A shot draft line bound to an audio, text or video card is spoken by a voice of that name instead of failing the draft; locked fields are left as they are (BUG-086); a binding to a disconnected card is refused (BUG-058).
+- Song lines are only sung where the song plays: up to the card's End and the file's end (BUG-085).
+- A Continue video no longer reports "reference disabled" in FL2VA (BUG-093); unwired optional prompt inputs and Studio contexts are treated as empty (BUG-062/063); LM Studio and llama.cpp store their base with /v1 like the other providers (BUG-042, same URLs).
+
 **Layout, turbo LoRA and open audit bugs** (2026-10-11):
 
 - The Studio and the Context cards no longer collapse to one narrow, very tall column. Showing a node in ComfyUI's right panel (Parameters) wrote the panel's width (about 100 px) into the widget, and the node then laid out 80 px wide; our widgets now always take the node's width.

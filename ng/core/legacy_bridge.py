@@ -131,19 +131,53 @@ def extra_voice_issues(extra, context=None):
     return out
 
 
+def _voiced(context, skip=()):
+    """A picture card that speaks without a reference slot speaks as @voice(Name): a First / last frame figure in FL2VA,
+    or one next to the Subjects in Ref2VA. "@Alice says: ..." stayed prose, without <d> tags, before (BUG-090)."""
+    return {item.name: "@voice(%s)" % item.name for item in context.items if item.media == "image" and item.name and item.name not in skip}
+
+
+_SPOKEN_AFTER_PROSE = re.compile(r"(?<=[.!?])\s+(?=@[^:.!?]*:)")
+
+
+def _own_lines(text, known):
+    """A spoken line written after prose on the same line ("The camera pushes in. @Alice says: Hurry!") goes on a line
+    of its own; the compiler reads dialogue line by line and took the whole line for prose (BUG-090)."""
+    out = []
+    for line in text.splitlines():
+        parts = _SPOKEN_AFTER_PROSE.split(line)
+        while len(parts) > 1 and not any(parts[-1].startswith("@" + name) for name in known):
+            parts[-2:] = [parts[-2] + " " + parts[-1]]
+        out += [parts[0]] if len(parts) == 1 else [" ".join(parts[:-1]), parts[-1]]
+    return "\n".join(out)
+
+
+def _spoken_lines(text, voices, known):
+    """Lines of the form "@Name [Language] says: ..." with a voiced Name get their speaker as @voice(Name)."""
+    lines = []
+    for line in _own_lines(text, known).splitlines():
+        head, colon, rest = line.partition(":")
+        bare = re.sub("|".join(re.escape("@" + name) for name in sorted(known, key=len, reverse=True)) or "$^", "", head)
+        spoken = replace_mentions(head, voices, known) + colon + rest
+        lines.append(spoken if colon and not re.search(r"[.!?]", bare) and plan.DIALOGUE_RE.match(spoken.strip()) else line)
+    return "\n".join(lines)
+
+
 def _tag_substitutor(slot_items, context):
     names = {context.item(i).name: "@ref%d" % n for n, i in enumerate(slot_items, 1)}
-    return lambda text: replace_mentions(text, names, (item.name for item in context.items))
+    known = [item.name for item in context.items]
+    voices = _voiced(context, skip=names)
+    return lambda text: replace_mentions(_spoken_lines(text, voices, known), names, known)
 
 
 def _plain_substitutor(subjects, context):
     """Without reference slots there is no <Subject N> to point at: a mention is the name, a spoken line names its voice."""
     known = [item.name for item in context.items]
-    names, voices = {s.name: s.name for s in subjects}, {s.name: "@voice(%s)" % s.name for s in subjects}
+    names, voices = {s.name: s.name for s in subjects}, {**_voiced(context), **{s.name: "@voice(%s)" % s.name for s in subjects}}
 
     def substitute(text):
         lines = []
-        for line in text.splitlines():
+        for line in _own_lines(text, known).splitlines():
             head, colon, rest = line.partition(":")
             spoken = replace_mentions(head, voices, known) + colon + replace_mentions(rest, names, known)
             # "@Name [German] says: ..." is a spoken line; a sentence before the first colon (e.g. the Prompt followed

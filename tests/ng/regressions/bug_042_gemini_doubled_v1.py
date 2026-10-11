@@ -71,6 +71,8 @@ class OpenAiCompatibleBase(unittest.TestCase):
     def test_bug_042_every_provider_models_url_is_its_base_plus_models(self):
         for key in sorted(providers.PROVIDERS):
             entry = providers.get(key)
+            if entry.generate_path == providers.OLLAMA_GENERATE:
+                continue        # Ollama's own API (/api/tags), see test_control_ollama_keeps_its_own_api_paths
             if not entry.base_url:
                 continue      # "custom" has no address of its own
             self.assertEqual(models_url(entry), entry.base_url + "/models",

@@ -41,7 +41,8 @@ stub_prompt_server()
 providers = module("ng.core.providers")
 analysis_mod = module("ng.adapters.analysis")
 analysis_core = module("ng.core.analysis")
-h3_prompt_mod = module("ng.adapters.h3_prompt")
+h3_prompt_mod = None   # removed module, see REMOVED below
+REMOVED = 'The text card\'s "Build H3 prompt" (ng/adapters/h3_prompt.py) was removed; Make H3 prompt in the Studio replaced it.'
 auto_direct_mod = module("ng.adapters.auto_direct")
 legacy = module("minimax_media")
 
@@ -60,8 +61,9 @@ def sent_sampling(call_kwargs):
     """The sampling values that reached the transport, from wherever the adapter put them."""
     flat = {key: value for key, value in (call_kwargs or {}).items()
             if key not in ("system_prompt", "timeout", "auth", "api_key")}
-    options = flat.pop("options", None) or {}
-    return dict(flat, **options)
+    sampling = flat.pop("sampling", None) or {}       # the adapters hand the provider payload on whole as `sampling`
+    options = flat.pop("options", None) or sampling.pop("options", None) or {}
+    return dict(flat, **sampling, **options)
 
 
 def run_analyze():
@@ -112,6 +114,7 @@ class SamplingReachesProvider(unittest.TestCase):
         self.assertEqual(got.get("seed"), 12345,
                          "a ticked Fixed seed never reached the provider: %r" % (got,))
 
+    @unittest.skip(REMOVED)
     def test_bug_041_build_h3_prompt_must_send_the_sampling_settings(self):
         got = run_build()
         self.assertEqual(got.get("temperature"), 1.9,

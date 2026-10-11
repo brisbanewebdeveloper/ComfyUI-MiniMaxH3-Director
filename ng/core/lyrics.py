@@ -9,7 +9,7 @@ import difflib
 import re
 from dataclasses import dataclass
 
-from .audio_timing import clip_windows, shot_windows
+from .audio_timing import clip_windows, shot_windows, source_window
 from .frames import seconds_to_frames
 
 STAMP_RE = re.compile(r"^\s*\[(\d{1,3}):(\d{1,2}(?:[.:]\d{1,3})?)\]")
@@ -133,8 +133,22 @@ def _spans(context, item):
     source = seconds_to_frames(item.options.start_s)
     bound = (shot_windows(context) or {}).get(item.id)
     if bound is not None:
-        return [(start, end, source + offset) for start, end, offset in bound]
-    return [(0, seconds_to_frames(context.project_seconds), source)]
+        return _played([(start, end, source + offset) for start, end, offset in bound], item)
+    return _played([(0, seconds_to_frames(context.project_seconds), source)], item)
+
+
+def _played(spans, item):
+    """Only as long as the card's End or its file lasts: past it the song is silent, and its lines were sung into
+    parts without any song (BUG-085)."""
+    start, available = source_window(item)
+    if available is None:
+        return spans
+    out = []
+    for story_start, story_end, offset in spans:
+        story_end = min(story_end, story_start + max(0, start + available - offset))
+        if story_end > story_start:
+            out.append((story_start, story_end, offset))
+    return out
 
 
 @dataclass(frozen=True)
@@ -158,10 +172,12 @@ def story_lines(context):
         for origin, end, offset in _spans(context, item):
             for line in lines:
                 start = origin + seconds_to_frames(line.start) - offset
-                middle = origin + seconds_to_frames((line.start + line.end) / 2.0) - offset
+                # a line runs at most to where the played window ends (the card's End, the file's end): the last line
+                # of a trimmed song otherwise had its middle past the window and was dropped (BUG-085)
+                stop = min(origin + seconds_to_frames(line.end) - offset, end)
+                middle = (start + stop) // 2
                 if origin <= middle < end:
-                    out.append(StoryLine(max(origin, start), min(end, origin + seconds_to_frames(line.end) - offset), middle, item.speaker,
-                                         language or "English", line.text, item.name))
+                    out.append(StoryLine(max(origin, start), stop, middle, item.speaker, language or "English", line.text, item.name))
     return sorted(out, key=lambda line: line.start_f)
 
 

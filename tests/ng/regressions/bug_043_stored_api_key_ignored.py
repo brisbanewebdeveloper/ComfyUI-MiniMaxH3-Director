@@ -28,7 +28,14 @@ from _pack import module, stub_prompt_server
 stub_prompt_server()
 keys = module("ng.adapters.keys")
 auto_direct = module("ng.adapters.auto_direct")
-h3_prompt = module("ng.adapters.h3_prompt")
+REMOVED = "The text card's Build H3 prompt (ng/adapters/h3_prompt.py) was removed; Make H3 prompt in the Studio replaced it."
+routes = module("ng.nodes.analysis_routes")
+
+
+def route_key(root, payload):
+    """The key the /ng/direct and /ng/analyze routes hand to the adapters: stored key first, then the env var."""
+    with patch.object(routes, "key_root", return_value=root):
+        return routes._api_key(object(), payload)
 analysis = module("ng.adapters.analysis")
 legacy = module("minimax_media")
 
@@ -68,7 +75,7 @@ class StoredApiKeyUsed(unittest.TestCase):
         }
 
         with patch.object(legacy, "vlm_generate", side_effect=fake_vlm_generate):
-            asyncio.run(auto_direct.direct(payload))
+            asyncio.run(auto_direct.direct(payload, api_key=route_key(self.root, payload)))
 
         self.assertEqual(
             captured_key,
@@ -76,6 +83,8 @@ class StoredApiKeyUsed(unittest.TestCase):
             "auto_direct must resolve and use the API key stored in the user folder",
         )
 
+    @unittest.skip(REMOVED)
+    @unittest.skip(REMOVED)
     def test_bug_043_build_h3_prompt_uses_stored_api_key(self):
         captured_key = None
 

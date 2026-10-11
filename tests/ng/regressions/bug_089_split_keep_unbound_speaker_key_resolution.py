@@ -173,7 +173,7 @@ class SplitKeepUnboundSpeakerKeyRegression(unittest.TestCase):
 
         self.assertEqual(len(shots[1]["spoken"]), 1)
         self.assertEqual(shots[1]["spoken"][0]["text"], "Drink this potion.")
-        self.assertEqual(shots[1]["spoken"][0]["voice"], "alchemist")
+        self.assertEqual(shots[1]["spoken"][0]["voice"], "Alchemist")     # spelled as the user wrote it (BUG-087)
 
     # --- Red Defect Tests (Reproducing BUG-089) ---
 

@@ -23,7 +23,7 @@ class NGDirectorStudio(io.ComfyNode):
         inputs, settings = split_render_inputs(values)
         planning_names = [item.id for item in NGDirector.define_schema().inputs[:-1]]
         planning = {name: values[name] for name in planning_names if name in values}
-        planning.update({"contexts." + name: link for name, link in values.get("contexts", {}).items()})
+        planning.update({"contexts." + name: link for name, link in (values.get("contexts") or {}).items()})     # None when unwired (BUG-063)
         expanded, outputs = director_sequence(planning, inputs, settings)
         return io.NodeOutput(*outputs, expand=expanded)
 

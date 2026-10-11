@@ -65,8 +65,10 @@ class ShotGuides(unittest.TestCase):
         result = plan(records, (image("a"), image("subject", usage=("reference",))), 8, 10)
         compiled = result.compiled[0]
         self.assertEqual(compiled.mode, "ref2va")
-        self.assertEqual([(r.kind, r.ctx_id) for r in compiled.refs], [("picture", "subject"), ("keyframe", "a")])
+        # Bound as a global First frame card is (BUG-091): numbered picture plus the first-frame slot; the Subject stays Picture 1.
+        self.assertEqual([(r.kind, r.ctx_id) for r in compiled.refs], [("picture", "subject"), ("picture", "a"), ("first_frame", "a")])
         self.assertEqual(dict(compiled.prompt_labels)["<Picture 1>"], "subject")
+        self.assertIn("<Picture 2> is a composition anchor at 0s.", compiled.prompt)
 
     def test_binding_order_resolves_same_frame_conflicts_and_names_both_contexts(self):
         result = plan([shot("one", 3, 8, [("b", "first_frame"), ("a", "first_frame")])], (image("a"), image("b")), 8, 10)

@@ -109,7 +109,7 @@ class NullableContextWidgets(unittest.TestCase):
         parsed = json.loads(self.split.parse_split(data, 5, contexts, "@Hero says: Exact words.")["shots"])
         self.assertEqual(parsed["shots"][0]["spoken"][0]["text"], "Exact words.")
         self.assertEqual(parsed["shots"][0]["spoken"][0]["speaker_id"], "")
-        self.assertEqual(parsed["shots"][0]["spoken"][0]["voice"], "hero")
+        self.assertEqual(parsed["shots"][0]["spoken"][0]["voice"], "Hero")     # spelled as written (BUG-087)
 
     def test_null_name_route_succeeds_without_broad_exception_handler(self):
         provider = {"schema_version": 2, "provider": "ollama", "base_url": "http://127.0.0.1:11434", "model": "audit-never-called"}

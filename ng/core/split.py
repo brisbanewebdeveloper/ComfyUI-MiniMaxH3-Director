@@ -8,6 +8,7 @@ import re
 
 from . import fields
 from .context_build import card_id, widget_text
+from .context_options import roles
 from .shot_draft import plain_mentions
 
 DELIVERIES = ("says", "sings", "whispers", "shouts", "murmurs")
@@ -67,12 +68,26 @@ def _norm(text):
     return " ".join(re.findall(r"\w+", text.lower()))
 
 
+def _speaks(entry):
+    """Only a figure picture (Reference, not "Belongs to" another) holds a voice slot; an audio, text or video card, or a
+    First / Last frame or Keyframe picture of the same name, speaks as a described voice (BUG-087/088)."""
+    widgets = entry.get("widgets", {})
+    if entry.get("media") != "image":
+        return False
+    try:
+        usage = roles(widgets.get("usage_roles") or "", widgets.get("usage") or "reference")
+        owners = roles(widgets.get("subject_ids") or "", "")
+    except ValueError:
+        return False
+    return not set(usage) & {"first_frame", "last_frame", "keyframe", "storyboard"} and not owners
+
+
 def _owner(speaker, contexts):
-    """(speaker_id, voice) for a line: a named Content speaks with its own voice, anyone else is a described narrator."""
+    """(speaker_id, voice) for a line: a named figure speaks with its own voice, anyone else is a described voice."""
     name = speaker.strip().lstrip("@").casefold()
     for entry in contexts or ():
         widgets = entry.get("widgets", {})
-        if name and widget_text(widgets, "name").casefold() == name:
+        if name and widget_text(widgets, "name").casefold() == name and _speaks(entry):
             return card_id(entry), "a narrator"
     voice = " ".join(DELIMITERS.sub(" ", speaker.lstrip().lstrip("@")).split())
     return "", voice or "a narrator"
@@ -96,26 +111,31 @@ def _lines(raw, path, contexts, sung):
 def _keep(shots, keep, contexts):
     """The user's own lines ("@Mage says: ...", "Narrator says: ...") replace the AI's lines of that speaker, in the shot
     where the AI first gave that speaker a line, else in the last shot. Returns the user's lines the AI did not have."""
-    own = {}
+    own, spelled = {}, {}
     for line in (keep or "").splitlines():
-        found = re.match(r"^\s*(@?)([^:]+?)\s+says:\s*(.+)$", line)
+        # "@Mage [German] whispers: ..." - every delivery and an optional language, as the Studio writes lines (BUG-084)
+        found = re.match(r"^\s*(@?)([^:\[\]]+?)\s*(?:\[([^\]]+)\])?\s+(%s):\s*(.+)$" % "|".join(DELIVERIES), line, re.IGNORECASE)
         if found:
             name = found.group(2).strip()
             narrator = name.casefold() == "narrator" and not (found.group(1) and _owner(name, contexts)[0])
-            own.setdefault("" if narrator else name.casefold(), []).append(found.group(3).strip())
+            spelled.setdefault(name.casefold(), name)
+            own.setdefault("" if narrator else name.casefold(), []).append(
+                (found.group(5).strip(), (found.group(3) or "English").strip(), found.group(4).lower()))
     if not own:
         return []
     names = {card_id(entry): widget_text(entry["widgets"], "name").casefold() for entry in contexts or ()}
-    key = lambda line: names.get(line["speaker_id"], "") if line["speaker_id"] else ""
+    # A figure without a card speaks with its own described voice: its key is that voice, not the narrator's (BUG-089).
+    key = lambda line: names.get(line["speaker_id"], "") if line["speaker_id"] else (
+        "" if line.get("voice", "a narrator").casefold() in ("a narrator", "narrator") else line["voice"].casefold())
     proposed = {_norm(line["text"]) for shot in shots for line in shot["spoken"]}
     for speaker, texts in own.items():
         target = next((shot for shot in shots if any(key(line) == speaker for line in shot["spoken"])), shots[-1])
         for shot in shots:
             shot["spoken"] = [line for line in shot["spoken"] if key(line) != speaker]
-        speaker_id, voice = _owner(speaker, contexts) if speaker else ("", "a narrator")
-        target["spoken"] += [{"schema_version": 1, "text": text, "speaker_id": speaker_id, "voice": voice, "language": "English",
-                              "delivery": "says"} for text in texts]
-    return [text for texts in own.values() for text in texts if _norm(text) not in proposed]
+        speaker_id, voice = _owner(spelled[speaker], contexts) if speaker else ("", "a narrator")
+        target["spoken"] += [{"schema_version": 1, "text": text, "speaker_id": speaker_id, "voice": voice, "language": language,
+                              "delivery": delivery} for text, language, delivery in texts]
+    return [text for texts in own.values() for text, _, _ in texts if _norm(text) not in proposed]
 
 
 def parse_split(data, seconds, contexts=None, keep="", sung=()):

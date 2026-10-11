@@ -81,7 +81,8 @@ class OptionalInputContracts(unittest.TestCase):
             self.execute_product("style", None)
 
     def test_invalid_core_model_is_rejected_before_compiling(self):
-        for field in ("prepend_text", "prompt_override", "style"):
+        # prepend_text and prompt_override are optional inputs: None from a bypassed node means empty (BUG-062).
+        for field in ("style",):
             context = self.context_module.DirectorContext(idea="A baker opens a shop.", **{field: None})
             with self.subTest(field=field), patch.object(self.project_module, "compile_chunk") as compiler:
                 with self.assertRaisesRegex(self.issues_module.SchemaError, "expected text"):

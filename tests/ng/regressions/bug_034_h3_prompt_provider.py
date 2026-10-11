@@ -15,13 +15,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from _pack import module, stub_prompt_server
 
 stub_prompt_server()
-h3_prompt_mod = module("ng.adapters.h3_prompt")
+h3_prompt_mod = None   # removed module, see REMOVED below
+REMOVED = 'The text card\'s "Build H3 prompt" (ng/adapters/h3_prompt.py) was removed; Make H3 prompt in the Studio replaced it.'
 legacy = module("minimax_media")
 
 MOCK_PROMPT = "A white-haired mage stands in a dark fantasy library, holding a glowing staff."
 
 
 class H3PromptCloudProvider(unittest.TestCase):
+    @unittest.skip(REMOVED)
     def test_bug_034_build_h3_prompt_must_support_openrouter_without_key_error(self):
         payload = {
             "provider": {"schema_version": 2, "provider": "openrouter", "model": "google/gemma-4-26b-a4b-it:free"},
@@ -39,6 +41,7 @@ class H3PromptCloudProvider(unittest.TestCase):
 
             self.assertIn("prompt", res)
 
+    @unittest.skip(REMOVED)
     def test_control_build_h3_prompt_supports_local_ollama_provider(self):
         payload = {
             "provider": {"schema_version": 2, "provider": "ollama", "model": "qwen2.5vl:7b"},

@@ -82,14 +82,14 @@ class ShotDraftStaleBinding(unittest.TestCase):
         }
 
     def test_bug_058_stale_media_binding_refused(self):
-        with self.assertRaises(ValueError) as caught:
-            shot_draft.parse_draft(self._draft_echo(), self._records(), seconds=10.0, contexts=self._contexts())
-        self.assertIn(
-            self.STALE_ID,
-            str(caught.exception),
-            "A media binding whose Context ID resolves to no connected card must be refused, "
-            "even when the AI echoes the shot's own already-serialized binding.",
-        )
+        # Refused per field, as every bad field of a draft is: the good text of the same patch stays (shot_draft keeps
+        # the fields that pass and lists the dropped ones with their reason).
+        result = shot_draft.parse_draft(self._draft_echo(), self._records(), seconds=10.0, contexts=self._contexts())
+        fields_ = result["patches"][0]["fields"]
+        self.assertNotIn("media", fields_, "A media binding whose Context ID resolves to no connected card must be refused, "
+                                           "even when the AI echoes the shot's own already-serialized binding.")
+        self.assertEqual(fields_["text"], "A robed mage conjures a bright flame.")
+        self.assertTrue(any(self.STALE_ID in note for note in result["dropped"]), result.get("dropped"))
 
     def test_bug_058_control_new_binding_against_connected_card(self):
         # Same shape, but the binding names a connected image card with a valid role: accepted.

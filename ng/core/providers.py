@@ -132,12 +132,12 @@ PROVIDERS = {
         verified=True, verified_note="Four H3 GPU runs with file-loaded contexts.",
         sample_model="qwen2.5vl:7b"),
     "lmstudio": Provider(
-        "lmstudio", "LM Studio", "local", "http://127.0.0.1:1234", supports=("text", "vision"),
+        "lmstudio", "LM Studio", "local", "http://127.0.0.1:1234/v1", supports=("text", "vision"),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature", "top_p",
                 "frequency_penalty", "presence_penalty"),
         verified_note="Reuses the existing address; no run yet."),
     "llamacpp": Provider(
-        "llamacpp", "llama.cpp server", "local", "http://127.0.0.1:8080", supports=("text",),
+        "llamacpp", "llama.cpp server", "local", "http://127.0.0.1:8080/v1", supports=("text",),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature", "top_p",
                 "frequency_penalty", "presence_penalty"),
         verified_note="Reuses the existing address; no run yet."),

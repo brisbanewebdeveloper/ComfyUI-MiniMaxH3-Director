@@ -30,6 +30,14 @@ keys = module("ng.adapters.keys")
 builder = module("ng.adapters.builder")
 part_writer = module("ng.adapters.part_writer")
 legacy = module("minimax_media")
+routes = module("ng.nodes.analysis_routes")
+
+
+def route_key(root, payload):
+    """The key the /ng/build_plan and /ng/write_part routes hand to builder.plan / part_writer.write: the adapters get
+    it from the route (stored key first, then the env var), they do not read the user folder themselves."""
+    with patch.object(routes, "key_root", return_value=root):
+        return routes._api_key(object(), payload)
 
 
 class BuilderStoredApiKey(unittest.TestCase):
@@ -71,7 +79,7 @@ class BuilderStoredApiKey(unittest.TestCase):
         }
 
         with patch.object(legacy, "vlm_generate", side_effect=fake_vlm_generate):
-            asyncio.run(builder.plan(payload))
+            asyncio.run(builder.plan(payload, api_key=route_key(self.root, payload)))
 
         self.assertEqual(
             captured_key,
@@ -120,7 +128,7 @@ class BuilderStoredApiKey(unittest.TestCase):
         }
 
         with patch.object(legacy, "vlm_generate", side_effect=fake_vlm_generate):
-            asyncio.run(part_writer.write(payload))
+            asyncio.run(part_writer.write(payload, api_key=route_key(self.root, payload)))
 
         self.assertEqual(
             captured_key,

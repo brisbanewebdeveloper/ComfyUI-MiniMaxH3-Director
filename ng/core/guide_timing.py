@@ -62,8 +62,9 @@ def _bound_ref(item, role, shot, chunk, mode, at_s=-1.0):
     if role == "continue":
         return _continue_ref(item, local)
     kind = "keyframe"
-    if mode != "ref2va" and ((role == "first_frame" and local == 0) or
-                            (role == "last_frame" and local == chunk.sampled_frames - 1)):
+    # A First / Last frame bound to a shot is that slot in both modes, as a global card already is (_global_guides):
+    # in Ref2VA it was downgraded to a keyframe, lost its <Picture N> anchor text and its prompt mention (BUG-091).
+    if (role == "first_frame" and local == 0) or (role == "last_frame" and local == chunk.sampled_frames - 1):
         kind = role
     elif mode != "ref2va" and role == "keyframe" and at_s >= 0 and local == chunk.sampled_frames - 1:
         kind = "last_frame"     # the part was planned to end on it (project._part_edges): the trained last-frame slot

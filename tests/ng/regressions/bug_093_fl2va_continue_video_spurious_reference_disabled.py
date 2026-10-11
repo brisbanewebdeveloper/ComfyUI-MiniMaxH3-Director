@@ -177,7 +177,9 @@ class TestBug093Fl2vaContinueVideoSpuriousReferenceDisabled(unittest.TestCase):
 
         # Create a job with compiled continue_video ref
         ref = compile_mod.MediaRef("continue_video", "v_cont", "prequel.mp4", start_f=0, length_f=24, trim_start_f=0)
-        job = types.SimpleNamespace(compiled=types.SimpleNamespace(of_kind=lambda k: (ref,) if k == "continue_video" else ()))
+        # mode and refs as a compiled chunk has them (the first mock lacked both and failed before the call)
+        job = types.SimpleNamespace(compiled=types.SimpleNamespace(mode="fl2va", refs=(ref,),
+                                                                   of_kind=lambda k: (ref,) if k == "continue_video" else ()))
 
         # Mock MiniMax core and media loader
         mm = MagicMock()

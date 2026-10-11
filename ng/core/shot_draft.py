@@ -101,13 +101,18 @@ def _field_value(key, value, record, seconds, contexts):
     existing = [(MediaBinding if key == "media" else SpokenLine).from_dict(entry).to_dict() for entry in record.get(key, [])]
     for entry in parsed:
         identity = entry["context_id"] if key == "media" else entry["speaker_id"]
-        if identity and identity not in by_id and entry not in existing:
+        if key == "spoken" and identity in by_id and by_id[identity]["media"] != "image":
+            # A line bound to an audio, text or video card is spoken by a voice of that name; refusing it left the whole
+            # draft without usable changes (BUG-087).
+            entry.update(speaker_id="", voice=widget_text(by_id[identity]["widgets"], "name") or entry["voice"])
+            identity = ""
+        # A spoken line already in the shot stays even if its speaker card is gone (lines are kept word for word); a media
+        # binding to a card that is no longer connected is refused, also when the AI only echoes it (BUG-058).
+        if identity and identity not in by_id and (key == "media" or entry not in existing):
             raise ValueError("The draft binds an unknown Context ID: %s." % identity)
         if key == "media" and identity in by_id:
             if entry["role"] != "context" and entry["role"] not in USAGE_BY_MEDIA[by_id[identity]["media"]]:
                 raise ValueError("The draft uses an unsupported media role.")
-        if key == "spoken" and identity in by_id and by_id[identity]["media"] != "image":
-            raise ValueError("A spoken speaker must be a Subject image or the narrator.")
     if key == "spoken" and parsed[:len(existing)] != existing:
         raise ValueError("Keep the existing spoken words and order; new lines may be appended.")
     return parsed
@@ -134,8 +139,11 @@ def parse_draft(data, records, seconds, contexts):
             raise ValueError("Draft fields must be timing, text, media or spoken.")
         # A field that fails its check is left out with its reason; the others stay. Gemma's "improve text" carried a
         # spoken line without schema_version, and the good text of the same patch was thrown away with it.
-        kept = {}
+        kept, locked = {}, set(by_id[identity].get("locked_fields") or ())
         for key, value in changes.items():
+            if key in locked:       # the user locked it in the Studio: the AI must not change it (BUG-086)
+                dropped.append("%s of %s: locked in the Studio" % (key, identity))
+                continue
             try:
                 kept[key] = _field_value(key, value, by_id[identity], seconds, contexts)
             except ValueError as error:
