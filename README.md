@@ -9,9 +9,14 @@ see the exact prompt the model will receive while you are still editing it.
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.30.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
 [![version](https://img.shields.io/badge/version-0.3.2-brightgreen)](CHANGELOG.md)
 
-![The MiniMax H3 Director node](docs/images/director-node.png)
+> [!IMPORTANT]
+> ### 🎬 Coming soon: v1 — long videos from one click
+> A rebuilt Director with new nodes: whole music videos in a single Run, straight out of Save Video, no editing.
+> **[Watch the preview & tell us what you think →](https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/issues/34)**
+>
+> [![Whole song, 2:57, one Run](https://img.youtube.com/vi/H0nnmKTGhMs/mqdefault.jpg)](https://youtu.be/H0nnmKTGhMs) [![One minute, one Run](https://img.youtube.com/vi/ARaXmSfd9UQ/mqdefault.jpg)](https://youtu.be/ARaXmSfd9UQ)
 
-<!-- TODO: demo video -->
+![The MiniMax H3 Director node](docs/images/director-node.png)
 
 > This is the [LTX Director](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI)
 > timeline editor by **WhatDreamsCost**, ported to MiniMax H3. Same editing, new backend.
