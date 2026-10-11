@@ -2,7 +2,7 @@
 // "Full screen" in its header lifts the same Studio over the window; there is no second, compact view.
 import { h } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject } from "./h3s_model.js";
+import { renamedDirector } from "./h3s_model.js";
 import { openStudio, closeStudio } from "./h3s_studio.js";
 import { values, applyValues, followNodeWidth } from "./ng_widgets.js";
 import { readContexts } from "./ng_read.js";
@@ -29,24 +29,8 @@ export function repairLaterWidgets(node) {
 
 // A renamed Context keeps its @Name mentions in the Prompt and in every shot; the audio lanes travel along untouched.
 function followRenames(node) {
-  const previous = node.properties.ng_context_names || {}, entries = readContexts(node), now = values(node), changes = {};
-  const idea = renameReferences(now.idea || "", previous, entries);
-  if (idea !== (now.idea || "")) changes.idea = idea;
-  const project = readProject(now.shots || "");
-  if (!project.error && !(now.shots || "").trimStart().startsWith("{")) {
-    const text = renameReferences(now.shots || "", previous, entries);
-    if (text !== (now.shots || "")) changes.shots = text;
-  } else if (!project.error) {
-    const rename = (text) => renameReferences(text, previous, entries);
-    const look = rename(project.look);
-    const partPrompts = project.partPrompts.map((part) => ({ ...part, text: rename(part.text) }));
-    const shots = project.shots.map((shot) => ({ ...shot, text: rename(shot.text),
-      spoken: shot.spoken.map((line) => typeof line.text === "string" ? { ...line, text: rename(line.text) } : line) }));
-    const changed = look !== project.look || partPrompts.some((part, index) => part.text !== project.partPrompts[index].text)
-      || shots.some((shot, index) => shot.text !== project.shots[index].text
-        || shot.spoken.some((line, at) => line.text !== project.shots[index].spoken[at].text));
-    if (changed) changes.shots = writeProject({ ...project, shots, look, partPrompts });
-  }
+  const previous = node.properties.ng_context_names || {}, entries = readContexts(node);
+  const changes = renamedDirector(values(node), (text) => renameReferences(text, previous, entries));
   node.properties.ng_context_names = Object.fromEntries(entries.filter((entry) => entry.widgets.context_id && entry.widgets.name)
     .map((entry) => [entry.widgets.context_id, entry.widgets.name]));
   if (Object.keys(changes).length) applyValues(node, changes);

@@ -21,12 +21,12 @@ test("control: ein Tonclip im gültigen Bereich bleibt unauffällig", () => {
   assert.equal(read.audio[0].offset, 2);
 });
 
-test("BUG-014: ein Offset hinter dem Dateiende wird als ungültig gemeldet, nicht stillschweigend gesendet", () => {
-  // 9999 s in eine Datei, die es nicht gibt: der Plan darf das nicht als normalen Clip führen.
+test("BUG-014: ein Offset hinter dem Dateiende bleibt sichtbar; der Plan benennt ihn", () => {
+  // Nur der Plan kennt die Dateilänge: er meldet audio_clip_past_file ("plays nothing", tests/ng/test_audio_clips.py).
+  // Das Studio verwirft den Clip nicht still, sonst könnte man ihn nicht korrigieren.
   const read = readProject(document([], [clip({ offset: 9999 })]));
-  assert.ok(read.skipped.includes("c1"),
-    `clip with offset past the end must be reported, got skipped=${JSON.stringify(read.skipped)}`);
-  assert.equal(read.audio.length, 0, "an unusable clip must not reach the compiler as a normal lane clip");
+  assert.equal(read.audio.length, 1, "the clip stays in the Studio so the user can fix its offset");
+  assert.equal(read.audio[0].offset, 9999);
 });
 
 test("BUG-014: eine doppelte Clip-ID wird gemeldet und nur einmal verwendet", () => {

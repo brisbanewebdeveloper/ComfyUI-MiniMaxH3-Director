@@ -41,6 +41,12 @@ function validClip(clip) {
 // render part shares (style, place, light), sent in place of the Prompt once there are shots; partPrompts: a render
 // part's own prompt {index, key, text, by}, used while `key` is still that of the part's compiled prompt.
 // skipped: ids of audio clips that are invalid or repeat an id; they are left out, the rest stays editable.
+// Cards that are both on a shot and on an audio lane: both play (shot_bindings.py), which is easy to miss (BUG-004).
+export function boundAndLaned(shots, audio) {
+  const bound = new Set(shots.flatMap((shot) => (shot.media || []).map((binding) => binding.context_id)));
+  return [...new Set(audio.map((clip) => clip.context_id).filter((id) => bound.has(id)))];
+}
+
 export function readProject(text) {
   const story = readStory(text || "");
   if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], look: "", partPrompts: [], skipped: [], error: story.error };
@@ -52,13 +58,43 @@ export function readProject(text) {
   const lanes = [...new Set([...(data.audio_lanes || []), ...audio.map((clip) => clip.lane)])].filter(Boolean);
   const partPrompts = (Array.isArray(data.part_prompts) ? data.part_prompts : [])
     .filter((entry) => Number.isInteger(entry?.index) && entry.index >= 0 && typeof entry.key === "string" && typeof entry.text === "string");
-  return { shots: story.shots, audio, lanes, look: typeof data.look === "string" ? data.look : "", partPrompts, skipped, error: "" };
+  return { shots: story.shots, audio, lanes, look: typeof data.look === "string" ? data.look : "", partPrompts, skipped, error: "",
+    conflicts: boundAndLaned(story.shots, audio) };
 }
 
 export function writeProject({ shots, audio, lanes, look = "", partPrompts = [] }) {
   if (!shots.length && !audio.length && !lanes.length && !look.trim() && !partPrompts.length) return "";
   return JSON.stringify({ format: SHOT_FORMAT, schema_version: 1, shots, audio, audio_lanes: lanes, ...(look.trim() ? { look } : {}),
     ...(partPrompts.length ? { part_prompts: partPrompts } : {}) });
+}
+
+// The Director's widgets after a Context rename: the Prompt, timed text, or the shot document's shot texts, spoken lines,
+// Look and render-part prompts (BUG-079). Returns only what changed.
+export function renamedDirector(now, rename) {
+  const changes = {}, idea = rename(now.idea || "");
+  if (idea !== (now.idea || "")) changes.idea = idea;
+  const project = readProject(now.shots || "");
+  if (project.error) return changes;
+  if (!(now.shots || "").trimStart().startsWith("{")) {
+    const text = rename(now.shots || "");
+    if (text !== (now.shots || "")) changes.shots = text;
+    return changes;
+  }
+  const look = rename(project.look);
+  const partPrompts = project.partPrompts.map((part) => ({ ...part, text: rename(part.text) }));
+  const shots = project.shots.map((shot) => ({ ...shot, text: rename(shot.text),
+    spoken: shot.spoken.map((line) => typeof line.text === "string" ? { ...line, text: rename(line.text) } : line) }));
+  const changed = look !== project.look || partPrompts.some((part, index) => part.text !== project.partPrompts[index].text)
+    || shots.some((shot, index) => shot.text !== project.shots[index].text
+      || shot.spoken.some((line, at) => line.text !== project.shots[index].spoken[at].text));
+  if (changed) changes.shots = writeProject({ ...project, shots, look, partPrompts });
+  return changes;
+}
+
+// A removed audio lane takes its clips with it: readProject rebuilds lanes from the clips, so a clip left behind brought
+// the lane back on the next load (BUG-023).
+export function removeLane({ lanes, audio }, lane) {
+  return { lanes: lanes.filter((entry) => entry !== lane), audio: audio.filter((clip) => clip.lane !== lane) };
 }
 
 // A part's own prompt replaces any earlier one of that part; text "" removes it.

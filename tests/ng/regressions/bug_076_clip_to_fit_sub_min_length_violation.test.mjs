@@ -120,6 +120,8 @@ test("BUG-076: sub-MIN_LENGTH clip produced by clipToFit completely freezes righ
   const total = 10.0;
   const cSub = clip("cSub", 9.7, 14.0);
   const kept = clipToFit([cSub], total);
+  // Since the fix clipToFit drops a clip that would be shorter than MIN_LENGTH, so no frozen 0.3 s clip can exist.
+  if (!kept.length) return;
   const item = kept[0];
 
   // User attempts to drag the right edge inward by 0.1s to adjust the clip
@@ -138,6 +140,7 @@ test("BUG-076: sub-MIN_LENGTH clip produced by clipToFit freezes left edge dragg
   const cPrev = clip("cPrev", 8.0, 9.6);
   const cSub = clip("cSub", 9.7, 14.0);
   const kept = [cPrev, ...clipToFit([cSub], total)];
+  if (kept.length === 1) return;     // the sub-MIN_LENGTH clip was dropped, nothing can freeze
   const item = kept[1];
 
   // User attempts to drag the left edge leftward by 0.1s

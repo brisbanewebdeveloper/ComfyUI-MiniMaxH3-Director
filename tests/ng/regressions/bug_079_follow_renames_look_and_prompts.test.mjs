@@ -37,22 +37,13 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readProject, writeProject } from "../../../js/ng/h3s_model.js";
+import { readProject, writeProject, renamedDirector } from "../../../js/ng/h3s_model.js";
 import { renameReferences } from "../../../js/ng/ng_references.js";
 
-// Replicates the exact production logic of followRenames in js/ng/h3s_node.js:31-46
+// The production logic itself (h3s_node.js followRenames calls renamedDirector); the test used to carry an older copy.
 function executeFollowRenames(node, entries) {
-  const previous = node.properties.ng_context_names || {}, now = node.values, changes = {};
-  const idea = renameReferences(now.idea || "", previous, entries);
-  if (idea !== (now.idea || "")) changes.idea = idea;
-  const project = readProject(now.shots || "");
-  if (!project.error && !(now.shots || "").trimStart().startsWith("{")) {
-    const text = renameReferences(now.shots || "", previous, entries);
-    if (text !== (now.shots || "")) changes.shots = text;
-  } else if (!project.error && project.shots.length) {
-    const shots = project.shots.map((shot) => ({ ...shot, text: renameReferences(shot.text, previous, entries) }));
-    if (shots.some((shot, index) => shot.text !== project.shots[index].text)) changes.shots = writeProject({ ...project, shots });
-  }
+  const previous = node.properties.ng_context_names || {};
+  const changes = renamedDirector(node.values, (text) => renameReferences(text, previous, entries));
   node.properties.ng_context_names = Object.fromEntries(entries.filter((entry) => entry.widgets.context_id && entry.widgets.name)
     .map((entry) => [entry.widgets.context_id, entry.widgets.name]));
   if (Object.keys(changes).length) Object.assign(node.values, changes);

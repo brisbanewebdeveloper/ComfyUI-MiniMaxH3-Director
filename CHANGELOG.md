@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**Studio fixes from the open JS bugs** (2026-10-11):
+
+- Removing an audio lane takes its clips with it, so the lane does not come back on load (BUG-023).
+- A card that is both on a shot and on an audio lane is named in the clip panel: both play (BUG-004).
+- The rename logic of the Director is one model function (renamedDirector) that the tests now check directly (BUG-079); text cards remember names on load and rename both kept versions (BUG-031).
+
 **Dialogue, songs, drafts and the rest of the audit bugs** (2026-10-11):
 
 - A written spoken line ("@Alice [English] says: ...") of a First / last frame figure becomes a proper dialogue line in First / last frame mode, also after prose on the same line (BUG-090); in References mode a shot-bound First / Last frame is that slot with its anchor text, as a global card is (BUG-091).

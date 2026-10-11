@@ -1,6 +1,6 @@
 // Right column: how H3 works (FL2VA / Ref2VA, Turbo) and the panel of the selected shot or audio clip.
 import { h, icon, field, select } from "./h3s_dom.js";
-import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding } from "./h3s_model.js";
+import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding, boundAndLaned } from "./h3s_model.js";
 
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
 // How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
@@ -143,6 +143,8 @@ function clipPanel(S, actions, clip) {
       h("span", { class: "h3s-grow" }), h("button", { class: "h3s-btn ghost", title: "Remove audio clip", "aria-label": "Remove audio clip",
         onclick: () => actions.deleteClip(clip.id) }, icon("trash"))),
     h("span", { style: { color: "#B4BDCC" } }, "This sound runs through, however many shots lie above it. Each render part automatically gets its own section, not the beginning again."),
+    boundAndLaned(S.shots, [clip]).length ? h("span", { class: "h3s-warn", style: { fontSize: "12px" } },
+      `${entry?.name || "This card"} is also placed on a shot; both play. Remove one if you want it only once.`) : null,
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "10px" } },
       field("Start (s)", number("start", clip.start)), field("End (s)", number("end", clip.end)), field("From second in file", number("offset", clip.offset))),
     field("How should H3 use the sound?", select(modes, clip.mode, (value) => actions.setClip(clip.id, "mode", value))),

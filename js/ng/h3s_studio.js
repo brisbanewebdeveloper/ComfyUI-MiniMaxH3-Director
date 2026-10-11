@@ -2,7 +2,7 @@
 // node's own widgets, so saving, loading and queueing stay ComfyUI's; the shot document keeps shots, clips and lanes.
 import { h, icon, keepKeys } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
-import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt, setPartPrompt, clipToFit, isKeyframe, middleOf } from "./h3s_model.js";
+import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, preferredTurboLora, fmt, setPartPrompt, clipToFit, isKeyframe, middleOf, removeLane } from "./h3s_model.js";
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView, contextId } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
@@ -197,7 +197,7 @@ export function openStudio(node, app, api, host = null) {
       if (id && S.byId.get(id)?.media === "audio") actions.newClip(lane, 0, id);
       else { if (id) flash("Only audio Content goes on the audio lanes."); save(); render(); }
     },
-    removeLane(lane) { S.lanes = S.lanes.filter((entry) => entry !== lane); save(); render(); },
+    removeLane(lane) { Object.assign(S, removeLane(S, lane)); save(); render(); },
     setWidget,
     setTurbo(on) {
       const loras = {};

@@ -3,7 +3,7 @@
 // Kein Fix, nur Beleg.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readProject, writeProject } from "../../../js/ng/h3s_model.js";
+import { readProject, writeProject, removeLane } from "../../../js/ng/h3s_model.js";
 
 const clip = (id, lane, start) => ({ schema_version: 1, id, context_id: "a1",
   start, end: start + 2, offset: 0, mode: "lock", lane });
@@ -28,11 +28,11 @@ test("BUG-023: eine Spur ohne Clips verschwindet, ihre Vergangenheit nicht", () 
   const read = readProject(afterEmptyLane);
   assert.deepEqual(read.lanes, ["lane_1"], "the empty lane is stored");
 
-  // removeLane() filtert nur S.lanes. Haette die Spur Clips, blieben sie im Dokument.
+  // removeLane() (the Studio action) nimmt die Clips der Spur mit; sonst kaemen Spur und Clips beim Laden zurueck.
   const withClips = writeProject({ shots: [], audio: [clip("c1", "lane_1", 0)], lanes: ["lane_1"] });
-  const simulated = readProject(withClips);
-  const lanesAfterRemoval = simulated.lanes.filter((entry) => entry !== "lane_1");
-  const audioAfterRemoval = simulated.audio; // removeLane fasst audio nicht an
+  const removed = removeLane(readProject(withClips), "lane_1");
+  const lanesAfterRemoval = readProject(writeProject({ shots: [], ...removed })).lanes;
+  const audioAfterRemoval = removed.audio;
   assert.deepEqual(lanesAfterRemoval, [], "the lane is gone from the list");
   assert.equal(audioAfterRemoval.length, 0,
     "the clips of a removed lane must be removed with it, not survive in the document");
