@@ -68,6 +68,8 @@ export function openStudio(node, app, api, host = null) {
     write({ [name]: value }); node.graph?.change?.();
     S.values = values(node); schedulePlan();
     if (rerender) render();
+    // the cards word their "Use as" hint for the Director's mode; they kept the old one until something else redrew them
+    if (name === "mode") document.dispatchEvent(new CustomEvent("ng-context-changed"));
   }
   // The plan of what is saved right now, for a step that needs it before going on (Make H3 prompt writes each part of it).
   async function planNow() {
