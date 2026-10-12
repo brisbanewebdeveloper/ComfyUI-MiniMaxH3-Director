@@ -38,7 +38,13 @@ class RenderGraph(unittest.TestCase):
         self.assertIn(sample_id, start["_loop_body"])
         self.assertIn(conditioning_id, start["_loop_body"])
         self.assertEqual(conditioning["inputs"]["previous"], [start_id, 4])
-        self.assertEqual(end["inputs"]["next_iteration_value"], [sample_id, 0])
+        # the sampled part passes NG Resume Chunk (kept on disk for a resume after a crash) on its way to the loop end
+        resume_id, resume = self.by_type(out, "NGResumeChunk")[0]
+        self.assertEqual(resume["inputs"]["sampled"], [sample_id, 0])
+        self.assertEqual(resume["inputs"]["chunk"], [start_id, 3])
+        self.assertIn(resume_id, start["_loop_body"])
+        self.assertEqual(end["inputs"]["next_iteration_value"], [resume_id, 0])
+        self.assertEqual(end["inputs"]["output_value"], [resume_id, 0])
         self.assertTrue(end["inputs"]["accumulate"])
         self.assertEqual(start["inputs"]["mode.list"], ["plan", 0])
         self.assertEqual(len(out.args), 4)

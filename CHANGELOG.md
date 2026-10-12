@@ -2,6 +2,14 @@
 
 ## 1.0.0 (unreleased)
 
+**Resume after a crash** (2026-10-13):
+
+- H3 Render Sequence keeps every finished render part's raw latent in `output/h3-director-resume` and reuses it when the same plan is queued again: a run that died after hours only samples the parts it had not finished (its sampler is not run for a kept part). A part's key covers its plan, prompt, references and their files, the render settings and every part before it, so changing part 5 renders part 5 and everything after it again. Kept parts are removed after 14 days. The models are not part of the key: after swapping a checkpoint, empty the folder.
+
+**H3 Control Video (experimental)** (2026-10-13):
+
+- Between H3 Director Output and the sampler: steers each render part with a pose, depth or edge video (MiniMax H3 Fun ControlNet-Union, ComfyUI's own apply node), or regenerates masked regions of a source video. Each part gets its own window of the videos, its pinned head included.
+
 **A shot over several render parts is no longer played again in each part** (2026-10-13):
 
 - Each part gets the action of its own share of the shot's time. Time beats in the shot text ("2.5–5s: ...", seconds from the shot's start) go to the parts they fall in, re-timed to the part; other text is cut into sentences and "..., then ..." clauses and laid over the shot's time by length. A shot whose remaining frames lie only in the pinned head gets no action ("The shot from the preceding video ends here, without new action.").

@@ -1,4 +1,6 @@
 """Package the tested native loop graph without taking sampling out of ComfyUI."""
+import json
+
 from comfy_execution.graph_utils import GraphBuilder
 from comfy_execution.validation import validate_loops
 
@@ -14,6 +16,11 @@ def turbo_models(graph, inputs, settings):
             # NGTurboLora leaves out pieces that do not fit (a full-model LoRA on a pruned H3 model logged 51 errors per step)
             out[name] = graph.node("NGTurboLora", "turbo_" + name, model=out[name], lora_name=lora, strength=1.0).out(0)
     return out
+
+
+# Everything in the render settings that changes the sampled latent.
+RESUME_SETTINGS = ("seed", "steps", "sampler_name", "scheduler", "shift_video", "shift_audio", "turbo", "turbo_lora_fl2va",
+                   "turbo_lora_ref2va", "ref_image_size", "resize_method")
 
 
 def render_sequence(inputs, settings):
@@ -34,7 +41,10 @@ def render_sequence(inputs, settings):
     guider = graph.node("BasicGuider", "guider", model=conditioning.out(0), conditioning=conditioning.out(1))
     sample = graph.node("SamplerCustomAdvanced", "sample", noise=noise.out(0), guider=guider.out(0),
                        sampler=sampler.out(0), sigmas=scheduler.out(0), latent_image=conditioning.out(2))
-    end = graph.node("EndLoop", "end", output_value=sample.out(0), next_iteration_value=sample.out(0), accumulate=True)
+    # a finished part is kept on disk and reused after a crash (adapters/resume.py)
+    kept = graph.node("NGResumeChunk", "resume", chunk=start.out(3), sampled=sample.out(0),
+                      settings=json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True))
+    end = graph.node("EndLoop", "end", output_value=kept.out(0), next_iteration_value=kept.out(0), accumulate=True)
     collect = graph.node("NGCollect", "collect", latents=end.out(0), chunks=inputs["chunks"],
                          vae=inputs["vae"], audio_vae=inputs["audio_vae"])
     video = graph.node("CreateVideo", "video", images=collect.out(0), audio=collect.out(1), fps=24.0)

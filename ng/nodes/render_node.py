@@ -3,9 +3,10 @@ from comfy_api.latest import io
 from comfy.samplers import KSampler
 from comfy_extras.nodes_custom_sampler import RandomNoise
 
+import json
 import logging
 
-from ..adapters import lora_fit
+from ..adapters import lora_fit, resume
 from ..adapters.render_graph import render_sequence
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
@@ -69,6 +70,32 @@ class NGChunkNoise(io.ComfyNode):
         return RandomNoise.execute(noise_seed=(int(seed) + job.index) % (1 << 64))
 
 
+class NGResumeChunk(io.ComfyNode):
+    """A finished render part comes from disk when the same plan is queued again (adapters/resume.py); its sampler then
+    does not run at all."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="NGResumeChunk", display_name="NG Resume Chunk", category=CATEGORY + "/Technical",
+                         inputs=[NGChunk.Input("chunk"), io.String.Input("settings"),
+                                 io.Latent.Input("sampled", lazy=True, optional=True)],
+                         outputs=[io.Latent.Output()])
+
+    @classmethod
+    def check_lazy_status(cls, chunk, settings, sampled=None):
+        job = chunk[0] if isinstance(chunk, list) else chunk
+        return [] if resume.has(resume.part_key(job, json.loads(settings))) else ["sampled"]
+
+    @classmethod
+    def execute(cls, chunk, settings, sampled=None):
+        job = chunk[0] if isinstance(chunk, list) else chunk
+        key = resume.part_key(job, json.loads(settings))
+        if resume.has(key):
+            logging.info("[H3 Director] render part %d comes from %s (resume)", job.index + 1, resume.folder())
+            return io.NodeOutput(resume.load(key))
+        resume.save(key, sampled)
+        return io.NodeOutput(sampled)
+
+
 class NGTurboLora(io.ComfyNode):
     """The Director's turbo LoRA, without the pieces that do not fit the model (see adapters/lora_fit.py)."""
     @classmethod
@@ -90,4 +117,4 @@ class NGTurboLora(io.ComfyNode):
         return io.NodeOutput(patched)
 
 
-NODES = [NGRenderSequence, NGChunkNoise, NGTurboLora]
+NODES = [NGRenderSequence, NGChunkNoise, NGResumeChunk, NGTurboLora]
