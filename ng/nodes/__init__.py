@@ -13,5 +13,6 @@ from .product_director_node import NODES as _PRODUCT
 from .output_node import NODES as _OUTPUT
 from .preview_node import NODES as _PREVIEW
 from .ai_nodes import NODES as _AI
+from .control_node import NODES as _CONTROL
 
-NODES = _CONTEXT + _DIRECTOR + _CHUNK + _RENDER + _STUDIO + _PROVIDER + _CONNECTOR + _PRODUCT + _OUTPUT + _PREVIEW + _AI
+NODES = _CONTEXT + _DIRECTOR + _CHUNK + _RENDER + _STUDIO + _PROVIDER + _CONNECTOR + _PRODUCT + _OUTPUT + _PREVIEW + _AI + _CONTROL

@@ -49,16 +49,20 @@ class DirectorResult:
     settings: RenderSettings
 
 
-def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_sigma_shift=True, seed=None):
+def chunk_job(result, chunk_index, loop_chunk=None):
     if loop_chunk is None:
         chunks = jobs(result.project)
         if not 0 <= chunk_index < len(chunks):
             raise ValueError("Choose a chunk from 0 to %d." % (len(chunks) - 1))
-        job = chunks[chunk_index]
-    else:
-        job = loop_chunk[0] if isinstance(loop_chunk, list) else loop_chunk
-        if not isinstance(job, ChunkJob) or job.project is not result.project:
-            raise ValueError("Connect the current chunk to Start Loop's list_item from the same Director's chunks.")
+        return chunks[chunk_index]
+    job = loop_chunk[0] if isinstance(loop_chunk, list) else loop_chunk
+    if not isinstance(job, ChunkJob) or job.project is not result.project:
+        raise ValueError("Connect the current chunk to Start Loop's list_item from the same Director's chunks.")
+    return job
+
+
+def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_sigma_shift=True, seed=None):
+    job = chunk_job(result, chunk_index, loop_chunk)
     graph = GraphBuilder()
     inputs = result.inputs.links()
     inputs = turbo_models(graph, {name: value for name, value in inputs.items() if value is not None}, result.settings.values())
