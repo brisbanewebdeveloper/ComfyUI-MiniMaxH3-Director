@@ -82,14 +82,14 @@ class TestBug093Fl2vaContinueVideoSpuriousReferenceDisabled(unittest.TestCase):
         self.assertIn("StructClip", refs_with_issue)
 
     def test_control_3_reference_image_and_voice_audio_in_fl2va_emit_reference_disabled(self):
-        """Control 3: Image with usage=('reference',) and audio with usage=('voice',) are references
-        and must emit reference_disabled in fl2va mode."""
+        """Control 3: audio with usage=('voice',) is a reference and must emit reference_disabled in fl2va mode. An image with
+        usage=('reference',) is used in fl2va since 2026-10-12 (ng.core.fl2va_refs) and must not."""
         img = ctx.ContextItem("img_ref", "Alice", "image", "alice.png", usage=("reference",))
         aud = ctx.ContextItem("aud_voice", "AliceVoice", "audio", "voice.wav", usage=("voice",))
         c = ctx.DirectorContext(items=(img, aud), mode="fl2va")
         issues = checks.check_context(c)
         refs_with_issue = [i.ref for i in issues if i.code == "reference_disabled"]
-        self.assertIn("Alice", refs_with_issue)
+        self.assertNotIn("Alice", refs_with_issue)
         self.assertIn("AliceVoice", refs_with_issue)
 
     def test_control_4_continue_video_in_ref2va_does_not_emit_reference_disabled(self):

@@ -237,40 +237,19 @@ def _move_shot_starts(shots_text, moved, moved_keys=None):
 
 
 def _fl2va_pictures(context):
-    """FL2VA has no reference slots: with the mode set to fl2va, a Reference picture opens its shot (or the video) as First frame."""
+    """First / last frame mode: a Reference picture stays a reference (ng.core.fl2va_refs) and never becomes the First frame
+    (the user's choice, 2026-10-12; from 2026-10-11 it had opened its shot when the shot had no picture). A storyboard plans
+    shots in References mode only."""
     if context.mode != "fl2va":
         return context, []
-    # A picture that has its own role in every shot it is placed on does not fall back (the shot's role wins anyway).
-    own, plain, opening = set(), set(), False
-    pictures = {item.id for item in context.by_media("image")}
-    for record in read_document(context.shots_text) or []:
-        for binding in record.get("media", []):
-            (own if binding.get("role", "context") in USAGE_BY_MEDIA["image"] else plain).add(binding.get("context_id"))
-            opening = opening or (float(record.get("start", 0)) <= 0 and binding.get("context_id") in pictures)
-    items, names = [], []
-    for item in context.items:
-        usage = item.effective_usage
-        if item.id in own and item.id not in plain:
-            items.append(item)
-            continue
-        if opening and item.id not in own | plain:
-            # A card on no shot would open the video; when the first shot opens on its own picture, it took frame 0 from
-            # it (real test 2026-10-11: the video opened on the wrong picture).
-            items.append(item)
-            continue
-        if item.media == "image" and item.source and "reference" in usage and not set(usage) & {"first_frame", "last_frame", "keyframe", "storyboard"}:
-            item = replace(item, usage=usage + ("first_frame",))     # still the figure the text names
-            names.append(item.name)
-        items.append(item)
-    issues = [Issue("reference_as_first_frame", "FL2VA has no reference pictures; these open their shot (or the video) as "
-                    "First frame: %s." % ", ".join(names))] if names else []
+    issues = []
     planned = [item.name for item in context.by_media("image") if "storyboard" in item.effective_usage] + sorted(
         {context.item(b.get("context_id")).name for record in read_document(context.shots_text) or [] for b in record.get("media", [])
          if b.get("role") == "storyboard" and context.item(b.get("context_id"))})
     if planned:
         issues.append(Issue("storyboard_unused", "A storyboard plans shots in References mode only; First / last frame mode does not "
                             "use it: %s." % ", ".join(dict.fromkeys(planned))))
-    return replace(context, items=tuple(items)), issues
+    return context, issues
 
 
 def plan_project(context: DirectorContext, chunk_seconds, continuity: ContinuityPlan, image_size=None) -> ProjectPlan:

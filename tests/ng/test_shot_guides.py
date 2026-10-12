@@ -122,10 +122,10 @@ class ShotGuides(unittest.TestCase):
         self.assertNotIn("late_change", {i.code for i in result.issues})
 
     def test_fl2va_shots_anchored_on_both_ends_two_parts_each(self):
-        # User plan: six shots of two parts, picture k opens shot k and closes shot k-1. Reference cards in fl2va mode fall
-        # back to First frame (FL2VA has no reference slots; they were dropped with "reference_disabled").
+        # User plan: six shots of two parts, picture k opens shot k and closes shot k-1. The opening picture is a First frame on
+        # its shot (until 2026-10-12 a Reference card on the shot fell back to First frame; now it stays a reference).
         names = "abcdefg"
-        records = [shot("s%d" % k, 10 * k, 10 * k + 10, [(names[k], "context"), (names[k + 1], "last_frame")]) for k in range(6)]
+        records = [shot("s%d" % k, 10 * k, 10 * k + 10, [(names[k], "first_frame"), (names[k + 1], "last_frame")]) for k in range(6)]
         document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": records})
         result = project.plan_project(ctx.DirectorContext(shots_text=document, items=tuple(image(n) for n in names),
                                                           project_seconds=60, mode="fl2va"), 5, chunks.ContinuityPlan())
@@ -181,6 +181,29 @@ class ShotGuides(unittest.TestCase):
                                   10, chunks.ContinuityPlan())
         self.assertIn("storyboard_unused", {i.code for i in fl.issues})
         self.assertNotIn("sb", {r.ctx_id for c in fl.compiled for r in c.refs})
+
+    def test_fl2va_reference_on_a_shot_stays_a_reference_next_to_the_frames(self):
+        # The user's choice 2026-10-12: a Reference picture never becomes the First frame; it reaches H3 as a reference picture
+        # after the frame pictures (real tests: face, staff, back emblem and leg armour kept).
+        records = [shot("one", 0, 8, [("start", "first_frame"), ("hero", "context")])]
+        document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": records})
+        result = project.plan_project(ctx.DirectorContext(shots_text=document, items=(image("start"), image("hero", usage=("reference",))),
+                                                          project_seconds=8, mode="fl2va"), 10, chunks.ContinuityPlan())
+        compiled = result.compiled[0]
+        self.assertEqual(compiled.mode, "fl2va")
+        self.assertEqual(sorted((r.kind, r.ctx_id) for r in compiled.refs), [("first_frame", "start"), ("picture", "hero")])
+        labels = dict(compiled.prompt_labels)
+        self.assertEqual((labels["<Picture 1>"], labels["<Picture 2>"]), ("start", "hero"))
+        head = compiled.prompt.split("\n\n")[0]
+        self.assertTrue(head.startswith("For the target video"), head)
+        self.assertIn("The appearance of hero (face, hair, outfit and props) comes from <Picture 2>, a reference picture that is "
+                      "not a frame of the video.", head)
+        self.assertFalse({"reference_disabled", "reference_as_first_frame"} & {i.code for i in result.issues})
+        alone = project.plan_project(ctx.DirectorContext(shots_text=json.dumps({"format": "h3-director-shots", "schema_version": 1,
+                                                                                 "shots": [shot("one", 0, 8, [("hero", "context")])]}),
+                                                         items=(image("hero", usage=("reference",)),), project_seconds=8, mode="fl2va"),
+                                     10, chunks.ContinuityPlan()).compiled[0]
+        self.assertEqual([r.kind for r in alone.refs], ["picture"], "no First frame falls back from a reference any more")
 
     def test_a_render_part_names_the_storyboard_panels_of_its_shots(self):
         # Each part numbers its shots from [Shot 1]; the storyboard picture shows all panels. Without the panel numbers every

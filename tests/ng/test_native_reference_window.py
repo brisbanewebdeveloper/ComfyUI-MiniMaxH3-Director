@@ -129,5 +129,58 @@ class QwenSizing(unittest.TestCase):
         self.assertIs(self.refprep.h3_clip(wrapped), wrapped)
 
 
+
+@unittest.skipUnless(HAVE_COMFY, "ComfyUI unavailable")
+class FramesWithReferences(unittest.TestCase):
+    """fl2va with First / Last frame plus a reference picture (ng.core.fl2va_refs): the frames come first for Qwen, both
+    payloads reach the DiT."""
+
+    @classmethod
+    def setUpClass(cls):
+        pack = load_full_pack().__name__
+        cls.native = importlib.import_module(pack + '.minimax_core').core()
+        cls.builder = importlib.import_module(pack + '.ng.adapters.chunk_builder')
+
+    def test_frames_then_references(self):
+        seen = {}
+
+        class Clip:
+            def tokenize(self, prompt, **kwargs):
+                seen.update(kwargs)
+            def encode_from_tokens_scheduled(self, tokens):
+                return [[torch.zeros(1, 1, 8), {}]]
+
+        class VideoVAE:
+            def encode(self, images):
+                return torch.full((1, 24, 1, images.shape[1] // 16, images.shape[2] // 16), float(images.shape[1]))
+
+        first, last, sheet = torch.zeros(1, 64, 64, 3), torch.ones(1, 64, 64, 3), torch.rand(1, 96, 128, 3)
+        cond, latent = self.builder._frames_with_references(self.native, 'p', Clip(), VideoVAE(), 64, 64, 124, first, last, [sheet], 'match')
+        values = cond[0][1]
+        self.assertEqual([k['resolved_frame_index'] for k in values['minimax_keyframes']], [0, 123])
+        self.assertEqual([(b['kind'], b['latent_h'], b['latent_w']) for b in values['minimax_refs']], [('image', 4, 4)], 'sized like MiniMaxH3ReferenceToVideo (match)')
+        items = seen['minimax_ref_items']
+        self.assertEqual([i['type'] for i in items], ['image'] * 3)
+        self.assertEqual(float(items[1]['data'].mean()), 1.0, 'the last frame is <Picture 2>, the reference follows')
+        self.assertEqual(tuple(items[2]['data'].shape)[1:3], (256, 256), 'Qwen gets the reference at H3 size (64 tokens minimum)')
+        self.assertEqual(latent['samples'].unbind()[0].shape[2], 37, '124 frames = 37 latent steps')
+
+    def test_references_without_frames(self):
+        class Clip:
+            def tokenize(self, prompt, **kwargs):
+                return None
+            def encode_from_tokens_scheduled(self, tokens):
+                return [[torch.zeros(1, 1, 8), {}]]
+
+        class VideoVAE:
+            def encode(self, images):
+                return torch.zeros(1, 24, 1, images.shape[1] // 16, images.shape[2] // 16)
+
+        cond, _ = self.builder._frames_with_references(self.native, 'p', Clip(), VideoVAE(), 64, 64, 124, None, None,
+                                                       [torch.rand(1, 64, 64, 3)], 'match')
+        self.assertNotIn('minimax_keyframes', cond[0][1])
+        self.assertEqual(len(cond[0][1]['minimax_refs']), 1)
+
+
 if __name__ == '__main__':
     unittest.main()

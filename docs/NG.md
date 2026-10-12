@@ -255,17 +255,21 @@ trained on pictures at the first and last frame; one inside a part was hit and t
 2026-10-11). Parts end on H3's grid, so the keyframe moves up to a third of a second (`keyframe_moved`); one closer than
 about 3.5 s to the shot's start, its end or another picture stays inside the running part (`keyframe_too_close`).
 In each shot's Content list a picture can also take another role than its card has (Reference, First frame, Last frame,
-Keyframe), e.g. one picture that ends one shot and opens the next. A storyboard guides the start of its shot; a keyframe
-without a time in the shot uses a time stored on an older card, else the shot's start.
+Keyframe), e.g. one picture that ends one shot and opens the next. A storyboard plans the shots it is on (References mode;
+a render part that holds only some of its shots names their panels); a keyframe without a time in the shot uses a time
+stored on an older card, else the shot's start.
+In First / last frame mode a Reference picture stays a reference: H3 gets it next to the first and last frame and keeps the
+figure recognizable (face, outfit, props it cannot see in the first frame). It never becomes the First frame; for a start
+picture choose First frame.
 Guide time is sampled on H3's latent grid.
-The accompanying H3 encoder uses the released image processor's 65,536–16,777,216 pixel bounds. Video blocks share
-the released video's 4,096–25,165,824 pixel budget across all selected reference frames, including odd-frame padding.
+Before ComfyUI's H3 nodes get them, pictures and reference video frames are brought to the Qwen size of H3's released
+processor (pictures 65,536–16,777,216 pixels, videos 4,096–25,165,824 across all sampled frames).
 
 **Video:** player and **Part of the file to use** (drag across the strip). Motion / camera / whole structure send references
 and prompt guidance, not exact copies; **Continue from video** starts from the last frame of the chosen part.
 **Its own sound** ignores the soundtrack or sends it along as the paired audio reference.
-The native reference node keeps the selected frames and lets the VAE pad incomplete temporal blocks. When the target duration
-limits the reference, its paired soundtrack is limited to the same window.
+A reference video is cut to H3's 17k+5 frame grid (72 selected frames keep 56), as ComfyUI's node does; its paired soundtrack is
+cut with it.
 
 **Audio:** play button and waveform; drag in it to choose the part of the file. **Whose voice** names the figure for the
 Voice role and the singer of the Lyrics. **Listen here** (volume, fades) only affects playback on the card. Voice guides

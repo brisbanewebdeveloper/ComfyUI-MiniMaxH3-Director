@@ -16,6 +16,7 @@ from .asset_prompt import apply_asset_relations
 from .shot_bindings import scoped_context
 from .media_ref import KINDS, MediaRef
 from .guide_timing import plan_guides
+from .fl2va_refs import add_references
 from .part_prompt import prompt_key
 from .shot_document import read_part_prompts
 
@@ -120,6 +121,8 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     refs = _media_refs(result, mapping, context) + list(guides)
     related_prompt, relation_issues = apply_asset_relations(result, mapping, context, refs)
     prompt = resolve_media_mentions(related_prompt, context, refs)
+    if mode == "fl2va" and context.prompt_override.strip() == "":
+        prompt, refs = add_references(prompt, context, refs)
     labels = prompt_labels(result, mapping, context, refs)
     prompt, guide_issues = (prompt, ()) if context.prompt_override.strip() else resolve_guide_mentions(prompt, context, refs, labels)
     prompt, lock_issues = (prompt, ()) if context.prompt_override.strip() else resolve_lock_mentions(prompt, context, refs)

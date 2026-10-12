@@ -13,7 +13,7 @@ function modeCard(S, actions) {
   // The node's own mode widget is hidden, so the chosen side clicked again is the way back to Automatic.
   const seg = (value, title, text) => h("button", { class: mode === value ? "h3s-seg on" : "h3s-seg", onclick: () => actions.setWidget("mode", S.values.mode === value ? "auto" : value),
     "aria-pressed": String(mode === value), title: mode === value ? "Click again for Automatic" : "" }, h("span", { class: "h3s-strong" }, title), h("span", { class: "h3s-lbl" }, text));
-  const hint = mode === "fl2va" ? "One picture becomes the first, one the last frame of a render part; sound comes from the audio lanes. Videos and references are not used. Click it again for Automatic."
+  const hint = mode === "fl2va" ? "One picture becomes the first, one the last frame of a render part; sound comes from the audio lanes. Reference pictures keep figures recognizable; video and sound references are not used. Click it again for Automatic."
     : mode === "ref2va" ? "H3 takes up to 9 images, 3 videos and 3 audio sources as references, e.g. for a character, place, camera and voice. Click it again for Automatic."
       : `Automatic: ${decided === "ref2va" ? "References" : "First/last frame"}, depending on the Content. Click one side to fix it.`;
   const turbo = Boolean(S.values.turbo);
@@ -32,8 +32,7 @@ function modeCard(S, actions) {
       seg("fl2va", "First / last frame", "FL2VA · first/last picture + sound"), seg("ref2va", "References", "Ref2VA · character, place, video, voice")),
     h("span", { style: { fontSize: "13px", color: "#B4BDCC" } }, hint),
     ...(S.plan?.issues || []).filter((issue) => issue.code === "reference_disabled").map((issue) => h("span", { class: "h3s-warn", style: { fontSize: "13px" } },
-      `${issue.ref} is a reference, which First / last frame does not use: the video is made from text alone. `
-      + "On its card choose First frame, or switch to References.")),
+      `${issue.ref} is a video or sound reference, which First / last frame mode does not use. Switch to References to use it.`)),
     h("button", { class: "h3s-toggle", "aria-pressed": String(turbo), onclick: () => actions.setTurbo(!turbo) },
       h("span", { class: turbo ? "h3s-switch on" : "h3s-switch" }),
       h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Turbo ${turbo ? "on" : "off"}`),

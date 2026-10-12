@@ -2,6 +2,11 @@
 
 ## 1.0.0 (unreleased)
 
+**First / last frame mode uses Reference pictures** (2026-10-12):
+
+- A Reference picture reaches H3 next to the first and last frame: "The appearance of Aurelia (face, hair, outfit and props) comes from <Picture 3>, a reference picture that is not a frame of the video." The frames keep <Picture 1> / <Picture 2>. ComfyUI's fl2va node has no reference input, so the Director builds this conditioning itself (no ComfyUI change). Real tests, same seed with and without: an elf portrait kept her face and staff up to a close-up; Aurelia's character sheet brought the gear emblem on her back and her leg armour, neither visible in the first frame, and nothing of the sheet's layout reached the video.
+- A Reference picture no longer becomes the First frame of its shot or of the video (it did from 2026-10-11). For a start picture choose First frame. Video and sound references stay unused in this mode (`reference_disabled`).
+
 **A render part tells H3 which storyboard panels are its shots** (2026-10-12):
 
 - A storyboard over more shots than one render part holds now says which of its panels the part's shots are: "<Picture 3> is a storyboard reference for [Shot 1] and [Shot 2], defining their viewpoint, subject placement, and shot order. [Shot 1] is its panel 3 and [Shot 2] is its panel 4." Each part numbers its shots from [Shot 1], so every part of a 30 s storyboard pointed at panels 1 and 2. Panels count the shots the storyboard is on, in story order.

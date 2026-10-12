@@ -46,8 +46,8 @@ export function usableFields(media, fields) {
 export function roleHint(media, role, mode) {
   const fl = mode === "fl2va";
   if (media === "image") {
-    // FL2VA has no reference slots: the Director opens the picture's shot (or the video) with it as First frame instead.
-    if (fl && !FRAME_ROLES.includes(role)) return { text: "First / last frame mode has no references: this picture opens its shot (or the video) as First frame.", warn: false };
+    // Since 2026-10-12 a reference picture reaches H3 in FL2VA too, next to the frames (ng/core/fl2va_refs.py); it is no frame.
+    if (fl && !FRAME_ROLES.includes(role)) return { text: "H3 keeps this figure or thing recognizable as a reference next to the frames. It is no frame of the video; for a start picture choose First frame.", warn: false };
     if (role === "reference") return { text: "H3 keeps this figure or thing recognizable wherever a shot uses it.", warn: false };
     if (role === "keyframe") return { text: fl ? "Drop it on a shot in the Studio and set its time there: a render part ends on it and the shot runs on."
       : "Drop it on a shot in the Studio and set its time there (seconds after the shot's start).", warn: false };

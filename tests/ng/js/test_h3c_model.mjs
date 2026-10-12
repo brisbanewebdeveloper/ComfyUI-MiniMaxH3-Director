@@ -21,7 +21,7 @@ import * as model from "../../../js/ng/h3c_model.js";
 
 // Hints warn exactly where the Director's mode ignores the role.
 {
-  assert.match(model.roleHint("image", "reference", "fl2va").text, /as First frame/, "FL2VA falls back to First frame");
+  assert.match(model.roleHint("image", "reference", "fl2va").text, /as a reference next to the frames/, "FL2VA keeps a reference a reference (2026-10-12)");
   assert.equal(model.roleHint("image", "keyframe", "fl2va").warn, false);
   assert.match(model.roleHint("image", "keyframe", "ref2va").text, /after the shot's start/);
   assert.match(model.roleHint("image", "storyboard", "ref2va").text, /shot order/);

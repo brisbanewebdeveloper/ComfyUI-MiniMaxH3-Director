@@ -46,7 +46,10 @@ class Modes(unittest.TestCase):
     def test_explicit_mode_wins(self):
         _, out = build(context.DirectorContext(idea="Alice walks.", project_seconds=8, items=(ALICE,), mode="fl2va"))
         self.assertEqual(out[0].mode, "t2va")
-        self.assertEqual(out[0].refs, ())
+        # since 2026-10-12 a Reference picture stays a reference in fl2va (ng.core.fl2va_refs); no frame comes from it
+        self.assertEqual([(r.kind, r.ctx_id) for r in out[0].refs], [("picture", "ctx_0001")])
+        self.assertIn("The appearance of Alice (face, hair, outfit and props) comes from <Picture 1>", out[0].prompt)
+        self.assertEqual(dict(out[0].prompt_labels)["<Picture 1>"], "ctx_0001")
 
     def test_first_frame_image_makes_fl2va(self):
         frame = item("ctx_0003", "Start", "image", "refs/start.png", content=("composition",), usage=("first_frame",))

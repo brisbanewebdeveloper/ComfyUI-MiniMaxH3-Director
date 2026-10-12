@@ -48,8 +48,8 @@ def resolve_lock_mentions(prompt, context, refs):
 def prompt_labels(result, mapping, context, refs):
     pictures = [ref for ref in refs if ref.kind == "picture"]
     if result.get("mode") == "fl2va":
-        # ImageToVideo tokenizes first then last even though neither is a Ref2VA reference.
-        pictures = [ref for kind in ("first_frame", "last_frame") for ref in refs if ref.kind == kind]
+        # First then last frame are tokenized first even though neither is a Ref2VA reference; references follow them.
+        pictures = [ref for kind in ("first_frame", "last_frame", "picture") for ref in refs if ref.kind == kind]
     labels = [("<Picture %d>" % number, ref.ctx_id) for number, ref in
               enumerate(pictures, 1)]
     labels += [("<Subject %d>" % subject, mapping.slot_items[slot - 1]) for slot, subject in result["subject_of_slot"].items()]

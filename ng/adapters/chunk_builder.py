@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import torch
 import comfy.audio
+import node_helpers
 
 from ... import minimax_media as legacy
 from ... import minimax_refprep as refprep
@@ -49,15 +50,57 @@ def _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size):
         ref_videos=ref_videos, ref_video_audios=soundtracks, ref_audios=media.numbered("ref_audio", audios))
 
 
-def _frame_conditioning(mm, job, clip, vae, resize_method):
+def _frame_conditioning(mm, job, clip, vae, resize_method, ref_image_size="match"):
     compiled, ctx = job.compiled, job.project.context
 
     def frame(kind):
         refs = compiled.of_kind(kind)
         return _canvas_frame(media.load_picture(refs[0]), ctx.width, ctx.height, resize_method) if refs else None
 
+    first, last = frame("first_frame"), frame("last_frame")
+    pictures = [media.load_picture(r) for r in compiled.of_kind("picture")]
+    if pictures:
+        return _frames_with_references(mm, compiled.prompt, clip, vae, ctx.width, ctx.height, job.chunk.sampled_frames, first, last,
+                                       pictures, ref_image_size)
     return mm.MiniMaxH3ImageToVideo.execute(clip=refprep.h3_clip(clip), vae=vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
-                                            length=job.chunk.sampled_frames, first_frame=frame("first_frame"), last_frame=frame("last_frame"))
+                                            length=job.chunk.sampled_frames, first_frame=first, last_frame=last)
+
+
+def _reference_block(mm, vae, image, width, height, ref_image_size):
+    """One reference picture sized as MiniMaxH3ReferenceToVideo sizes it: (Qwen item, DiT block)."""
+    h, w = image.shape[1], image.shape[2]
+    if ref_image_size == "match":
+        scale = min(1.0, math.sqrt((width * height) / float(w * h)))
+    else:
+        scale = min(1.0, mm.REF_IMAGE_SHORT_EDGE / float(min(w, h)))
+    tw = max(mm.CANVAS_MULTIPLE, round(w * scale / mm.CANVAS_MULTIPLE) * mm.CANVAS_MULTIPLE)
+    th = max(mm.CANVAS_MULTIPLE, round(h * scale / mm.CANVAS_MULTIPLE) * mm.CANVAS_MULTIPLE)
+    resized = mm._resize(image[:1], tw, th, "disabled")
+    return {"type": "image", "data": resized}, {"kind": "image", "latent_h": th // 16, "latent_w": tw // 16, "latent": vae.encode(resized)}
+
+
+def _frames_with_references(mm, prompt, clip, vae, width, height, length, first, last, pictures, ref_image_size):
+    """First / last frame plus reference pictures in one fl2va conditioning (ng.core.fl2va_refs). The stock fl2va node has no
+    reference input, so this follows it for the frames (first frame stretched, last frame cover-cropped, both already on the
+    canvas here) and MiniMaxH3ReferenceToVideo for the references. Qwen sees the frames first (<Picture 1>, <Picture 2>), the
+    references after them; the DiT payload carries `minimax_keyframes` and `minimax_refs` together."""
+    latent, frame_count = mm._empty_av_latent(width, height, length)
+    items, keyframes = [], []
+    for image, index, crop in ((first, 0, "disabled"), (last, frame_count - 1, "center")):
+        if image is not None:
+            image = mm._resize(image[:1], width, height, crop)
+            items.append({"type": "image", "data": image})
+            keyframes.append({"resolved_frame_index": index, "latent": vae.encode(image)})
+    blocks = []
+    for picture in pictures:
+        item, block = _reference_block(mm, vae, picture, width, height, ref_image_size)
+        items.append(item)
+        blocks.append(block)
+    cond = clip.encode_from_tokens_scheduled(refprep.h3_clip(clip).tokenize(prompt, minimax_ref_items=items))
+    values = {"minimax_refs": blocks}
+    if keyframes:
+        values["minimax_keyframes"] = keyframes
+    return node_helpers.conditioning_set_values(cond, values), latent
 
 
 def _locked_waveform(locks, sampled_frames, sample_rate, steps_per_second=None):
@@ -98,7 +141,7 @@ def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="m
     if compiled.mode == "ref2va":
         out = _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size)
     else:
-        out = _frame_conditioning(mm, job, clip, vae, resize_method)
+        out = _frame_conditioning(mm, job, clip, vae, resize_method, ref_image_size)
     positive, latent = _first_two(out)
     positive = scene_guides.apply_guides(mm, job, positive, latent, vae)
     continuity: ContinuityPlan = job.project.plan.continuity
