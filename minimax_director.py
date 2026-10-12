@@ -43,6 +43,7 @@ from comfy_api.latest import io
 
 from . import minimax_media as media
 from . import minimax_plan as plan
+from . import minimax_refprep as refprep
 from .minimax_core import core
 
 log = logging.getLogger(__name__)
@@ -683,8 +684,10 @@ class MiniMaxH3Director(io.ComfyNode):
                     "the audio track / Override Audio, and remove any voice clip from the "
                     "subject slots)."
                 )
+            ref_videos, ref_video_audios = refprep.grid_references(
+                ref_videos, ref_video_audios, refprep.chunk_frames(length))
             out = mm.MiniMaxH3ReferenceToVideo.execute(
-                clip=clip, vae=vae, audio_vae=audio_vae, prompt=prompt,
+                clip=refprep.h3_clip(clip), vae=vae, audio_vae=audio_vae, prompt=prompt,
                 width=width, height=height, length=length,
                 ref_image_size=ref_image_size,
                 ref_images={"ref_image_%d" % i: t for i, t in enumerate(ref_image_tensors)} or None,
@@ -700,7 +703,7 @@ class MiniMaxH3Director(io.ComfyNode):
                             "they were ignored — switch the toolbar to 'Refs ON (ref2va)' to "
                             "use them as <Picture i> references.", len(middles))
             out = mm.MiniMaxH3ImageToVideo.execute(
-                clip=clip, vae=vae, prompt=prompt,
+                clip=refprep.h3_clip(clip), vae=vae, prompt=prompt,
                 width=width, height=height, length=length,
                 first_frame=first_frame, last_frame=last_frame,
             )

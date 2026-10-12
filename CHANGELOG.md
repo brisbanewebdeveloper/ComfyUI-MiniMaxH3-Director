@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**References reach H3 as its released pipeline sees them, on a stock ComfyUI** (2026-10-12):
+
+- Pictures and reference videos are brought to the Qwen size of H3's released processor before the stock H3 nodes get them. The stock encoder uses the shared Qwen limits: a picture under 256x256 got fewer vision tokens than H3's minimum of 64 (a 64x64 one got 4), and a long reference video got more than H3 was trained with. Same tokens as H3's processor now (tested pixel for pixel).
+- A reference video's soundtrack is cut with the video. The stock node shortens the video to the 17k+5 grid (72 selected frames keep 56) but kept the whole sound, so it ran past its picture.
+- Both happen in the Director (`minimax_refprep.py`), not in ComfyUI: the pack never patches ComfyUI, and gives the same result on a patched and an unpatched install.
+
 **Storyboard as MiniMax's guide describes it** (2026-10-12):
 
 - A Storyboard picture on shots is, in References mode, one reference picture that plans them: "<Picture N> is a storyboard reference for [Shot 1] and [Shot 2], defining their viewpoint, subject placement, and shot order." It was a keyframe guide at each shot's start, which pushed the sketch itself into the video. A storyboard card on no shot plans the whole video. It needs no scene time; First / last frame mode does not use it and says so (`storyboard_unused`).

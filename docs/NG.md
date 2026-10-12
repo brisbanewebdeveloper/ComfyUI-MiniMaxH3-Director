@@ -191,6 +191,9 @@ This is the compiler's real output, refreshed live while you edit.
   Director Output's `preview VAE` to the preview node. Only that node has a buffered player with pause,
   scrubbing and independent playback/update status. At 24 FPS it retains
   every decoded frame and the clip's full duration. See [decoder setup and controls](../README.md#live-preview-while-sampling).
+- **References**: every path calls ComfyUI's own H3 nodes and never patches them. Before the call the Director brings pictures
+  and reference video frames to the Qwen size of H3's released processor and cuts a reference video's soundtrack to the frames
+  the stock node keeps (`minimax_refprep.py`).
 - **Editable loop**: **H3 Director NG - native chunk loop.json** or **two sampler chunk loop.json**. The Director's **chunks** starts
   the loop and one Director Output inside it prepares each chunk. See [connections and continuity contract](NG-external-sampling.md).
 

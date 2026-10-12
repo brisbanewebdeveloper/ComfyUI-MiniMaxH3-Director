@@ -47,6 +47,7 @@ from comfy_api.latest import io
 from . import minimax_director as director
 from . import minimax_media as media
 from . import minimax_plan as plan
+from . import minimax_refprep as refprep
 from .minimax_core import audio_nodes, core, samplers
 
 log = logging.getLogger(__name__)
@@ -260,13 +261,13 @@ class MiniMaxH3DirectorChain(io.ComfyNode):
                 if first_frame is not None and len(ref_imgs) < plan.MAX_REF_IMAGES:
                     ref_imgs.append(first_frame)
                 out = mm.MiniMaxH3ReferenceToVideo.execute(
-                    clip=clip, vae=vae, audio_vae=audio_vae, prompt=p["prompt"],
+                    clip=refprep.h3_clip(clip), vae=vae, audio_vae=audio_vae, prompt=p["prompt"],
                     width=width, height=height, length=p["length"],
                     ref_image_size=ref_image_size,
                     ref_images={"ref_image_%d" % i: t for i, t in enumerate(ref_imgs)} or None)
             else:
                 out = mm.MiniMaxH3ImageToVideo.execute(
-                    clip=clip, vae=vae, prompt=p["prompt"], width=width, height=height,
+                    clip=refprep.h3_clip(clip), vae=vae, prompt=p["prompt"], width=width, height=height,
                     length=p["length"], first_frame=first_frame, last_frame=last_frame)
 
             conditioning, latent = director._unpack(out)[:2]

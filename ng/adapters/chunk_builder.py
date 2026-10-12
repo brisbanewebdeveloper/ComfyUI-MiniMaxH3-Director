@@ -7,6 +7,7 @@ import torch
 import comfy.audio
 
 from ... import minimax_media as legacy
+from ... import minimax_refprep as refprep
 from ...minimax_core import core
 from ...minimax_director import lock_audio_latent
 from ..core.chunks import ContinuityPlan
@@ -37,13 +38,15 @@ def _reference_conditioning(mm, job, clip, vae, audio_vae, ref_image_size):
     videos = [media.load_video(r) for r in compiled.of_kind("video")]
     audios = [media.load_audio(r) for r in compiled.of_kind("audio")]
     soundtracks = scene_guides.video_soundtracks(job)
+    ref_videos, soundtracks = refprep.grid_references(media.numbered("ref_video", videos), soundtracks,
+                                                      refprep.chunk_frames(job.chunk.sampled_frames))
     if (audios or soundtracks) and audio_vae is None:
         raise ValueError("audio references need the audio VAE: connect minimax_h3_audio_vae to 'audio_vae', "
                          "or remove the voice and audio items")
     return mm.MiniMaxH3ReferenceToVideo.execute(
-        clip=clip, vae=vae, audio_vae=audio_vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
+        clip=refprep.h3_clip(clip), vae=vae, audio_vae=audio_vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
         length=job.chunk.sampled_frames, ref_image_size=ref_image_size, ref_images=media.numbered("ref_image", pictures),
-        ref_videos=media.numbered("ref_video", videos), ref_video_audios=soundtracks, ref_audios=media.numbered("ref_audio", audios))
+        ref_videos=ref_videos, ref_video_audios=soundtracks, ref_audios=media.numbered("ref_audio", audios))
 
 
 def _frame_conditioning(mm, job, clip, vae, resize_method):
@@ -53,7 +56,7 @@ def _frame_conditioning(mm, job, clip, vae, resize_method):
         refs = compiled.of_kind(kind)
         return _canvas_frame(media.load_picture(refs[0]), ctx.width, ctx.height, resize_method) if refs else None
 
-    return mm.MiniMaxH3ImageToVideo.execute(clip=clip, vae=vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
+    return mm.MiniMaxH3ImageToVideo.execute(clip=refprep.h3_clip(clip), vae=vae, prompt=compiled.prompt, width=ctx.width, height=ctx.height,
                                             length=job.chunk.sampled_frames, first_frame=frame("first_frame"), last_frame=frame("last_frame"))
 
 
