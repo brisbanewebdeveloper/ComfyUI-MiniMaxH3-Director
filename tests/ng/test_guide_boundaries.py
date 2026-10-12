@@ -39,14 +39,14 @@ class GuideBoundaries(unittest.TestCase):
     def test_last_frame_and_snapped_project_padding_remain_valid_guide_times(self):
         total = plan().plan.total_frames
         for frame in (288, total - 1):
-            result = plan([image("EndGuide", "storyboard", frame)])
+            result = plan([image("EndGuide", "keyframe", frame)])     # a storyboard has no time since 2026-10-12
             self.assertEqual(result.compiled[-1].of_kind("keyframe")[0].start_f,
                              frame - result.plan.chunks[-1].story_start_f + 22)
             self.assertNotIn("guide_outside_project", [issue.code for issue in result.issues])
 
     def test_guide_at_exclusive_end_or_later_names_its_card_and_last_valid_time(self):
         total = plan().plan.total_frames
-        for role in ("keyframe", "storyboard"):
+        for role in ("keyframe",):
             for frame in (total, 480):
                 result = plan([image("OutsideDoor", role, frame)])
                 self.assertFalse(any(one.of_kind("keyframe") for one in result.compiled))
@@ -81,7 +81,7 @@ class GuideBoundaries(unittest.TestCase):
         base = plan(mode="none", seconds=5)
         final = base.plan.total_frames - 1
         items = [image("Start", "first_frame"), image("End", "last_frame"),
-                 image("AtStart", "keyframe", 0), image("AtEnd", "storyboard", final)]
+                 image("AtStart", "keyframe", 0), image("AtEnd", "keyframe", final)]
         result = plan(items, mode="none", seconds=5)
         markers = {item.id: (index + 1) / 5 for index, item in enumerate(items)}
         with patch.object(media, "load_picture", side_effect=lambda ref: torch.full((1, 64, 64, 3), markers[ref.ctx_id])):

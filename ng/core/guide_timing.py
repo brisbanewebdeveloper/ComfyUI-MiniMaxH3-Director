@@ -28,7 +28,7 @@ def _global_guides(context, chunk, bound):
     for item in context.items:
         if item.id in bound or not item.source:
             continue
-        if item.media == "image" and set(item.effective_usage) & {"keyframe", "storyboard"} and item.options.anchor_s >= 0:
+        if item.media == "image" and "keyframe" in item.effective_usage and item.options.anchor_s >= 0:
             frame = seconds_to_frames(item.options.anchor_s)
             if chunk.story_start_f <= frame < chunk.story_end_f:
                 refs.append(MediaRef("keyframe", item.id, item.source, frame - chunk.story_start_f + chunk.head_frames, 1))
@@ -45,7 +45,7 @@ def _bound_ref(item, role, shot, chunk, mode, at_s=-1.0):
         if role == "last_frame" and chunk.is_last and abs(shot.end_f - chunk.story_end_f) < GRID_STEP:
             # the last shot ends where the project ends; the video itself ends on H3's grid, up to 16 frames off
             frame = chunk.story_end_f - 1
-    elif item.media == "image" and role in ("keyframe", "storyboard"):
+    elif item.media == "image" and role == "keyframe":     # a storyboard is no frame: legacy_bridge._storyboard_segments
         # Placed on a shot in the Studio, a keyframe sits at its time inside the shot; without one, a time stored on an
         # older card, else the shot's start.
         if at_s >= 0:

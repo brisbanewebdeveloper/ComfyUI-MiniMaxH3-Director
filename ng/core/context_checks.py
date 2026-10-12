@@ -39,7 +39,7 @@ def check_context(context):
 def check_guide_times(context, total_frames):
     issues = []
     for item in context.by_media("image"):
-        if not item.source or not set(item.effective_usage) & {"keyframe", "storyboard"} or item.options.anchor_s < 0:
+        if not item.source or "keyframe" not in item.effective_usage or item.options.anchor_s < 0:
             continue
         if frames.seconds_to_frames(item.options.anchor_s) >= total_frames:
             issues.append(Issue("guide_outside_project", "Scene time %.3fs is outside the rendered video; choose %.3fs "

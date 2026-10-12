@@ -94,7 +94,7 @@ def check_item(item):
         if value not in USAGE_BY_MEDIA[item.media]:
             issues.append(Issue("usage_unknown", "'%s' is not a usage for %s items; the compiler will ignore it."
                                 % (value, item.media), item.name))
-        elif item.media == "image" and value in ("keyframe", "storyboard") and item.options.anchor_s < 0:
+        elif item.media == "image" and value == "keyframe" and item.options.anchor_s < 0:
             issues.append(Issue("usage_pending", "Set a scene time for '%s'; this image is not sent for that role until timed." % value, item.name))
     if item.media != "text" and not item.source:
         issues.append(Issue("source_missing", "has no file; it cannot be sent to the model.", item.name))

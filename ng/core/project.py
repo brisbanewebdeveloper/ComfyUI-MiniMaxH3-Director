@@ -264,6 +264,12 @@ def _fl2va_pictures(context):
         items.append(item)
     issues = [Issue("reference_as_first_frame", "FL2VA has no reference pictures; these open their shot (or the video) as "
                     "First frame: %s." % ", ".join(names))] if names else []
+    planned = [item.name for item in context.by_media("image") if "storyboard" in item.effective_usage] + sorted(
+        {context.item(b.get("context_id")).name for record in read_document(context.shots_text) or [] for b in record.get("media", [])
+         if b.get("role") == "storyboard" and context.item(b.get("context_id"))})
+    if planned:
+        issues.append(Issue("storyboard_unused", "A storyboard plans shots in References mode only; First / last frame mode does not "
+                            "use it: %s." % ", ".join(dict.fromkeys(planned))))
     return replace(context, items=tuple(items)), issues
 
 

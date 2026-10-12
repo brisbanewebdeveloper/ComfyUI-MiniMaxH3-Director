@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**Storyboard as MiniMax's guide describes it** (2026-10-12):
+
+- A Storyboard picture on shots is, in References mode, one reference picture that plans them: "<Picture N> is a storyboard reference for [Shot 1] and [Shot 2], defining their viewpoint, subject placement, and shot order." It was a keyframe guide at each shot's start, which pushed the sketch itself into the video. A storyboard card on no shot plans the whole video. It needs no scene time; First / last frame mode does not use it and says so (`storyboard_unused`).
+
 **AI prompts name the end pose in First / last frame mode** (2026-10-12):
 
 - Make H3 prompt and the part writer ask the AI to name the final pose, framing and light of a last frame or keyframe picture, as MiniMax's guide asks (describe the path between the frames). With 4 steps, H3 otherwise pulled the last frames onto the picture; with the end pose in the text the approach was even (measured).

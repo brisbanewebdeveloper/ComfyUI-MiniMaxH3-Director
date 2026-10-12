@@ -337,13 +337,18 @@ def picture_texts(ordinal, picture_role, ref_role, shot_no, at):
     voices when the wording lived in three places, which is how issue #4 happened.
     """
     label = "<Picture %d>" % ordinal
-    shot = "[Shot %d]" % shot_no if shot_no else ""
+    if isinstance(shot_no, (list, tuple)):
+        # one storyboard for several shots, as the guide's own example: "for [Shot 1] and [Shot 2]"
+        shot = " and ".join("[Shot %d]" % n for n in shot_no)
+        shot_no = None
+    else:
+        shot = "[Shot %d]" % shot_no if shot_no else ""
 
     if ref_role == REF_ROLE_STORYBOARD:
         target = shot or "the target video"
         return {
-            "declaration": "%s is a storyboard reference for %s, defining its viewpoint, "
-                           "subject placement, and shot order." % (label, target),
+            "declaration": "%s is a storyboard reference for %s, defining %s viewpoint, "
+                           "subject placement, and shot order." % (label, target, "their" if " and " in target else "its"),
             "where": "storyboard reference for %s" % target,
             "phrase": "The shot follows the storyboard reference %s." % label if shot else "",
             "note": "%s is a storyboard reference for %s" % (label, target),
@@ -1392,6 +1397,8 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
             seg = ev["seg"]
             ref_role = sanitize_ref_role(seg.get("refRole"))
             shot_no = written_shot_no.get(ev.get("shot_index"))
+            if ref_role == REF_ROLE_STORYBOARD and seg.get("shotNos") is not None:
+                shot_no = list(seg["shotNos"])      # the shots it plans; [] = the whole target video
             if ev["is_end"]:
                 picture_role = ROLE_LAST
             elif shot_no:

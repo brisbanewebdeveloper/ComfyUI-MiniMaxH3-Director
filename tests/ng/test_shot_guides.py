@@ -166,6 +166,21 @@ class ShotGuides(unittest.TestCase):
         first = [r.ctx_id for c in result.compiled for r in c.refs if r.kind == "first_frame"]
         self.assertEqual(first, ["a"])
 
+    def test_a_storyboard_plans_its_shots_and_is_no_frame(self):
+        # MiniMax ref-en 2.2: "<Picture 3> is a storyboard reference for [Shot 1] and [Shot 2], defining their viewpoint,
+        # subject placement, and shot order." Before 2026-10-12 it became a keyframe guide at each shot's start.
+        records = [shot("one", 0, 5, [("sb", "storyboard")]), shot("two", 5, 10, [("sb", "storyboard")])]
+        items = (image("hero", usage=("reference",)), image("sb", usage=("storyboard",)))
+        compiled = plan(records, items, 10, 10).compiled[0]
+        self.assertEqual([(r.kind, r.ctx_id) for r in compiled.refs], [("picture", "hero"), ("picture", "sb")])
+        self.assertIn("<Picture 2> is a storyboard reference for [Shot 1] and [Shot 2], defining their viewpoint, "
+                      "subject placement, and shot order.", compiled.prompt)
+        document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": records})
+        fl = project.plan_project(ctx.DirectorContext(shots_text=document, items=items, project_seconds=10, mode="fl2va"),
+                                  10, chunks.ContinuityPlan())
+        self.assertIn("storyboard_unused", {i.code for i in fl.issues})
+        self.assertNotIn("sb", {r.ctx_id for c in fl.compiled for r in c.refs})
+
     def test_a_keyframe_at_the_part_length_gives_two_parts_not_three(self):
         record = shot("one", 0, 20, [("a", "first_frame"), ("k", "keyframe"), ("z", "last_frame")])
         record["media"][1]["at_s"] = 10.0

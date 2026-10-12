@@ -10,7 +10,7 @@ export const CONTENT = {
 };
 export const USAGE = {
   image: [["reference", "Reference", "who / what"], ["first_frame", "First frame", ""], ["last_frame", "Last frame", ""],
-    ["keyframe", "Keyframe", "time in Studio"], ["storyboard", "Storyboard", "time in Studio"]],
+    ["keyframe", "Keyframe", "time in Studio"], ["storyboard", "Storyboard", "References: plans shots"]],
   video: [["motion", "Motion reference", ""], ["camera", "Camera reference", ""], ["continue", "Continue from video", ""], ["structure", "Whole structure", ""]],
   audio: [["voice", "Voice", "timbre of a figure"], ["copy", "Copy", "reuse the sound"], ["lock", "Lock", "keep it exactly"],
     ["music_style", "Music style", ""], ["rhythm", "Rhythm", ""], ["sound_reference", "Sound reference", ""]],
@@ -51,7 +51,9 @@ export function roleHint(media, role, mode) {
     if (role === "reference") return { text: "H3 keeps this figure or thing recognizable wherever a shot uses it.", warn: false };
     if (role === "keyframe") return { text: fl ? "Drop it on a shot in the Studio and set its time there: a render part ends on it and the shot runs on."
       : "Drop it on a shot in the Studio and set its time there (seconds after the shot's start).", warn: false };
-    if (role === "storyboard") return { text: "Drop it on a shot in the Studio: it guides the start of that shot.", warn: false };
+    // MiniMax's guide: a storyboard is a planning reference (viewpoint, placement, shot order), References mode only.
+    if (role === "storyboard") return fl ? { text: "First / last frame mode has no storyboard; switch the Director to References to use it.", warn: true }
+      : { text: "Drop it on the shots it plans in the Studio: H3 takes their viewpoint, subject placement and shot order from it. It is no frame of the video.", warn: false };
     return { text: role === "first_frame" ? "Opens the video, or the shot it is dropped on in the Studio." : "Ends the video, or the shot it is dropped on in the Studio.", warn: false };
   }
   if (media === "video") {

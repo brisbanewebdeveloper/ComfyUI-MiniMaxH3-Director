@@ -16,6 +16,7 @@ from .issues import Issue
 from .subjects import subject_groups
 from .shot_bindings import spoken_text
 from .shot_document import has_shots, read_document, read_look
+from .picture_segments import anchor_segments, storyboard_segments
 from .lyrics import SINGER, sung_lines
 from .audio_timing import clip_windows, file_window, outside, shot_windows, source_window, timed_segments
 
@@ -297,21 +298,6 @@ def _shot_text(shot, substitute, automatic=False, context=None):
     return text
 
 
-def _anchor_segments(context, chunk, guides):
-    """Only actual native edge slots become legacy first/last-frame declarations."""
-    out = []
-    for ref in guides:
-        item = context.item(ref.ctx_id)
-        if ref.kind == "first_frame":
-            out.append({"type": "image", "imageFile": item.source, "fileName": item.name, "start": 0,
-                        "length": max(chunk.sampled_frames // 8, 1), "prompt": "", "ng_item": item.id})
-        if ref.kind == "last_frame":
-            out.append({"type": "image", "imageFile": item.source, "fileName": item.name, "isEndFrame": True,
-                        "start": chunk.sampled_frames - max(chunk.sampled_frames // 8, 1),
-                        "length": max(chunk.sampled_frames // 8, 1), "prompt": "", "ng_item": item.id})
-    return out
-
-
 def _sung_line(line, speakers, context):
     _, speaker, language, text = line
     # Without a reference subject (First / last frame) the singer is named, not "the singer".
@@ -377,8 +363,11 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
                  "prompt": _shot_text(s, substitute, automatic=not has_shots(context.shots_text), context=context)}
                 for s in chunk.shots]
     _add_sung_lines(segments, context, chunk, groups, substitute)
-    segments += _anchor_segments(context, chunk, guides)
     ref_on = mode == "ref2va"
+    texts = list(segments)
+    segments += anchor_segments(context, chunk, guides)
+    if ref_on:
+        segments += storyboard_segments(context, chunk, texts)
     tdata = {"reference_mode": "REF2VA" if ref_on else "OFF", "prompt_format": "minimax", "global_prompt": substitute(_global_prompt(context)),
              "segments": segments, "subjects": [_slot(group.root, voices, group.images) for group in groups] if ref_on else [],
              "subjectSlotCount": max(len(subjects), 1), "audioSegments": _audio_segments(context, chunk, voices),
