@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**AI prompts name the end pose in First / last frame mode** (2026-10-12):
+
+- Make H3 prompt and the part writer ask the AI to name the final pose, framing and light of a last frame or keyframe picture, as MiniMax's guide asks (describe the path between the frames). With 4 steps, H3 otherwise pulled the last frames onto the picture; with the end pose in the text the approach was even (measured).
+
 **Less memory when the video is put together** (2026-10-12):
 
 - NG Collect and NG Collect Video no longer copy the last part's picture after decoding. The copy only guards decoders that reuse their buffer on a later call; after the last part there is none, and a single 12 s part ran out of memory on the 3.1 GB copy.

@@ -144,12 +144,14 @@ def _frame_rule(found):
     who = " Call the people in it by what they are (for example 'the white-haired elf'), not by the picture's name."
     if first and last:
         return ("The video moves continuously from \"%s\" (its first frame) to \"%s\" (its last frame): use one shot unless the "
-                "request asks for more, and describe the path between the two pictures.%s" % (first[0], last[0], who))
+                "request asks for more, and describe the path between the two pictures: how pose, framing and light change, "
+                "ending on the final pose of the last picture named concretely.%s" % (first[0], last[0], who))
     if first:
         return ("The video starts exactly on \"%s\": shot 1 begins with what that picture shows (same people, pose, place, "
                 "framing, light) and develops forward from it.%s" % (first[0], who))
     if last:
-        return "The video ends exactly on \"%s\": the last shot arrives at what that picture shows.%s" % (last[0], who)
+        return ("The video ends exactly on \"%s\": the last shot arrives at what that picture shows; name its final pose, framing "
+                "and light concretely.%s" % (last[0], who))
     return ""
 
 

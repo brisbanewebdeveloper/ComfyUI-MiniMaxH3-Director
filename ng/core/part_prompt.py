@@ -77,16 +77,22 @@ def _summary_rule(sections):
             "what each reference contributes (%s). No square brackets, no spoken words." % labels)
 
 
+ARRIVAL = ("Spend the last sentences on the arrival: name the final pose, the framing and the light of that picture concretely, so the motion reaches it in time; otherwise H3 catches up in the last frames and the picture morphs into place.")
+
+
 def _extra_rules(head, reference, guidance, pictures):
     """Rules for keyframes, the chosen direction and the attached pictures."""
     rules = []
     labels = _labels(head, head)
     if not reference and "<Picture 2>" in labels:
         # base-en 3.2: the body supplies the path between the two frames, it does not describe two still pictures.
+        # Measured 2026-10-11: without the end pose in the text, 4-step H3 pulled the last 4 frames onto Picture 2 (a morph);
+        # with it the approach was even.
         rules.append("Picture 1 is the first and Picture 2 the last frame: begin in the position and framing established by Picture 1, "
-                     "describe the movement in between, and settle into the pose and composition established by Picture 2.")
+                     "describe how pose, framing and light change in between, and settle into the pose and composition established "
+                     "by Picture 2. " + ARRIVAL)
     elif not reference and "<Picture 1>" in labels:
-        rules.append("<Picture 1> is the %s frame: %s" % (("last", "the last shot arrives at what it shows.") if "aligns with" in head
+        rules.append("<Picture 1> is the %s frame: %s" % (("last", "the last shot arrives at what it shows. " + ARRIVAL) if "aligns with" in head
                                                           else ("first", "begin with what it shows and develop forward from it.")))
     if guidance:
         rules.append("Direction: " + guidance)

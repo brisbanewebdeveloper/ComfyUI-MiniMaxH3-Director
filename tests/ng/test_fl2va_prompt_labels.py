@@ -113,3 +113,21 @@ class FL2VARealPlan(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class EndPoseRule(unittest.TestCase):
+    """Measured 2026-10-11: with the end pose in the text, 4-step H3 approached the last frame evenly instead of morphing
+    into it in the last 4 frames. The AI writers must be told to name it (base-en 3.2: describe the path between frames)."""
+
+    def test_part_writer_asks_for_the_final_pose_of_the_last_frame(self):
+        part_prompt = module("ng.core.part_prompt")
+        both = " ".join(part_prompt._extra_rules("<Picture 1> ... <Picture 2>", False, "", []))
+        self.assertIn("final pose", both)
+        last = " ".join(part_prompt._extra_rules("<Picture 1> aligns with the 10.08-second mark", False, "", []))
+        self.assertIn("final pose", last)
+
+    def test_make_h3_prompt_asks_for_the_final_pose(self):
+        builder = module("ng.core.builder")
+        found = [({"widgets": {"name": "Start"}}, ("first_frame",), ()), ({"widgets": {"name": "End"}}, ("last_frame",), ())]
+        self.assertIn("final pose", builder._frame_rule(found))
+        self.assertIn("final pose", builder._frame_rule(found[1:]))
