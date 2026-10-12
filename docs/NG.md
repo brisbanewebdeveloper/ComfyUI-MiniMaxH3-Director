@@ -80,8 +80,11 @@ either place.
 - **Look (every part)** is what all render parts share: style, place, light. Once there are shots, H3 gets the shots and the Look;
   the Prompt itself is not pasted into every part again (a 27 s song carried its whole verse into each of three parts that way).
   In First / last frame mode the Look opens `[Shot 1]`, in References mode it stands before `[Shot 1]`, as the two guides ask.
-- A shot that runs over several render parts is written in full only in the part where it starts. Each later part gets
-  "Continue the same scene and action from the preceding video …" before the shot text, and sentences that move the
+- A shot that runs over several render parts gives each part only the action of its own share of the shot's time: time beats
+  in the shot text (`2.5–5s: …`, seconds from the shot's start) go to the parts they fall in, re-timed to the part; other text
+  is cut into sentences and `…, then …` clauses laid over the shot's time by length. A shot whose rest lies only in a part's
+  pinned head gets no new action. Before, each part replayed the whole action (a 20 s walk away and back was walked twice).
+- Each later part of a shot gets "Continue the same scene and action from the preceding video …" before its text, and sentences that move the
   camera (`push`, `pull`, `zoom`, `pan`, `dolly`, `orbit`, …) are left out there; a held camera stays. Every part read
   "the camera pushes in" as a push of its own: in a 20 s shot over three parts the zoom built up until H3 cut away to a
   glossy close-up (real minute 2026-10-11, cut at 33.4 s; gone with this rule, same seed).
@@ -194,6 +197,13 @@ This is the compiler's real output, refreshed live while you edit.
 - **References**: every path calls ComfyUI's own H3 nodes and never patches them. Before the call the Director brings pictures
   and reference video frames to the Qwen size of H3's released processor and cuts a reference video's soundtrack to the frames
   the stock node keeps (`minimax_refprep.py`).
+- **Resume after a crash**: Render Sequence keeps every finished render part's raw latent in `output/h3-director-resume`. Queue the
+  same plan again and the finished parts come from disk without sampling; a changed part and every part after it render again.
+  Files older than 14 days are removed. The models are not part of the key: after swapping a checkpoint, empty the folder.
+- **Control video (experimental)**: **H3 Control Video** between Director Output's MODEL and the guider steers each part with a
+  pose, depth or edge video (MiniMax H3 Fun ControlNet-Union via ComfyUI's `ModelPatchLoader` and its apply node), or with a mask
+  and the source video behind it. The videos run on the story timeline at 24 fps; each part gets its own window, head included.
+  Make the control video with ComfyUI's own nodes: SDPose (pose), Canny, MoGe or Depth Anything (depth), SAM3 Video Track (masks).
 - **Editable loop**: **H3 Director NG - native chunk loop.json** or **two sampler chunk loop.json**. The Director's **chunks** starts
   the loop and one Director Output inside it prepares each chunk. See [connections and continuity contract](NG-external-sampling.md).
 
