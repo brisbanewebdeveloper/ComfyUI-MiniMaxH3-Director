@@ -365,7 +365,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
     _add_sung_lines(segments, context, chunk, groups, substitute)
     ref_on = mode == "ref2va"
     texts = list(segments)
-    segments += anchor_segments(context, chunk, guides)
+    segments += anchor_segments(context, chunk, guides, texts)
     if ref_on:
         segments += storyboard_segments(context, chunk, texts)
     tdata = {"reference_mode": "REF2VA" if ref_on else "OFF", "prompt_format": "minimax", "global_prompt": substitute(_global_prompt(context)),

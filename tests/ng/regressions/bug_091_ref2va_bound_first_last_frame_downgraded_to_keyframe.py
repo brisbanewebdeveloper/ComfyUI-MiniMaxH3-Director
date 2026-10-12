@@ -111,8 +111,8 @@ class TestBug091Ref2VABoundFirstLastFrame(unittest.TestCase):
         guide_kinds = {r.ctx_id: r.kind for r in compiled.refs if r.kind in ("first_frame", "last_frame")}
         self.assertEqual(guide_kinds.get("castle"), "first_frame")
         self.assertEqual(guide_kinds.get("sunset"), "last_frame")
-        self.assertIn("is a composition anchor at 0s.", compiled.prompt)
-        self.assertIn("is the last frame of the target video.", compiled.prompt)
+        self.assertIn("is the first frame of [Shot 1].", compiled.prompt)
+        self.assertIn("is the last frame of [Shot 1].", compiled.prompt)
         self.assertIn("summary: [keyframe completion + reference generation]", compiled.prompt)
 
     def test_control_3_ref2va_intermediate_shot_bound_frame_correctly_downgrades_to_keyframe(self):
@@ -183,8 +183,8 @@ class TestBug091Ref2VABoundFirstLastFrame(unittest.TestCase):
                                          media=(doc_mod.MediaBinding("castle", "first_frame"),)),)
         )
         compiled = compile_mod.compile_chunk(ctx, chunk, chunks_mod.ContinuityPlan("none"))
-        self.assertIn("is a composition anchor at 0s.", compiled.prompt,
-                      "BUG-091: Shot-bound first_frame card in Ref2VA must produce a composition anchor at 0s in prompt")
+        self.assertIn("is the first frame of [Shot 1].", compiled.prompt,
+                      "BUG-091: Shot-bound first_frame card in Ref2VA must produce '<Picture N> is the first frame of [Shot 1]' (MiniMax ref-en 2.2) in prompt")
         self.assertIn("summary: [keyframe completion + reference generation]", compiled.prompt,
                       "BUG-091: Shot-bound first_frame in Ref2VA must specify keyframe completion in summary")
         self.assertTrue(any(r.kind == "first_frame" and r.ctx_id == "castle" for r in compiled.refs),
@@ -209,7 +209,7 @@ class TestBug091Ref2VABoundFirstLastFrame(unittest.TestCase):
                                          media=(doc_mod.MediaBinding("sunset", "last_frame"),)),)
         )
         compiled = compile_mod.compile_chunk(ctx, chunk, chunks_mod.ContinuityPlan("none"))
-        self.assertIn("is the last frame of the target video.", compiled.prompt,
+        self.assertIn("is the last frame of [Shot 1].", compiled.prompt,
                       "BUG-091: Shot-bound last_frame card in Ref2VA must produce last frame token in prompt")
         self.assertIn("summary: [keyframe completion + reference generation]", compiled.prompt,
                       "BUG-091: Shot-bound last_frame in Ref2VA must specify keyframe completion in summary")

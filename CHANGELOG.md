@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**References mode names First and Last frame pictures as MiniMax's guide does** (2026-10-12):
+
+- A First frame picture is "<Picture 2> is the first frame of [Shot 1]" and a Last frame picture "... the last frame of [Shot N]" (ref-en 2.2). They were "a composition anchor at 0s" and "the last frame of the target video", because the picture reached the prompt compiler as a segment without text and so without a shot. In a real test, Ref2VA with the start picture as First frame and a portrait as reference kept the face, staff and jewellery up to the close-up, where First / last frame mode with the start picture alone changed the face and started the walk a second time.
+
 **References reach H3 as its released pipeline sees them, on a stock ComfyUI** (2026-10-12):
 
 - Pictures and reference videos are brought to the Qwen size of H3's released processor before the stock H3 nodes get them. The stock encoder uses the shared Qwen limits: a picture under 256x256 got fewer vision tokens than H3's minimum of 64 (a 64x64 one got 4), and a long reference video got more than H3 was trained with. Same tokens as H3's processor now (tested pixel for pixel).

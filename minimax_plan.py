@@ -1399,6 +1399,8 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
             shot_no = written_shot_no.get(ev.get("shot_index"))
             if ref_role == REF_ROLE_STORYBOARD and seg.get("shotNos") is not None:
                 shot_no = list(seg["shotNos"])      # the shots it plans; [] = the whole target video
+            elif seg.get("shotNo") is not None:
+                shot_no = seg["shotNo"]             # a Director edge frame: the shot it opens or ends
             if ev["is_end"]:
                 picture_role = ROLE_LAST
             elif shot_no:
