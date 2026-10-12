@@ -14,6 +14,7 @@ from .mentions import replace_mentions
 from .context_options import retention_note
 from .issues import Issue
 from .subjects import subject_groups
+from . import shot_share
 from .shot_bindings import spoken_text
 from .shot_document import has_shots, read_document, read_look
 from .picture_segments import anchor_segments, storyboard_segments
@@ -283,12 +284,22 @@ def _without_camera_moves(text):
     return "\n".join(" ".join(s for s in _SENTENCE.split(line) if not _CAMERA_MOVE.search(s)) for line in text.splitlines())
 
 
-def _shot_text(shot, substitute, automatic=False, context=None):
+def _shot_text(shot, substitute, automatic=False, context=None, chunk=None):
     """A shot that began in an earlier chunk keeps its action but not its spoken lines: those belong to where the shot starts.
 
     Nor its camera move: the part before already made it, and each part read "the camera pushes in" as a new push, so a
-    20 s shot over three parts pushed in three times and lost its look (AUDIT-010, measured 2026-10-11)."""
+    20 s shot over three parts pushed in three times and lost its look (AUDIT-010, measured 2026-10-11).
+
+    A shot over several parts gives each part only the action of its own share of the shot's time (ng.core.shot_share)."""
     text = substitute(spoken_text(shot, context)[0] if context else shot.text)
+    if chunk is not None and not automatic and (shot.carried or shot.continues):
+        prose = [line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip())]
+        spoken = [line for line in text.splitlines() if plan.DIALOGUE_RE.match(line.strip())]
+        shared = shot_share.share("\n".join(prose), shot.shot_start_f, shot.shot_end_f, max(shot.shot_start_f, chunk.story_start_f),
+                                  min(shot.shot_end_f, chunk.story_end_f), chunk.story_start_f - chunk.head_frames)
+        if shared == shot_share.HEAD_ONLY:
+            return shared
+        text = "\n".join([shared] + spoken)
     if shot.carried:
         text = "\n".join(line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip()))
         if not automatic:
@@ -360,7 +371,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
     voices, extra_voices = _voices_by_speaker(context)
     substitute = _tag_substitutor([s.id for s in subjects], context) if mode == "ref2va" else _plain_substitutor(subjects, context)
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
-                 "prompt": _shot_text(s, substitute, automatic=not has_shots(context.shots_text), context=context)}
+                 "prompt": _shot_text(s, substitute, automatic=not has_shots(context.shots_text), context=context, chunk=chunk)}
                 for s in chunk.shots]
     _add_sung_lines(segments, context, chunk, groups, substitute)
     ref_on = mode == "ref2va"

@@ -2,6 +2,11 @@
 
 ## 1.0.0 (unreleased)
 
+**A shot over several render parts is no longer played again in each part** (2026-10-13):
+
+- Each part gets the action of its own share of the shot's time. Time beats in the shot text ("2.5–5s: ...", seconds from the shot's start) go to the parts they fall in, re-timed to the part; other text is cut into sentences and "..., then ..." clauses and laid over the shot's time by length. A shot whose remaining frames lie only in the pinned head gets no action ("The shot from the preceding video ends here, without new action.").
+- Real runs before the fix: Aurelia walked away and back twice in a 20 s shot over two parts; in the user's 30 s storyboard each part replayed the shots its pinned head only finished.
+
 **First / last frame mode uses Reference pictures** (2026-10-12):
 
 - A Reference picture reaches H3 next to the first and last frame: "The appearance of Aurelia (face, hair, outfit and props) comes from <Picture 3>, a reference picture that is not a frame of the video." The frames keep <Picture 1> / <Picture 2>. ComfyUI's fl2va node has no reference input, so the Director builds this conditioning itself (no ComfyUI change). Real tests, same seed with and without: an elf portrait kept her face and staff up to a close-up; Aurelia's character sheet brought the gear emblem on her back and her leg armour, neither visible in the first frame, and nothing of the sheet's layout reached the video.
