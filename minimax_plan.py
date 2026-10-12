@@ -325,7 +325,13 @@ def retention_note(label, marker, kind=None, audio=False):
     }[marker] % label
 
 
-def picture_texts(ordinal, picture_role, ref_role, shot_no, at):
+def _shot_list(numbers):
+    """[Shot 1] / [Shot 1] and [Shot 2] / [Shot 1], [Shot 2] and [Shot 3]."""
+    names = ["[Shot %d]" % n for n in numbers]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def picture_texts(ordinal, picture_role, ref_role, shot_no, at, panels=None):
     """Every wording a standalone <Picture N> needs, derived once from the job it does.
 
     Four renderings, because the guide asks for the same fact in four places: the
@@ -337,18 +343,25 @@ def picture_texts(ordinal, picture_role, ref_role, shot_no, at):
     voices when the wording lived in three places, which is how issue #4 happened.
     """
     label = "<Picture %d>" % ordinal
+    numbers = []
     if isinstance(shot_no, (list, tuple)):
         # one storyboard for several shots, as the guide's own example: "for [Shot 1] and [Shot 2]"
-        shot = " and ".join("[Shot %d]" % n for n in shot_no)
+        numbers = list(shot_no)
+        shot = _shot_list(numbers) if numbers else ""
         shot_no = None
     else:
         shot = "[Shot %d]" % shot_no if shot_no else ""
 
     if ref_role == REF_ROLE_STORYBOARD:
         target = shot or "the target video"
+        mapping = ""
+        if panels and shot and all(panels):
+            # a render part that covers only some of the storyboard's panels says which ones
+            pairs = ["[Shot %d] is its panel %d" % (n, p) for n, p in zip(numbers, panels)]
+            mapping = " " + (pairs[0] if len(pairs) == 1 else ", ".join(pairs[:-1]) + " and " + pairs[-1]) + "."
         return {
             "declaration": "%s is a storyboard reference for %s, defining %s viewpoint, "
-                           "subject placement, and shot order." % (label, target, "their" if " and " in target else "its"),
+                           "subject placement, and shot order.%s" % (label, target, "their" if " and " in target else "its", mapping),
             "where": "storyboard reference for %s" % target,
             "phrase": "The shot follows the storyboard reference %s." % label if shot else "",
             "note": "%s is a storyboard reference for %s" % (label, target),
@@ -549,7 +562,7 @@ def build_subject_definitions(subject_slots, ref_image_slots, ref_video_segs,
         if s.get("source") != "timeline" or s.get("ref_role") == REF_ROLE_SUBJECT:
             continue
         texts = picture_texts(ordinal, s.get("picture_role"), s.get("ref_role"),
-                              s.get("shot_no"), s.get("at"))
+                              s.get("shot_no"), s.get("at"), s.get("panel_nos"))
         pic_texts[ordinal] = texts
         lines.append(texts["declaration"])
         labels.append({"label": "<Picture %d>" % ordinal, "marker": s["retention"],
@@ -1416,6 +1429,7 @@ def plan_timeline(tdata, win_start, duration_frames, fps, global_prompt="",
                     "desc": (seg.get("refDesc") or "").strip(),
                     "note": (seg.get("refNote") or "").strip(),
                     "shot_no": shot_no,
+                    "panel_nos": seg.get("panelNos"),
                     "at": fmt_seconds(ev["rel_start_f"] / fps)}
             if ref_role == REF_ROLE_AUTO and picture_role in (ROLE_FIRST, ROLE_LAST):
                 slot["keyframe"] = picture_role

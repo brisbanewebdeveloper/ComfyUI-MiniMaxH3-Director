@@ -2,6 +2,11 @@
 
 ## 1.0.0 (unreleased)
 
+**A render part tells H3 which storyboard panels are its shots** (2026-10-12):
+
+- A storyboard over more shots than one render part holds now says which of its panels the part's shots are: "<Picture 3> is a storyboard reference for [Shot 1] and [Shot 2], defining their viewpoint, subject placement, and shot order. [Shot 1] is its panel 3 and [Shot 2] is its panel 4." Each part numbers its shots from [Shot 1], so every part of a 30 s storyboard pointed at panels 1 and 2. Panels count the shots the storyboard is on, in story order.
+- Three or more shots are listed as "[Shot 1], [Shot 2] and [Shot 3]" (was "[Shot 1] and [Shot 2] and [Shot 3]").
+
 **References mode names First and Last frame pictures as MiniMax's guide does** (2026-10-12):
 
 - A First frame picture is "<Picture 2> is the first frame of [Shot 1]" and a Last frame picture "... the last frame of [Shot N]" (ref-en 2.2). They were "a composition anchor at 0s" and "the last frame of the target video", because the picture reached the prompt compiler as a segment without text and so without a shot. In a real test, Ref2VA with the start picture as First frame and a portrait as reference kept the face, staff and jewellery up to the close-up, where First / last frame mode with the start picture alone changed the face and started the walk a second time.

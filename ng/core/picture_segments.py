@@ -1,7 +1,7 @@
 """The picture segments the legacy compiler reads besides the shot texts: native First / Last frame slots, and storyboard
 pictures in References mode."""
 from .context import USAGE_BY_MEDIA
-from .shot_document import bound_media_ids
+from .shot_document import bound_media_ids, read_document
 
 
 def _written_numbers(chunk, texts):
@@ -53,12 +53,43 @@ def storyboard_segments(context, chunk, texts):
     planned, bound = {}, bound_media_ids(context.shots_text)
     for shot in chunk.shots:
         for binding in shot.media:
-            item = context.item(binding.context_id)
-            roles = (binding.role,) if binding.role in USAGE_BY_MEDIA["image"] else (item.effective_usage if item else ())
-            if item and item.media == "image" and item.source and "storyboard" in roles and shot.shot_id in number:
-                planned.setdefault(item.id, []).append(number[shot.shot_id])
+            if _plans(context, binding) and shot.shot_id in number:
+                planned.setdefault(binding.context_id, {})[number[shot.shot_id]] = shot.shot_id
     for item in context.by_media("image"):
         if item.source and item.id not in bound and "storyboard" in item.effective_usage:
-            planned.setdefault(item.id, [])
-    return [{"type": "image", "imageFile": context.item(i).source, "fileName": context.item(i).name, "start": 0, "length": 1,
-             "prompt": "", "refRole": "storyboard", "shotNos": sorted(set(nos)), "ng_item": i} for i, nos in planned.items()]
+            planned.setdefault(item.id, {})
+    out = []
+    for i, shots in planned.items():
+        nos = sorted(shots)
+        seg = {"type": "image", "imageFile": context.item(i).source, "fileName": context.item(i).name, "start": 0, "length": 1,
+               "prompt": "", "refRole": "storyboard", "shotNos": nos, "ng_item": i}
+        panels = _panels(context, i)
+        if nos and len(panels) > len(nos):
+            # A render part sees the whole storyboard but numbers its own shots from [Shot 1]; without the panel numbers a later
+            # part read panels 1 and 2 again (compiled 2026-10-12, user's 30 s storyboards).
+            seg["panelNos"] = [panels.index(shots[n]) + 1 if shots[n] in panels else None for n in nos]
+        out.append(seg)
+    return out
+
+
+def _plans(context, binding):
+    item = context.item(binding.context_id)
+    roles = (binding.role,) if binding.role in USAGE_BY_MEDIA["image"] else (item.effective_usage if item else ())
+    return bool(item and item.media == "image" and item.source and "storyboard" in roles)
+
+
+def _panels(context, item_id):
+    """The project's shots this storyboard plans, in story order: panel N of the picture is the N-th of them."""
+    records = sorted(read_document(context.shots_text) or (), key=lambda r: (float(r.get("start", 0)), float(r.get("end", 0))))
+    out = []
+    for record in records:
+        for binding in record.get("media", []):
+            if binding.get("context_id") == item_id and _plans(context, _Binding(binding)):
+                out.append(record["id"])
+                break
+    return out
+
+
+class _Binding:
+    def __init__(self, record):
+        self.context_id, self.role = record.get("context_id"), record.get("role", "context")

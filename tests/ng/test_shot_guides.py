@@ -182,6 +182,22 @@ class ShotGuides(unittest.TestCase):
         self.assertIn("storyboard_unused", {i.code for i in fl.issues})
         self.assertNotIn("sb", {r.ctx_id for c in fl.compiled for r in c.refs})
 
+    def test_a_render_part_names_the_storyboard_panels_of_its_shots(self):
+        # Each part numbers its shots from [Shot 1]; the storyboard picture shows all panels. Without the panel numbers every
+        # part of the user's 30 s storyboard pointed at panels 1 and 2 (compiled 2026-10-12).
+        records = [shot("p%d" % n, (n - 1) * 7.5, n * 7.5, [("sb", "storyboard")]) for n in range(1, 5)]
+        items = (image("hero", usage=("reference",)), image("sb", usage=("storyboard",)))
+        compiled = plan(records, items, 30, 10).compiled
+        lines = [next(l for l in c.prompt.splitlines() if l.startswith("<Picture 2> is a storyboard")) for c in compiled]
+        self.assertEqual(len(lines), 3)
+        self.assertTrue(lines[0].endswith("[Shot 1] is its panel 1 and [Shot 2] is its panel 2."), lines[0])
+        self.assertTrue(lines[1].endswith("[Shot 1] is its panel 2 and [Shot 2] is its panel 3."), lines[1])
+        self.assertTrue(lines[2].endswith("[Shot 1] is its panel 3 and [Shot 2] is its panel 4."), lines[2])
+        three = [shot("p%d" % n, (n - 1) * 3, n * 3, [("sb", "storyboard")]) for n in range(1, 4)]
+        prompt = plan(three, items, 9, 10).compiled[0].prompt
+        self.assertIn("for [Shot 1], [Shot 2] and [Shot 3], defining their viewpoint", prompt)
+        self.assertNotIn("its panel", prompt, "a part with the whole storyboard needs no panel numbers")
+
     def test_a_keyframe_at_the_part_length_gives_two_parts_not_three(self):
         record = shot("one", 0, 20, [("a", "first_frame"), ("k", "keyframe"), ("z", "last_frame")])
         record["media"][1]["at_s"] = 10.0
