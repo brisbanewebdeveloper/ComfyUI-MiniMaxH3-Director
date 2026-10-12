@@ -2,6 +2,10 @@
 
 ## 1.0.0 (unreleased)
 
+**Less memory when the video is put together** (2026-10-12):
+
+- NG Collect and NG Collect Video no longer copy the last part's picture after decoding. The copy only guards decoders that reuse their buffer on a later call; after the last part there is none, and a single 12 s part ran out of memory on the 3.1 GB copy.
+
 **FL2VA: a loose Reference card no longer replaces shot 1's picture** (2026-10-11):
 
 - In First / last frame mode a Reference picture on no shot opens the video as First frame only when the first shot has no picture of its own. A real test opened on the loose card's picture instead of shot 1's.

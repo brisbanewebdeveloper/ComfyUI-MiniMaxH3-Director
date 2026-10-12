@@ -58,6 +58,7 @@ def delivered_pictures(videos, plan, decode_video):
     Decoding every chunk alone ended it on an unblended lookahead and restarted the decoder on the regenerated head: a one-frame
     brightness and contrast jump at every join (measured on a real minute: up to +0.011 luma, +0.005 contrast). A window that starts
     one clip early and runs through the clip that covers the chunk's last frame gives the frames a decode of the whole run would."""
+    final = plan.chunks[-1].index
     for pieces, run in _joined_runs(videos, plan):
         total, origin = sum(p.shape[2] for p in pieces), run[0].story_start_f
         for chunk in run:
@@ -70,8 +71,10 @@ def delivered_pictures(videos, plan, decode_video):
                 raise ValueError("chunk %d: %d latent steps decoded to %d frames, expected %d"
                                  % (chunk.index + 1, stop - start, frames.shape[0], pin.pixel_frames(stop - start)))
             offset = chunk.story_start_f - origin - start // VAE_CLIP_STEPS * VAE_CLIP_FRAMES
-            # Keep owned outputs across subsequent VAE calls, including decoders that reuse their buffers.
-            yield frames[offset:offset + chunk.delivered_frames].clone()
+            # Keep owned outputs across subsequent VAE calls, including decoders that reuse their buffers. After the last
+            # chunk no call follows: a copy there only doubled the peak (one 12 s part: 3.1 GB more, out of memory).
+            delivered = frames[offset:offset + chunk.delivered_frames]
+            yield delivered if chunk.index == final else delivered.clone()
 
 
 def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *, restore_audio=None):

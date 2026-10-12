@@ -95,6 +95,18 @@ class Collect(unittest.TestCase):
             self.assertEqual(float(frames[chunk.story_start_f, 0, 0, 0]), chunk.index)
             self.assertEqual(float(audio["waveform"][0, 0, round(chunk.story_start_f / 24 * RATE)]), chunk.index)
 
+    def test_the_last_chunk_is_handed_on_without_a_second_copy(self):
+        # A 12 s single part ran out of memory on the copy of its 3.1 GB picture; after the last decode none is needed.
+        plan = chunks.plan_chunks(288, 288, chunks.ContinuityPlan("none", 22, 24))
+        decoded = []
+        def picture(video):
+            decoded.append(decode_video(video))
+            return decoded[-1]
+        latents = [fake_latent(c.sampled_frames, c.index)["samples"].unbind()[0] for c in plan.chunks]
+        frames = list(collect.delivered_pictures(latents, plan, picture))
+        self.assertEqual(len(frames), 1)
+        self.assertEqual(frames[0].untyped_storage().data_ptr(), decoded[0].untyped_storage().data_ptr())
+
     def test_overlong_sound_is_cut_and_short_sound_is_padded_and_reported(self):
         plan = self.plan()
         frames, audio, issues = self.run_collect(plan, extra_samples=300)
