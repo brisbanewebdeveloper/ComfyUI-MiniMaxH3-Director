@@ -9,6 +9,7 @@
 
 **H3 Control Video (experimental)** (2026-10-13):
 
+- **mask_shape** (box / outline, default box) and **mask_grow** (default 16 px): a mask can be regenerated as its bounding box per frame. With a figure's own outline the region outside a new, differently shaped figure stayed grey, in ComfyUI's own workflow as well; with the box the rim was gone (real test, ControlNet-Union 2.0).
 - Between H3 Director Output and the sampler: steers each render part with a pose, depth or edge video (MiniMax H3 Fun ControlNet-Union, ComfyUI's own apply node), or regenerates masked regions of a source video. Each part gets its own window of the videos, its pinned head included.
 
 **A shot over several render parts is no longer played again in each part** (2026-10-13):

@@ -27,15 +27,20 @@ class NGControlVideo(io.ComfyNode):
                                  io.Float.Input("end_percent", default=1.0, min=0.0, max=1.0, step=0.001, advanced=True),
                                  io.Image.Input("control_video", optional=True, tooltip="Pose, depth, canny, HED or MLSD frames."),
                                  io.Mask.Input("mask", optional=True, tooltip="1 marks the regions to regenerate (e.g. SAM3 Track to Mask)."),
-                                 io.Image.Input("source_video", optional=True, tooltip="The video behind the mask; only read with a mask.")],
+                                 io.Image.Input("source_video", optional=True, tooltip="The video behind the mask; only read with a mask."),
+                                 io.Combo.Input("mask_shape", options=list(control.MASK_SHAPES), default="box", optional=True,
+                                                tooltip="box: regenerate the mask's bounding box per frame (a new figure of another shape "
+                                                        "fits in, no grey rim). outline: only the masked shape itself."),
+                                 io.Int.Input("mask_grow", default=16, min=0, max=256, optional=True,
+                                              tooltip="Pixels added around the box or outline.")],
                          outputs=[io.Model.Output(display_name="model")])
 
     @classmethod
     def execute(cls, model, model_patch, vae, sequence, chunk_index=0, loop_chunk=None, strength=1.0, start_percent=0.0,
-                end_percent=1.0, control_video=None, mask=None, source_video=None):
+                end_percent=1.0, control_video=None, mask=None, source_video=None, mask_shape="box", mask_grow=16):
         job = chunk_job(sequence, chunk_index, loop_chunk)
         return io.NodeOutput(control.apply(core(), model, model_patch, vae, job, strength, start_percent, end_percent,
-                                           control_video, mask, source_video))
+                                           control_video, mask, source_video, mask_shape, mask_grow))
 
 
 NODES = [NGControlVideo]
