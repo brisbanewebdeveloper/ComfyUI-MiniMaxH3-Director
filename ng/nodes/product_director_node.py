@@ -50,8 +50,9 @@ class NGH3Director(io.ComfyNode):
                                                 tooltip="How a first or last frame picture is fitted to the video size."),
                                  io.Combo.Input("ref_image_size", options=["match", "max"], default="match", advanced=True,
                                                 tooltip="Reference pictures at the video's pixel area (fast) or a 2048 px short edge (more identity, slower)."),
-                                 # last, so older workflows keep their saved widget order
-                                 io.Boolean.Input("resume", default=True, advanced=True,
+                                 # last and optional: API graphs saved before it stay valid (it defaults to on), and the Studio
+                                 # repairs the widget order of older UI workflows (js/ng/h3s_node.js, repairInsertedWidgets)
+                                 io.Boolean.Input("resume", default=True, advanced=True, optional=True,
                                                   tooltip="Keep every finished render part in output/h3-director-resume; after a crash the same "
                                                           "plan renders only the parts that are missing.")],
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])

@@ -19,9 +19,9 @@ const MIN_WIDTH = 900, WIDTH = 1400, HEIGHT = 1150;
 // in-node editor, which lands on the first new widget; anything that is not a valid value falls back to the default.
 const LATER = { turbo: false, turbo_lora_fl2va: "none", turbo_lora_ref2va: "none", resize_method: "crop", ref_image_size: "match" };
 
-// Widgets inserted among the saved ones. ComfyUI restores widget values by position, and optional inputs come after the
-// required ones, so a workflow saved before "resume" (required) gave it prompt_override's value and every later widget the
-// one after its own. A list that is short by one gets the inserted default and its later values moved back into place.
+// Widgets inserted among the saved ones. ComfyUI restores widget values by position, so a workflow saved before "resume"
+// gave it the value of the widget after it (prompt_override's text while resume was required, now the Studio's own entry).
+// A list that is short by one gets the inserted default and its later values moved back into place.
 const INSERTED = [["resume", true]];
 export function repairInsertedWidgets(node, saved) {
   const widgets = node.widgets || [];
