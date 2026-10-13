@@ -2,6 +2,15 @@
 
 ## 1.0.0 (unreleased)
 
+**H3 Storyboard, stages 1 and 2** (2026-10-13):
+
+- New node **H3 Storyboard**: a storyboard sheet laid out in the node, in the look of the user's ChatGPT boards (title line, numbered panels with time and title on the picture, caption below). 1 to 9 panels, six panel formats, panel seconds end to end.
+- Each panel is a stack of layers: pictures from the Context cards, the input folder or an upload; texts; a colour. Drag to move, wheel to size, Shift + wheel to turn, mirror, opacity, order, hide; undo and redo.
+- **Cut out** runs ComfyUI's Remove Background (BiRefNet) as a small queued job and puts a transparent PNG in place of the picture (real test: about 3 s).
+- **AI: write panel texts** writes the sheet's title line and every panel's title, caption and H3 shot text from "What should happen", with the Studio's shot rules; a panel longer than 5 s gets its time beats in the answer's example. Real test with qwen3.5:9b: 4 panels in 10 s; 5 of 5 answers valid, the 10 s panel in beats in 4 of 5.
+- Outputs the sheet, the panels' pictures and the panels as the Director's shot document; the browser draws and uploads them when the workflow is queued. **Use in Director** adds a Context card with the sheet (usage Storyboard), connected to the Context Connector, with the file list's own spelling of the path (Windows uses "\\").
+- The editor tells ComfyUI's change tracker about every edit, as the Studio does, so the browser's restore after a reload keeps them (found in the UI test: the last edits were lost).
+
 **The AI writes complete H3 shots: framing, camera, time beats** (2026-10-13):
 
 - Every shot the AI writes (AI: split into shots, Make H3 prompt, AI: improve text) begins with its framing and says how the camera moves, with amplitude and speed, or that it "holds a static shot" (MiniMax's H3 guide). Nothing is appended automatically; said by the AI, a still camera also keeps 4-step turbo from drifting into a close-up.

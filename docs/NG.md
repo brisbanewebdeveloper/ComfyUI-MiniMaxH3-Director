@@ -214,6 +214,29 @@ This is the compiler's real output, refreshed live while you edit.
 - **Editable loop**: **H3 Director NG - native chunk loop.json** or **two sampler chunk loop.json**. The Director's **chunks** starts
   the loop and one Director Output inside it prepares each chunk. See [connections and continuity contract](NG-external-sampling.md).
 
+## H3 Storyboard
+
+**H3 Storyboard** (`NGStoryboard`) lays out a storyboard in the node, in the look of a ChatGPT storyboard sheet: a title line,
+1 to 9 numbered panels in a grid (panel format 16:9, 9:16, 1:1, 4:3, 3:4 or 21:9), each with its time and title on the
+picture and a caption below.
+
+- **Panels:** each has its seconds (panels follow each other: 10 s, 2.5 s, ... are 0-10, 10-12.5, ...), a title, the caption
+  on the sheet and the **shot text** H3 renders. Its picture is a stack of layers: pictures (from the Context cards connected
+  through **H3 context**, from the input folder including subfolders, or uploaded to `input/h3-storyboard`), texts and a
+  colour. Drag a layer to move it; the mouse wheel sizes it, with Shift it turns; Mirror, Opacity, order and Hide in the
+  layer list. Undo / Redo in the header.
+- **Cut out** removes a picture's background with ComfyUI's own Load Background Removal Model and Remove Background
+  (`models/background_removal`, e.g. `birefnet.safetensors`), queued as a small job; the result is a PNG with transparency
+  in `output/h3-storyboard`. Undo brings the original back.
+- **AI: write panel texts** (connect the H3 AI Loader to **AI provider**): from "What should happen" the AI writes the
+  sheet's title and subtitle and every panel's title, caption and shot text, with the Studio's rules (framing, camera, time
+  beats for a panel longer than 5 s). Panel times are never changed; texts the user wrote are kept in meaning.
+- **Outputs:** `sheet` (the sheet as drawn), `panels` (each panel's picture, without caption) and `shots` (the panels as the
+  Director's shot document). The browser draws the pictures when the workflow is queued and uploads them to
+  `input/h3-storyboard`; an API graph queued without the browser has no sheet.
+- **Use in Director** draws the sheet and adds a Context card with it (usage Storyboard), connected to the Context
+  Connector of the **H3 context** input when there is one.
+
 ## Product nodes
 
 | Node | Responsibility |

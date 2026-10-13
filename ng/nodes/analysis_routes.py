@@ -12,6 +12,7 @@ from ..adapters.analyze_all import analyze_all
 from ..adapters.auto_direct import direct
 from ..adapters.builder import plan
 from ..adapters.part_writer import write
+from ..adapters.storyboard_ai import texts
 from ..core.analysis import ProviderConfig
 from ..core.fields import need_dict
 from .context_routes import key_root
@@ -75,5 +76,15 @@ async def build_plan(request):
     try:
         payload = await request.json()
         return _answer({"suggestion": await plan(payload, api_key=_api_key(request, payload))})
+    except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
+        return _failure(error)
+
+
+@PromptServer.instance.routes.post("/ng/storyboard_texts")
+async def storyboard_texts(request):
+    """The H3 Storyboard's AI: titles, captions and shot texts of every panel from what should happen."""
+    try:
+        payload = await request.json()
+        return _answer({"suggestion": await texts(payload, api_key=_api_key(request, payload))})
     except (ValueError, KeyError, TypeError, OSError, aiohttp.ClientError, asyncio.TimeoutError) as error:
         return _failure(error)

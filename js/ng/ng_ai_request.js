@@ -69,7 +69,7 @@ async function nativeAction(app,api,action,payload,signal) {
 
 // Each action names its own endpoint; only Analyze falls back to /ng/analyze, so a misrouted action cannot hand back a
 // field suggestion where shots or a prompt were expected.
-const ENDPOINTS = { direct: "/ng/direct", write: "/ng/write_part", build: "/ng/build_plan" };
+const ENDPOINTS = { direct: "/ng/direct", write: "/ng/write_part", build: "/ng/build_plan", storyboard: "/ng/storyboard_texts" };
 
 export async function aiAction(app,api,action,payload,signal) {
   if(payload.provider.source==="clip") {
