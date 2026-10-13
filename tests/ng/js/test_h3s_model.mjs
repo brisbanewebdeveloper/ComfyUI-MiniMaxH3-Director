@@ -101,13 +101,14 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   assert.deepEqual(model.chunkBudget(refs(["first_frame", "frame"], ["last_frame", "frame"])), { image: 2, video: 0, audio: 0, total: 2 });
 }
 
-// Turbo LoRA preference mirrors the Python default.
+// A known turbo LoRA is found in the shared profile table whatever its folder and case; the user picks the LoRA, nothing is preset.
 {
-  const names = ["flux2/Flux2TurboComfyv2.safetensors", "minimax-h3/minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors",
-    "minimax-h3/minimax_h3_turbo_4step_ckpt500.safetensors", "minimax-h3/minimax_h3_turbo_4step_ckpt500_pruned_comfyui.safetensors"];
-  assert.equal(model.preferredTurboLora(names, "fl2v"), names[1]);
-  assert.equal(model.preferredTurboLora(names, "ref2v"), names[3]);
-  assert.equal(model.preferredTurboLora(names.slice(0, 1), "fl2v"), "none");
+  const { readFileSync } = await import("node:fs");
+  const table = JSON.parse(readFileSync(new URL("../../../js/ng/turbo_profiles.json", import.meta.url), "utf8"));
+  assert.equal(model.turboProfile(table, "MiniMax-H3\\minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors").steps, 4);
+  assert.equal(model.turboProfile(table, "minimax-h3/MINIMAX_H3_FL2V_TURBO_8STEP_V1.0_COMFYUI_BF16.safetensors").steps, 8);
+  assert.equal(model.turboProfile(table, "flux2/Flux2TurboComfyv2.safetensors"), null);
+  assert.equal(model.turboProfile(table, "none"), null);
 }
 
 // "+ Shot" always finds a place: room after the selected shot, else any free room, else it halves a shot.

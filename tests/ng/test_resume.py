@@ -57,6 +57,16 @@ class Disk(unittest.TestCase):
             self.assertFalse(os.path.exists(old), "parts older than %d days are removed" % resume.KEEP_DAYS)
             self.assertFalse([n for n in os.listdir(resume.folder()) if n.endswith(".part")])
 
+    def test_forget_deletes_only_the_parts_of_the_finished_video(self):
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(resume.folder_paths, "get_output_directory", return_value=root):
+            latent = {"samples": NestedTensor((torch.rand(1, 24, 2, 4, 4), torch.rand(1, 32, 2, 10)))}
+            done, other = plan(["One.", "Two."]), plan(["Another."])
+            for job in (*done[:1], *other):  # the video's second part was never kept, which forget accepts
+                resume.save(resume.part_key(job, SETTINGS), latent)
+            resume.forget(done, SETTINGS)
+            self.assertFalse(resume.has(resume.part_key(done[0], SETTINGS)))
+            self.assertTrue(resume.has(resume.part_key(other[0], SETTINGS)), "another project's part stays")
+
 
 if __name__ == "__main__":
     unittest.main()

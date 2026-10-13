@@ -280,10 +280,8 @@ export function chunkBudget(chunk) {
   return { image: ids.image.size, video: ids.video.size, audio: ids.audio.size, total: ids.image.size + ids.video.size + ids.audio.size };
 }
 
-// The same choice the Python side makes for a new node: an H3 turbo LoRA for this model, files converted for ComfyUI first.
-export function preferredTurboLora(options, kind) {
-  const turbo = (options || []).filter((name) => /turbo/i.test(name) && /h3|minimax/i.test(name));
-  const named = turbo.filter((name) => name.toLowerCase().includes(kind));
-  const generic = turbo.filter((name) => !/fl2v|ref2v/i.test(name));
-  return [...(named.length ? named : generic)].sort((a, b) => /comfy/i.test(b) - /comfy/i.test(a))[0] || "none";
+// Measured settings of a known turbo LoRA (turbo_profiles.json, the table the Python side samples with), or null.
+export function turboProfile(profiles, loraName) {
+  const base = String(loraName || "").replace(/\\/g, "/").split("/").pop().replace(/\.[^.]+$/, "").toLowerCase();
+  return Object.entries(profiles || {}).find(([name]) => name.toLowerCase() === base)?.[1] || null;
 }

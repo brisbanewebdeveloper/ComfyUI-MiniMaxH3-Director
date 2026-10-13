@@ -91,7 +91,7 @@ class TAEHVPreviewNode(unittest.TestCase):
         guider = next(node for node in graph.values() if node["class_type"] == "BasicGuider")
         conditioning_id = guider["inputs"]["model"][0]
         self.assertEqual(graph[conditioning_id]["class_type"], "NGChunkConditioning")
-        scheduler = next(node for node in graph.values() if node["class_type"] == "BasicScheduler")
+        scheduler = next(node for node in graph.values() if node["class_type"] in ("BasicScheduler", "NGChunkSampling"))
         self.assertEqual(scheduler["inputs"]["model"], [conditioning_id, 0])
 
     def test_connector_appends_an_optional_raw_lazy_preview_vae(self):

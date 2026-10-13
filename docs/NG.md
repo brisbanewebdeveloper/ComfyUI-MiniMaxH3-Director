@@ -130,9 +130,11 @@ including projects without shots. Clip ranges and Context/speaker IDs remain int
 
 Older workflows saved with `auto` keep it and show it as automatic; it is also selectable under **More settings**.
 
-**Turbo** switches between 20 steps and 4 steps with the H3 turbo LoRA. Each mode has its own LoRA selection, preselected from installed
-files whose name contains `turbo` and `h3` or `minimax`. If Turbo is on without a LoRA, the Studio picks an installed one, or warns when none is found.
-CFG stays 1 in both cases: every official H3 template uses BasicGuider.
+**Turbo** renders with a few-step H3 turbo LoRA. Each mode has its own LoRA selection; nothing is preselected, the user chooses.
+A known LoRA (`js/ng/turbo_profiles.json`: the official ComfyUI LoRAs, Taomate, the ckpt500 turbo) brings its measured steps,
+sampler and scheduler: the Studio's settings jump to them, and each render part samples with the values of its own model's LoRA,
+so a video mixing First / last frame and References parts renders each part right. An unknown LoRA renders with the Director's
+Steps, Sampler and Scheduler; without a LoRA the Studio warns. CFG stays 1: every official H3 template uses BasicGuider.
 
 Below it is the panel of the selected item:
 
@@ -200,7 +202,8 @@ This is the compiler's real output, refreshed live while you edit.
 - **Resume after a crash**: Render Sequence keeps every finished render part's raw latent in `output/h3-director-resume`. Queue the
   same plan again and the finished parts come from disk without sampling; a changed part and every part after it render again.
   Files older than 14 days are removed. The models are not part of the key: after swapping a checkpoint, empty the folder.
-  The Studio's **Resume** switch (under Turbo) turns it off.
+  The Studio's **Resume** switch (under Turbo) turns it off. Its box **Delete the kept parts when the video is done** (on by
+  default) removes a video's parts once it is put together, so they do not fill the disk unseen.
 - **Control video (experimental)**: **H3 Control Video** between Director Output's MODEL and the guider steers each part with a
   pose, depth or edge video (MiniMax H3 Fun ControlNet-Union via ComfyUI's `ModelPatchLoader` and its apply node), or with a mask
   and the source video behind it. The videos run on the story timeline at 24 fps; each part gets its own window, head included.

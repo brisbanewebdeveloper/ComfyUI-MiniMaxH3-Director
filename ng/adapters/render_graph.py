@@ -35,20 +35,21 @@ def render_sequence(inputs, settings):
         if inputs.get(name) is not None:
             conditioning.set_input(name, inputs[name])
     noise = graph.node("NGChunkNoise", "noise", chunk=start.out(3), seed=settings["seed"])
-    sampler = graph.node("KSamplerSelect", "sampler", sampler_name=settings["sampler_name"])
-    scheduler = graph.node("BasicScheduler", "scheduler", model=conditioning.out(0), scheduler=settings["scheduler"],
-                           steps=settings["steps"], denoise=1.0)
+    sampled_with = json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True)
+    # per part: a known turbo LoRA on the part's model brings its own steps, sampler and scheduler (core/turbo_profiles.py)
+    sampling = graph.node("NGChunkSampling", "sampling", chunk=start.out(3), model=conditioning.out(0), settings=sampled_with)
     guider = graph.node("BasicGuider", "guider", model=conditioning.out(0), conditioning=conditioning.out(1))
     sample = graph.node("SamplerCustomAdvanced", "sample", noise=noise.out(0), guider=guider.out(0),
-                       sampler=sampler.out(0), sigmas=scheduler.out(0), latent_image=conditioning.out(2))
+                       sampler=sampling.out(0), sigmas=sampling.out(1), latent_image=conditioning.out(2))
     part = sample.out(0)
     if settings.get("resume", True):
         # a finished part is kept on disk and reused after a crash (adapters/resume.py)
-        part = graph.node("NGResumeChunk", "resume", chunk=start.out(3), sampled=part,
-                          settings=json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True)).out(0)
+        part = graph.node("NGResumeChunk", "resume", chunk=start.out(3), sampled=part, settings=sampled_with).out(0)
     end = graph.node("EndLoop", "end", output_value=part, next_iteration_value=part, accumulate=True)
     collect = graph.node("NGCollect", "collect", latents=end.out(0), chunks=inputs["chunks"],
                          vae=inputs["vae"], audio_vae=inputs["audio_vae"])
+    if settings.get("resume", True) and settings.get("resume_delete_done", True):
+        collect.set_input("resume_settings", sampled_with)
     video = graph.node("CreateVideo", "video", images=collect.out(0), audio=collect.out(1), fps=24.0)
     expanded = graph.finalize()
     # Expanded graphs do not pass through the top-level loop validator again.

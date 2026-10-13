@@ -18,21 +18,14 @@ NGResult = io.Custom("NG_DIRECTOR_RESULT")
 
 
 def turbo_inputs():
-    """Turbo: a few-step LoRA per H3 model plus fewer steps; the Studio sets the steps when it is switched."""
+    """Turbo: a few-step LoRA per H3 model plus fewer steps. The user chooses the LoRA; a known one brings its measured steps,
+    sampler and scheduler (core/turbo_profiles.py)."""
     loras = folder_paths.get_filename_list("loras")
-
-    def preferred(kind):
-        # Only an H3 turbo LoRA qualifies: a turbo LoRA for another model (Flux, Wan, ...) would load and do harm.
-        turbo = [n for n in loras if "turbo" in n.lower() and ("h3" in n.lower() or "minimax" in n.lower())]
-        named = [n for n in turbo if kind in n.lower()]
-        generic = [n for n in turbo if "fl2v" not in n.lower() and "ref2v" not in n.lower()]
-        # Prefer files converted for ComfyUI: the raw training checkpoints carry other key names.
-        return sorted(named or generic or ["none"], key=lambda n: "comfy" not in n.lower())[0]
     return [io.Boolean.Input("turbo", default=False, advanced=True,
                              tooltip="Apply the turbo LoRA below to the H3 model. The official templates use 4 steps and CFG 1."),
-            io.Combo.Input("turbo_lora_fl2va", options=["none", *loras], default=preferred("fl2v"), advanced=True,
+            io.Combo.Input("turbo_lora_fl2va", options=["none", *loras], default="none", advanced=True,
                            tooltip="Turbo LoRA for the FL2VA model (start/end frame and text)."),
-            io.Combo.Input("turbo_lora_ref2va", options=["none", *loras], default=preferred("ref2v"), advanced=True,
+            io.Combo.Input("turbo_lora_ref2va", options=["none", *loras], default="none", advanced=True,
                            tooltip="Turbo LoRA for the Ref2VA model (references).")]
 
 
@@ -54,7 +47,10 @@ class NGH3Director(io.ComfyNode):
                                  # repairs the widget order of older UI workflows (js/ng/h3s_node.js, repairInsertedWidgets)
                                  io.Boolean.Input("resume", default=True, advanced=True, optional=True,
                                                   tooltip="Keep every finished render part in output/h3-director-resume; after a crash the same "
-                                                          "plan renders only the parts that are missing.")],
+                                                          "plan renders only the parts that are missing."),
+                                 io.Boolean.Input("resume_delete_done", default=True, advanced=True, optional=True,
+                                                  tooltip="Delete the kept render parts as soon as the whole video is put together, so they "
+                                                          "do not fill the disk unseen. Off: they stay for 14 days.")],
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])
 
     @classmethod

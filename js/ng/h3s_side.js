@@ -1,6 +1,6 @@
 // Right column: how H3 works (FL2VA / Ref2VA, Turbo) and the panel of the selected shot or audio clip.
 import { h, icon, field, select } from "./h3s_dom.js";
-import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding, boundAndLaned } from "./h3s_model.js";
+import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding, boundAndLaned, turboProfile } from "./h3s_model.js";
 
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
 // How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
@@ -17,15 +17,19 @@ function modeCard(S, actions) {
     : mode === "ref2va" ? "H3 takes up to 9 images, 3 videos and 3 audio sources as references, e.g. for a character, place, camera and voice. Click it again for Automatic."
       : `Automatic: ${decided === "ref2va" ? "References" : "First/last frame"}, depending on the Content. Click one side to fix it.`;
   const turbo = Boolean(S.values.turbo);
-  const resume = S.values.resume !== false;
+  const resume = S.values.resume !== false, deleteDone = S.values.resume_delete_done !== false;
   const loras = [];
   if (turbo) for (const [name, label] of [["turbo_lora_fl2va", "Turbo LoRA first/last frame"], ["turbo_lora_ref2va", "Turbo LoRA references"]]) {
     if (mode === "fl2va" && name.endsWith("ref2va")) continue;
     if (mode === "ref2va" && name.endsWith("fl2va")) continue;
     const options = (S.options[name] || ["none"]).map((value) => [value, value === "none" ? "none" : value]);
-    loras.push(field(label, select(options, S.values[name], (value) => actions.setWidget(name, value), { style: { maxWidth: "100%" } })));
+    loras.push(field(label, select(options, S.values[name], (value) => actions.setTurboLora(name, value), { style: { maxWidth: "100%" } })));
+    const known = turboProfile(S.turboProfiles, S.values[name]);
     if (S.values[name] === "none") loras.push(h("span", { class: "h3s-warn", style: { fontSize: "12px" } },
       "Without a turbo LoRA, 4 steps give no usable picture. Choose a LoRA or switch Turbo off."));
+    else loras.push(h("span", { class: "h3s-lbl", style: { fontSize: "12px" }, title: known?.source || "" }, known
+      ? `Known LoRA: its parts render with ${known.steps} steps · ${known.sampler_name} · ${known.scheduler}.`
+      : "Unknown LoRA: its parts render with Steps, Sampler and Scheduler below."));
   }
   return h("section", { class: "h3s-card" },
     h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Mode"), h("span", { class: "h3s-lbl" }, "The most important choice first")),
@@ -37,13 +41,16 @@ function modeCard(S, actions) {
     h("button", { class: "h3s-toggle", "aria-pressed": String(turbo), onclick: () => actions.setTurbo(!turbo) },
       h("span", { class: turbo ? "h3s-switch on" : "h3s-switch" }),
       h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Turbo ${turbo ? "on" : "off"}`),
-        h("span", { class: "h3s-lbl" }, turbo ? "Turbo LoRA, 4 steps, CFG 1. Fast for trying things out." : "20 steps, full model, CFG 1. For the final run."))),
+        h("span", { class: "h3s-lbl" }, turbo ? "Turbo LoRA, few steps, CFG 1. Fast for trying things out." : "20 steps, full model, CFG 1. For the final run."))),
     loras,
     h("button", { class: "h3s-toggle", "aria-pressed": String(resume), onclick: () => actions.setWidget("resume", !resume) },
       h("span", { class: resume ? "h3s-switch on" : "h3s-switch" }),
       h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Resume ${resume ? "on" : "off"}`),
         h("span", { class: "h3s-lbl" }, resume ? "Finished parts are kept in output/h3-director-resume; after a crash the same plan renders only what is missing."
-          : "Nothing is kept: a crash renders every part again."))));
+          : "Nothing is kept: a crash renders every part again."))),
+    resume && h("label", { class: "h3s-lbl", style: { display: "flex", gap: "8px", alignItems: "center", cursor: "pointer" } },
+      h("input", { type: "checkbox", checked: deleteDone, onchange: () => actions.setWidget("resume_delete_done", !deleteDone) }),
+      "Delete the kept parts when the video is done (otherwise they stay 14 days)"));
 }
 
 function speakers(S) {

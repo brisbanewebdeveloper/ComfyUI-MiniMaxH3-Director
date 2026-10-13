@@ -1,4 +1,5 @@
 """Turbo is the official H3 recipe: a few-step LoRA on the model, nothing else changes in the graph."""
+import json
 import unittest
 
 from _pack import comfy_available, load_full_pack
@@ -33,16 +34,12 @@ class Turbo(unittest.TestCase):
         combo = self.nodes["NGH3Director"].GET_SCHEMA().inputs[start + 2]
         self.assertEqual(combo.options[0], "none")
 
-    def test_default_turbo_lora_is_an_h3_one(self):
+    def test_no_turbo_lora_is_preset_the_user_chooses(self):
         from unittest.mock import patch
         product = __import__("mmxd_pack.ng.nodes.product_director_node", fromlist=["turbo_inputs"])
-        names = ["flux2/Flux2TurboComfyv2.safetensors", "minimax-h3/minimax_h3_fl2v_turbo_4step_comfyui.safetensors",
-                 "minimax-h3/minimax_h3_turbo_4step_ckpt500.safetensors", "minimax-h3/minimax_h3_turbo_4step_ckpt500_pruned_comfyui.safetensors"]
+        names = ["minimax-h3/minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors",
+                 "minimax-h3/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors"]
         with patch.object(product.folder_paths, "get_filename_list", return_value=names):
-            inputs = {item.id: item for item in product.turbo_inputs()}
-        self.assertEqual(inputs["turbo_lora_fl2va"].default, names[1])
-        self.assertEqual(inputs["turbo_lora_ref2va"].default, names[3], "generic H3 turbo, ComfyUI conversion first; never the Flux one")
-        with patch.object(product.folder_paths, "get_filename_list", return_value=names[:1]):
             inputs = {item.id: item for item in product.turbo_inputs()}
         self.assertEqual((inputs["turbo_lora_fl2va"].default, inputs["turbo_lora_ref2va"].default), ("none", "none"))
 
@@ -53,8 +50,9 @@ class Turbo(unittest.TestCase):
         conditioning = next(v for v in render.expand.values() if v["class_type"] == "NGChunkConditioning")["inputs"]
         lora_ids = {key for key, value in render.expand.items() if value["class_type"] == "NGTurboLora"}
         self.assertEqual({conditioning["model_fl2va"][0], conditioning["model_ref2va"][0]}, lora_ids)
-        steps = next(v for v in render.expand.values() if v["class_type"] == "BasicScheduler")["inputs"]["steps"]
-        self.assertEqual(steps, 4)
+        # steps, sampler and scheduler are chosen per part (NGChunkSampling); unknown LoRAs keep the Director's own
+        sampling = next(v for v in render.expand.values() if v["class_type"] == "NGChunkSampling")["inputs"]
+        self.assertEqual(json.loads(sampling["settings"])["steps"], 4)
 
     def test_off_or_none_adds_no_lora(self):
         for turbo in ({}, {"turbo": False, "turbo_lora_fl2va": "fl.safetensors"}, {"turbo": True, "turbo_lora_fl2va": "none", "turbo_lora_ref2va": "none"}):

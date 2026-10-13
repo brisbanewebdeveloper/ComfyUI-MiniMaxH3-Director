@@ -1,12 +1,13 @@
 """User-facing model ports and one render connection; the native graph does the work."""
 from comfy_api.latest import io
 from comfy.samplers import KSampler
-from comfy_extras.nodes_custom_sampler import RandomNoise
+from comfy_extras.nodes_custom_sampler import BasicScheduler, KSamplerSelect, RandomNoise
 
 import json
 import logging
 
 from ..adapters import lora_fit, resume
+from ..core.turbo_profiles import part_settings
 from ..adapters.render_graph import render_sequence
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
@@ -70,6 +71,24 @@ class NGChunkNoise(io.ComfyNode):
         return RandomNoise.execute(noise_seed=(int(seed) + job.index) % (1 << 64))
 
 
+class NGChunkSampling(io.ComfyNode):
+    """Sampler and sigmas of one render part: a known turbo LoRA on the part's model brings its own steps, sampler and
+    scheduler (core/turbo_profiles.py), so a video mixing FL2VA and Ref2VA parts samples each with the values of its LoRA."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="NGChunkSampling", display_name="NG Chunk Sampling", category=CATEGORY + "/Technical",
+                         inputs=[NGChunk.Input("chunk"), io.Model.Input("model"), io.String.Input("settings")],
+                         outputs=[io.Sampler.Output(), io.Sigmas.Output()])
+
+    @classmethod
+    def execute(cls, chunk, model, settings):
+        job = chunk[0] if isinstance(chunk, list) else chunk
+        values = part_settings(job.compiled.mode, json.loads(settings))
+        sampler = KSamplerSelect.execute(sampler_name=values["sampler_name"]).args[0]
+        sigmas = BasicScheduler.execute(model=model, scheduler=values["scheduler"], steps=values["steps"], denoise=1.0).args[0]
+        return io.NodeOutput(sampler, sigmas)
+
+
 class NGResumeChunk(io.ComfyNode):
     """A finished render part comes from disk when the same plan is queued again (adapters/resume.py); its sampler then
     does not run at all."""
@@ -83,12 +102,12 @@ class NGResumeChunk(io.ComfyNode):
     @classmethod
     def check_lazy_status(cls, chunk, settings, sampled=None):
         job = chunk[0] if isinstance(chunk, list) else chunk
-        return [] if resume.has(resume.part_key(job, json.loads(settings))) else ["sampled"]
+        return [] if resume.has(resume.part_key(job, part_settings(job.compiled.mode, json.loads(settings)))) else ["sampled"]
 
     @classmethod
     def execute(cls, chunk, settings, sampled=None):
         job = chunk[0] if isinstance(chunk, list) else chunk
-        key = resume.part_key(job, json.loads(settings))
+        key = resume.part_key(job, part_settings(job.compiled.mode, json.loads(settings)))
         if resume.has(key):
             logging.info("[H3 Director] render part %d comes from %s (resume)", job.index + 1, resume.folder())
             return io.NodeOutput(resume.load(key))
@@ -117,4 +136,4 @@ class NGTurboLora(io.ComfyNode):
         return io.NodeOutput(patched)
 
 
-NODES = [NGRenderSequence, NGChunkNoise, NGResumeChunk, NGTurboLora]
+NODES = [NGRenderSequence, NGChunkNoise, NGChunkSampling, NGResumeChunk, NGTurboLora]

@@ -19,20 +19,18 @@ const MIN_WIDTH = 900, WIDTH = 1400, HEIGHT = 1150;
 // in-node editor, which lands on the first new widget; anything that is not a valid value falls back to the default.
 const LATER = { turbo: false, turbo_lora_fl2va: "none", turbo_lora_ref2va: "none", resize_method: "crop", ref_image_size: "match" };
 
-// Widgets inserted among the saved ones. ComfyUI restores widget values by position, so a workflow saved before "resume"
-// gave it the value of the widget after it (prompt_override's text while resume was required, now the Studio's own entry).
-// A list that is short by one gets the inserted default and its later values moved back into place.
-const INSERTED = [["resume", true]];
+// Widgets inserted among the saved ones, oldest first. ComfyUI restores widget values by position, so a workflow saved before
+// "resume" gave it the value of the widget after it (prompt_override's text while resume was required, now the Studio's own
+// entry). A list short by k lacks the k newest: those get their defaults, every other widget its saved value in order.
+const INSERTED = [["resume", true], ["resume_delete_done", true]];
 export function repairInsertedWidgets(node, saved) {
   const widgets = node.widgets || [];
-  if (!Array.isArray(saved) || saved.length !== widgets.length - 1) return;
-  for (const [name, value] of INSERTED) {
-    const at = widgets.findIndex((widget) => widget.name === name);
-    if (at < 0 || at >= saved.length) continue;
-    for (let i = at + 1; i < widgets.length; i++) widgets[i].value = saved[i - 1];
-    widgets[at].value = value;
-    return;
-  }
+  const missing = Array.isArray(saved) ? widgets.length - saved.length : 0;
+  if (missing < 1 || missing > INSERTED.length) return;
+  const defaults = new Map(INSERTED.slice(-missing));
+  if (!widgets.some((widget) => defaults.has(widget.name))) return;
+  let next = 0;
+  for (const widget of widgets) widget.value = defaults.has(widget.name) ? defaults.get(widget.name) : saved[next++];
 }
 
 export function repairLaterWidgets(node) {

@@ -6,6 +6,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from ..core.analysis import ProviderConfig
 from .ai_provider import NativeAIProvider
 from ..core.project import ChunkJob, jobs
+from ..core.turbo_profiles import part_settings
 from .render_graph import render_sequence, turbo_models
 
 
@@ -38,6 +39,7 @@ class RenderSettings:
     resize_method: str = "crop"
     ref_image_size: str = "match"
     resume: bool = True
+    resume_delete_done: bool = True
 
     def values(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}
@@ -74,12 +76,13 @@ def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_si
     negative = graph.node("ConditioningZeroOut", "negative", conditioning=conditioning.out(1))
     context = result.project.context
     chunk_seed = (int(result.settings.seed if seed is None else seed) + job.index) % (2**64)
-    settings = result.settings
-    sampler = graph.node("KSamplerSelect", "sampler", sampler_name=settings.sampler_name)
-    sigmas = graph.node("BasicScheduler", "sigmas", model=conditioning.out(0), scheduler=settings.scheduler, steps=settings.steps, denoise=1.0)
+    # a known turbo LoRA on this part's model brings its own steps, sampler and scheduler (core/turbo_profiles.py)
+    settings = part_settings(job.compiled.mode, result.settings.values())
+    sampler = graph.node("KSamplerSelect", "sampler", sampler_name=settings["sampler_name"])
+    sigmas = graph.node("BasicScheduler", "sigmas", model=conditioning.out(0), scheduler=settings["scheduler"], steps=settings["steps"], denoise=1.0)
     outputs = (conditioning.out(0), conditioning.out(1), negative.out(0), conditioning.out(2),
                24.0, context.width, context.height, conditioning.out(3), result, chunk_seed,
-               settings.steps, 1.0, settings.sampler_name, settings.scheduler, sampler.out(0), sigmas.out(0),
+               settings["steps"], 1.0, settings["sampler_name"], settings["scheduler"], sampler.out(0), sigmas.out(0),
                result.inputs.preview_vae)
     return graph.finalize(), outputs
 

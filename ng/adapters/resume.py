@@ -16,6 +16,7 @@ import folder_paths
 from comfy.nested_tensor import NestedTensor
 
 from ..core.project import jobs
+from ..core.turbo_profiles import part_settings
 from .paths import input_path
 
 FOLDER = "h3-director-resume"
@@ -69,6 +70,14 @@ def save(key, latent):
     torch.save({"video": video.detach().cpu(), "audio": audio.detach().cpu()}, tmp)
     os.replace(tmp, _path(key))
     _prune()
+
+
+def forget(chunks, settings):
+    """The whole video is put together: its parts are no longer needed for a resume."""
+    for job in chunks:
+        key = part_key(job, part_settings(job.compiled.mode, settings))
+        if has(key):
+            os.remove(_path(key))
 
 
 def _prune():

@@ -1,4 +1,5 @@
 """NG Chunk Conditioning and NG Collect: the nodes inside and after the loop."""
+import json
 import logging
 import os
 import uuid
@@ -7,7 +8,7 @@ import folder_paths
 from comfy_api.latest import InputImpl, io
 
 from ...minimax_core import audio_nodes, core
-from ..adapters import audio_locks, chunk_builder, collect, latents
+from ..adapters import audio_locks, chunk_builder, collect, latents, resume
 from ..adapters.media import MediaError
 from ..core.limits import FPS, RESIZE_METHODS
 from .context_nodes import CATEGORY
@@ -100,18 +101,22 @@ class NGCollect(io.ComfyNode):
             node_id="NGCollect", display_name="NG Collect", category=CATEGORY + "/Technical", is_input_list=True,
             description="After the loop: decode every chunk, cut off the pinned heads and join picture and sound into one video.",
             inputs=[io.Latent.Input("latents", tooltip="End Loop output (accumulate on)."), NGChunk.Input("chunks", tooltip="The Director's chunks."),
-                    io.Vae.Input("vae"), io.Vae.Input("audio_vae")],
+                    io.Vae.Input("vae"), io.Vae.Input("audio_vae"),
+                    io.String.Input("resume_settings", optional=True, advanced=True,
+                                    tooltip="Set by Render Sequence when the kept render parts are deleted once the video is put together.")],
             outputs=[io.Image.Output(display_name="images"), io.Audio.Output(display_name="audio"), io.String.Output(display_name="warnings"),
                      io.Float.Output(display_name="fps", tooltip="24, for CreateVideo. Outside the loop, unlike Director Output's fps.")],
         )
 
     @classmethod
-    def execute(cls, latents, chunks, vae, audio_vae):
+    def execute(cls, latents, chunks, vae, audio_vae, resume_settings=None):
         project = _jobs_of(chunks)
         decode_audio = audio_nodes().vae_decode_audio
         frames, sound, issues = collect.collect_chunks(
             latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}),
             restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate))
+        if resume_settings:
+            resume.forget(chunks, json.loads(resume_settings[0]))
         return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues), float(FPS))
 
 

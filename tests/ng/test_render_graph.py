@@ -1,7 +1,7 @@
 import types
 import unittest
 
-from _pack import comfy_available, load_full_pack
+from _pack import comfy_available, load_full_pack, module
 
 
 @unittest.skipUnless(comfy_available(), "ComfyUI is not importable")
@@ -48,6 +48,20 @@ class RenderGraph(unittest.TestCase):
         self.assertTrue(end["inputs"]["accumulate"])
         self.assertEqual(start["inputs"]["mode.list"], ["plan", 0])
         self.assertEqual(len(out.args), 4)
+        # by default Collect deletes the kept parts once the video is put together, under the same settings as the keys
+        collect = self.by_type(out, "NGCollect")[0][1]
+        self.assertEqual(collect["inputs"]["resume_settings"], resume["inputs"]["settings"])
+
+    def test_kept_parts_stay_when_delete_is_off_and_nothing_is_kept_without_resume(self):
+        render_sequence = module("ng.adapters.render_graph").render_sequence
+        inputs = dict(chunks=["plan", 0], clip=["clip", 0], vae=["v", 0], audio_vae=["a", 0], model_fl2va=["fl2va", 0])
+        settings = dict(seed=1, steps=4, sampler_name="euler", scheduler="simple", shift_video=12.0, shift_audio=3.0)
+        for extra, kept, deleted in (({"resume_delete_done": False}, True, False), ({"resume": False}, False, False)):
+            graph = render_sequence(inputs, {**settings, **extra})[0]
+            types_ = [node["class_type"] for node in graph.values()]
+            collect = next(node for node in graph.values() if node["class_type"] == "NGCollect")
+            self.assertEqual("NGResumeChunk" in types_, kept, extra)
+            self.assertEqual("resume_settings" in collect["inputs"], deleted, extra)
 
     def test_missing_optional_model_is_not_added_as_an_invalid_null_link(self):
         values = self.values()

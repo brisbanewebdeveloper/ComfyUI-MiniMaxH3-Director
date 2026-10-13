@@ -2,6 +2,16 @@
 
 ## 1.0.0 (unreleased)
 
+**Turbo LoRA profiles, no preselected LoRA** (2026-10-13):
+
+- The user chooses the turbo LoRA; the Director no longer preselects one. A known LoRA brings its measured steps, sampler and scheduler (`js/ng/turbo_profiles.json`, read by Python and the Studio): official Ref2VA v0.1 and FL2VA v1.2 4 steps, FL2VA v1.0 8 steps (res_multistep, simple; ComfyUI's templates), Taomate 4 steps, the ckpt500 turbo 8 steps Euler + Beta (its Civitai page).
+- Each render part samples with the profile of its own model's LoRA (new NG Chunk Sampling in the loop; Director Output hands it to external samplers too), so a video mixing FL2VA and Ref2VA parts renders each with the right values. An unknown LoRA keeps the Director's settings. Selecting a known LoRA in the Studio sets Steps, Sampler and Scheduler to its profile; Turbo off brings back the settings from before.
+
+**Resume parts are deleted when the video is done** (2026-10-13):
+
+- New box under Resume, on by default: once Collect has put the video together, its kept parts are deleted, so they do not fill the disk unseen. Off: they stay 14 days. Real test: a two-part render left none of its parts in the folder; other projects' parts stayed.
+- Workflows saved before it keep their values: the Studio fills in every missing new widget (`repairInsertedWidgets`).
+
 **Resume after a crash** (2026-10-13):
 
 - A **Resume** switch on the H3 Director (Studio, under Turbo; on by default) turns it off: then nothing is kept.
