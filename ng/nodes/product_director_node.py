@@ -49,7 +49,11 @@ class NGH3Director(io.ComfyNode):
                                  io.Combo.Input("resize_method", options=list(RESIZE_METHODS), default="crop", advanced=True,
                                                 tooltip="How a first or last frame picture is fitted to the video size."),
                                  io.Combo.Input("ref_image_size", options=["match", "max"], default="match", advanced=True,
-                                                tooltip="Reference pictures at the video's pixel area (fast) or a 2048 px short edge (more identity, slower).")],
+                                                tooltip="Reference pictures at the video's pixel area (fast) or a 2048 px short edge (more identity, slower)."),
+                                 # last, so older workflows keep their saved widget order
+                                 io.Boolean.Input("resume", default=True, advanced=True,
+                                                  tooltip="Keep every finished render part in output/h3-director-resume; after a crash the same "
+                                                          "plan renders only the parts that are missing.")],
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])
 
     @classmethod

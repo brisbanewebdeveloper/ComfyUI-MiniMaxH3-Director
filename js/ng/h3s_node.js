@@ -19,6 +19,22 @@ const MIN_WIDTH = 900, WIDTH = 1400, HEIGHT = 1150;
 // in-node editor, which lands on the first new widget; anything that is not a valid value falls back to the default.
 const LATER = { turbo: false, turbo_lora_fl2va: "none", turbo_lora_ref2va: "none", resize_method: "crop", ref_image_size: "match" };
 
+// Widgets inserted among the saved ones. ComfyUI restores widget values by position, and optional inputs come after the
+// required ones, so a workflow saved before "resume" (required) gave it prompt_override's value and every later widget the
+// one after its own. A list that is short by one gets the inserted default and its later values moved back into place.
+const INSERTED = [["resume", true]];
+export function repairInsertedWidgets(node, saved) {
+  const widgets = node.widgets || [];
+  if (!Array.isArray(saved) || saved.length !== widgets.length - 1) return;
+  for (const [name, value] of INSERTED) {
+    const at = widgets.findIndex((widget) => widget.name === name);
+    if (at < 0 || at >= saved.length) continue;
+    for (let i = at + 1; i < widgets.length; i++) widgets[i].value = saved[i - 1];
+    widgets[at].value = value;
+    return;
+  }
+}
+
 export function repairLaterWidgets(node) {
   for (const widget of node.widgets || []) {
     if (!(widget.name in LATER)) continue;
@@ -77,6 +93,7 @@ function attach(node) {
   node.onConfigure = function (...args) {
     const result = configured?.apply(this, args);
     for (const key of ["ng_view_mode", "ng_selected_shot_id"]) delete node.properties[key];
+    repairInsertedWidgets(node, args[0]?.widgets_values);
     repairLaterWidgets(node);
     // Saved by the former compact node: the Studio needs the room once, and the nodes around it move along.
     if (node.size?.[0] < MIN_WIDTH) { noteGrowth(node, [...node.size]); node.setSize([WIDTH, Math.max(node.size[1], HEIGHT)]); }

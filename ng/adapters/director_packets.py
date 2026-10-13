@@ -37,6 +37,7 @@ class RenderSettings:
     turbo_lora_ref2va: str = "none"
     resize_method: str = "crop"
     ref_image_size: str = "match"
+    resume: bool = True
 
     def values(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}

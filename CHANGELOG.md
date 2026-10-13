@@ -4,6 +4,7 @@
 
 **Resume after a crash** (2026-10-13):
 
+- A **Resume** switch on the H3 Director (Studio, under Turbo; on by default) turns it off: then nothing is kept.
 - H3 Render Sequence keeps every finished render part's raw latent in `output/h3-director-resume` and reuses it when the same plan is queued again: a run that died after hours only samples the parts it had not finished (its sampler is not run for a kept part). A part's key covers its plan, prompt, references and their files, the render settings and every part before it, so changing part 5 renders part 5 and everything after it again. Kept parts are removed after 14 days. The models are not part of the key: after swapping a checkpoint, empty the folder.
 
 **H3 Control Video (experimental)** (2026-10-13):

@@ -200,6 +200,7 @@ This is the compiler's real output, refreshed live while you edit.
 - **Resume after a crash**: Render Sequence keeps every finished render part's raw latent in `output/h3-director-resume`. Queue the
   same plan again and the finished parts come from disk without sampling; a changed part and every part after it render again.
   Files older than 14 days are removed. The models are not part of the key: after swapping a checkpoint, empty the folder.
+  The Studio's **Resume** switch (under Turbo) turns it off.
 - **Control video (experimental)**: **H3 Control Video** between Director Output's MODEL and the guider steers each part with a
   pose, depth or edge video (MiniMax H3 Fun ControlNet-Union via ComfyUI's `ModelPatchLoader` and its apply node), or with a mask
   and the source video behind it. The videos run on the story timeline at 24 fps; each part gets its own window, head included.

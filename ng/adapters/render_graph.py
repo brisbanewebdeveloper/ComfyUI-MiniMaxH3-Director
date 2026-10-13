@@ -41,10 +41,12 @@ def render_sequence(inputs, settings):
     guider = graph.node("BasicGuider", "guider", model=conditioning.out(0), conditioning=conditioning.out(1))
     sample = graph.node("SamplerCustomAdvanced", "sample", noise=noise.out(0), guider=guider.out(0),
                        sampler=sampler.out(0), sigmas=scheduler.out(0), latent_image=conditioning.out(2))
-    # a finished part is kept on disk and reused after a crash (adapters/resume.py)
-    kept = graph.node("NGResumeChunk", "resume", chunk=start.out(3), sampled=sample.out(0),
-                      settings=json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True))
-    end = graph.node("EndLoop", "end", output_value=kept.out(0), next_iteration_value=kept.out(0), accumulate=True)
+    part = sample.out(0)
+    if settings.get("resume", True):
+        # a finished part is kept on disk and reused after a crash (adapters/resume.py)
+        part = graph.node("NGResumeChunk", "resume", chunk=start.out(3), sampled=part,
+                          settings=json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True)).out(0)
+    end = graph.node("EndLoop", "end", output_value=part, next_iteration_value=part, accumulate=True)
     collect = graph.node("NGCollect", "collect", latents=end.out(0), chunks=inputs["chunks"],
                          vae=inputs["vae"], audio_vae=inputs["audio_vae"])
     video = graph.node("CreateVideo", "video", images=collect.out(0), audio=collect.out(1), fps=24.0)

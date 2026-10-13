@@ -17,6 +17,7 @@ function modeCard(S, actions) {
     : mode === "ref2va" ? "H3 takes up to 9 images, 3 videos and 3 audio sources as references, e.g. for a character, place, camera and voice. Click it again for Automatic."
       : `Automatic: ${decided === "ref2va" ? "References" : "First/last frame"}, depending on the Content. Click one side to fix it.`;
   const turbo = Boolean(S.values.turbo);
+  const resume = S.values.resume !== false;
   const loras = [];
   if (turbo) for (const [name, label] of [["turbo_lora_fl2va", "Turbo LoRA first/last frame"], ["turbo_lora_ref2va", "Turbo LoRA references"]]) {
     if (mode === "fl2va" && name.endsWith("ref2va")) continue;
@@ -37,7 +38,12 @@ function modeCard(S, actions) {
       h("span", { class: turbo ? "h3s-switch on" : "h3s-switch" }),
       h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Turbo ${turbo ? "on" : "off"}`),
         h("span", { class: "h3s-lbl" }, turbo ? "Turbo LoRA, 4 steps, CFG 1. Fast for trying things out." : "20 steps, full model, CFG 1. For the final run."))),
-    loras);
+    loras,
+    h("button", { class: "h3s-toggle", "aria-pressed": String(resume), onclick: () => actions.setWidget("resume", !resume) },
+      h("span", { class: resume ? "h3s-switch on" : "h3s-switch" }),
+      h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Resume ${resume ? "on" : "off"}`),
+        h("span", { class: "h3s-lbl" }, resume ? "Finished parts are kept in output/h3-director-resume; after a crash the same plan renders only what is missing."
+          : "Nothing is kept: a crash renders every part again."))));
 }
 
 function speakers(S) {

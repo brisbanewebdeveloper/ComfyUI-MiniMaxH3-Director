@@ -226,6 +226,14 @@ function recorder() {
     widget("turbo_lora_ref2va", "none", ["none"]), widget("resize_method", "pad", ["crop", "pad"]), widget("seed", "")] };
   repairLaterWidgets(node);
   assert.deepEqual(node.widgets.map((w) => w.value), [false, "none", "none", "pad", ""], "only the later widgets are repaired, valid values stay");
+  // A workflow saved before "resume": its prompt_override text stays with prompt_override, resume is on.
+  const { repairInsertedWidgets } = await import("../../../js/ng/h3s_node.js");
+  const older = { widgets: [widget("ref_image_size", "max"), widget("resume", "my override"), widget("prompt_override", ""), widget("h3_director", undefined)] };
+  repairInsertedWidgets(older, ["max", "my override", ""]);
+  assert.deepEqual(older.widgets.map((w) => w.value), ["max", true, "my override", ""]);
+  const current = { widgets: [widget("resume", false), widget("prompt_override", "x")] };
+  repairInsertedWidgets(current, [false, "x"]);
+  assert.deepEqual(current.widgets.map((w) => w.value), [false, "x"], "a list of the current length is left alone");
 }
 
 // The Studio speaks English: no German text is left in its modules (comments included, to keep them consistent).
