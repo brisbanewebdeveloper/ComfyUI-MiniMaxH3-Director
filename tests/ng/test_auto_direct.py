@@ -33,6 +33,42 @@ class SceneSuggestion(unittest.TestCase):
         self.assertEqual(json.loads(result["shots"])["look"], result["look"])
         self.assertEqual(result["music"], "N/A")
 
+    def test_a_copied_example_line_without_words_is_no_line(self):
+        # qwen3.5:9b, nobody speaks: it copied the example's line with "text":[] or "text":"[]" (2026-10-13).
+        for text in ([], "[]", "", ["Hello there.", "Bye."]):
+            answer = {"shots": [{"start_s": 0, "end_s": 8, "action": "She walks.",
+                                 "lines": [{"speaker": "", "delivery": "says", "language": "English", "text": text}]}]}
+            with self.subTest(text=text):
+                spoken = shots_of(direction.parse_direction(json.dumps(answer), 8))[0]["spoken"]
+                self.assertEqual([line["text"] for line in spoken], text if isinstance(text, list) else [])
+
+    def test_a_long_shot_is_written_in_beats_fitted_to_its_real_length(self):
+        # The user sets the shot times (5 s, 10 s, 2.5 s ...); beats are seconds from the shot's own start and are fitted to it.
+        beats = [{"from_s": 0, "to_s": 4, "action": "A full-body shot of @Alice at the door", "camera": "The camera holds a static shot"},
+                 {"from_s": 4, "to_s": 8, "action": "A close-up of @Alice smiling", "camera": "The camera pushes in with small amplitude at slow speed."}]
+        answer = {"shots": [{"start_s": 0, "end_s": 2.5, "action": "A wide shot of the hall.", "camera": "The camera holds a static shot.",
+                             "beats": beats},
+                            {"start_s": 2.5, "end_s": 12.5, "action": "@Alice walks.", "camera": "", "beats": beats}]}
+        shots = shots_of(direction.parse_direction(json.dumps(answer), 12.5, [{"media": "image", "widgets": {"name": "Alice"}}]))
+        self.assertEqual(shots[0]["text"], "A wide shot of the hall. The camera holds a static shot.", "2.5 s: no beats")
+        self.assertEqual(shots[1]["text"], "0–5s: A full-body shot of @Alice at the door. The camera holds a static shot. "
+                                           "5–10s: A close-up of @Alice smiling. The camera pushes in with small amplitude at slow speed.")
+        share = module("ng.core.shot_share")
+        self.assertEqual(share._beats(shots[1]["text"])[1][1][:2], (5.0, 10.0), "the render parts read the beats")
+
+    def test_unusable_beats_fall_back_to_action_and_camera(self):
+        for beats in ([{"from_s": 0, "to_s": 10, "action": "One beat only."}], [{"from_s": 5, "to_s": 2, "action": "x"}, {"from_s": 0, "to_s": 1, "action": "y"}],
+                      [{"from_s": 0, "to_s": 5, "action": ""}, {"from_s": 5, "to_s": 10, "action": "y"}], "0-5s: text"):
+            answer = {"shots": [{"start_s": 0, "end_s": 10, "action": "She walks.", "camera": "The camera holds a static shot.", "beats": beats}]}
+            with self.subTest(beats=beats):
+                self.assertEqual(shots_of(direction.parse_direction(json.dumps(answer), 10))[0]["text"],
+                                 "She walks. The camera holds a static shot.")
+
+    def test_the_split_prompt_asks_for_framing_camera_and_beats(self):
+        prompt = direction.direction_prompt("She walks.", 20, [])
+        for words in ("begin with the framing", "holds a static shot", "with small or large amplitude", "beats", "from the shot's own start"):
+            self.assertIn(words, prompt)
+
     def test_a_song_becomes_one_sung_line_per_line(self):
         # Elf song (2026-10-05): eight lines arrived as one "says" line and seven lines of prose.
         answer = {"shots": [{"start_s": 0, "end_s": 8, "action": "@Mage sings.", "lines": [

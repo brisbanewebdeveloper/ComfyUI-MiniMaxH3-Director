@@ -12,7 +12,7 @@ from .ai_json import read_object
 from .auto_direct import story
 from .context_build import card_id
 from .directions import DIRECTIONS, LANGUAGES, SPEECH, check_adults, direction, shot_count
-from .split import _seconds, parse_split
+from .split import BEAT_RULE, CAMERA_RULE, _seconds, parse_split, shots_example
 
 SYSTEM = ("You are the director of a short video for MiniMax H3, a model that makes video with sound from one detailed prompt. "
           "You plan the video from the user's pictures, direction and request, concretely and visually, and answer with JSON only.")
@@ -183,9 +183,8 @@ def _rules(quick, seconds, found, names, played, parts, sung, kinds_of):
         "place); a slow change of distance stays inside one shot as camera movement." % (
             "exactly 1 shot" if most == 1 else "%d to %d shots" % (fewest, most), _seconds(seconds)),
         _action_rule(found, names),
-        "camera: one English sentence beginning with 'The camera' about its movement inside the shot, for example 'The camera "
-        "pushes in with small amplitude at slow speed.' or 'The camera tracks her from the side at fast speed.' Never 'cuts': "
-        "a cut is a new shot.",
+        CAMERA_RULE,
+        BEAT_RULE,
         "lines: each entry is {\"speaker\":\"\",\"delivery\":\"says\",\"language\":\"English\",\"text\":\"...\"}; one sentence "
         "or sung phrase per entry, word for word, in the shot where it is heard.",
         "soundscape: one or two English sentences of ambience and physical sounds (footsteps, cloth, wind, impacts, breathing); "
@@ -221,8 +220,7 @@ def _shape(quick, sung, played, kinds_of, undescribed=()):
         "sings" if quick["speech"] == "singing" else "says", quick["language"])) if speaks else ""
     uses = ',"uses":[]' if any(sort in ("view", "place") for sort, _ in kinds_of.values()) else ""
     describe = ',"describe":{"%s":"..."}' % undescribed[0] if undescribed else ""
-    return ('{"look":"...","shots":[{"start_s":0,"end_s":4,"action":"...","camera":"..."%s,"lines":[%s]}],"soundscape":"...",'
-            '"music":"..."%s}' % (uses, line, describe))
+    return '{"look":"...","shots":%s,"soundscape":"...","music":"..."%s}' % (shots_example(uses, line), describe)
 
 
 def plan_prompt(quick, idea, seconds, contexts, shown=0, parts=(), sung=()):

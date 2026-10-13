@@ -20,6 +20,7 @@ DIALOGUE_RE = re.compile(r"<d>.*?</d>", re.S)
 CUT_RE = re.compile(r"\[Shot (\d+)\](?:\s*At (\d{2}:\d{2}\.\d{3}))?")
 LABEL_RE = re.compile(r"<(?:Subject|Picture|Video|Audio) \d+>")
 SPEAKER_RE = re.compile(r"\(S\d+(?:,\s*S\d+)*\)")
+BEAT_RE = re.compile(r"\d+(?:[.,]\d+)?\s*s?\s*[–-]\s*\d+(?:[.,]\d+)?\s*s\s*:")
 NESTED_RE = re.compile(r"\b(?:%s)\s*:" % "|".join(SECTIONS))
 WRITE_TOKENS = 2048
 MIN_WORDS = 40
@@ -133,13 +134,18 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
         else "Use no <...> labels; keep the speaker IDs such as (S1).",
         "The draft is only a skeleton: write new sentences of your own, two or three for every shot, describing what is visible "
         "and audible: appearance, position in the frame, actions and small movements, facial expression, light, and the camera "
-        "movement as a sentence with amplitude and speed (e.g. The camera pushes in with small amplitude at slow speed). Only the "
-        "shot markers, the labels and the lines above are taken over word for word. About %s words. English, except inside <d>."
+        "movement as a sentence with amplitude and speed (e.g. The camera pushes in with small amplitude at slow speed), or The camera "
+        "holds a static shot when it does not move. Only the shot markers, the labels and the lines above are taken over word for "
+        "word. About %s words. English, except inside <d>."
         % ("350 to 500" if reference else "250 to 400"),  # ref-en 5.2: a generation task's description is normally 350-500 words
         "overall_soundscape: one to three English sentences of ambience and physical sounds; no speech, no singing.",
         "non_diegetic_music: the score only the audience hears (instruments, tempo, dynamics), or N/A.",
         "The story and the figures below are material for detail only; they never change times, cuts or words.",
     ]
+    if BEAT_RE.search(body):
+        # shot_share.py gives a part the time beats of its own share of a shot; dropped, the part plays the whole action again
+        rules.append("Keep each time beat of the draft (such as 0–2.5s:) at the start of its own sentences, in the same order and "
+                     "with the same times, and describe only what the draft puts into that beat.")
     if continues:
         rules.append("This part continues the previous part: open by continuing the same action, do not introduce the scene again.")
     if reference:

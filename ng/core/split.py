@@ -10,10 +10,34 @@ from . import fields
 from .context_build import card_id, widget_text
 from .context_options import roles
 from .shot_draft import plain_mentions
+from .shot_share import BEAT_MIN_S
 
 DELIVERIES = ("says", "sings", "whispers", "shouts", "murmurs")
 FORMAT = "h3-director-shots"
 DELIMITERS = re.compile(r"[\r\n\[\]():]")
+
+# MiniMax's H3 prompt guide (base-en 4.3): motion type + amplitude + speed, "holds a static shot" for a still camera. Said
+# explicitly, it also keeps 4-step turbo from drifting into a close-up (measured 2026-10-13: a shot that only said "stable
+# framing" pushed in and brightened).
+CAMERA_RULE = ("camera: one English sentence of how the camera moves inside the shot: the motion (push in, pull out, pan, truck, "
+               "tilt, pedestal up or down, arc, tracking, zoom, shake), with small or large amplitude and slow or fast speed when "
+               "they matter, e.g. 'The camera pushes in with small amplitude at slow speed.' When it does not move, write 'The "
+               "camera holds a static shot.' Never 'cuts': a cut is a new shot.")
+# Every shot has beats, and the answer's example shows a 10 s shot with two and a 3 s shot with one. With one long example shot
+# qwen3.5:9b gave beats to the first long shot only (2026-10-13, 4 of 5 answers); with "beats":[] in it, to none.
+BEAT = '{"from_s":%s,"to_s":%s,"action":"...","camera":"..."}'
+BEAT_RULE = ("beats: every shot has beats, in seconds from the shot's own start (0 is where the shot begins), that together cover "
+             "its whole length. The number of beats is the shot's length divided by %d, rounded up: a 3 s or 5 s shot has 1 beat, "
+             "a 6 s to 10 s shot 2, an 11 s to 15 s shot 3, a 16 s to 20 s shot 4. Each beat begins with its framing, then what "
+             "happens in it; its camera says how the camera moves or that it holds a static shot." % BEAT_MIN_S)
+
+
+def shots_example(extra="", line=""):
+    """The "shots" list of the answer's example: a 10 s shot with two beats and a 3 s shot with one. extra: more fields of
+    each shot (',"uses":[]'); line: the first shot's example spoken line, or "" for none."""
+    shot = '{"start_s":%s,"end_s":%s,"action":"...","camera":"...","beats":[%s]%s,"lines":[%s]}'
+    return "[%s,%s]" % (shot % (0, 10, ",".join((BEAT % (0, 5), BEAT % (5, 10))), extra, line),
+                        shot % (10, 13, BEAT % (0, 3), extra, ""))
 
 
 def _seconds(value):
@@ -32,11 +56,13 @@ def split_prompt(idea, seconds, meanings, parts=(), sung=()):
     """parts: [(start s, end s)] of the render parts; sung: [(start s, end s, song name, words)] placed by the compiler."""
     rules = [
         "Split the Idea into shots for a %s second video. Return only JSON: "
-        '{"look":"...","shots":[{"start_s":0,"end_s":4,"action":"...","camera":"...","lines":[{"speaker":"","delivery":"says",'
-        '"language":"English","text":"..."}]}],"soundscape":"...","music":"..."}.' % _seconds(seconds),
+        '{"look":"...","shots":%s,"soundscape":"...","music":"..."}.' % (
+            _seconds(seconds), shots_example(line='{"speaker":"","delivery":"says","language":"English","text":"..."}')),
         "look: one or two English sentences with what every shot shares: visual style, place, light. No action, no spoken words.",
-        "action: English, what is visible in this shot: who does what, where, with which expression. " + _mentions(meanings),
-        "camera: one English sentence starting with The camera, e.g. The camera pushes in with small amplitude at slow speed.",
+        "action: English, what is visible in this shot: begin with the framing (e.g. 'A full-body shot of ...'), then who is "
+        "where in the frame, what they do, with which expression, and the light. " + _mentions(meanings),
+        CAMERA_RULE,
+        BEAT_RULE,
         # base-en 4.2: "A cut should introduce new information ... If only the distance or a slight angle needs to change,
         # prefer camera motion." Split by line, the elf song became nine static shots of the same face.
         "Start a new shot only when the view changes: another framing, angle, place or time. A slow change of distance or "
@@ -62,6 +88,33 @@ def split_prompt(idea, seconds, meanings, parts=(), sung=()):
 
 def _sentence(text):
     return text if text.endswith((".", "!", "?")) else text + "."
+
+
+def beat_text(raw, seconds):
+    """The shot text of the AI's beats ("0–5s: ... 5–10s: ..."), fitted to the shot's real length; None when the shot is
+    short or the beats are not usable (then action and camera are the text). Beat ends are kept in proportion: the AI may
+    have planned the shot a little longer or shorter than it ends up."""
+    beats = []
+    for beat in raw if isinstance(raw, list) and seconds > BEAT_MIN_S else ():
+        try:
+            start, end = float(beat["from_s"]), float(beat["to_s"])
+            action = str(beat.get("action") or "").strip()
+        except (KeyError, TypeError, ValueError):
+            return None
+        if end <= start or not action:
+            return None
+        beats.append((start, end, " ".join(_sentence(v) for v in (action, str(beat.get("camera") or "").strip()) if v)))
+    if len(beats) < 2:
+        return None
+    beats.sort()
+    scale, start, out = seconds / beats[-1][1], 0.0, []
+    for number, (_, end, text) in enumerate(beats):
+        stop = seconds if number == len(beats) - 1 else round(end * scale, 1)
+        if stop <= start:
+            return None
+        out.append("%s–%ss: %s" % (_seconds(start), _seconds(stop), text))
+        start = stop
+    return " ".join(out)
 
 
 def _norm(text):
@@ -101,8 +154,12 @@ def _lines(raw, path, contexts, sung):
         speaker_id, voice = _owner(fields.read_str(line, "speaker", here, ""), contexts)
         delivery = fields.read_str(line, "delivery", here, "says").strip().lower()
         language = " ".join(DELIMITERS.sub(" ", fields.read_str(line, "language", here, "English")).split()) or "English"
-        for words in fields.read_str(line, "text", here, "").splitlines():
-            if words.strip() and _norm(words) not in sung:
+        # qwen3.5:9b copied the example's line where nobody speaks, with "text":[] or "text":"[]" (2026-10-13): a line
+        # without a word is no line; a list of strings is one line each.
+        text = line.get("text")
+        text = "\n".join(str(item) for item in text) if isinstance(text, list) else fields.read_str(line, "text", here, "")
+        for words in text.splitlines():
+            if re.search(r"\w", words) and _norm(words) not in sung:
                 out.append({"schema_version": 1, "text": words.strip(), "speaker_id": speaker_id, "voice": voice,
                             "language": language, "delivery": delivery if delivery in DELIVERIES else "says"})
     return out
@@ -162,7 +219,8 @@ def parse_split(data, seconds, contexts=None, keep="", sung=()):
         if not action:
             raise ValueError("Each suggested shot needs an action.")
         camera = fields.read_str(shot, "camera", path, "").strip()
-        text, unknown = plain_mentions(" ".join(_sentence(v) for v in (action, camera) if v), contexts)
+        beats = beat_text(shot.get("beats"), placed - end)
+        text, unknown = plain_mentions(beats or " ".join(_sentence(v) for v in (action, camera) if v), contexts)
         dropped += [name for name in unknown if name not in dropped]
         shots.append({"id": "ai-%d" % (number + 1), "start": round(end, 3), "end": round(placed, 3), "text": text, "media": [],
                       "spoken": _lines(shot, path, contexts, sung_words), "locked_fields": [], "draft": None})

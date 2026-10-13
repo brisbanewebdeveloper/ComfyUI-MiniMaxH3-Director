@@ -53,9 +53,36 @@ class ShotDraft(unittest.TestCase):
         for data in bad:
             with self.subTest(data=data), self.assertRaises(ValueError): self.parse(data)
 
-    def test_invalid_timings_media_and_speakers_are_rejected(self):
-        for field, value in [("timing", {"start": float("nan"), "end": 8}), ("timing", {"start": 3, "end": 2}),
-                             ("timing", {"start": 0, "end": 9}), ("media", [{"schema_version": 1, "context_id": "missing"}]),
+    def test_shot_times_stay_the_users_and_the_text_still_comes(self):
+        result = self.parse(answer(patches=[{"shot_id": "b", "fields": {"text": "0–2s: A wide shot. 2–4s: A close-up.",
+                                                                       "timing": {"start": 3, "end": 8}}}]))
+        self.assertEqual(result["patches"], [{"shot_id": "b", "fields": {"text": "0–2s: A wide shot. 2–4s: A close-up."}}])
+        self.assertEqual(result["dropped"], ["timing of b: shot times stay as set"])
+        prompt = direction.direction_prompt("She walks.", 8, CONTEXTS, json.dumps(document()))
+        self.assertIn("never propose timing", prompt)
+        self.assertNotIn('"write_as_beats"', prompt, "4 s shots need no beats")
+
+    def test_one_shots_fields_sent_as_two_patches_are_one_patch(self):
+        # qwen3.5:9b sent shot b's text and its new line as two patches with the same ID (2026-10-13).
+        spoken = document()["shots"][1]["spoken"] + [{"schema_version": 1, "speaker_id": "", "text": "New line."}]
+        result = self.parse(answer(patches=[{"shot_id": "b", "fields": {"text": "She waits."}},
+                                            {"shot_id": "b", "fields": {"spoken": spoken}}]))
+        self.assertEqual(len(result["patches"]), 1)
+        self.assertEqual(set(result["patches"][0]["fields"]), {"text", "spoken"})
+
+    def test_a_long_shot_is_given_the_beats_of_its_own_length(self):
+        long = document()
+        long["shots"][1].update(start=4, end=14)
+        long["shots"][0]["end"] = 4
+        long["shots"].append(dict(long["shots"][1], id="c", start=14, end=26, locked_fields=["text"]))
+        prompt = direction.direction_prompt("She walks.", 26, CONTEXTS, json.dumps(long))
+        self.assertIn('"write_as_beats": "0–5s, 5–10s"', prompt)
+        self.assertEqual(prompt.count('"write_as_beats"'), 1, "a shot whose text is locked gets none")
+        share = module("ng.core.shot_share")
+        self.assertEqual([share.beat_marks(s) for s in (2.5, 5, 7.5, 12)], ["", "", "0–3.8s, 3.8–7.5s", "0–4s, 4–8s, 8–12s"])
+
+    def test_invalid_media_and_speakers_are_rejected(self):
+        for field, value in [("media", [{"schema_version": 1, "context_id": "missing"}]),
                              ("media", [{"schema_version": 1, "context_id": "alice", "role": "copy"}]),
                              ("spoken", [{"schema_version": 1, "speaker_id": "missing", "text": "x"}])]:
             with self.subTest(field=field, value=value), self.assertRaises(ValueError):

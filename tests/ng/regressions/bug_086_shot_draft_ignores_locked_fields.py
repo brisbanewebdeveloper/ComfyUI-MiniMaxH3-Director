@@ -94,7 +94,8 @@ class ShotDraftLockedFieldsRegression(unittest.TestCase):
     # --- Green Control Tests (Expected & Existing Behavior) ---
 
     def test_control_unlocked_fields_are_validated_and_accepted(self):
-        """When fields are unlocked, valid proposals for timing, text, media, and spoken are accepted."""
+        """When fields are unlocked, valid proposals for text, media, and spoken are accepted. Timing never is: the shot
+        times are the user's (decision 2026-10-13), the AI writes text that fits them."""
         records = [
             {
                 "id": "s1",
@@ -127,11 +128,11 @@ class ShotDraftLockedFieldsRegression(unittest.TestCase):
         self.assertEqual(len(result["patches"]), 1)
         patch = result["patches"][0]
         self.assertEqual(patch["shot_id"], "s1")
-        self.assertEqual(patch["fields"]["timing"], {"start": 0.0, "end": 4.0})
+        self.assertNotIn("timing", patch["fields"])
         self.assertEqual(patch["fields"]["text"], "Hero walks through the rain.")
         self.assertEqual(len(patch["fields"]["media"]), 1)
         self.assertEqual(len(patch["fields"]["spoken"]), 1)
-        self.assertIsNone(result.get("dropped"))
+        self.assertEqual(result.get("dropped"), ["timing of s1: shot times stay as set"])
 
     def test_control_invalid_field_value_is_dropped_while_valid_are_kept(self):
         """When an unlocked field has an invalid value, that field is dropped while valid fields stay."""
@@ -244,7 +245,7 @@ class ShotDraftLockedFieldsRegression(unittest.TestCase):
                 {
                     "shot_id": "s1",
                     "fields": {
-                        "timing": {"start": 0.0, "end": 3.0},
+                        "media": [{"schema_version": 1, "context_id": "hero_id", "role": "reference"}],
                         "text": "AI altered prompt prose.",
                     },
                 }

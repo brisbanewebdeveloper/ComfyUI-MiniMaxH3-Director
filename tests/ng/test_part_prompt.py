@@ -88,6 +88,10 @@ class Check(unittest.TestCase):
         self.assertIn("description: [Shot 1] Gothic hall.", text)
         self.assertIn("Story:\nShe sings a sad song.", text)
         self.assertIn("continues the previous part", text)
+        self.assertIn("holds a static shot", text)
+        self.assertNotIn("time beat", text, "no beats in the draft, no beat rule")
+        beats = BASE.replace("[Shot 1] Gothic hall.", "[Shot 1] 0–2.5s: Gothic hall, a wide shot. 2.5–4.5s: She turns.")
+        self.assertIn("Keep each time beat of the draft", part.request(beats, "fl2va", 8.7))
 
 
 def plan(shots_text, idea="An elf sings.", seconds=8.0):

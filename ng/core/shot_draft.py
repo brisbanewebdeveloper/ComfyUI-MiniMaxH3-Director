@@ -8,6 +8,7 @@ from .context_build import card_id, widget_text
 from .frames import seconds_to_frames
 from .shot_document import LOCK_FIELDS, MediaBinding, SpokenLine, read_document
 from .shots import parse_shots
+from .shot_share import beat_marks
 
 FORMAT = "h3-director-draft"
 
@@ -26,21 +27,33 @@ def current_records(text, seconds):
 def draft_prompt(idea, seconds, meanings, records):
     shots = [{key: r.get(key, [] if key in ("media", "spoken", "locked_fields") else "")
               for key in ("id", "start", "end", "text", "media", "spoken", "locked_fields")} for r in records]
+    # The beats of a long shot come from its own length, so the AI only fills them (qwen3.5:9b, told the rule alone, wrote
+    # "holds a static shot for 2.5 seconds (0–2.5s)" into a 10 s shot, 2026-10-13).
+    for shot in shots:
+        marks = beat_marks(float(shot["end"] or 0) - float(shot["start"] or 0))
+        if marks and "text" not in (shot["locked_fields"] or ()):
+            shot["write_as_beats"] = marks
     return ("Improve the existing Shots from the Idea and Context descriptions. Return only JSON: "
             '{"format":"h3-director-draft","schema_version":1,"patches":[{"shot_id":"existing ID",'
-            '"fields":{"text":"action and camera prose","timing":{"start":0,"end":1},"media":[],"spoken":[]}}]}. '
+            '"fields":{"text":"action and camera prose","media":[],"spoken":[]}}]}. '
             "The example lists allowed fields; omit every field that does not need changes. "
-            "You may also propose timing, media or spoken fields and project soundscape/music strings. "
+            "You may also propose media or spoken fields and project soundscape/music strings. "
+            "Every shot keeps its start and end exactly: never propose timing. "
+            "text: begin with the framing (e.g. 'A full-body shot of ...'), then who is where, what they do, their expression and "
+            "the light, then how the camera moves with amplitude and speed, or 'The camera holds a static shot.' when it does not. "
+            "A shot with write_as_beats gets its text as exactly those time beats, in that order, each beginning with its mark, "
+            "e.g. for '0–5s, 5–10s': '0–5s: A full-body shot of ... The camera holds a static shot. 5–10s: A close-up of ... The "
+            "camera pushes in with small amplitude at slow speed.'; each beat begins with its framing and says how the camera "
+            "moves. "
             "Include soundscape/music only for a concrete requested change; never copy schema placeholders. "
             "Use existing Shot IDs; never add, delete or reorder Shots. Respect locked_fields. "
-            "Patch fields may contain only text, timing, media and spoken; never copy id, draft or locked_fields into fields. "
+            "Patch fields may contain only text, media and spoken; never copy id, draft or locked_fields into fields. "
             "Preserve every existing spoken entry and exact inline dialogue; new dialogue is optional. "
             "Media bindings use schema_version 1, context_id and a supported role, not filenames. "
             "Spoken entries use schema_version 1, speaker_id, voice, language, delivery and text. "
-            "Timing is finite seconds in 0..%s, end greater than start; avoid overlaps. "
             "%sUse Context IDs for bindings. Do not claim generation or media analysis has occurred. "
             "Idea: %s\nContexts: %s\nExisting Shots: %s" %
-            (seconds, mention_rule(meanings), idea, json.dumps(meanings, ensure_ascii=False), json.dumps(shots, ensure_ascii=False)))
+            (mention_rule(meanings), idea, json.dumps(meanings, ensure_ascii=False), json.dumps(shots, ensure_ascii=False)))
 
 
 def mention_rule(meanings):
@@ -89,13 +102,6 @@ def _field_value(key, value, record, seconds, contexts):
         if not text:
             raise ValueError("A proposed action must not be empty.")
         return keep_inline_words(plain_mentions(text, contexts)[0], record["text"])
-    if key == "timing":
-        fields.need_dict(value, "draft.timing")
-        start = fields.read_number(value, "start", "draft.timing", minimum=0)
-        end = fields.read_number(value, "end", "draft.timing", minimum=0)
-        if end <= start or end > seconds:
-            raise ValueError("Proposed timing is outside the project or has no duration.")
-        return dict(start=start, end=end)
     entries = fields.read_list({key: value}, key, "draft.fields")
     parsed = [(MediaBinding if key == "media" else SpokenLine).from_dict(entry).to_dict() for entry in entries]
     existing = [(MediaBinding if key == "media" else SpokenLine).from_dict(entry).to_dict() for entry in record.get(key, [])]
@@ -118,13 +124,29 @@ def _field_value(key, value, record, seconds, contexts):
     return parsed
 
 
+def _merged(patches):
+    """Patches of one shot that change different fields become one: qwen3.5:9b sent a shot's text and its spoken line as
+    two patches (2026-10-13), and the whole draft was refused for the repeated ID. The same field twice stays refused."""
+    out, by_id = [], {}
+    for patch in patches:
+        earlier = by_id.get(patch.get("shot_id")) if isinstance(patch, dict) else None
+        if earlier is not None and isinstance(patch.get("fields"), dict) and isinstance(earlier.get("fields"), dict) \
+                and not set(patch["fields"]) & set(earlier["fields"]):
+            earlier["fields"] = {**earlier["fields"], **patch["fields"]}
+            continue
+        if isinstance(patch, dict) and patch.get("shot_id") not in by_id:
+            patch = by_id[patch.get("shot_id")] = dict(patch)
+        out.append(patch)
+    return out
+
+
 def parse_draft(data, records, seconds, contexts):
     if data.get("format") != FORMAT:
         raise ValueError("Existing Shots need an ID-addressed draft, not a scene replacement.")
     fields.check_version(data, "draft", 1)
     if set(data) - {"format", "schema_version", "patches", "soundscape", "music"}:
         raise ValueError("Unexpected scene replacement fields in the Shot draft.")
-    patches = fields.read_list(data, "patches", "draft")
+    patches = _merged(fields.read_list(data, "patches", "draft"))
     if len(patches) > 64:
         raise ValueError("A draft can propose at most 64 Shot patches.")
     by_id, seen, validated, dropped = {record["id"]: record for record in records}, set(), [], []
@@ -143,6 +165,9 @@ def parse_draft(data, records, seconds, contexts):
         for key, value in changes.items():
             if key in locked:       # the user locked it in the Studio: the AI must not change it (BUG-086)
                 dropped.append("%s of %s: locked in the Studio" % (key, identity))
+                continue
+            if key == "timing":     # the shot times are the user's; the AI writes the text to fit them
+                dropped.append("timing of %s: shot times stay as set" % identity)
                 continue
             try:
                 kept[key] = _field_value(key, value, by_id[identity], seconds, contexts)

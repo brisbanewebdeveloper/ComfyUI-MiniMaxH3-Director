@@ -130,6 +130,9 @@ including projects without shots. Clip ranges and Context/speaker IDs remain int
 
 Older workflows saved with `auto` keep it and show it as automatic; it is also selectable under **More settings**.
 
+**AI shots** begin with the framing and say how the camera moves (amplitude and speed) or that it holds a static shot. A shot
+longer than 5 s is written in time beats from its own start ("0–5s: ... 5–10s: ..."); the AI never changes shot times.
+
 **Turbo** renders with a few-step H3 turbo LoRA. Each mode has its own LoRA selection; nothing is preselected, the user chooses.
 A known LoRA (`js/ng/turbo_profiles.json`: the official ComfyUI LoRAs, Taomate, the ckpt500 turbo) brings its measured steps,
 sampler and scheduler: the Studio's settings jump to them, and each render part samples with the values of its own model's LoRA,

@@ -8,6 +8,7 @@ of the shot's time:
 - Time beats the user wrote ("2.5–5s: ...", seconds from the shot's start) go to the parts they fall in, re-timed to the part.
 - Other text is cut into sentences and clauses ("..., then ...") and laid over the shot's time by length.
 - A shot whose new frames all lie in the pinned head gets no action: those frames are already made."""
+import math
 import re
 
 from .limits import FPS
@@ -15,7 +16,20 @@ from .limits import FPS
 HEAD_ONLY = "The shot from the preceding video ends here, without new action."
 _BEAT = re.compile(r"(\d+(?:[.,]\d+)?)\s*s?\s*[–-]\s*(\d+(?:[.,]\d+)?)\s*s(?:ec(?:onds?)?)?\s*:\s*", re.IGNORECASE)
 _PIECE = re.compile(r"(?<=[.!?;])\s+|(?<=,)\s+(?=then\b)")
+# The AI writes a shot longer than this in time beats (split.py, shot_draft.py). The user's shot times never change: beats
+# are seconds from the shot's own start, fitted to its real length (5 s, 10 s, 2.5 s ...).
+BEAT_MIN_S = 5.0
 MIN_OVERLAP_S = 0.25        # a beat or clause that only grazes a part (frame grid) stays with the part it belongs to
+
+
+def beat_marks(seconds):
+    """The time beats a shot of this length is written in, as the AI is asked for them: "0–5s, 5–10s" for 10 s, "" for a
+    shot of BEAT_MIN_S or less. Equal beats, as many as the length needs at most BEAT_MIN_S each."""
+    if seconds <= BEAT_MIN_S:
+        return ""
+    count = int(math.ceil(seconds / BEAT_MIN_S - 1e-9))
+    ends = [round(seconds * (k + 1) / count, 1) for k in range(count)]
+    return ", ".join("%s–%ss" % (_stamp(a), _stamp(b)) for a, b in zip([0.0] + ends[:-1], ends))
 
 
 def _seconds(text):

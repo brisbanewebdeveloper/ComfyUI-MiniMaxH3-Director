@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**The AI writes complete H3 shots: framing, camera, time beats** (2026-10-13):
+
+- Every shot the AI writes (AI: split into shots, Make H3 prompt, AI: improve text) begins with its framing and says how the camera moves, with amplitude and speed, or that it "holds a static shot" (MiniMax's H3 guide). Nothing is appended automatically; said by the AI, a still camera also keeps 4-step turbo from drifting into a close-up.
+- A shot longer than 5 s is written in time beats in seconds from the shot's own start ("0–5s: ... 5–10s: ..."), as many as its length needs. The shot times are never changed: a split's beats are fitted to the shot's real length; when the AI improves existing shots the beats come from each shot's own length (5 s, 10 s, 2.5 s ...), and a proposed timing is dropped ("shot times stay as set"). The render parts give each part its own beats (shot_share), and the part writer keeps them.
+- Real test with qwen3.5:9b: split into shots 6 of 6 valid, every 10 s shot in beats; improve text 6 of 6 accepted, the 10 s shot in beats each time. Two parser fixes from it: a copied example line without words ("text":[] or "[]") is no spoken line, and two patches for different fields of one shot are merged instead of refusing the draft.
+
 **Turbo LoRA profiles, no preselected LoRA** (2026-10-13):
 
 - The user chooses the turbo LoRA; the Director no longer preselects one. A known LoRA brings its measured steps, sampler and scheduler (`js/ng/turbo_profiles.json`, read by Python and the Studio): official Ref2VA v0.1 and FL2VA v1.2 4 steps, FL2VA v1.0 8 steps (res_multistep, simple; ComfyUI's templates), Taomate 4 steps, the ckpt500 turbo 8 steps Euler + Beta (its Civitai page).
