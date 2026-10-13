@@ -14,7 +14,7 @@ export function newId(prefix) {
 }
 
 export function newPanel(seconds = 2.5) {
-  return { id: newId("p"), seconds, title: "", caption: "", shot: "", layers: [] };
+  return { id: newId("p"), seconds, title: "", caption: "", shot: "", first_frame: false, layers: [] };
 }
 
 export function newBoard() {
@@ -26,7 +26,8 @@ export function newBoard() {
 // layer as a part of the panel's width, size the height of a text line as a part of the panel's height.
 export function newLayer(kind, extra = {}) {
   const base = { id: newId("l"), kind, name: "", x: 0.5, y: 0.5, rotation: 0, flip: false, opacity: 1, hidden: false };
-  if (kind === "image") return { ...base, src: null, scale: 0.6, ...extra };
+  // redrawn: the panel redrawn by the image model (stage 3); it is left out of the collage the next redraw starts from.
+  if (kind === "image") return { ...base, src: null, scale: 0.6, redrawn: false, ...extra };
   if (kind === "text") return { ...base, text: "Text", size: 0.08, color: "#FFFFFF", ...extra };
   return { ...base, kind: "fill", color: "#1B2233", ...extra };
 }
@@ -44,7 +45,7 @@ function readLayer(raw) {
   if (raw.kind === "image") {
     const src = raw.src && typeof raw.src === "object" && raw.src.filename ? { filename: String(raw.src.filename),
       subfolder: String(raw.src.subfolder || ""), type: raw.src.type === "output" ? "output" : "input" } : null;
-    Object.assign(layer, { src, scale: num(raw.scale, 0.6, 0.02, 5) });
+    Object.assign(layer, { src, scale: num(raw.scale, 0.6, 0.02, 5), redrawn: Boolean(raw.redrawn) });
   } else if (raw.kind === "text") Object.assign(layer, { text: String(raw.text ?? ""), size: num(raw.size, 0.08, 0.01, 0.5),
     color: /^#[0-9a-f]{6}$/i.test(raw.color) ? raw.color : "#FFFFFF" });
   else layer.color = /^#[0-9a-f]{6}$/i.test(raw.color) ? raw.color : "#1B2233";
@@ -59,7 +60,7 @@ export function readBoard(text) {
   if (!raw || raw.format !== FORMAT) return { board: newBoard(), error: "The saved data is no H3 storyboard; a new one is shown." };
   const panels = (Array.isArray(raw.panels) ? raw.panels : []).slice(0, MAX_PANELS).map((p) => ({
     id: String(p?.id || newId("p")), seconds: num(p?.seconds, 2.5, 0.1, 600), title: String(p?.title || ""),
-    caption: String(p?.caption || ""), shot: String(p?.shot || ""),
+    caption: String(p?.caption || ""), shot: String(p?.shot || ""), first_frame: Boolean(p?.first_frame),
     layers: (Array.isArray(p?.layers) ? p.layers : []).map(readLayer).filter(Boolean) }));
   return { board: { format: FORMAT, schema_version: 1, id: String(raw.id || newId("sb")), title: String(raw.title || ""),
     subtitle: String(raw.subtitle || ""), aspect: ASPECTS[raw.aspect] ? raw.aspect : "16:9", idea: String(raw.idea || ""),
@@ -160,4 +161,31 @@ export function shotsDocument(board) {
   return { format: "h3-director-shots", schema_version: 1, shots: board.panels.map((panel, index) => ({
     id: `sb-${panel.id}`, start: times[index][0], end: times[index][1],
     text: (panel.shot || panel.caption || panel.title || "").trim(), media: [], spoken: [], locked_fields: [], draft: null })) };
+}
+
+const BEAT_MARK = /\d+(?:[.,]\d+)?\s*s?\s*[–-]\s*\d+(?:[.,]\d+)?\s*s\s*:\s*/g;
+
+// The image model's instruction for redrawing one panel: image 1 is the collage (it sets composition and size), images 2..
+// are the character references, in the order of refs ([{name, description}]).
+export function redrawPrompt(board, index, refs = []) {
+  const panel = board.panels[index];
+  const story = (panel.caption || panel.shot || panel.title || "").replace(BEAT_MARK, "").replace(/@(\S)/g, "$1").trim();
+  const parts = [
+    `Redraw image 1 as one finished, polished storyboard frame${refs.length ? " in the art style of the character references" : ""}.`,
+    "Keep its composition exactly: the same figures at the same places, with the same sizes, poses and directions, the same "
+      + "background layout and the same framing.",
+    "Remove every cut-out edge, collage seam and pasted look: one consistent scene with consistent light and shadows.",
+    ...refs.map((ref, i) => `${ref.name} looks exactly as in image ${i + 2}: face, hair, outfit and colours${ref.description ? ` (${ref.description.replace(/\.$/, "")})` : ""}.`),
+    story ? `What happens: ${story}` : "",
+    "No text, no captions, no labels, no panel border.",
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+// The Director's shots of the board: one shot per panel, the storyboard card on every shot and a panel's own card as the
+// first frame of its shot. ids: { storyboard: context id or "", frames: { panel index: context id } }.
+export function directorShots(board, ids = {}) {
+  return shotsDocument(board).shots.map((shot, index) => ({ ...shot, media: [
+    ...(ids.storyboard ? [{ schema_version: 1, context_id: ids.storyboard, role: "storyboard" }] : []),
+    ...(ids.frames?.[index] ? [{ schema_version: 1, context_id: ids.frames[index], role: "first_frame" }] : []) ] }));
 }

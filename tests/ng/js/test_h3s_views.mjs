@@ -240,6 +240,13 @@ function recorder() {
   const current = { widgets: [widget("resume", false), widget("resume_delete_done", false), widget("prompt_override", "x")] };
   repairInsertedWidgets(current, [false, false, "x"]);
   assert.deepEqual(current.widgets.map((w) => w.value), [false, false, "x"], "a list of the current length is left alone");
+  // Saved while "resume" was required (before prompt_override): the two come back swapped and are put right.
+  const swapped = { widgets: [widget("prompt_override", true), widget("resume", "my override")] };
+  repairLaterWidgets(swapped);
+  assert.deepEqual(swapped.widgets.map((w) => w.value), ["my override", true]);
+  const lost = { widgets: [widget("prompt_override", false), widget("resume", true)] };
+  repairLaterWidgets(lost);
+  assert.deepEqual(lost.widgets.map((w) => w.value), ["", true], "a switch value is never Prompt override text");
 }
 
 // The Studio speaks English: no German text is left in its modules (comments included, to keep them consistent).

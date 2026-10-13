@@ -2,6 +2,13 @@
 
 ## 1.0.0 (unreleased)
 
+**H3 Storyboard, stages 3 and 4** (2026-10-14):
+
+- **Redraw with Qwen Image 2.1**: a panel's collage becomes one finished picture in the style of the character cards it names (ComfyUI's Qwen Image 2.1 nodes as a queued job, 25 steps). Real test: two cut-out portraits on a colour became Luna and Inferna facing each other in a gothic hall, with halo, horns, wings and tail from their sheets, in 49 s. The result is a new layer over the collage; each redraw takes a new seed. **Redraw all panels** does every panel and names the ones it skipped.
+- **Send to Director**: the panels become the Director's shots (times, shot texts) with the storyboard card on every shot and marked panels as first frames of their shots; the Director's sound lanes, Look and Prompt stay. Real test: the Director planned the 4 panels at once (17.5 s, two render parts).
+- The jobs moved to `js/ng/h3b_jobs.js` (the editor stays under the module size limit).
+- Director: a workflow saved in the few hours when "resume" was a required input loaded Prompt override and Resume swapped ("director.prompt_override: expected text, got bool"); the Studio puts them right on load.
+
 **H3 Storyboard, stages 1 and 2** (2026-10-13):
 
 - New node **H3 Storyboard**: a storyboard sheet laid out in the node, in the look of the user's ChatGPT boards (title line, numbered panels with time and title on the picture, caption below). 1 to 9 panels, six panel formats, panel seconds end to end.

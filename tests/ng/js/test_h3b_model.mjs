@@ -83,4 +83,33 @@ const model = await import("../../../js/ng/h3b_model.js");
   assert.deepEqual(shots.map((s) => [s.start, s.end, s.text]).slice(0, 2), [[0, 2.5, "Caption."], [2.5, 5, "Shot."]]);
 }
 
+// Stage 3: the redraw instruction keeps the collage's composition, names each reference image, and leaves out beat marks
+// and @ signs; a redrawn layer and the first-frame mark survive a save.
+{
+  const board = model.newBoard();
+  board.panels[1].caption = "";
+  board.panels[1].shot = "0–5s: A full-body shot of @Luna at the altar. 5–10s: She turns.";
+  const text = model.redrawPrompt(board, 1, [{ name: "Luna", description: "Violet hair." }, { name: "Inferna", description: "" }]);
+  assert.match(text, /^Redraw image 1 as one finished, polished storyboard frame in the art style of the character references\./);
+  assert.match(text, /Luna looks exactly as in image 2: face, hair, outfit and colours \(Violet hair\)\./);
+  assert.match(text, /Inferna looks exactly as in image 3/);
+  assert.match(text, /What happens: A full-body shot of Luna at the altar\. She turns\./);
+  assert.doesNotMatch(model.redrawPrompt(board, 0), /art style|image 2/);
+  board.panels[0].first_frame = true;
+  board.panels[0].layers.push(model.newLayer("image", { src: { filename: "r.png", subfolder: "h3-storyboard", type: "output" }, redrawn: true }));
+  const back = model.readBoard(model.writeBoard(board)).board;
+  assert.equal(back.panels[0].first_frame, true);
+  assert.equal(back.panels[0].layers[0].redrawn, true);
+}
+
+// Stage 4: the Director's shots carry the storyboard card on every shot and a panel's card as its first frame.
+{
+  const board = model.newBoard();
+  const shots = model.directorShots(board, { storyboard: "ctx_sheet", frames: { 2: "ctx_p3" } });
+  assert.equal(shots.length, 4);
+  assert.deepEqual(shots[0].media, [{ schema_version: 1, context_id: "ctx_sheet", role: "storyboard" }]);
+  assert.deepEqual(shots[2].media.map((m) => m.role), ["storyboard", "first_frame"]);
+  assert.deepEqual(model.directorShots(board)[0].media, []);
+}
+
 console.log("h3b model ok");

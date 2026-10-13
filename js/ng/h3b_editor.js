@@ -1,36 +1,19 @@
 // The H3 Storyboard's editor, the node's face: the sheet on the left (click a panel to edit it, the AI writes the texts
 // below it), the selected panel on the right as a canvas with its layers. Pictures come from the Context cards, the input
-// folder or an upload; "Cut out" removes a picture's background with ComfyUI's own nodes, queued like any job.
+// folder or an upload; the jobs (cut out, redraw, the Director side) are in h3b_jobs.js.
 import { h, icon, field, select, keepKeys } from "./h3s_dom.js";
 import { ASPECTS, MAX_PANELS, readBoard, writeBoard, newLayer, setPanelCount, panelTimes, fmtSeconds, sheetLayout,
-  pictureSize, layerBox, hits, loadName, srcUrl } from "./h3b_model.js";
+  pictureSize, layerBox, hits, srcUrl } from "./h3b_model.js";
 import { pictureCache, drawPicture, drawSheet } from "./h3b_draw.js";
 import { connectedProvider, readContexts, upstreamNode } from "./ng_read.js";
 import { aiAction } from "./ng_ai_request.js";
 import { noteChange } from "./ng_widgets.js";
-
-const SUBFOLDER = "h3-storyboard";
-
-async function comboOptions(api, nodeClass, input) {
-  try {
-    const info = (await (await api.fetchApi(`/object_info/${nodeClass}`)).json())[nodeClass];
-    const spec = info?.input?.required?.[input];
-    if (Array.isArray(spec?.[0])) return spec[0];
-    if (spec?.[0] === "COMBO") return spec[1]?.options || [];
-  } catch { /* the list stays empty; the user is told where it matters */ }
-  return [];
-}
+import { SUBFOLDER, comboOptions, canvasOf, boardJobs } from "./h3b_jobs.js";
 
 function srcOf(name, type = "input") {
   const clean = String(name || "").replace(/ \[(input|output)\]$/, "").replace(/\\/g, "/");
   const cut = clean.lastIndexOf("/");
   return { filename: clean.slice(cut + 1), subfolder: cut < 0 ? "" : clean.slice(0, cut), type };
-}
-
-function canvasOf(w, h) {
-  const c = document.createElement("canvas");
-  c.width = Math.round(w); c.height = Math.round(h);
-  return c;
 }
 
 export function openBoard(node, app, api, host) {
@@ -152,52 +135,6 @@ export function openBoard(node, app, api, host) {
     const data = await response.json();
     addPicture({ filename: data.name, subfolder: data.subfolder || "", type: "input" }, file.name.replace(/\.[^.]+$/, ""));
   }
-  async function waitFor(id, seconds = 300) {
-    const deadline = Date.now() + seconds * 1000;
-    while (Date.now() < deadline) {
-      const entry = (await (await api.fetchApi(`/history/${encodeURIComponent(id)}`)).json())[id];
-      if (entry) {
-        const failed = (entry.status?.messages || []).find(([type]) => type === "execution_error");
-        if (failed) throw new Error(failed[1].exception_message || "The job failed.");
-        if (entry.status?.completed || entry.outputs) return entry.outputs || {};
-      }
-      await new Promise((resolve) => setTimeout(resolve, 800));
-    }
-    throw new Error("The job took too long.");
-  }
-  // ComfyUI's Remove Background on the picture: a new PNG with the figure on a transparent background, in output/h3-storyboard.
-  async function cutOut(item) {
-    const models = await comboOptions(api, "LoadBackgroundRemovalModel", "bg_removal_name");
-    if (!models.length) { flash("No background removal model found: put one (e.g. birefnet.safetensors) into models/background_removal.", true); return; }
-    const model = models.find((name) => /birefnet/i.test(name)) || models[0];
-    const prompt = {
-      "1": { class_type: "LoadImage", inputs: { image: loadName(item.src) } },
-      "2": { class_type: "LoadBackgroundRemovalModel", inputs: { bg_removal_name: model } },
-      "3": { class_type: "RemoveBackground", inputs: { bg_removal_model: ["2", 0], image: ["1", 0] } },
-      // JoinImageWithAlpha keeps where its mask is 0 (LoadImage's convention), so the foreground mask is inverted first.
-      "4": { class_type: "InvertMask", inputs: { mask: ["3", 0] } },
-      "5": { class_type: "JoinImageWithAlpha", inputs: { image: ["1", 0], alpha: ["4", 0] } },
-      "6": { class_type: "SaveImage", inputs: { images: ["5", 0], filename_prefix: `${SUBFOLDER}/cutout` } },
-    };
-    S.busy = "cutout"; render();
-    try {
-      const response = await api.fetchApi("/prompt", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, client_id: api.clientId }) });
-      const queued = await response.json();
-      if (!queued.prompt_id) throw new Error(queued.error?.message || "ComfyUI did not accept the cut-out job.");
-      const outputs = await waitFor(queued.prompt_id);
-      const saved = outputs["6"]?.images?.[0];
-      if (!saved) throw new Error("The cut-out job saved no picture.");
-      change((board) => {
-        const target = board.panels.flatMap((p) => p.layers).find((l) => l.id === item.id);
-        if (target) { target.src = { filename: saved.filename, subfolder: saved.subfolder || "", type: saved.type || "output" }; target.name = `${item.name || "Picture"} (cut out)`; }
-      });
-      S.notice = { text: "Cut out. Undo brings the picture with its background back.", error: false };
-    } catch (error) {
-      S.notice = { text: `Cut out failed: ${error.message}`, error: true };
-    } finally { S.busy = ""; render(); }
-  }
-
   // --- AI: the panel texts -----------------------------------------------------------------------------------------------
   async function writeTexts() {
     const provider = connectedProvider(node);
@@ -220,36 +157,8 @@ export function openBoard(node, app, api, host) {
     } finally { S.busy = ""; render(); }
   }
 
-  // --- the sheet as a Context card for the Director -----------------------------------------------------------------------
-  async function useInDirector() {
-    S.busy = "card"; render();
-    try {
-      const files = JSON.parse(await renderFiles());
-      const LiteGraph = window.LiteGraph;
-      const card = LiteGraph.createNode("NGContextImage");
-      card.pos = [node.pos[0] + node.size[0] + 40, node.pos[1]];
-      app.graph.add(card);
-      const set = (name, value) => { const w = card.widgets?.find((x) => x.name === name); if (w) { w.value = value; w.callback?.(value); } };
-      // The card's file list was read when ComfyUI loaded, and on Windows it spells folders with "\": the sheet goes in with
-      // the list's spelling, else the frontend flags the card as missing and the server refuses the value as not in the list.
-      const listed = card.widgets?.find((x) => x.name === "image")?.options?.values || [];
-      const sheet = listed.find((v) => v.replace(/\\/g, "/") === files.sheet)
-        || (listed.some((v) => v.includes("\\")) ? files.sheet.replace(/\//g, "\\") : files.sheet);
-      if (!listed.includes(sheet)) listed.push(sheet);
-      set("image", sheet);
-      set("name", "Storyboard");
-      set("description", `Storyboard of ${S.board.panels.length} panels with times and captions.`);
-      set("content", "composition"); set("usage", "storyboard");
-      set("content_roles", JSON.stringify(["composition"])); set("usage_roles", JSON.stringify(["storyboard"]));
-      const target = connector(), slot = target?.inputs?.findIndex((input) => input.name.startsWith("context_image.") && input.link == null);
-      if (target && slot >= 0) card.connect(0, target, slot);
-      app.graph.setDirtyCanvas(true, true);
-      S.notice = { text: target && slot >= 0 ? "A Context card with the sheet is connected to the Context Connector; put it on the shots it plans in the Director."
-        : "A Context card with the sheet was added next to this node; connect it to the Context Connector.", error: false };
-    } catch (error) {
-      S.notice = { text: `Could not add the card: ${error.message}`, error: true };
-    } finally { S.busy = ""; render(); }
-  }
+  const { cutOut, useInDirector, sendToDirector, redrawPanels } = boardJobs({ S, node, app, api, pictures, change, render, flash,
+    renderFiles, upload, connector, contexts });
 
   // --- the panel canvas: select, drag, scale, rotate ----------------------------------------------------------------------
   function stagePoint(event) {
@@ -307,7 +216,9 @@ export function openBoard(node, app, api, host) {
       h("button", { class: "h3s-btn ghost small", title: "Undo", disabled: !S.history.length, onclick: () => undo(true) }, "Undo"),
       h("button", { class: "h3s-btn ghost small", title: "Redo", disabled: !S.future.length, onclick: () => undo(false) }, "Redo"),
       h("button", { class: "h3s-btn", disabled: Boolean(S.busy), title: "Draws the sheet into input/h3-storyboard and adds a Context card with it (usage Storyboard)",
-        onclick: useInDirector }, icon("image"), S.busy === "card" ? "Adding…" : "Use in Director"));
+        onclick: useInDirector }, icon("image"), S.busy === "card" ? "Adding…" : "Use in Director"),
+      h("button", { class: "h3s-btn go", disabled: Boolean(S.busy), title: "The panels become the Director's shots (times, shot texts), with the sheet on every shot and the marked panels as first frames",
+        onclick: sendToDirector }, icon("play"), S.busy === "send" ? "Sending…" : "Send to Director"));
   }
 
   function sheetCard() {
@@ -331,7 +242,10 @@ export function openBoard(node, app, api, host) {
           h("button", { class: "h3s-btn ai", disabled: Boolean(S.busy) || !provider, onclick: writeTexts,
             title: provider ? "Titles, captions and shot texts of all panels; the panel times stay" : "Connect the H3 AI Loader to AI provider" },
           icon("spark"), S.busy === "ai" ? "The AI is writing…" : "AI: write panel texts"),
-          provider ? null : h("span", { class: "h3s-lbl" }, "Connect the H3 AI Loader to this node's AI provider input."))));
+          provider ? null : h("span", { class: "h3s-lbl" }, "Connect the H3 AI Loader to this node's AI provider input."),
+          h("button", { class: "h3s-btn ai", disabled: Boolean(S.busy), onclick: () => redrawPanels(S.board.panels.map((_, i) => i)),
+            title: "Every panel's collage redrawn as one finished picture with Qwen Image 2.1, the character cards as references" },
+          icon("image"), S.busy === "redraw" ? "Redrawing…" : "Redraw all panels"))));
   }
 
   function picker() {
@@ -410,6 +324,14 @@ export function openBoard(node, app, api, host) {
         h("button", { class: "h3s-btn small", onclick: () => add("text") }, icon("text", 14), "+ Text"),
         h("button", { class: "h3s-btn small", onclick: () => add("fill") }, "+ Colour")),
       S.picker ? picker() : null,
+      h("div", { class: "h3s-row" },
+        h("button", { class: "h3s-btn small ai", disabled: Boolean(S.busy), onclick: () => redrawPanels([S.selected]),
+          title: "The collage redrawn as one finished picture with Qwen Image 2.1 (about a minute); the character cards the panel names are the references" },
+        icon("spark", 14), S.busy === "redraw" ? "Redrawing…" : "Redraw with Qwen Image 2.1"),
+        h("label", { class: "h3s-lbl", style: { display: "flex", gap: "6px", alignItems: "center", cursor: "pointer" },
+          title: "Send to Director then binds this panel's picture (without caption) as the first frame of its shot" },
+        h("input", { type: "checkbox", checked: Boolean(item.first_frame), onchange: () => change(() => { item.first_frame = !item.first_frame; }) }),
+        "First frame of its shot")),
       layerRows(), layerProps(),
       field("Caption on the sheet", area(item.caption, quietText((v) => { item.caption = v; }), { rows: 2, onfocus: remember })),
       field("Shot text for H3 (framing, action, camera; time beats for a long panel)", area(item.shot, quietText((v) => { item.shot = v; }), { rows: 4, onfocus: remember })));

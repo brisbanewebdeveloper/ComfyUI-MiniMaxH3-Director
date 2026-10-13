@@ -34,6 +34,14 @@ export function repairInsertedWidgets(node, saved) {
 }
 
 export function repairLaterWidgets(node) {
+  // For a few hours on 2026-10-13 "resume" was a required input and so stood before prompt_override; a workflow saved then
+  // swaps the two on load (the Prompt override became true, "expected text, got bool"). Text never belongs to the switch.
+  const override = node.widgets?.find((w) => w.name === "prompt_override"), resume = node.widgets?.find((w) => w.name === "resume");
+  if (override && typeof override.value === "boolean") {
+    const text = typeof resume?.value === "string" ? resume.value : "";
+    if (resume && typeof resume.value !== "boolean") resume.value = override.value;
+    override.value = text;
+  }
   for (const widget of node.widgets || []) {
     if (!(widget.name in LATER)) continue;
     const valid = widget.name === "turbo" ? typeof widget.value === "boolean" : (widget.options?.values || []).includes(widget.value);

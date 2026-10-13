@@ -236,6 +236,15 @@ picture and a caption below.
   `input/h3-storyboard`; an API graph queued without the browser has no sheet.
 - **Use in Director** draws the sheet and adds a Context card with it (usage Storyboard), connected to the Context
   Connector of the **H3 context** input when there is one.
+- **Redraw with Qwen Image 2.1** (per panel, or **Redraw all panels**): the panel's collage is image 1 and keeps its
+  composition; the Context cards of the characters the panel names (else all character cards, up to four) are the
+  references. ComfyUI's own Qwen Image 2.1 nodes run as a queued job (25 steps, Euler, CFG 1, about a minute); the result
+  is a new layer over the collage, which stays below it. Needs `qwen_image_2.1` (diffusion_models), `qwen3vl_8b`
+  (text_encoders) and `qwen_image_2.1_vae` (vae).
+- **Send to Director** turns the panels into the H3 Director's shots (times and shot texts; the Director's sound lanes,
+  Look and Prompt stay), puts the sheet's card on every shot (role Storyboard) and, for a panel marked **First frame of
+  its shot**, adds a card with the panel's picture and binds it as that shot's first frame. The Director is the one on
+  the same Context Connector (or the only one); its shots are replaced after a question.
 
 ## Product nodes
 
