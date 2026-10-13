@@ -25,6 +25,16 @@ const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
 const MEDIA = { NGContextImage: "image", NGContextVideo: "video", NGContextAudio: "audio", NGContextText: "text" };
 const WIDTH = { image: 660, video: 660, audio: 700, text: 780 };
+// One preset list request per medium for all cards that load together (six image cards asked six times); saving refreshes it.
+const presetLists = new Map();
+function presetNames(media, fresh = false) {
+  if (fresh || !presetLists.has(media)) {
+    const pending = request(api, "/ng/presets?media=" + media).then((data) => data.names);
+    pending.catch(() => presetLists.delete(media));
+    presetLists.set(media, pending);
+  }
+  return presetLists.get(media);
+}
 
 function repairNullableText(node) {
   for (const widget of node.widgets || [])
@@ -129,8 +139,8 @@ function attach(node, media) {
     }
   }
 
-  async function refreshPresets() {
-    try { S.presets = (await request(api, "/ng/presets?media=" + media)).names; } catch (error) { S.presets = []; S.status = error.message; }
+  async function refreshPresets(fresh = false) {
+    try { S.presets = await presetNames(media, fresh); } catch (error) { S.presets = []; S.status = error.message; }
     schedule();
   }
 
@@ -156,7 +166,7 @@ function attach(node, media) {
       try {
         const data = await request(api, "/ng/presets", { media, name: S.presetName, widgets: values(node) });
         node.properties.ng_preset_name = S.presetName = data.name;
-        say(`Saved preset “${data.name}”. Saving the same name again replaces it.`); refreshPresets();
+        say(`Saved preset “${data.name}”. Saving the same name again replaces it.`); refreshPresets(true);
       } catch (error) { say(error.message, true); }
     },
     async loadPreset(name) {
