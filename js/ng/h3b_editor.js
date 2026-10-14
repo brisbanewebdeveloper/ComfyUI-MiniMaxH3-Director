@@ -2,13 +2,15 @@
 // below it), the selected panel on the right as a canvas with its layers. Pictures come from the Context cards, the input
 // folder or an upload; the jobs (cut out, redraw, the Director side) are in h3b_jobs.js.
 import { h, icon, field, select, keepKeys } from "./h3s_dom.js";
-import { ASPECTS, MAX_PANELS, readBoard, writeBoard, newLayer, setPanelCount, panelTimes, fmtSeconds, sheetLayout,
+import { ASPECTS, MAX_PANELS, readBoard, writeBoard, newLayer, newId, setPanelCount, panelTimes, fmtSeconds, sheetLayout,
   pictureSize, layerBox, hits, srcUrl } from "./h3b_model.js";
 import { pictureCache, drawPicture, drawSheet } from "./h3b_draw.js";
 import { connectedProvider, readContexts, upstreamNode } from "./ng_read.js";
 import { aiAction } from "./ng_ai_request.js";
 import { noteChange } from "./ng_widgets.js";
-import { SUBFOLDER, comboOptions, canvasOf, boardJobs } from "./h3b_jobs.js";
+import { boardJobs } from "./h3b_jobs.js";
+import { boardAssets } from "./h3b_assets.js";
+import { SUBFOLDER, comboOptions, canvasOf } from "./h3b_queue.js";
 
 function srcOf(name, type = "input") {
   const clean = String(name || "").replace(/ \[(input|output)\]$/, "").replace(/\\/g, "/");
@@ -161,6 +163,19 @@ export function openBoard(node, app, api, host) {
 
   const { cutOut, useInDirector, sendToDirector, redrawPanels } = boardJobs({ S, node, app, api, pictures, change, render, flash,
     renderFiles, upload, connector, contexts });
+  const assets = boardAssets({ S, api, change, render, contexts });
+  // A layer copied onto every other panel at the same place: a background (the bottom layer) goes under, anything else on top.
+  function everywhere(item) {
+    change((board) => {
+      const bottom = board.panels[S.selected].layers.indexOf(item) === 0;
+      board.panels.forEach((other, index) => {
+        if (index === S.selected) return;
+        const copy = { ...item, id: newId("l") };
+        if (bottom) other.layers.unshift(copy); else other.layers.push(copy);
+      });
+    });
+    S.notice = { text: `The layer is on all ${S.board.panels.length} panels now; Undo takes it back.`, error: false }; render();
+  }
 
   // --- the panel canvas: select, drag, scale, rotate ----------------------------------------------------------------------
   function stagePoint(event) {
@@ -258,6 +273,7 @@ export function openBoard(node, app, api, host) {
     const names = S.inputNames.filter((name) => !query || name.toLowerCase().includes(query)).slice(0, 60);
     const file = h("input", { type: "file", accept: "image/*", style: { display: "none" }, onchange: (e) => e.target.files[0] && uploadFile(e.target.files[0]) });
     return h("div", { class: "h3b-picker" },
+      assets.shelf((item) => { S.picker = false; assets.place(item.src, item.name, item.kind); }),
       cards.length ? h("div", { class: "h3s-lbl" }, "From the Context cards") : null,
       cards.length ? h("div", { class: "h3b-thumbs" }, cards.map((entry) => {
         const src = srcOf(entry.widgets.image);
@@ -292,6 +308,12 @@ export function openBoard(node, app, api, host) {
   function layerProps() {
     const item = layer();
     if (!item) return h("span", { class: "h3s-lbl" }, "Click a layer on the panel or in the list. Drag it to move it; the mouse wheel sizes it, with Shift it turns.");
+    return h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, layerFields(item),
+      S.board.panels.length > 1 ? h("button", { class: "h3s-btn ghost small", style: { alignSelf: "flex-start" }, onclick: () => everywhere(item),
+        title: "Copies this layer onto every other panel at the same place, e.g. a background or a figure in its pose" }, "Use on all panels") : null);
+  }
+
+  function layerFields(item) {
     const common = [slider("Rotation", item.rotation, -180, 180, 1, (v) => { item.rotation = v; }), slider("Opacity", item.opacity, 0, 1, 0.05, (v) => { item.opacity = v; })];
     if (item.kind === "fill") return h("div", { class: "h3b-props" },
       field("Colour", h("input", { type: "color", value: item.color, onfocus: remember, oninput: (e) => quietText((v) => { item.color = v; })(e.target.value) })), common[1]);
@@ -325,6 +347,7 @@ export function openBoard(node, app, api, host) {
         h("button", { class: "h3s-btn small", onclick: () => { S.picker = !S.picker; render(); } }, icon("image", 14), "+ Picture"),
         h("button", { class: "h3s-btn small", onclick: () => add("text") }, icon("text", 14), "+ Text"),
         h("button", { class: "h3s-btn small", onclick: () => add("fill") }, "+ Colour")),
+      ...assets.maker(),
       S.picker ? picker() : null,
       h("div", { class: "h3s-row" },
         h("button", { class: "h3s-btn small ai", disabled: Boolean(S.busy), onclick: () => redrawPanels([S.selected]),

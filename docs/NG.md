@@ -241,6 +241,11 @@ picture and a caption below.
   `input/h3-storyboard`; an API graph queued without the browser has no sheet.
 - **Use in Director** draws the sheet and adds a Context card with it (usage Storyboard), connected to the Context
   Connector of the **H3 context** input when there is one.
+- **Qwen Image 2.1: + Figure from a sheet** draws a character card's figure in the pose and camera angle you write, on a
+  transparent background (the RGBA wording of ComfyUI's Qwen Image 2.1 template; portrait, square or landscape, about 30 s).
+  **+ Background** draws an empty place in the panel's format (about 20 s). Both go onto the panel and into the board's
+  pictures: "+ Picture" offers them, and every picture already on a panel, under **From this storyboard** on every panel.
+  **Use on all panels** copies a layer onto every other panel at the same place (a bottom layer goes under).
 - **Redraw with Qwen Image 2.1** (per panel, or **Redraw all panels**): the panel's collage is image 1 and keeps its
   composition; the Context cards of the characters the panel names (else all character cards, up to four) are the
   references. ComfyUI's own Qwen Image 2.1 nodes run as a queued job (25 steps, Euler, CFG 1, about a minute); the result

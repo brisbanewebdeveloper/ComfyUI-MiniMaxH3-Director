@@ -90,11 +90,11 @@ const model = await import("../../../js/ng/h3b_model.js");
   board.panels[1].caption = "";
   board.panels[1].shot = "0–5s: A full-body shot of @Luna at the altar. 5–10s: She turns.";
   const text = model.redrawPrompt(board, 1, [{ name: "Luna", description: "Violet hair." }, { name: "Inferna", description: "" }]);
-  assert.match(text, /^Redraw image 1 as one finished, polished storyboard frame in the art style of the character references\./);
-  assert.match(text, /Luna looks exactly as in image 2: face, hair, outfit and colours \(Violet hair\)\./);
-  assert.match(text, /Inferna looks exactly as in image 3/);
+  assert.match(text, /^Redraw <image1> as one finished, polished storyboard frame in the art style of the character references\./);
+  assert.match(text, /Luna looks exactly as in <image2>: face, hair, outfit and colours \(Violet hair\)\./);
+  assert.match(text, /Inferna looks exactly as in <image3>/);
   assert.match(text, /What happens: A full-body shot of Luna at the altar\. She turns\./);
-  assert.doesNotMatch(model.redrawPrompt(board, 0), /art style|image 2/);
+  assert.doesNotMatch(model.redrawPrompt(board, 0), /art style|<image2>/);
   board.panels[0].first_frame = true;
   board.panels[0].layers.push(model.newLayer("image", { src: { filename: "r.png", subfolder: "h3-storyboard", type: "output" }, redrawn: true }));
   const back = model.readBoard(model.writeBoard(board)).board;
@@ -110,6 +110,30 @@ const model = await import("../../../js/ng/h3b_model.js");
   assert.deepEqual(shots[0].media, [{ schema_version: 1, context_id: "ctx_sheet", role: "storyboard" }]);
   assert.deepEqual(shots[2].media.map((m) => m.role), ["storyboard", "first_frame"]);
   assert.deepEqual(model.directorShots(board)[0].media, []);
+}
+
+// Pictures made with Qwen Image 2.1: a figure from a sheet in the template's RGBA wording, an empty background, about a
+// megapixel in the panel format; the board's library and every picture on a panel are offered on all panels, once each.
+{
+  const figure = model.figurePrompt("Luna", "raising her staff.");
+  assert.match(figure, /^This is an RGBA format image with transparency\. A single full-body figure of Luna as shown in <image1>/);
+  assert.match(figure, /props: raising her staff\. Only this one figure/);
+  assert.match(figure, /The image has an alpha channel and a transparent background\.$/);
+  assert.equal(model.backgroundPrompt("A gothic hall."), "A gothic hall. An empty scene for a storyboard panel: no people, no characters, no text.");
+  assert.deepEqual(model.makeSize("16:9"), [1376, 768]);
+  assert.deepEqual(model.makeSize("1:1"), [1024, 1024]);
+  const board = model.newBoard();
+  const bg = { filename: "background_00001_.png", subfolder: "h3-storyboard", type: "output" };
+  const cut = { filename: "cut.png", subfolder: "h3-storyboard", type: "output" };
+  board.library = [{ id: "a1", name: "Hall", kind: "background", src: bg }];
+  board.panels[0].layers.push(model.newLayer("image", { src: bg }), model.newLayer("image", { src: cut, name: "Luna" }),
+    model.newLayer("image", { src: { filename: "r.png", subfolder: "", type: "output" }, redrawn: true }));
+  board.panels[2].layers.push(model.newLayer("image", { src: cut, name: "Luna" }));
+  assert.deepEqual(model.libraryItems(board).map((item) => [item.kind, item.src.filename]), [["background", "background_00001_.png"], ["picture", "cut.png"]],
+    "each picture once, a redraw is no picture to reuse");
+  const back = model.readBoard(model.writeBoard(board)).board;
+  assert.deepEqual(back.library, board.library);
+  assert.deepEqual(model.readBoard(JSON.stringify({ ...board, library: [{ name: "broken" }, { kind: "figure", src: bg }] })).board.library.map((i) => i.kind), ["figure"]);
 }
 
 console.log("h3b model ok");

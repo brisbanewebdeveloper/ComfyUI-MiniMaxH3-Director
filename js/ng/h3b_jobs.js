@@ -3,41 +3,11 @@
 // boardJobs takes the editor's state and functions (h3b_editor.js).
 import { ASPECTS, newLayer, newId, panelTimes, fmtSeconds, pictureSize, loadName, srcUrl, redrawPrompt, directorShots } from "./h3b_model.js";
 import { drawPicture } from "./h3b_draw.js";
+import { SUBFOLDER, comboOptions, canvasOf, runJob, qwenSetup, qwenGraph } from "./h3b_queue.js";
 import { upstreamNode } from "./ng_read.js";
 import { applyValues } from "./ng_widgets.js";
 
-export const SUBFOLDER = "h3-storyboard";
-
-export async function comboOptions(api, nodeClass, input) {
-  try {
-    const info = (await (await api.fetchApi(`/object_info/${nodeClass}`)).json())[nodeClass];
-    const spec = info?.input?.required?.[input];
-    if (Array.isArray(spec?.[0])) return spec[0];
-    if (spec?.[0] === "COMBO") return spec[1]?.options || [];
-  } catch { /* the list stays empty; the user is told where it matters */ }
-  return [];
-}
-
-export function canvasOf(w, h) {
-  const c = document.createElement("canvas");
-  c.width = Math.round(w); c.height = Math.round(h);
-  return c;
-}
-
 export function boardJobs({ S, node, app, api, pictures, change, render, flash, renderFiles, upload, connector, contexts }) {
-  async function waitFor(id, seconds = 300) {
-    const deadline = Date.now() + seconds * 1000;
-    while (Date.now() < deadline) {
-      const entry = (await (await api.fetchApi(`/history/${encodeURIComponent(id)}`)).json())[id];
-      if (entry) {
-        const failed = (entry.status?.messages || []).find(([type]) => type === "execution_error");
-        if (failed) throw new Error(failed[1].exception_message || "The job failed.");
-        if (entry.status?.completed || entry.outputs) return entry.outputs || {};
-      }
-      await new Promise((resolve) => setTimeout(resolve, 800));
-    }
-    throw new Error("The job took too long.");
-  }
   // ComfyUI's Remove Background on the picture: a new PNG with the figure on a transparent background, in output/h3-storyboard.
   async function cutOut(item) {
     const models = await comboOptions(api, "LoadBackgroundRemovalModel", "bg_removal_name");
@@ -54,16 +24,10 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
     };
     S.busy = "cutout"; render();
     try {
-      const response = await api.fetchApi("/prompt", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, client_id: api.clientId }) });
-      const queued = await response.json();
-      if (!queued.prompt_id) throw new Error(queued.error?.message || "ComfyUI did not accept the cut-out job.");
-      const outputs = await waitFor(queued.prompt_id);
-      const saved = outputs["6"]?.images?.[0];
-      if (!saved) throw new Error("The cut-out job saved no picture.");
+      const src = await runJob(api, prompt, "6", 300);
       change((board) => {
         const target = board.panels.flatMap((p) => p.layers).find((l) => l.id === item.id);
-        if (target) { target.src = { filename: saved.filename, subfolder: saved.subfolder || "", type: saved.type || "output" }; target.name = `${item.name || "Picture"} (cut out)`; }
+        if (target) { target.src = src; target.name = `${item.name || "Picture"} (cut out)`; }
       });
       S.notice = { text: "Cut out. Undo brings the picture with its background back.", error: false };
     } catch (error) {
@@ -172,42 +136,15 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
   async function redraw(index) {
     const item = S.board.panels[index];
     if (!item.layers.some((l) => !l.hidden && !l.redrawn)) return `panel ${index + 1} has nothing to redraw yet (place pictures on it first)`;
-    const [unets, clips, vaes, present] = await Promise.all([comboOptions(api, "UNETLoader", "unet_name"), comboOptions(api, "CLIPLoader", "clip_name"),
-      comboOptions(api, "VAELoader", "vae_name"), comboOptions(api, "NGContextImage", "image")]);
-    const model = unets.find((n) => /qwen_image_2\.1_int8/i.test(n)) || unets.find((n) => /qwen_image_2\.1/i.test(n));
-    const encoder = clips.find((n) => /qwen3vl_8b_int8/i.test(n)) || clips.find((n) => /qwen3vl_8b/i.test(n));
-    const vae = vaes.find((n) => /qwen_image_2\.1_vae/i.test(n));
-    if (!model || !encoder || !vae) throw new Error("Qwen Image 2.1 needs qwen_image_2.1 (diffusion_models), qwen3vl_8b (text_encoders) and qwen_image_2.1_vae (vae).");
+    const [setup, present] = await Promise.all([qwenSetup(api), comboOptions(api, "NGContextImage", "image")]);
     await pictures.ready(S.board);
     const [w, h] = pictureSize(S.board.aspect), collage = canvasOf(w, h);
     drawPicture(collage.getContext("2d"), { ...item, layers: item.layers.filter((l) => !l.redrawn) }, { x: 0, y: 0, w, h }, pictures);
     const collageName = await upload(collage, `${S.board.id}_${node.id}_collage${index + 1}.png`);
     const refs = references(index, present);
-    const prompt = {
-      c1: { class_type: "LoadImage", inputs: { image: collageName } },
-      u: { class_type: "UNETLoader", inputs: { unet_name: model, weight_dtype: "default" } },
-      q: { class_type: "QwenImage21Cache", inputs: { model: ["u", 0], device: "auto", dtype: "default" } },
-      t: { class_type: "CLIPLoader", inputs: { clip_name: encoder, type: "qwen_image", device: "default" } },
-      v: { class_type: "VAELoader", inputs: { vae_name: vae } },
-      e: { class_type: "TextEncodeQwenImage21", inputs: { clip: ["t", 0], vae: ["v", 0], resolution: 1024, negative_prompt: "",
-        prompt: redrawPrompt(S.board, index, refs.map((r) => ({ name: r.widgets.name, description: r.widgets.description || "" }))),
-        "images.image_1": ["c1", 0] } },
-      k: { class_type: "KSampler", inputs: { model: ["q", 0], positive: ["e", 0], negative: ["e", 1], latent_image: ["e", 2],
-        seed: Math.floor(Math.random() * 2 ** 32), steps: 25, cfg: 1, sampler_name: "euler", scheduler: "simple", denoise: 1 } },
-      d: { class_type: "VAEDecode", inputs: { samples: ["k", 0], vae: ["v", 0] } },
-      s: { class_type: "SaveImage", inputs: { images: ["d", 0], filename_prefix: `${SUBFOLDER}/redraw` } },
-    };
-    refs.forEach((ref, i) => {
-      prompt[`r${i}`] = { class_type: "LoadImage", inputs: { image: String(ref.widgets.image).replace(/ \[input\]$/, "") } };
-      prompt.e.inputs[`images.image_${i + 2}`] = [`r${i}`, 0];
-    });
-    const response = await api.fetchApi("/prompt", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, client_id: api.clientId }) });
-    const queued = await response.json();
-    if (!queued.prompt_id) throw new Error(queued.error?.message || JSON.stringify(queued.node_errors || {}).slice(0, 300));
-    const saved = (await waitFor(queued.prompt_id, 1800)).s?.images?.[0];
-    if (!saved) throw new Error("The redraw job saved no picture.");
-    const src = { filename: saved.filename, subfolder: saved.subfolder || "", type: saved.type || "output" };
+    const prompt = redrawPrompt(S.board, index, refs.map((r) => ({ name: r.widgets.name, description: r.widgets.description || "" })));
+    const src = await runJob(api, qwenGraph(setup, { images: [collageName, ...refs.map((r) => String(r.widgets.image).replace(/ \[input\]$/, ""))],
+      prompt, prefix: "redraw", opaque: true }), "s");
     const img = await new Promise((resolve) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => resolve(null); i.src = srcUrl(src); });
     const [aw, ah] = ASPECTS[S.board.aspect];
     const scale = img ? Math.max(1, (ah / aw) * (img.naturalWidth / img.naturalHeight)) : 1;

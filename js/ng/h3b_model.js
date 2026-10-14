@@ -19,7 +19,7 @@ export function newPanel(seconds = 2.5) {
 
 export function newBoard() {
   return { format: FORMAT, schema_version: 1, id: newId("sb"), title: "", subtitle: "", aspect: "16:9", idea: "",
-    panels: [1, 2, 3, 4].map(() => newPanel(2.5)) };
+    panels: [1, 2, 3, 4].map(() => newPanel(2.5)), library: [] };
 }
 
 // A layer's place is relative to its panel's picture: x/y the centre (0..1 of width/height), scale the width of a picture
@@ -52,6 +52,13 @@ function readLayer(raw) {
   return layer;
 }
 
+// The board's own pictures (figures and backgrounds made with Qwen Image 2.1), offered on every panel.
+function readItem(raw) {
+  const layer = raw && readLayer({ kind: "image", src: raw.src });
+  return layer?.src ? { id: String(raw.id || newId("a")), name: String(raw.name || ""), kind: raw.kind === "background" ? "background" : "figure",
+    src: layer.src } : null;
+}
+
 // { board, error }: a saved board, repaired where it can be; an empty text is a new board.
 export function readBoard(text) {
   if (!String(text || "").trim()) return { board: newBoard(), error: "" };
@@ -64,7 +71,7 @@ export function readBoard(text) {
     layers: (Array.isArray(p?.layers) ? p.layers : []).map(readLayer).filter(Boolean) }));
   return { board: { format: FORMAT, schema_version: 1, id: String(raw.id || newId("sb")), title: String(raw.title || ""),
     subtitle: String(raw.subtitle || ""), aspect: ASPECTS[raw.aspect] ? raw.aspect : "16:9", idea: String(raw.idea || ""),
-    panels: panels.length ? panels : [newPanel()] }, error: "" };
+    panels: panels.length ? panels : [newPanel()], library: (Array.isArray(raw.library) ? raw.library : []).map(readItem).filter(Boolean) }, error: "" };
 }
 
 export function writeBoard(board) {
@@ -171,15 +178,44 @@ export function redrawPrompt(board, index, refs = []) {
   const panel = board.panels[index];
   const story = (panel.caption || panel.shot || panel.title || "").replace(BEAT_MARK, "").replace(/@(\S)/g, "$1").trim();
   const parts = [
-    `Redraw image 1 as one finished, polished storyboard frame${refs.length ? " in the art style of the character references" : ""}.`,
+    `Redraw <image1> as one finished, polished storyboard frame${refs.length ? " in the art style of the character references" : ""}.`,
     "Keep its composition exactly: the same figures at the same places, with the same sizes, poses and directions, the same "
       + "background layout and the same framing.",
     "Remove every cut-out edge, collage seam and pasted look: one consistent scene with consistent light and shadows.",
-    ...refs.map((ref, i) => `${ref.name} looks exactly as in image ${i + 2}: face, hair, outfit and colours${ref.description ? ` (${ref.description.replace(/\.$/, "")})` : ""}.`),
+    ...refs.map((ref, i) => `${ref.name} looks exactly as in <image${i + 2}>: face, hair, outfit and colours${ref.description ? ` (${ref.description.replace(/\.$/, "")})` : ""}.`),
     story ? `What happens: ${story}` : "",
     "No text, no captions, no labels, no panel border.",
   ];
   return parts.filter(Boolean).join(" ");
+}
+
+// A figure from a character sheet (<image1>) in a new pose, on a transparent background: the RGBA wording of ComfyUI's
+// Qwen Image 2.1 template, which then decodes a picture with an alpha channel.
+export function figurePrompt(name, pose) {
+  return `This is an RGBA format image with transparency. A single full-body figure of ${name || "the character"} as shown in <image1>, with `
+    + `exactly the same face, hair, outfit, colours and props: ${String(pose || "standing, facing the camera").trim().replace(/\.$/, "")}. `
+    + "Only this one figure, no character sheet layout, no text, no other people. The image has an alpha channel and a transparent background.";
+}
+
+// An empty background for a panel; figures are placed on it as layers.
+export function backgroundPrompt(place) {
+  return `${String(place || "").trim().replace(/\.$/, "")}. An empty scene for a storyboard panel: no people, no characters, no text.`;
+}
+
+// The size of a picture made for this panel format, about one megapixel at multiples of 32 (16:9 is 1376 x 768).
+export function makeSize(aspect) {
+  const [w, h] = ASPECTS[aspect] || ASPECTS["16:9"];
+  return [Math.round(Math.sqrt(1024 * 1024 * w / h) / 32) * 32, Math.round(Math.sqrt(1024 * 1024 * h / w) / 32) * 32];
+}
+
+// The pictures any panel can take: the board's own, then every picture already on a panel (cut-outs, uploads), once each.
+export function libraryItems(board) {
+  const seen = new Set(), out = [];
+  const add = (item) => { const url = srcUrl(item.src); if (!seen.has(url)) { seen.add(url); out.push(item); } };
+  (board.library || []).forEach(add);
+  board.panels.flatMap((p) => p.layers).filter((l) => l.kind === "image" && l.src && !l.redrawn)
+    .forEach((l) => add({ id: l.id, name: l.name, kind: "picture", src: l.src }));
+  return out;
 }
 
 // The Director's shots of the board: one shot per panel, the storyboard card on every shot and a panel's own card as the

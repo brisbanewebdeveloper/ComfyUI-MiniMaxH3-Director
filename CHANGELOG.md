@@ -2,6 +2,13 @@
 
 ## 1.0.0 (unreleased)
 
+**H3 Storyboard: figures from sheets, backgrounds, pictures for every panel** (2026-10-14):
+
+- **+ Figure from a sheet**: Qwen Image 2.1 draws a character card's figure in the pose and camera angle the user writes, on a transparent background (the template's RGBA prompt; the PNG carries alpha). Real test: Luna kneeling with her weapon, Inferna in profile with crossed arms and wings, from their sheets, 33 s each.
+- **+ Background**: an empty place in the panel format (16:9: 1376 x 768), opaque, about 20 s.
+- The board keeps its own pictures (library); "+ Picture" offers them and every picture already on a panel under "From this storyboard". **Use on all panels** copies a layer onto every other panel.
+- Redraw names its pictures `<image1>`, `<image2>` ... as Qwen Image 2.1 expects, and drops the alpha channel the VAE decodes. The Qwen and queue helpers moved to `js/ng/h3b_queue.js`.
+
 - H3 Storyboard: the **AI provider** input is gone; the Storyboard uses the AI provider of the Context Connector on its **H3 context** input, as the Director does. One cable is all it needs (user feedback 2026-10-14: two ports for the same thing were confusing).
 
 **Turbo profiles measured** (2026-10-14, real renders on the same scenes and seeds):
