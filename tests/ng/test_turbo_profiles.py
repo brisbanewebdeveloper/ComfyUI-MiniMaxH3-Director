@@ -3,7 +3,7 @@ import json
 import types
 import unittest
 
-from _pack import comfy_available, module
+from _pack import comfy_available, module, stub_prompt_server
 
 HAVE_COMFY = comfy_available()
 if HAVE_COMFY:
@@ -35,6 +35,7 @@ class PartSettings(unittest.TestCase):
             self.assertTrue(profile["source"], name)
 
     def test_chunk_sampling_uses_the_part_profile(self):
+        stub_prompt_server()
         node = module("ng.nodes.render_node").NGChunkSampling
         calls = []
         fake_scheduler = types.SimpleNamespace(execute=lambda **kw: calls.append(kw) or types.SimpleNamespace(args=("sigmas",)))
