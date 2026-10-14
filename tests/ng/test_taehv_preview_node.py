@@ -96,7 +96,7 @@ class TAEHVPreviewNode(unittest.TestCase):
 
     def test_connector_appends_an_optional_raw_lazy_preview_vae(self):
         schema = self.nodes["NGContextConnector"].GET_SCHEMA()
-        value = schema.inputs[-1]
+        value = schema.inputs[-2]
         self.assertEqual((value.id, value.display_name, value.io_type), ("preview_vae", "preview VAE", "VAE"))
         self.assertTrue(value.optional)
         self.assertTrue(value.rawLink)

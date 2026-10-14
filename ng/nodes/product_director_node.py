@@ -50,7 +50,12 @@ class NGH3Director(io.ComfyNode):
                                                           "plan renders only the parts that are missing."),
                                  io.Boolean.Input("resume_delete_done", default=True, advanced=True, optional=True,
                                                   tooltip="Delete the kept render parts as soon as the whole video is put together, so they "
-                                                          "do not fill the disk unseen. Off: they stay for 14 days.")],
+                                                          "do not fill the disk unseen. Off: they stay for 14 days."),
+                                 io.Float.Input("control_strength", default=1.0, min=0.0, max=10.0, step=0.01, optional=True, advanced=True),
+                                 io.Float.Input("control_start", default=0.0, min=0.0, max=1.0, step=0.001, optional=True, advanced=True,
+                                                tooltip="Start within denoising, not seconds in the video."),
+                                 io.Float.Input("control_end", default=1.0, min=0.0, max=1.0, step=0.001, optional=True, advanced=True,
+                                                tooltip="End within denoising, not seconds in the video.")],
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])
 
     @classmethod

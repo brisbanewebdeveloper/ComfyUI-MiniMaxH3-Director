@@ -29,11 +29,13 @@ class NGContextConnector(io.ComfyNode):
                                  context_group("text", 15), context_group("image", 15),
                                  context_group("video", 15), context_group("audio", 15),
                                  io.Vae.Input("preview_vae", display_name="preview VAE", raw_link=True, lazy=True, optional=True,
-                                              tooltip="Optional H3 TAEHV VAE (taeh3): H3 Render Sequence shows a live preview of each part; also available at H3 Director Output.")],
+                                              tooltip="Optional H3 TAEHV VAE (taeh3): H3 Render Sequence shows a live preview of each part; also available at H3 Director Output."),
+                                 io.ModelPatch.Input("model_patch", raw_link=True, lazy=True, optional=True,
+                                                     tooltip="ModelPatchLoader with minimax_h3_fun_controlnet_union_2.0_pruned_int8_convrot. Used by control clips on the Studio timeline.")],
                          outputs=[NGInputs.Output(display_name="H3 context")])
 
     @classmethod
-    def execute(cls, clip, vae, audio_vae, model_fl2va=None, model_ref2va=None, ai_provider=None, preview_vae=None, **groups):
+    def execute(cls, clip, vae, audio_vae, model_fl2va=None, model_ref2va=None, ai_provider=None, preview_vae=None, model_patch=None, **groups):
         if model_fl2va is None and model_ref2va is None:
             raise ValueError("Connect an H3 model to model or model ref.")
         items = []
@@ -45,7 +47,7 @@ class NGContextConnector(io.ComfyNode):
         items = list(distinct(items))
         require_unique(items)
         return io.NodeOutput(DirectorInputs(clip, vae, audio_vae, model_fl2va, model_ref2va, tuple(items), ai_provider,
-                                           preview_vae=preview_vae))
+                                           preview_vae=preview_vae, model_patch=model_patch))
 
 
 NODES = [NGContextConnector]

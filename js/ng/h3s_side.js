@@ -1,6 +1,7 @@
 // Right column: how H3 works (FL2VA / Ref2VA, Turbo) and the panel of the selected shot or audio clip.
 import { h, icon, field, select } from "./h3s_dom.js";
 import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding, boundAndLaned, turboProfile } from "./h3s_model.js";
+import { controlSettings, controlPanel } from "./h3s_control.js";
 
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
 // How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
@@ -169,10 +170,12 @@ function clipPanel(S, actions, clip) {
 export function sideView(S, actions) {
   const shot = S.selected?.kind === "shot" && S.shots.find((entry) => entry.id === S.selected.id);
   const clip = S.selected?.kind === "clip" && S.audio.find((entry) => entry.id === S.selected.id);
+  const control = S.selected?.kind === "control" && S.control.find((entry) => entry.id === S.selected.id);
   const empty = h("div", { style: { display: "flex", flexDirection: "column", gap: "10px", color: "#B4BDCC", lineHeight: 1.5 } },
     h("span", { class: "h3s-strong", style: { color: "#E6EAF2", fontSize: "15px" } }, "No shot selected"),
     h("span", {}, "Click a shot to edit text, Content, dialogue and AI suggestion for exactly that shot. Clicking an audio clip shows which part of the file plays in which render part."),
     h("span", {}, sorted(S.shots).length ? "" : "Without shots the Director simply renders the prompt."));
-  return [modeCard(S, actions), h("aside", { class: "h3s-card", style: { gap: "12px" } }, shot ? shotPanel(S, actions, shot) : clip ? clipPanel(S, actions, clip) : empty)];
+  return [modeCard(S, actions), controlSettings(S, actions), h("aside", { class: "h3s-card", style: { gap: "12px" } },
+    shot ? shotPanel(S, actions, shot) : clip ? clipPanel(S, actions, clip) : control ? controlPanel(S, actions, control) : empty)].filter(Boolean);
 }
 

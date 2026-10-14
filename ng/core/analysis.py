@@ -145,7 +145,7 @@ USAGE_MEANING = {
     "image": {"reference": "keep this figure or thing recognizable", "first_frame": "the opening picture", "last_frame": "the closing picture",
               "keyframe": "a picture the video passes through", "storyboard": "a sketch of a moment"},
     "video": {"motion": "copy how things move", "camera": "copy the camera movement", "continue": "the video goes on from its end",
-              "structure": "copy the whole structure"},
+              "structure": "copy the whole structure", "control": "a preprocessed Canny, Pose or Depth video for ControlNet on the control lane"},
     "audio": {"voice": "the voice of a figure", "copy": "reuse this sound", "lock": "keep this sound exactly",
               "music_style": "the style of the music", "rhythm": "the rhythm to follow", "sound_reference": "a sound to imitate"},
     "text": {"style": "the look or visual direction", "rule": "a rule the video must follow", "character": "describes a person or creature",

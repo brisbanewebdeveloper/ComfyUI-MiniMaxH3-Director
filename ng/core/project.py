@@ -18,6 +18,7 @@ from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
 from .shot_document import has_shots, read_document
 from .audio_timing import clip_issues, covers, locked_spans
+from . import control_timing
 
 CANVAS_MULTIPLE = 32
 H3_SHORT_EDGE, H3_MAX_PIXELS = 768, 768 * 1344
@@ -280,6 +281,7 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
         plan = replace(plan, issues=tuple(i for i in plan.issues if i.code != "audio_dulling"))
     compiled = tuple(compile_chunk(context, chunk, continuity) for chunk in plan.chunks)
     issues = list(issues) + list(shot_issues) + list(plan.issues) + check_guide_times(context, plan.total_frames) + clip_issues(context)
+    issues.extend(control_timing.issues(context, plan.chunks))
     for one in compiled:
         issues.extend(one.issues)       # the same problem repeats per chunk; _merge lists it once
     return ProjectPlan(context=context, plan=plan, compiled=compiled, issues=_merge(issues, len(plan.chunks)))

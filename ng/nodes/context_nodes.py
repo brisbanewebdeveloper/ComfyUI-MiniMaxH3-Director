@@ -81,7 +81,7 @@ class NGContextVideo(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="NGContextVideo", display_name="H3 Context Video", category=CATEGORY,
-                         description="A clip used as a motion or camera reference (2-15 s).",
+                         description="A video reference, or a Canny, Pose or Depth control video placed on the Director's Control lane.",
                          inputs=[io.Combo.Input("video", options=_files(["video"]), upload=io.UploadType.video)] + _common_inputs("video") + _identity_inputs() + _subject_inputs(),
                          outputs=[NGContext.Output(display_name="context")])
 

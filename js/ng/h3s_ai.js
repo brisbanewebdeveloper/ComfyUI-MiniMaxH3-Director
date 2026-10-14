@@ -48,7 +48,7 @@ export function studioAI(S, app, api, done) {
     const before = basis(S.node);
     try {
       // A split starts from the Prompt, but takes the audio lanes along: the plan then knows when the song sings each line.
-      const payload = { director: { ...values(S.node), shots: writeProject({ shots: shots || [], audio: S.audio, lanes: S.lanes }) },
+      const payload = { director: { ...values(S.node), shots: writeProject({ shots: shots || [], audio: S.audio, lanes: S.lanes, control: S.control }) },
         contexts: readContexts(S.node), provider, mode: "auto", keep };
       const data = await aiAction(app, api, "direct", payload, controller.signal);
       if (mine !== serial) return null;
@@ -124,7 +124,7 @@ export function studioAI(S, app, api, done) {
       const step = (text) => { S.buildStep = text; S.aiStarted = Date.now(); done(); };
       S.busy = "build"; S.aiTimeout = provider.timeout_seconds || 120; S.notice = null; step("Planning the shots …");
       try {
-        const director = { ...values(S.node), shots: writeProject({ shots: [], audio: S.audio, lanes: S.lanes }) };
+        const director = { ...values(S.node), shots: writeProject({ shots: [], audio: S.audio, lanes: S.lanes, control: S.control }) };
         const ask = () => aiAction(app, api, "build", { director, contexts: readContexts(S.node), provider, quick: S.quick }, signal);
         // A small model sometimes answers with broken JSON; one more try is cheaper than sending the user back.
         const plan = await ask().catch((error) => { if (/JSON/.test(error.message) && mine === serial) return ask(); throw error; });

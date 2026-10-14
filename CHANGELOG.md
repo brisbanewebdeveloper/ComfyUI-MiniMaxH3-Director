@@ -2,6 +2,15 @@
 
 ## 1.0.0 (unreleased)
 
+**Control video cards and Studio lane** (2026-10-14):
+
+- Context Video: Canny/Pose/Depth control role, queued generation with installed native nodes, saved result and original
+  preview; optional Depth Anything 3 when its package is loaded.
+- Context Connector: optional raw/lazy `model_patch`. Studio: Control lane, clip move/trim/source offsets, strength and
+  denoising range. Render Sequence applies native H3 ControlNet internally and skips parts without control clips.
+- Partial coverage holds edge frames to the render-part edges and is reported in the Studio. Resume keys track control
+  files, windows and settings. The standalone Control Video node moves to NG/Technical; card-based masks/inpainting follow later.
+
 **Live preview in Render Sequence, one-sentence shots shared, README** (2026-10-14):
 
 - **H3 Render Sequence shows the TAEHV live preview** of every part when the Context Connector has a `preview VAE` (taeh3): it

@@ -6,7 +6,7 @@ from server import PromptServer
 
 import comfy.model_management
 
-from ..adapters import keys, lyrics_timing, models, presets, preview_media, waveform
+from ..adapters import control_files, keys, lyrics_timing, models, presets, preview_media, waveform
 from ..core import providers
 from ..core.context_build import item_from_widgets
 from ..core.presets import ContextPreset, widget_values
@@ -124,6 +124,16 @@ async def media_preview(request):
         data = await asyncio.to_thread(preview_media.preview, request.query["media"], request.query["source"])
         return web.json_response({"ok": True, **data})
     except (OSError, ValueError, KeyError) as error:
+        return web.json_response({"ok": False, "error": str(error)}, status=400)
+
+
+@PromptServer.instance.routes.post("/ng/control/import")
+async def import_control(request):
+    try:
+        data = await request.json()
+        source = await asyncio.to_thread(control_files.import_video, data["filename"], data["subfolder"])
+        return web.json_response({"ok": True, "source": source})
+    except (OSError, ValueError, KeyError, TypeError) as error:
         return web.json_response({"ok": False, "error": str(error)}, status=400)
 
 

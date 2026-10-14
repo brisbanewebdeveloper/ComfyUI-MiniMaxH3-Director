@@ -22,12 +22,13 @@ const LATER = { turbo: false, turbo_lora_fl2va: "none", turbo_lora_ref2va: "none
 // Widgets inserted among the saved ones, oldest first. ComfyUI restores widget values by position, so a workflow saved before
 // "resume" gave it the value of the widget after it (prompt_override's text while resume was required, now the Studio's own
 // entry). A list short by k lacks the k newest: those get their defaults, every other widget its saved value in order.
-const INSERTED = [["resume", true], ["resume_delete_done", true]];
+const INSERTED = [["resume", true], ["resume_delete_done", true], ["control_strength", 1], ["control_start", 0], ["control_end", 1]];
 export function repairInsertedWidgets(node, saved) {
   const widgets = node.widgets || [];
+  const inserted = INSERTED.filter(([name]) => widgets.some((widget) => widget.name === name));
   const missing = Array.isArray(saved) ? widgets.length - saved.length : 0;
-  if (missing < 1 || missing > INSERTED.length) return;
-  const defaults = new Map(INSERTED.slice(-missing));
+  if (missing < 1 || missing > inserted.length) return;
+  const defaults = new Map(inserted.slice(-missing));
   if (!widgets.some((widget) => defaults.has(widget.name))) return;
   let next = 0;
   for (const widget of widgets) widget.value = defaults.has(widget.name) ? defaults.get(widget.name) : saved[next++];

@@ -21,6 +21,9 @@ import { subjectChoices } from "./ng_subjects.js";
 import { followNoteRenames, knownNames } from "./ng_references.js";
 import { noteGrowth } from "./ng_layout.js";
 import { dropTarget } from "./ng_drop.js";
+import { controlBox } from "./h3c_control.js";
+import { controlGraph, controlSetup } from "./h3c_control_graph.js";
+import { runJob } from "./h3b_queue.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -55,8 +58,8 @@ function layout(S, actions) {
   if (S.media === "image") parts.push(h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1.15fr) minmax(0,1fr)" } }, imageBlock(S), contentBox(S, actions)),
     suggestionBox(S, actions), h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1.25fr)" } }, usageBox(S, actions), keepBox(S, actions)),
     two(ownerBox(S, actions, `Independent: this picture is a figure of its own; write @${S.values.name || "Name"} in the Studio.`), descriptionBox(S, actions)));
-  if (S.media === "video") parts.push(videoBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), suggestionBox(S, actions),
-    two(videoSoundBox(S, actions), ownerBox(S, actions, "E.g. a walk cycle for a figure.")), descriptionBox(S, actions));
+  if (S.media === "video") parts.push(videoBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), controlBox(S, actions), suggestionBox(S, actions),
+    S.usage === "control" ? null : two(videoSoundBox(S, actions), ownerBox(S, actions, "E.g. a walk cycle for a figure.")), descriptionBox(S, actions));
   if (S.media === "audio") parts.push(audioBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), suggestionBox(S, actions),
     two(speakerBox(S, actions), listenBox(S, actions)), lyricsBox(S, actions), descriptionBox(S, actions));
   if (S.media === "text") parts.push(...textBody(S, actions));
@@ -82,10 +85,14 @@ function attach(node, media) {
 
   const root = h("div", { class: "h3c", dataset: { media } });
   keepKeys(root);
-  const S = { media, node, els: {}, files: [], presets: [], presetName: node.properties.ng_preset_name || "", suggestion: null, busy: false,
+  const S = { media, node, api, els: {}, files: [], presets: [], presetName: node.properties.ng_preset_name || "", suggestion: null, busy: false,
     envelope: null, waveError: "", dragging: false, pending: false, status: "", statusWarn: false, listen: node.properties.ng_preview_settings };
   if (media === "image") { S.els.image = new Image(); S.els.image.onload = () => schedule(); }
-  if (media === "video") { S.els.video = h("video", { controls: true, preload: "metadata", muted: false }); S.els.video.onloadedmetadata = () => schedule(); }
+  if (media === "video") {
+    S.els.video = h("video", { controls: true, preload: "metadata", muted: false }); S.els.video.onloadedmetadata = () => schedule();
+    S.els.original = h("video", { controls: true, preload: "metadata", muted: true });
+    api.fetchApi("/object_info/DepthAnything_V3").then((r) => r.json()).then((info) => { S.da3 = Boolean(info.DepthAnything_V3); schedule(); }).catch(() => {});
+  }
   if (media === "audio") { S.els.audio = h("audio", { preload: "metadata" }); wirePlayback(S, () => schedule()); }
   let source = null, controller = null, removed = false, timer = null;
 
@@ -113,7 +120,7 @@ function attach(node, media) {
     if (media === "text") node.properties.ng_context_names = knownNames(node.properties.ng_context_names, relatedContexts(node));
     const linked = directors();
     S.mode = linked.find((entry) => entry.mode && entry.mode !== "auto")?.mode || "auto";
-    S.uses = studioUses(S.values.context_id || "", S.values.name || "", linked);
+    S.uses = studioUses(S.values.context_id || "", S.values.name || "", linked, S.usage);
     const entries = relatedContexts(node), current = assetSubjects({ widgets: S.values });
     S.owners = { current, choices: assetChoices(entries, current, S.values.context_id) };
     S.speakers = subjectChoices(entries, S.values.speaker || "");
@@ -147,7 +154,10 @@ function attach(node, media) {
 
   const writeRoles = (type, list) => applyValues(node, { [type + "_roles"]: JSON.stringify(list), [type]: list[0] || values(node)[type] });
   const actions = {
-    set(name, value, redraw = true) { applyValues(node, { [name]: value }); node.graph?.change?.(); if (!redraw) S.values = values(node); },
+    set(name, value, redraw = true) {
+      if (media === "video" && name === "video" && value !== values(node).video) setOptions(node, { control_original: "", control_result: "" });
+      applyValues(node, { [name]: value }); node.graph?.change?.(); if (!redraw) S.values = values(node);
+    },
     upload() {
       const widget = node.widgets?.find((entry) => entry.name === "upload" || entry.name === "choose file to upload");
       if (widget?.callback) widget.callback(); else say("Use ComfyUI's file upload for this node type.", true);
@@ -156,6 +166,32 @@ function attach(node, media) {
     pickUsage(key) { writeRoles("usage", [key]); },
     setKeep(key, level) { setOptions(node, { preserve: { ...contextOptions(node).preserve, [key]: level } }); },
     setOptions(changes) { setOptions(node, changes); },
+    controlKind(kind) {
+      const opts = contextOptions(node);
+      if (opts.control_original && opts.control_result === values(node).video) applyValues(node, { video: opts.control_original });
+      setOptions(node, { control_kind: kind, control_original: "", control_result: "" });
+    },
+    controlEngine(engine) { S.depthEngine = engine; render(); },
+    async generateControl() {
+      if (S.busy || !values(node).video) return;
+      S.busy = "control"; say("Generating control video through ComfyUI's queue …");
+      const before = JSON.stringify(values(node)), opts = contextOptions(node);
+      const source = (opts.control_result === values(node).video && opts.control_original) || values(node).video, kind = opts.control_kind || "canny";
+      try {
+        const setup = await controlSetup(api, kind, S.depthEngine || "moge2");
+        const prefix = globalThis.crypto.randomUUID();
+        const saved = await runJob(api, controlGraph(kind, source, setup, prefix), "save");
+        if (removed || JSON.stringify(values(node)) !== before) { say("The card changed during generation. Its saved result was left in output/h3-control; the card was not replaced.", true); return; }
+        const imported = await request(api, "/ng/control/import", saved);
+        if (removed || JSON.stringify(values(node)) !== before) return;
+        applyValues(node, { video: imported.source, content: "control", content_roles: JSON.stringify(["control"]),
+          context_options: JSON.stringify({ ...opts, control_kind: kind, control_original: source, control_result: imported.source, video_audio: "ignore" }) });
+        node.graph?.change?.(); say("Control video saved. Drag this card onto the Director's Control lane.");
+      } catch (error) {
+        say(kind === "depth" && error.message.includes("DepthAnything3Net")
+          ? "The installed Depth Anything 3 package cannot import DepthAnything3Net. Choose MoGe 2 or repair that package; this card was kept." : error.message, true);
+      } finally { S.busy = false; if (!removed) render(); }
+    },
     setRange(start, end) { setOptions(node, { start_s: start, end_s: end }); },
     setOwner(id) { applyValues(node, { subject_ids: JSON.stringify(id ? [id] : []) }); node.graph?.change?.(); },
     setListen(key, value) { node.properties.ng_preview_settings[key] = value; S.listen = node.properties.ng_preview_settings; render(); },
@@ -309,7 +345,7 @@ function attach(node, media) {
   document.addEventListener("ng-context-changed", outside);
   const gone = node.onRemoved;
   node.onRemoved = function (...args) {
-    removed = true; clearTimeout(timer); controller?.abort(); watcher?.disconnect(); S.els.audio?.pause(); S.els.video?.pause?.();
+    removed = true; clearTimeout(timer); controller?.abort(); watcher?.disconnect(); S.els.audio?.pause(); S.els.video?.pause?.(); S.els.original?.pause?.();
     document.removeEventListener("ng-context-changed", outside); return gone?.apply(this, args);
   };
   // A file dragged onto the card goes through ComfyUI's own upload of this node (the same as dropping it on a Load Image).

@@ -5,13 +5,13 @@ import { readProject, sorted } from "./h3s_model.js";
 // Keys are the values ng/core/context.py accepts (CONTENT_BY_MEDIA / USAGE_BY_MEDIA); labels are what the card shows.
 export const CONTENT = {
   image: [["character", "Character"], ["face", "Face / identity"], ["outfit", "Outfit"], ["pose", "Pose"], ["environment", "Environment"], ["style", "Style"]],
-  video: [["motion", "Character motion"], ["camera_motion", "Camera motion"], ["environment", "Environment"], ["shot_rhythm", "Shot rhythm"], ["identity", "Character identity"]],
+  video: [["motion", "Character motion"], ["camera_motion", "Camera motion"], ["environment", "Environment"], ["shot_rhythm", "Shot rhythm"], ["identity", "Character identity"], ["control", "Control video"]],
   audio: [["voice", "Voice"], ["dialogue", "Dialogue"], ["singing", "Singing"], ["music", "Music"], ["ambience", "Ambience"], ["sound_effect", "Sound effect"]],
 };
 export const USAGE = {
   image: [["reference", "Reference", "who / what"], ["first_frame", "First frame", ""], ["last_frame", "Last frame", ""],
     ["keyframe", "Keyframe", "time in Studio"], ["storyboard", "Storyboard", "References: plans shots"]],
-  video: [["motion", "Motion reference", ""], ["camera", "Camera reference", ""], ["continue", "Continue from video", ""], ["structure", "Whole structure", ""]],
+  video: [["motion", "Motion reference", ""], ["camera", "Camera reference", ""], ["continue", "Continue from video", ""], ["structure", "Whole structure", ""], ["control", "Control video", "Canny / Pose / Depth"]],
   audio: [["voice", "Voice", "timbre of a figure"], ["copy", "Copy", "reuse the sound"], ["lock", "Lock", "keep it exactly"],
     ["music_style", "Music style", ""], ["rhythm", "Rhythm", ""], ["sound_reference", "Sound reference", ""]],
   text: [["style", "Style / direction", ""], ["rule", "Rule", ""], ["character", "Character", ""], ["world", "World lore", ""], ["scene", "Scene / story", "read by the AI"],
@@ -57,6 +57,7 @@ export function roleHint(media, role, mode) {
     return { text: role === "first_frame" ? "Opens the video, or the shot it is dropped on in the Studio." : "Ends the video, or the shot it is dropped on in the Studio.", warn: false };
   }
   if (media === "video") {
+    if (role === "control") return { text: "Place it on the Studio's Control lane. Works in both modes; uses ControlNet, not a video reference slot.", warn: false };
     if (fl && role !== "continue") return { text: "First / last frame mode does not use video references; only Continue works there.", warn: true };
     return { text: role === "continue" ? "The last frame of the chosen part starts the shot." : "Sent as a reference wherever a shot uses it.", warn: false };
   }
@@ -76,7 +77,7 @@ const mentions = (text, name) => Boolean(name) && new RegExp(`@${name.replace(/[
 const fmt = (s) => `${Math.round(s * 10) / 10}`;
 
 // Where the Studio of each connected Director uses this card. A card bound nowhere is part of every render part.
-export function studioUses(id, name, directors) {
+export function studioUses(id, name, directors, usage = "") {
   if (!directors.length) return ["Not connected to a Director"];
   const out = [];
   for (const director of directors) {
@@ -91,8 +92,11 @@ export function studioUses(id, name, directors) {
       out.push(`Audio lane ${project.lanes.indexOf(clip.lane) + 1} · ${fmt(clip.start)}–${fmt(clip.end)} s · ${{ lock: "locked", copy: "copy", ref: "reference" }[clip.mode]}`);
       bound = true;
     }
+    for (const clip of project.control.filter((entry) => entry.context_id === id)) {
+      out.push(`Control lane · ${fmt(clip.start)}–${fmt(clip.end)} s`); bound = true;
+    }
     if (mentions(director.idea, name) || order.some((shot) => mentions(shot.text, name))) out.push(`@${name} in the text`);
-    if (!bound) out.push("Whole project (no shot binding)");
+    if (!bound) out.push(usage === "control" ? "Not on the Control lane" : "Whole project (no shot binding)");
   }
   return [...new Set(out)];
 }

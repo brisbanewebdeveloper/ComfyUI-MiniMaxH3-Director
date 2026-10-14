@@ -8,7 +8,7 @@ const BG = { image: "#172338", video: "#2A2414", audio: "#221A33", text: "#13291
 const USAGE = { reference: "Reference", first_frame: "First frame", last_frame: "Last frame", keyframe: "Keyframe", storyboard: "Storyboard",
   motion: "Motion", camera: "Camera", continue: "Continue", structure: "Structure", voice: "Voice", copy: "Copy", lock: "Lock",
   music_style: "Music style", rhythm: "Rhythm", sound_reference: "Sound", style: "Style", rule: "Rule", character: "Character", world: "World",
-  scene: "Scene", dialogue: "Dialogue", constraint: "Constraint", instruction: "Instruction" };
+  scene: "Scene", dialogue: "Dialogue", constraint: "Constraint", instruction: "Instruction", control: "Control video" };
 const BARS = [8, 14, 22, 12, 30, 18, 26, 10, 34];
 
 // The card's own selected source range (Start/End on the Context card), in seconds of the file; end 0 = file end.
@@ -31,7 +31,8 @@ export function contentEntries(raw, colorOf) {
     const usage = usageOf(entry.widgets, entry.media);
     return { id: contextId(entry.widgets, entry.media), media: entry.media, name: entry.widgets.name || KIND[entry.media],
       source: entry.widgets[entry.media] || "", selection: selection(entry.widgets), color: colorOf(entry), bg: BG[entry.media], kind: KIND[entry.media], usage,
-      role: usage.map((value) => USAGE[value] || value).join(", "), raw: entry };
+      role: usage.map((value) => USAGE[value] || value).join(", "),
+      controlKind: (() => { try { return JSON.parse(entry.widgets.context_options || "{}").control_kind || "canny"; } catch { return "canny"; } })(), raw: entry };
   });
 }
 
@@ -72,8 +73,9 @@ export function contentView(S, actions) {
     h("div", { class: "h3s-ctx-text" }, h("span", { class: "h3s-strong" }, "Text-Shot"), h("span", { class: "h3s-lbl" }, "text only, no media")))];
   for (const entry of S.contexts) {
     const assigned = Boolean(selectedShot?.media.some((binding) => binding.context_id === entry.id));
-    const unused = S.values.mode === "fl2va" && entry.media === "video";
-    const tip = unused ? "Not used in First/last frame mode (FL2VA)" : entry.media === "audio"
+    const control = entry.usage.includes("control");
+    const unused = S.values.mode === "fl2va" && entry.media === "video" && !control;
+    const tip = control ? "Drag onto the Control lane, or click to place it at the start" : unused ? "Not used in First/last frame mode (FL2VA)" : entry.media === "audio"
       ? "Drag onto an audio lane = plays throughout · onto a shot = only in that shot"
       : selectedShot ? `Click: ${assigned ? "remove from" : "add to"} ${actions.shotLabel(selectedShot.id)}` : "Drag onto the timeline";
     cards.push(h("button", { class: `h3s-ctx${assigned ? " on" : ""}${unused ? " off" : ""}`, draggable: true, title: tip,

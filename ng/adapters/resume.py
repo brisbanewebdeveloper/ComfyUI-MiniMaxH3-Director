@@ -17,6 +17,7 @@ from comfy.nested_tensor import NestedTensor
 
 from ..core.project import jobs
 from ..core.turbo_profiles import part_settings
+from ..core import control_timing
 from .paths import input_path
 
 FOLDER = "h3-director-resume"
@@ -35,18 +36,27 @@ def _file(source):
     return [stat.st_size, stat.st_mtime_ns]
 
 
-def _own(job):
+def _own(job, settings):
     compiled, chunk, context = job.compiled, job.chunk, job.project.context
-    return {"chunk": chunk.to_dict(), "mode": compiled.mode, "prompt": compiled.prompt, "size": [context.width, context.height],
+    own = {"chunk": chunk.to_dict(), "mode": compiled.mode, "prompt": compiled.prompt, "size": [context.width, context.height],
             "continuity": job.project.plan.continuity.mode,
             "refs": [[r.kind, r.ctx_id, r.source, r.start_f, r.length_f, r.trim_start_f, _file(r.source)] for r in compiled.refs]}
+    controls = []
+    for clip, a, b, source in control_timing.spans(job) if settings.get("control_strength", 1.0) else ():
+        item = context.item(clip.context_id)
+        controls.append([item.source, _file(item.source), item.options.control_kind, item.options.end_s, item.length_s, a, b, source])
+    if controls:
+        own["control"] = controls
+        own["control_settings"] = [settings.get("control_strength", 1.0), settings.get("control_start", 0.0), settings.get("control_end", 1.0)]
+    return own
 
 
 def part_key(job, settings):
     """Hex key of this part, chained over every part before it."""
-    key = hashlib.sha256(json.dumps(settings, sort_keys=True, default=str).encode()).hexdigest()
+    base = {k: v for k, v in settings.items() if not k.startswith("control_")}
+    key = hashlib.sha256(json.dumps(base, sort_keys=True, default=str).encode()).hexdigest()
     for earlier in jobs(job.project)[:job.index + 1]:
-        key = hashlib.sha256((key + json.dumps(_own(earlier), sort_keys=True, default=str)).encode()).hexdigest()
+        key = hashlib.sha256((key + json.dumps(_own(earlier, settings), sort_keys=True, default=str)).encode()).hexdigest()
     return key[:32]
 
 

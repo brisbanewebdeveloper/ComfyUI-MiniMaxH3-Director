@@ -30,9 +30,12 @@ export async function runJob(api, prompt, save, seconds = 1800) {
     const entry = (await (await api.fetchApi(`/history/${encodeURIComponent(queued.prompt_id)}`)).json())[queued.prompt_id];
     const failed = (entry?.status?.messages || []).find(([type]) => type === "execution_error");
     if (failed) throw new Error(failed[1].exception_message || "The job failed.");
-    const saved = entry?.outputs?.[save]?.images?.[0];
+    if (entry?.status?.status_str === "error") throw new Error("The job failed or was interrupted in ComfyUI's queue.");
+    const results = entry?.outputs?.[save]?.images || [];
+    if (results.length > 1) throw new Error("The job saved several files. Split the source into shorter clips and generate them separately.");
+    const saved = results[0];
     if (saved) return { filename: saved.filename, subfolder: saved.subfolder || "", type: saved.type || "output" };
-    if (entry?.status?.completed) throw new Error("The job saved no picture.");
+    if (entry?.status?.completed) throw new Error("The job saved no result.");
     await new Promise((resolve) => setTimeout(resolve, 800));
   }
   throw new Error("The job took too long.");

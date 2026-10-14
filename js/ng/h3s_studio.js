@@ -13,7 +13,7 @@ import { studioAI, basis as aiBasis } from "./h3s_ai.js";
 import { readQuick, changeQuick } from "./h3s_quick.js";
 import { offerFor } from "./h3c_model.js";
 import { values, applyValues, request } from "./ng_widgets.js";
-import { readPayload, readContexts, connectedProvider, contextNodes } from "./ng_read.js";
+import { readPayload, readContexts, connectedProvider, contextNodes, upstreamNode } from "./ng_read.js";
 import { contextColor } from "./ng_identity.js";
 import { hasRenderPath, projectRenderIds } from "./ng_graph.js";
 import { attachProgress } from "./ng_studio_progress.js";
@@ -32,12 +32,14 @@ function load(S) {
   S.contexts = contentEntries(readContexts(S.node), contextColor);
   S.byId = new Map(S.contexts.map((entry) => [entry.id, entry]));
   S.ai = Boolean(connectedProvider(S.node));
+  const connector = upstreamNode(S.node.graph, S.node.inputs?.find((input) => input.name === "context"));
+  S.controlConnected = connector?.inputs?.some((input) => input.name === "model_patch" && input.link != null);
   S.turboProfiles = turboProfiles;
   const project = readProject(S.values.shots || "");
   S.docError = project.error;
   if (project.skipped?.length) S.notice = { error: true, text: `The saved data has ${project.skipped.length} invalid audio clip(s) (${project.skipped.join(", ")}). `
     + "They are left out here and removed with your next edit; everything else is kept." };
-  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes, look: project.look, partPrompts: project.partPrompts,
+  Object.assign(S, { shots: project.shots, audio: project.audio, lanes: project.lanes, control: project.control, look: project.look, partPrompts: project.partPrompts,
     quick: readQuick(S.node) });
 }
 
@@ -66,7 +68,7 @@ export function openStudio(node, app, api, host = null) {
   }
   const labels = () => new Map(sorted(S.shots).map((shot, index) => [shot.id, `Shot ${index + 1}`]));
   function save() {
-    const text = S.docError ? null : writeProject({ shots: S.shots, audio: S.audio, lanes: S.lanes, look: S.look, partPrompts: S.partPrompts });
+    const text = S.docError ? null : writeProject({ shots: S.shots, audio: S.audio, lanes: S.lanes, control: S.control, look: S.look, partPrompts: S.partPrompts });
     if (text !== null && text !== (values(node).shots || "")) { write({ shots: text }); node.graph?.change?.(); }
     S.values = values(node); schedulePlan();
   }
@@ -111,11 +113,11 @@ export function openStudio(node, app, api, host = null) {
     return S.thumbs.get(key);
   }
   function selectedRange() {
-    const item = S.selected && (S.selected.kind === "shot" ? S.shots : S.audio).find((entry) => entry.id === S.selected.id);
+    const item = S.selected && (S.selected.kind === "shot" ? S.shots : S.selected.kind === "control" ? S.control : S.audio).find((entry) => entry.id === S.selected.id);
     return item ? [item.start, item.end] : null;
   }
   function setItems(kind, items, selectId) {
-    if (kind === "shot") S.shots = items; else S.audio = items;
+    if (kind === "shot") S.shots = items; else if (kind === "control") S.control = items; else S.audio = items;
     if (selectId) S.selected = { kind, id: selectId };
     save(); render();
   }
@@ -139,6 +141,7 @@ export function openStudio(node, app, api, host = null) {
     select(kind, id) { S.selected = { kind, id }; render(); },
     setShots: (shots, id) => setItems("shot", shots, id),
     setClips: (audio, id) => setItems("clip", audio, id),
+    setControls: (clips, id) => setItems("control", clips, id),
     setDragged(id) { S.dragged = id; },
     endDrag() { setTimeout(() => { S.dragged = null; }, 0); },
     takeDragged() { const id = S.dragged; S.dragged = null; return id; },
@@ -152,6 +155,7 @@ export function openStudio(node, app, api, host = null) {
     },
     newShot(sec, id) {
       if (id === null) return;
+      if (S.byId.get(id)?.usage.includes("control")) { actions.newControl(sec || 0, id); return; }
       if (sec === null || sec === undefined) { if (id === "__text") { actions.addShot(); return; } sec = sorted(S.shots).at(-1)?.end ?? 0; }
       const at = placeAt(S.shots, sec, S.values.project_seconds, 4);
       if (!at) { flash("There is no room for a new shot there. Drop it on a free spot, or use + Shot."); return; }
@@ -161,6 +165,7 @@ export function openStudio(node, app, api, host = null) {
     },
     assign(shotId, id) {
       if (!id || id === "__text" || !S.byId.has(id)) return;
+      if (S.byId.get(id)?.usage.includes("control")) { flash("Drag control videos onto the Control lane."); return; }
       const shot = S.shots.find((entry) => entry.id === shotId);
       if (!shot.media.some((binding) => binding.context_id === id)) {
         const binding = { schema_version: 1, context_id: id, role: "context" };
@@ -187,6 +192,7 @@ export function openStudio(node, app, api, host = null) {
       patchShot(shotId, { media: shot.media.filter((binding) => binding.context_id !== id) });
     },
     toggleBinding(id) {
+      if (S.byId.get(id)?.usage.includes("control")) { actions.newControl(0, id); return; }
       const shot = S.selected?.kind === "shot" && S.shots.find((entry) => entry.id === S.selected.id);
       if (!shot) { flash("Click a shot first, or drag the Content onto the timeline."); return; }
       if (shot.media.some((binding) => binding.context_id === id)) actions.unassign(shot.id, id); else actions.assign(shot.id, id);
@@ -210,6 +216,24 @@ export function openStudio(node, app, api, host = null) {
       else { if (id) flash("Only audio Content goes on the audio lanes."); save(); render(); }
     },
     removeLane(lane) { Object.assign(S, removeLane(S, lane)); save(); render(); },
+    newControl(sec, id) {
+      const entry = S.byId.get(id);
+      if (!entry || entry.media !== "video" || !entry.usage.includes("control")) { if (id) flash("Choose Use as: Control video on a Video card first."); return; }
+      const [from, to] = entry.selection || [0, 0], end = to || S.lengths.get(id) || from + 8;
+      const at = placeAt(S.control, sec, S.values.project_seconds, Math.max(MIN_LENGTH, end - from));
+      if (!at) { flash("There is no room on the Control lane there."); return; }
+      const clip = { ...newClip(id, "control", at.start, at.end), offset: from };
+      delete clip.mode;
+      setItems("control", [...S.control, clip], clip.id);
+    },
+    setControl(id, key, value) {
+      const clip = S.control.find((entry) => entry.id === id);
+      const entry = S.byId.get(clip.context_id), [from, to] = entry?.selection || [0, 0];
+      const upper = to || S.lengths.get(clip.context_id) || Infinity;
+      const next = key === "offset" ? { ...clip, offset: Math.max(from, Math.min(upper - 1 / 24, r1(value) || 0)) } : timed(clip, S.control, key, value);
+      setItems("control", S.control.map((entry) => entry.id === id ? next : entry), id);
+    },
+    deleteControl(id) { S.control = S.control.filter((clip) => clip.id !== id); S.selected = null; save(); render(); },
     setWidget,
     // Turbo on: 4 steps, or the measured settings of the chosen LoRA. Off brings back the settings used before.
     setTurbo(on) {
@@ -224,17 +248,19 @@ export function openStudio(node, app, api, host = null) {
     // A known LoRA brings its measured steps, sampler and scheduler; the parts of its model render with them.
     setTurboLora(name, value) { write(profileFields(value)); setWidget(name, value); },
     setDuration(seconds) {
-      const before = { shots: S.shots, audio: S.audio, seconds: S.values.project_seconds, names: labels() };
+      const before = { shots: S.shots, audio: S.audio, control: S.control, seconds: S.values.project_seconds, names: labels() };
       const shots = trimToDuration(S.shots, seconds), audio = trimToDuration(S.audio, seconds);
       const grown = growToDuration(shots.items, Number(before.seconds), seconds);
       S.shots = grown.items; S.audio = audio.items; S.ghosts = [];
+      const control = trimToDuration(S.control, seconds); S.control = control.items;
       write({ project_seconds: seconds }); save();
       const cut = [shots.removed.length && `removed ${shots.removed.map((id) => before.names.get(id)).join(", ")}`,
         shots.shortened.length && `shortened ${shots.shortened.map((id) => before.names.get(id)).join(", ")}`,
         (audio.removed.length || audio.shortened.length) && `cut ${audio.removed.length + audio.shortened.length} audio clip(s)`,
+        (control.removed.length || control.shortened.length) && `cut ${control.removed.length + control.shortened.length} control clip(s)`,
         grown.grown.length && `${before.names.get(grown.grown[0])} now runs to the new end`].filter(Boolean);
       if (cut.length) S.notice = { text: `Duration ${fmt(seconds)}: ${cut.join("; ")}.`, undo: () => {
-        S.shots = before.shots; S.audio = before.audio; write({ project_seconds: before.seconds }); save(); render(); } };
+        S.shots = before.shots; S.audio = before.audio; S.control = before.control; write({ project_seconds: before.seconds }); save(); render(); } };
       render();
     },
     setPreset(value) {

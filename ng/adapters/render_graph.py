@@ -20,7 +20,7 @@ def turbo_models(graph, inputs, settings):
 
 # Everything in the render settings that changes the sampled latent.
 RESUME_SETTINGS = ("seed", "steps", "sampler_name", "scheduler", "shift_video", "shift_audio", "turbo", "turbo_lora_fl2va",
-                   "turbo_lora_ref2va", "ref_image_size", "resize_method")
+                   "turbo_lora_ref2va", "ref_image_size", "resize_method", "control_strength", "control_start", "control_end")
 
 
 def render_sequence(inputs, settings):
@@ -35,6 +35,10 @@ def render_sequence(inputs, settings):
         if inputs.get(name) is not None:
             conditioning.set_input(name, inputs[name])
     model = conditioning.out(0)
+    if inputs.get("model_patch") is not None:
+        model = graph.node("NGControlChunk", "control", model=model, chunk=start.out(3), vae=inputs["vae"],
+                           model_patch=inputs["model_patch"], strength=settings.get("control_strength", 1.0),
+                           start_percent=settings.get("control_start", 0.0), end_percent=settings.get("control_end", 1.0)).out(0)
     if inputs.get("preview_vae") is not None:
         # the Context Connector's preview VAE: each part shows the TAEHV live preview, as Preview Override (live) does
         model = graph.node("NGH3Preview", "preview", model=model, vae=inputs["preview_vae"], max_resolution=768, preview_fps=24.0,

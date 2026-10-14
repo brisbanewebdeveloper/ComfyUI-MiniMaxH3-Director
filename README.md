@@ -71,6 +71,10 @@ without inner scrolling:
   seed, steps, sampler and scheduler, and a drawer showing the real prompt of each render part.
 - **Resume**: Render Sequence keeps every finished part on disk; after a crash the same plan continues where it stopped. The
   kept parts are deleted when the video is done (on by default).
+- **Control video**: choose **Control video** on a Context Video card, load a ready Canny/Pose/Depth clip or press **Generate**,
+  then place it on the Studio's **Control** lane. Connect a native **ModelPatchLoader** (H3 Fun ControlNet-Union 2.0) to the
+  Connector's `model_patch`. Strength and denoising range are set in the Studio; parts without control clips skip ControlNet.
+  Inside partly covered parts, edge frames are held to the part edges. [Control setup and limits](docs/NG-control.md).
 
 More nodes around the Director:
 
@@ -79,8 +83,8 @@ More nodes around the Director:
   and redraws whole panels. **Send to Director** turns the panels into shots with the sheet as a storyboard reference.
 - **Live preview**: load `taeh3.safetensors` and connect it to the Connector's `preview VAE`; Render Sequence then shows a TAEHV
   preview of each part while it samples (see [Live preview](#live-preview-while-sampling)).
-- **H3 Control Video** (experimental): steers each part with a pose, depth or canny video, or a mask for inpainting
-  (MiniMax H3 Fun ControlNet-Union).
+- **H3 Control Video** (experimental, **NG/Technical**): the separate ControlNet node for your own sampler workflow,
+  including the existing mask/inpainting inputs. The simple Render Sequence path uses the Control lane internally.
 
 An optional **H3 AI Loader** (generative CLIP, an installed encoder from disk, or a local/compatible API)
 enables Context analysis and the Studio's AI buttons; everything works without it. [Native AI setup](docs/NG-native-ai.md) explains the separate assistant encoder.

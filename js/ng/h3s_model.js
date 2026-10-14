@@ -49,7 +49,7 @@ export function boundAndLaned(shots, audio) {
 
 export function readProject(text) {
   const story = readStory(text || "");
-  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], look: "", partPrompts: [], skipped: [], error: story.error };
+  if (story.error || !(text || "").trimStart().startsWith("{")) return { shots: story.shots, audio: [], lanes: [], control: [], look: "", partPrompts: [], skipped: [], error: story.error };
   const data = JSON.parse(text), audio = [], skipped = [], seen = new Set();
   for (const clip of Array.isArray(data.audio) ? data.audio : []) {
     if (validClip(clip) && !seen.has(clip.id)) { seen.add(clip.id); audio.push({ offset: 0, mode: "ref", lane: "", ...clip }); }
@@ -58,14 +58,20 @@ export function readProject(text) {
   const lanes = [...new Set([...(data.audio_lanes || []), ...audio.map((clip) => clip.lane)])].filter(Boolean);
   const partPrompts = (Array.isArray(data.part_prompts) ? data.part_prompts : [])
     .filter((entry) => Number.isInteger(entry?.index) && entry.index >= 0 && typeof entry.key === "string" && typeof entry.text === "string");
-  return { shots: story.shots, audio, lanes, look: typeof data.look === "string" ? data.look : "", partPrompts, skipped, error: "",
+  const control = Array.isArray(data.control) ? data.control : [], controlIds = new Set();
+  const badControl = (data.control !== undefined && !Array.isArray(data.control)) || control.some((clip) => {
+    if (!validClip({ ...clip, mode: "ref" }) || controlIds.has(clip.id)) return true;
+    controlIds.add(clip.id); return false;
+  });
+  return { shots: story.shots, audio, lanes, control, look: typeof data.look === "string" ? data.look : "", partPrompts, skipped,
+    error: badControl ? "The saved control clips are invalid. Repair their timing or IDs before editing this project." : "",
     conflicts: boundAndLaned(story.shots, audio) };
 }
 
-export function writeProject({ shots, audio, lanes, look = "", partPrompts = [] }) {
-  if (!shots.length && !audio.length && !lanes.length && !look.trim() && !partPrompts.length) return "";
+export function writeProject({ shots, audio, lanes, control = [], look = "", partPrompts = [] }) {
+  if (!shots.length && !audio.length && !lanes.length && !control.length && !look.trim() && !partPrompts.length) return "";
   return JSON.stringify({ format: SHOT_FORMAT, schema_version: 1, shots, audio, audio_lanes: lanes, ...(look.trim() ? { look } : {}),
-    ...(partPrompts.length ? { part_prompts: partPrompts } : {}) });
+    ...(partPrompts.length ? { part_prompts: partPrompts } : {}), ...(control.length ? { control, control_lanes: ["control"] } : {}) });
 }
 
 // The Director's widgets after a Context rename: the Prompt, timed text, or the shot document's shot texts, spoken lines,

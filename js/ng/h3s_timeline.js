@@ -55,6 +55,7 @@ export function timelineView(S, actions) {
       if (!moved || (moved.start === item.start && moved.end === item.end)) { actions.select(kind, item.id); return; }
       const changed = result.target !== null && kind === "shot" ? reorder(result.items, item.id, result.target, layout) : result.items;
       if (kind === "shot") actions.setShots(changed, item.id);
+      else if (kind === "control") actions.setControls(changed, item.id);
       else actions.setClips(changed.concat(S.audio.filter((clip) => clip.lane !== item.lane)), item.id);
     };
   }
@@ -109,14 +110,14 @@ export function timelineView(S, actions) {
     return track;
   }
 
-  function clipBlock(clip, items, track) {
-    const entry = S.byId.get(clip.context_id), selected = S.selected?.kind === "clip" && S.selected.id === clip.id;
+  function clipBlock(clip, items, track, kind = "clip") {
+    const entry = S.byId.get(clip.context_id), selected = S.selected?.kind === kind && S.selected.id === clip.id;
     const block = h("div", { class: selected ? "h3s-clip sel" : "h3s-clip", style: { left: pct(clip.start), width: pct(clip.end - clip.start),
       borderColor: selected ? undefined : entry?.color }, title: `${entry?.name || clip.context_id}: ${span(clip.start, clip.end)}, from ${fmt(clip.offset)} in the file` });
-    const grip = (side) => h("span", { class: "h3s-grip", style: { [side]: 0 }, onpointerdown: (event) => grab(event, "clip", clip, side, items, track, block) });
-    block.onpointerdown = (event) => grab(event, "clip", clip, "move", items, track, block);
+    const grip = (side) => h("span", { class: "h3s-grip", style: { [side]: 0 }, onpointerdown: (event) => grab(event, kind, clip, side, items, track, block) });
+    block.onpointerdown = (event) => grab(event, kind, clip, "move", items, track, block);
     block.append(grip("left"), h("span", { class: "h3s-swatch", style: { background: entry?.color || "#B38CF5" } }),
-      h("strong", {}, entry?.name || "Not connected"), h("span", { style: { color: "#B9ADD6" } }, `${MODE_SHORT[clip.mode]} · ${span(clip.start, clip.end)}`), grip("right"));
+      h("strong", {}, entry?.name || "Not connected"), h("span", { style: { color: "#B9ADD6" } }, `${kind === "control" ? entry?.controlKind || "canny" : MODE_SHORT[clip.mode]} · ${span(clip.start, clip.end)}`), grip("right"));
     return block;
   }
 
@@ -138,6 +139,14 @@ export function timelineView(S, actions) {
     zone.ondragleave = () => zone.classList.remove("over");
     zone.ondrop = (event) => { event.preventDefault(); zone.classList.remove("over"); actions.addLane(actions.takeDragged()); };
     return lane(h("span"), zone);
+  }
+
+  function controlRow() {
+    const items = S.control || [], track = h("div", { class: "h3s-track", style: { height: "40px" }, "aria-label": "Control lane" }, grid());
+    dropZone(track, (sec, id) => actions.newControl(sec, id));
+    if (!items.length) track.append(h("span", { class: "h3s-empty", style: { fontSize: "12px" } }, "Drag a Control video card here · Canny, Pose or Depth"));
+    for (const clip of sorted(items)) track.append(clipBlock(clip, items, track, "control"));
+    return lane(h("span", { class: "h3s-lane-name" }, h("span", { class: "h3s-swatch", style: { background: "#E6BE57" } }), "Control"), track);
   }
 
   function partsRow() {
@@ -170,6 +179,9 @@ export function timelineView(S, actions) {
       h("span", { class: "h3s-lbl" }, "Drag audio Content onto a lane, move it, trim it at the edges. Runs independently of the shots."),
       h("span", { class: "h3s-grow" }), h("button", { class: "h3s-btn", onclick: () => actions.addLane() }, icon("plus"), "Audio lane")),
     S.lanes.map(laneRow), newLaneRow(),
+    h("div", { class: "h3s-row", style: { marginTop: "4px" } }, h("span", { class: "h3s-strong" }, "Control video"),
+      h("span", { class: "h3s-lbl" }, "Move, trim and select clips. Edge frames are held inside partly covered render parts.")),
+    controlRow(),
     h("div", { class: "h3s-row", style: { marginTop: "4px" } }, h("span", { class: "h3s-lbl" }, "How H3 renders it (planned automatically)"),
       h("span", { class: "h3s-lbl", title: "H3 produces lengths in fixed frame steps (17·k+5 at 24 FPS)." }, summary)),
     partsRow());

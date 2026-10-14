@@ -7,6 +7,7 @@ from ..core.analysis import ProviderConfig
 from .ai_provider import NativeAIProvider
 from ..core.project import ChunkJob, jobs
 from ..core.turbo_profiles import part_settings
+from ..core import control_timing
 from .render_graph import render_sequence, turbo_models
 
 
@@ -20,6 +21,7 @@ class DirectorInputs:
     contexts: tuple = ()
     ai_provider: ProviderConfig | NativeAIProvider | None = None
     preview_vae: object = None
+    model_patch: object = None
 
     def links(self):
         return {name: getattr(self, name) for name in ("clip", "vae", "audio_vae", "model_fl2va", "model_ref2va")}
@@ -40,6 +42,9 @@ class RenderSettings:
     ref_image_size: str = "match"
     resume: bool = True
     resume_delete_done: bool = True
+    control_strength: float = 1.0
+    control_start: float = 0.0
+    control_end: float = 1.0
 
     def values(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}
@@ -88,10 +93,14 @@ def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_si
 
 
 def render_project(result):
+    if result.settings.control_strength and control_timing.clips(result.project.context) and result.inputs.model_patch is None:
+        raise ValueError("Connect ModelPatchLoader to the Context Connector's model_patch for control clips.")
     graph = GraphBuilder()
     chunks = graph.node("NGProjectChunks", "chunks", sequence=result)
     inputs = {**result.inputs.links(), "chunks": chunks.out(0)}
     if result.inputs.preview_vae is not None:
         inputs["preview_vae"] = result.inputs.preview_vae
+    if result.inputs.model_patch is not None:
+        inputs["model_patch"] = result.inputs.model_patch
     expanded, outputs = render_sequence(inputs, result.settings.values())
     return {**graph.finalize(), **expanded}, outputs
