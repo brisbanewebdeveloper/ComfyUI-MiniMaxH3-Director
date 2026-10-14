@@ -45,6 +45,8 @@ def _own(job, settings):
     for clip, a, b, source in control_timing.spans(job) if settings.get("control_strength", 1.0) else ():
         item = context.item(clip.context_id)
         controls.append([item.source, _file(item.source), item.options.control_kind, item.options.end_s, item.length_s, a, b, source])
+        if item.options.control_kind == "mask":
+            controls[-1].extend([item.options.control_mask, _file(item.options.control_mask), item.options.mask_shape, item.options.mask_grow])
     if controls:
         own["control"] = controls
         own["control_settings"] = [settings.get("control_strength", 1.0), settings.get("control_start", 0.0), settings.get("control_end", 1.0)]

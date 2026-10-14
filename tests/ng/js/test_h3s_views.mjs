@@ -240,6 +240,11 @@ function recorder() {
   const current = { widgets: [widget("resume", false), widget("resume_delete_done", false), widget("prompt_override", "x")] };
   repairInsertedWidgets(current, [false, false, "x"]);
   assert.deepEqual(current.widgets.map((w) => w.value), [false, false, "x"], "a list of the current length is left alone");
+  const named = { resume: false, resume_delete_done: true, control_strength: .5, control_start: .2, control_end: .9 };
+  const modern = { widgets: [...Object.keys(named).map((name) => widget(name, "?")), { name: "h3_director", serialize: false }] };
+  repairInsertedWidgets(modern, Object.values(named), named);
+  assert.deepEqual(modern.widgets.slice(0, 5).map((w) => w.value), Object.values(named),
+    "a nonserialized DOM widget must not rotate settings that have saved names");
   // Saved while "resume" was required (before prompt_override): the two come back swapped and are put right.
   const swapped = { widgets: [widget("prompt_override", true), widget("resume", "my override")] };
   repairLaterWidgets(swapped);

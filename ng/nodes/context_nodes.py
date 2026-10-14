@@ -10,6 +10,7 @@ from comfy_api.latest import io
 from ..adapters import probe
 from ..core.context import CONTENT_BY_MEDIA, PRESERVE, USAGE_BY_MEDIA
 from ..core.context_build import item_from_widgets
+from ..core.context_options import ContextOptions
 from ..core.analysis import ProviderConfig
 from ..adapters.ai_provider import NativeAIProvider
 
@@ -81,13 +82,15 @@ class NGContextVideo(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="NGContextVideo", display_name="H3 Context Video", category=CATEGORY,
-                         description="A video reference, or a Canny, Pose or Depth control video placed on the Director's Control lane.",
+                         description="A video reference, a Canny/Pose/Depth control video, or an Inpaint source with a mask on the Control lane.",
                          inputs=[io.Combo.Input("video", options=_files(["video"]), upload=io.UploadType.video)] + _common_inputs("video") + _identity_inputs() + _subject_inputs(),
                          outputs=[NGContext.Output(display_name="context")])
 
     @classmethod
-    def fingerprint_inputs(cls, video, **_):
-        return probe.file_stamp(video)
+    def fingerprint_inputs(cls, video, context_options="", **_):
+        options = ContextOptions.from_json(context_options)
+        mask = probe.file_stamp(options.control_mask) if options.control_kind == "mask" and options.control_mask else ""
+        return probe.file_stamp(video) + ":" + mask
 
     @classmethod
     def execute(cls, video, name, description, content, usage, preserve, context_id="", color="", **extras):

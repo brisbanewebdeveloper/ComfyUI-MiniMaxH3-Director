@@ -23,9 +23,15 @@ const LATER = { turbo: false, turbo_lora_fl2va: "none", turbo_lora_ref2va: "none
 // "resume" gave it the value of the widget after it (prompt_override's text while resume was required, now the Studio's own
 // entry). A list short by k lacks the k newest: those get their defaults, every other widget its saved value in order.
 const INSERTED = [["resume", true], ["resume_delete_done", true], ["control_strength", 1], ["control_start", 0], ["control_end", 1]];
-export function repairInsertedWidgets(node, saved) {
+export function repairInsertedWidgets(node, saved, named) {
   const widgets = node.widgets || [];
   const inserted = INSERTED.filter(([name]) => widgets.some((widget) => widget.name === name));
+  // Modern ComfyUI saves names and omits nonserialized DOM widgets. A shorter positional list then does not mean
+  // a setting is missing; rotating it again shifted the ControlNet settings on Save As and reload.
+  if (named && inserted.every(([name]) => Object.hasOwn(named, name))) {
+    for (const widget of widgets) if (inserted.some(([name]) => name === widget.name)) widget.value = named[widget.name];
+    return;
+  }
   const missing = Array.isArray(saved) ? widgets.length - saved.length : 0;
   if (missing < 1 || missing > inserted.length) return;
   const defaults = new Map(inserted.slice(-missing));
@@ -100,7 +106,7 @@ function attach(node) {
   node.onConfigure = function (...args) {
     const result = configured?.apply(this, args);
     for (const key of ["ng_view_mode", "ng_selected_shot_id"]) delete node.properties[key];
-    repairInsertedWidgets(node, args[0]?.widgets_values);
+    repairInsertedWidgets(node, args[0]?.widgets_values, args[0]?.widgets_values_named);
     repairLaterWidgets(node);
     // Saved by the former compact node: the Studio needs the room once, and the nodes around it move along.
     if (node.size?.[0] < MIN_WIDTH) { noteGrowth(node, [...node.size]); node.setSize([WIDTH, Math.max(node.size[1], HEIGHT)]); }

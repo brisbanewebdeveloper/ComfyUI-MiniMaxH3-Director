@@ -43,5 +43,26 @@ Generated videos retain the source frame rate; the renderer resamples each reque
 4096 frames, split them into shorter clips before preprocessing. Several saved batches are reported as an error rather than
 silently selecting only the first batch.
 
-The existing **H3 Control Video (experimental)** node stays under **MiniMax H3/NG/Technical** for external samplers. Its mask
-and inpainting inputs remain available there. Mask generation and inpainting on Context cards are a later phase.
+## Inpainting with a mask
+
+1. On a Video card, choose **Use as: Control video → Inpaint (mask + source)**. The main video is the original footage.
+2. Describe **What to mask**, e.g. `person` or `red ball`, then press **Generate mask (SAM3)**. This queues ComfyUI's SAM3
+   Detect in single-frame batches with text conditioning, unions matching detections per frame and saves a raw mask video
+   at the source frame rate. It needs a SAM3 checkpoint, preferably `sam3.1_multiplex_fp16.safetensors` under checkpoints.
+3. Alternatively, choose a ready **Mask video** or use **Upload mask video**. White means regenerate; black supplies the
+   source background. Source and mask must begin at the same file time; the selected card range and clip offset apply to both.
+4. Check the raw mask preview. The render uses **Bounding box + 16 pixels grow** by default, giving a replacement figure room
+   to differ from the original silhouette. Choose **Silhouette** and adjust **Grow** when needed. Grow is measured at the render
+   resolution. These settings do not rerun SAM3.
+5. Place the card on the Control lane and describe the replacement in the Director prompt. Connect ControlNet-Union 2.0 to
+   `model_patch` as above. Rendering reads both saved files; it does not load SAM3. Replacing the source requires generating
+   or choosing its matching mask again.
+
+Mask and source use the same held-edge policy as other control clips, including the pinned head. A shorter file holds its
+last frame. A part can combine inpainting and other control clips: outside inpainting clips every pixel is marked for
+regeneration, so there is no black source background to preserve there. Inside inpainting clips the control image is empty.
+The whole render part still passes through one native ControlNet patch. Final image quality depends on the model and sampling.
+Resume also tracks the mask file stamp, shape and grow; changing the detection text alone does not change an already saved mask.
+
+The existing **H3 Control Video (experimental)** node stays under **MiniMax H3/NG/Technical** for external samplers, including
+its direct mask and source-video inputs.

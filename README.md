@@ -75,6 +75,8 @@ without inner scrolling:
   then place it on the Studio's **Control** lane. Connect a native **ModelPatchLoader** (H3 Fun ControlNet-Union 2.0) to the
   Connector's `model_patch`. Strength and denoising range are set in the Studio; parts without control clips skip ControlNet.
   Inside partly covered parts, edge frames are held to the part edges. [Control setup and limits](docs/NG-control.md).
+- **Inpaint** on the same card keeps the source video and a separate mask: generate it with SAM3 and an object description,
+  or load/upload a ready mask. Choose bounding box or silhouette and grow; place it on the Control lane to regenerate that region.
 
 More nodes around the Director:
 

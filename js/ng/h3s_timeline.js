@@ -144,7 +144,7 @@ export function timelineView(S, actions) {
   function controlRow() {
     const items = S.control || [], track = h("div", { class: "h3s-track", style: { height: "40px" }, "aria-label": "Control lane" }, grid());
     dropZone(track, (sec, id) => actions.newControl(sec, id));
-    if (!items.length) track.append(h("span", { class: "h3s-empty", style: { fontSize: "12px" } }, "Drag a Control video card here · Canny, Pose or Depth"));
+    if (!items.length) track.append(h("span", { class: "h3s-empty", style: { fontSize: "12px" } }, "Drag a Control video card here · Canny, Pose, Depth or Inpaint"));
     for (const clip of sorted(items)) track.append(clipBlock(clip, items, track, "control"));
     return lane(h("span", { class: "h3s-lane-name" }, h("span", { class: "h3s-swatch", style: { background: "#E6BE57" } }), "Control"), track);
   }

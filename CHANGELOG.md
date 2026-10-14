@@ -9,7 +9,12 @@
 - Context Connector: optional raw/lazy `model_patch`. Studio: Control lane, clip move/trim/source offsets, strength and
   denoising range. Render Sequence applies native H3 ControlNet internally and skips parts without control clips.
 - Partial coverage holds edge frames to the render-part edges and is reported in the Studio. Resume keys track control
-  files, windows and settings. The standalone Control Video node moves to NG/Technical; card-based masks/inpainting follow later.
+  files, windows and settings. The standalone Control Video node moves to NG/Technical.
+- **Inpaint cards:** keep the source video, generate a separate SAM3 mask by object description or load/upload a ready mask.
+  The Control lane renders paired source/mask windows, with editable bounding-box/silhouette and grow (default box + 16 px).
+  Resume tracks mask files and shape settings. Mask generation runs once; rendering reuses its saved result.
+- Director restores named ControlNet settings without rotating them as positional legacy values on Save As/reload; the
+  advanced denoising panel stays open while planning redraws it.
 
 **Live preview in Render Sequence, one-sentence shots shared, README** (2026-10-14):
 

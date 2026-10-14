@@ -24,6 +24,7 @@ import { dropTarget } from "./ng_drop.js";
 import { controlBox } from "./h3c_control.js";
 import { controlGraph, controlSetup } from "./h3c_control_graph.js";
 import { runJob } from "./h3b_queue.js";
+import { uploadMask } from "./h3c_mask.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -91,6 +92,7 @@ function attach(node, media) {
   if (media === "video") {
     S.els.video = h("video", { controls: true, preload: "metadata", muted: false }); S.els.video.onloadedmetadata = () => schedule();
     S.els.original = h("video", { controls: true, preload: "metadata", muted: true });
+    S.els.mask = h("video", { controls: true, preload: "metadata", muted: true });
     api.fetchApi("/object_info/DepthAnything_V3").then((r) => r.json()).then((info) => { S.da3 = Boolean(info.DepthAnything_V3); schedule(); }).catch(() => {});
   }
   if (media === "audio") { S.els.audio = h("audio", { preload: "metadata" }); wirePlayback(S, () => schedule()); }
@@ -155,7 +157,7 @@ function attach(node, media) {
   const writeRoles = (type, list) => applyValues(node, { [type + "_roles"]: JSON.stringify(list), [type]: list[0] || values(node)[type] });
   const actions = {
     set(name, value, redraw = true) {
-      if (media === "video" && name === "video" && value !== values(node).video) setOptions(node, { control_original: "", control_result: "" });
+      if (media === "video" && name === "video" && value !== values(node).video) setOptions(node, { control_original: "", control_result: "", control_mask: "" });
       applyValues(node, { [name]: value }); node.graph?.change?.(); if (!redraw) S.values = values(node);
     },
     upload() {
@@ -169,9 +171,20 @@ function attach(node, media) {
     controlKind(kind) {
       const opts = contextOptions(node);
       if (opts.control_original && opts.control_result === values(node).video) applyValues(node, { video: opts.control_original });
-      setOptions(node, { control_kind: kind, control_original: "", control_result: "" });
+      setOptions(node, { control_kind: kind, control_original: "", control_result: "", control_mask: "" });
     },
     controlEngine(engine) { S.depthEngine = engine; render(); },
+    setMask(file) { setOptions(node, { control_mask: file, control_result: values(node).video }); },
+    async uploadMask(file) {
+      if (S.busy) return;
+      S.busy = "upload-mask"; const before = JSON.stringify(values(node)); say("Uploading mask …");
+      try {
+        const uploaded = await uploadMask(api, file);
+        if (!removed && JSON.stringify(values(node)) === before) { actions.setMask(uploaded); say("Mask uploaded. White marks the region to regenerate."); }
+        else say("The card changed during upload. Choose the saved mask from input/h3-control.", true);
+      } catch (error) { say(error.message, true); }
+      finally { S.busy = false; if (!removed) render(); }
+    },
     async generateControl() {
       if (S.busy || !values(node).video) return;
       S.busy = "control"; say("Generating control video through ComfyUI's queue …");
@@ -180,12 +193,14 @@ function attach(node, media) {
       try {
         const setup = await controlSetup(api, kind, S.depthEngine || "moge2");
         const prefix = globalThis.crypto.randomUUID();
-        const saved = await runJob(api, controlGraph(kind, source, setup, prefix), "save");
+        const saved = await runJob(api, controlGraph(kind, source, { ...setup, prompt: opts.mask_prompt ?? "person" }, prefix), "save");
         if (removed || JSON.stringify(values(node)) !== before) { say("The card changed during generation. Its saved result was left in output/h3-control; the card was not replaced.", true); return; }
         const imported = await request(api, "/ng/control/import", saved);
         if (removed || JSON.stringify(values(node)) !== before) return;
-        applyValues(node, { video: imported.source, content: "control", content_roles: JSON.stringify(["control"]),
-          context_options: JSON.stringify({ ...opts, control_kind: kind, control_original: source, control_result: imported.source, video_audio: "ignore" }) });
+        const result = kind === "mask" ? { control_mask: imported.source, control_result: source, control_original: "" }
+          : { control_original: source, control_result: imported.source, control_mask: "" };
+        applyValues(node, { video: kind === "mask" ? source : imported.source, content: "control", content_roles: JSON.stringify(["control"]),
+          context_options: JSON.stringify({ ...opts, ...result, control_kind: kind, video_audio: "ignore" }) });
         node.graph?.change?.(); say("Control video saved. Drag this card onto the Director's Control lane.");
       } catch (error) {
         say(kind === "depth" && error.message.includes("DepthAnything3Net")
@@ -345,7 +360,7 @@ function attach(node, media) {
   document.addEventListener("ng-context-changed", outside);
   const gone = node.onRemoved;
   node.onRemoved = function (...args) {
-    removed = true; clearTimeout(timer); controller?.abort(); watcher?.disconnect(); S.els.audio?.pause(); S.els.video?.pause?.(); S.els.original?.pause?.();
+    removed = true; clearTimeout(timer); controller?.abort(); watcher?.disconnect(); S.els.audio?.pause(); S.els.video?.pause?.(); S.els.original?.pause?.(); S.els.mask?.pause?.();
     document.removeEventListener("ng-context-changed", outside); return gone?.apply(this, args);
   };
   // A file dragged onto the card goes through ComfyUI's own upload of this node (the same as dropping it on a Load Image).

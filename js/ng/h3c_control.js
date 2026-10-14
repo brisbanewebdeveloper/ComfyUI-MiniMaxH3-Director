@@ -1,13 +1,15 @@
 import { h } from "./h3s_dom.js";
 import { mediaURL } from "./h3c_media.js";
+import { maskBox } from "./h3c_mask.js";
 
 export function controlBox(S, actions) {
   if (S.usage !== "control") return null;
   const kind = S.opts.control_kind || "canny";
   const choose = h("select", { class: "h3c-in", "aria-label": "Control kind", disabled: Boolean(S.busy),
     onchange: (event) => actions.controlKind(event.target.value) },
-    ["canny", "pose", "depth"].map((value) => h("option", { value }, { canny: "Canny", pose: "Pose", depth: "Depth" }[value])));
+    ["canny", "pose", "depth", "mask"].map((value) => h("option", { value }, { canny: "Canny", pose: "Pose", depth: "Depth", mask: "Inpaint (mask + source)" }[value])));
   choose.value = kind;
+  if (kind === "mask") return h("div", { class: "h3c-box" }, h("div", { class: "h3c-cap" }, "Control video"), choose, maskBox(S, actions));
   const engine = h("select", { class: "h3c-in", "aria-label": "Depth engine", disabled: Boolean(S.busy),
     onchange: (event) => actions.controlEngine(event.target.value) },
     h("option", { value: "moge2" }, "MoGe 2"), S.da3 ? h("option", { value: "da3" }, "Depth Anything 3") : null);

@@ -54,6 +54,8 @@ assert.deepEqual(numbers.map((e) => e.value), [1, 0, 1]);
 assert.deepEqual(numbers.map((e) => [e.getAttribute("min"), e.getAttribute("max")]), [["0", "10"], ["0", "1"], ["0", "1"]]);
 numbers[0].onchange({ target: { value: "0.5" } });
 assert.deepEqual(calls.at(-1), ["control_strength", .5]);
+settings.byTag("details")[0].ontoggle({ currentTarget: { isConnected: true, open: true } });
+assert.equal(controlSettings(S, actions).byTag("details")[0].getAttribute("open"), "", "planning redraws keep the denoising controls open");
 const panel = controlPanel(S, actions, control[0]);
 panel.byTag("input")[2].onchange({ target: { value: "3.2" } });
 assert.deepEqual(calls.at(-1), ["pose", "offset", 3.2]);

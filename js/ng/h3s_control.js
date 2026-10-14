@@ -10,7 +10,9 @@ export function controlSettings(S, actions) {
     S.controlConnected ? [
       field("Strength", number("control_strength", 10, 0.01, 1, "Control strength")),
       h("span", { class: "h3s-lbl" }, "1 follows the source closely; try 0.5 to keep your figure's own shape."),
-      h("details", {}, h("summary", {}, "Denoising range (advanced)"),
+      h("details", { open: Boolean(S.controlAdvanced), ontoggle: (event) => {
+        if (event.currentTarget.isConnected) S.controlAdvanced = event.currentTarget.open;
+      } }, h("summary", {}, "Denoising range (advanced)"),
         field("Start (0–1)", number("control_start", 1, 0.001, 0, "Control denoising start")),
         field("End (0–1)", number("control_end", 1, 0.001, 1, "Control denoising end")),
         h("span", { class: "h3s-lbl" }, "These are fractions of denoising, not seconds of the video."))

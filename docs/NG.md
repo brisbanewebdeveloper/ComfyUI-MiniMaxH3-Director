@@ -43,6 +43,8 @@ of it and below it move along so nothing overlaps; the same happens for Context 
 **Control video:** Context Video cards can load or generate Canny, Pose and Depth videos. Place them on the Studio's separate
 Control lane and connect the ControlNet `model_patch` at the Context Connector. Render Sequence applies it per part, skips
 uncontrolled parts and includes control changes in Resume. Partially covered parts hold edge frames; [setup and limits](NG-control.md).
+**Inpaint** keeps the original video and a separate mask on the same card. Generate a mask through SAM3 using an object description,
+or load/upload a ready mask; adjust bounding box/silhouette and grow, then place the card on the Control lane.
 
 **Full screen** in the Studio's header lifts the same Studio over the whole window; **Esc** or **Back to graph** puts it back
 into the node. It has no inner scroll areas. Below about 960 px of width the side panel moves under the timeline. **Generate** queues the connected workflow, exactly like ComfyUI's Queue button.

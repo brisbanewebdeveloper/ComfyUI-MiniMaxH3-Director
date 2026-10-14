@@ -3,6 +3,12 @@ import { comboOptions } from "./h3b_queue.js";
 
 export async function controlSetup(api, kind, engine = "moge2") {
   if (kind === "canny") return {};
+  if (kind === "mask") {
+    const models = await comboOptions(api, "CheckpointLoaderSimple", "ckpt_name");
+    const checkpoint = models.find((n) => /sam3\.1_multiplex_fp16\.safetensors$/i.test(n)) || models.find((n) => /sam3.*\.safetensors$/i.test(n));
+    if (!checkpoint) throw new Error("Mask generation needs a SAM3 checkpoint, e.g. sam3.1_multiplex_fp16.safetensors (checkpoints), and ComfyUI's SAM3 Detect nodes.");
+    return { checkpoint };
+  }
   if (kind === "pose") {
     const [models, checkpoints] = await Promise.all([comboOptions(api, "UNETLoader", "unet_name"), comboOptions(api, "CheckpointLoaderSimple", "ckpt_name")]);
     const detector = models.find((n) => /rt_detr_v4-x-hgnet_fp16\.safetensors$/i.test(n));
@@ -24,6 +30,7 @@ export async function controlSetup(api, kind, engine = "moge2") {
 }
 
 export function controlGraph(kind, source, setup, prefix) {
+  if (kind === "mask") return maskGraph(source, setup, prefix);
   const node = (class_type, inputs) => ({ class_type, inputs });
   const graph = { load: node("LoadVideo", { file: source }), components: node("GetVideoComponents", { video: ["load", 0] }),
     batch: node("RebatchImages", { images: ["components", 0], batch_size: kind === "canny" ? 16 : 4 }) };
@@ -54,4 +61,21 @@ export function controlGraph(kind, source, setup, prefix) {
   graph.video = node("CreateVideo", { images: ["join", 0], fps: ["components", 2] });
   graph.save = node("SaveVideo", { video: ["video", 0], filename_prefix: `h3-control/${prefix}_${kind}`, format: "mp4", "format.codec": "h264" });
   return graph;
+}
+
+function maskGraph(source, setup, prefix) {
+  const node = (class_type, inputs) => ({ class_type, inputs });
+  if (!setup.prompt?.trim()) throw new Error("Describe what to mask, e.g. person or red ball.");
+  return {
+    load: node("LoadVideo", { file: source }), components: node("GetVideoComponents", { video: ["load", 0] }),
+    batch: node("RebatchImages", { images: ["components", 0], batch_size: 1 }),
+    sam: node("CheckpointLoaderSimple", { ckpt_name: setup.checkpoint }),
+    text: node("CLIPTextEncode", { clip: ["sam", 1], text: setup.prompt }),
+    detect: node("SAM3_Detect", { model: ["sam", 0], image: ["batch", 0], conditioning: ["text", 0], threshold: 0.5,
+      refine_iterations: 2, individual_masks: false }),
+    image: node("MaskToImage", { mask: ["detect", 0] }),
+    join: node("RebatchImages", { images: ["image", 0], batch_size: 4096 }),
+    video: node("CreateVideo", { images: ["join", 0], fps: ["components", 2] }),
+    save: node("SaveVideo", { video: ["video", 0], filename_prefix: `h3-control/${prefix}_mask`, format: "mp4", "format.codec": "h264" }),
+  };
 }

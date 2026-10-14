@@ -72,9 +72,10 @@ class NGControlChunk(io.ComfyNode):
             raise ValueError("Connect ModelPatchLoader to the Context Connector's model_patch for control clips.")
         if end_percent < start_percent:
             raise ValueError("ControlNet denoising end must be at or after start.")
-        images = control_media.frames(job)
+        images = control_media.prepare(job)
         out = core().MiniMaxH3FunControlNetApply.execute(model=model, model_patch=model_patch, vae=vae, strength=strength,
-                                                      start_percent=start_percent, end_percent=end_percent, control_video=images)
+                                                      start_percent=start_percent, end_percent=end_percent,
+                                                      control_video=images.control_video, mask=images.mask, source_video=images.source_video)
         return io.NodeOutput(out.args[0])
 
 

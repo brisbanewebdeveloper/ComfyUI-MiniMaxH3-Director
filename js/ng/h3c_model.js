@@ -11,7 +11,7 @@ export const CONTENT = {
 export const USAGE = {
   image: [["reference", "Reference", "who / what"], ["first_frame", "First frame", ""], ["last_frame", "Last frame", ""],
     ["keyframe", "Keyframe", "time in Studio"], ["storyboard", "Storyboard", "References: plans shots"]],
-  video: [["motion", "Motion reference", ""], ["camera", "Camera reference", ""], ["continue", "Continue from video", ""], ["structure", "Whole structure", ""], ["control", "Control video", "Canny / Pose / Depth"]],
+  video: [["motion", "Motion reference", ""], ["camera", "Camera reference", ""], ["continue", "Continue from video", ""], ["structure", "Whole structure", ""], ["control", "Control video", "Canny / Pose / Depth / Inpaint"]],
   audio: [["voice", "Voice", "timbre of a figure"], ["copy", "Copy", "reuse the sound"], ["lock", "Lock", "keep it exactly"],
     ["music_style", "Music style", ""], ["rhythm", "Rhythm", ""], ["sound_reference", "Sound reference", ""]],
   text: [["style", "Style / direction", ""], ["rule", "Rule", ""], ["character", "Character", ""], ["world", "World lore", ""], ["scene", "Scene / story", "read by the AI"],

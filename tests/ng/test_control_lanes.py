@@ -99,7 +99,7 @@ class Runtime(unittest.TestCase):
         node = self.nodes["NGControlChunk"]
         job = project.jobs(plan([]))[0]
         self.assertEqual(node.check_lazy_status(chunk=job), [])
-        with mock.patch.object(self.media, "frames", side_effect=AssertionError("must not decode")):
+        with mock.patch.object(self.media, "prepare", side_effect=AssertionError("must not decode")):
             self.assertEqual(node.execute(model="original", chunk=job).args, ("original",))
         job = project.jobs(plan([clip()]))[0]
         self.assertEqual(node.check_lazy_status(chunk=job), ["model_patch", "vae"])
@@ -112,7 +112,7 @@ class Runtime(unittest.TestCase):
         def decode(source, start, seconds, **kw):
             return torch.arange(round(start * 24), round((start + seconds) * 24)).float().view(-1, 1, 1, 1).expand(-1, 64, 64, 3)
         with mock.patch.object(self.media, "input_path", return_value="exists"), mock.patch.object(self.media.minimax_media, "load_video_tensor", side_effect=decode):
-            out = self.media.frames(job)[:, 0, 0, 0]
+            out = self.media.prepare(job).control_video[:, 0, 0, 0]
         self.assertEqual(float(out[0]), 0)
         self.assertEqual(float(out[24]), 0)
         self.assertEqual(float(out[47]), 23)
