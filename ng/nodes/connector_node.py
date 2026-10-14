@@ -29,7 +29,7 @@ class NGContextConnector(io.ComfyNode):
                                  context_group("text", 15), context_group("image", 15),
                                  context_group("video", 15), context_group("audio", 15),
                                  io.Vae.Input("preview_vae", display_name="preview VAE", raw_link=True, lazy=True, optional=True,
-                                              tooltip="Optional VAE for Preview Override (live), available at H3 Director Output.")],
+                                              tooltip="Optional H3 TAEHV VAE (taeh3): H3 Render Sequence shows a live preview of each part; also available at H3 Director Output.")],
                          outputs=[NGInputs.Output(display_name="H3 context")])
 
     @classmethod

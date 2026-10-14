@@ -6,7 +6,10 @@ seconds and the next part played it again (real runs 2026-10-12: Aurelia walked 
 of the shot's time:
 
 - Time beats the user wrote ("2.5–5s: ...", seconds from the shot's start) go to the parts they fall in, re-timed to the part.
-- Other text is cut into sentences and clauses ("..., then ...") and laid over the shot's time by length.
+- Other text is cut into sentences and clauses and laid over the shot's time by length. Inside a sentence it is cut only
+  where the words say one step follows another ("..., then", "and then", ", before/until/ending/finally", "and back
+  toward"), so a shot written as one sentence is shared too (real run: "...away from the camera and back toward it" went
+  whole to both parts and Luna turned away again). A piece goes to a part only when a real share of it lies there.
 - A shot whose new frames all lie in the pinned head gets no action: those frames are already made."""
 import math
 import re
@@ -15,11 +18,13 @@ from .limits import FPS
 
 HEAD_ONLY = "The shot from the preceding video ends here, without new action."
 _BEAT = re.compile(r"(\d+(?:[.,]\d+)?)\s*s?\s*[–-]\s*(\d+(?:[.,]\d+)?)\s*s(?:ec(?:onds?)?)?\s*:\s*", re.IGNORECASE)
-_PIECE = re.compile(r"(?<=[.!?;])\s+|(?<=,)\s+(?=then\b)")
+_PIECE = re.compile(r"(?<=[.!?;])\s+|(?<=,)\s+(?=(?:and\s+)?(?:then|before|until|ending|finally|afterwards)\b)"
+                    r"|\s+(?=and\s+(?:then|back\s+(?:toward|towards|to))\b)", re.IGNORECASE)
 # The AI writes a shot longer than this in time beats (split.py, shot_draft.py). The user's shot times never change: beats
 # are seconds from the shot's own start, fitted to its real length (5 s, 10 s, 2.5 s ...).
 BEAT_MIN_S = 5.0
 MIN_OVERLAP_S = 0.25        # a beat or clause that only grazes a part (frame grid) stays with the part it belongs to
+MIN_PIECE_SHARE = 0.25      # ... and a clause needs this much of its own time in the part
 
 
 def beat_marks(seconds):
@@ -74,9 +79,11 @@ def share(text, shot_start_f, shot_end_f, new_start_f, new_end_f, local_base_f):
     pieces = [p.strip() for p in _PIECE.split(text.strip()) if p.strip()]
     if len(pieces) < 2:
         return text
-    total, at, kept = float(sum(len(p) for p in pieces)), 0.0, []
+    total, at, kept, best = float(sum(len(p) for p in pieces)), 0.0, [], (0.0, pieces[-1])
     for piece in pieces:
         start, at = at, at + len(piece) / total
-        if min(at, hi) - max(start, lo) > eps:
+        overlap = min(at, hi) - max(start, lo)
+        if overlap > max(eps, MIN_PIECE_SHARE * (at - start)):
             kept.append(piece)
-    return " ".join(kept) or pieces[-1]
+        best = max(best, (overlap, piece), key=lambda entry: entry[0])
+    return " ".join(kept) or best[1]

@@ -51,25 +51,44 @@ see the exact prompt the model will receive while you are still editing it.
 
 **H3 Director NG** renders videos of any length as several H3 parts that continue into each other:
 **Context Connector → Director → Director Output → Render Sequence → SaveVideo**.
-Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text Context nodes hold your references as full cards in the graph: what the material is, its default role, what to keep and which figure it belongs to.
+Connect native H3 models, CLIP and both VAEs at the Connector. Reusable Image/Video/Audio/Text Context nodes hold your references
+as full cards in the graph: what the material is, its default role, what to keep and which figure it belongs to. Drag a file from
+a folder straight onto a card to use it.
 
 The Director node **is** the **Studio**, right in the graph (with **Full screen** for more room). It holds everything on one page
 without inner scrolling:
 
-- **Prompt** for the whole video, optionally split into timed shots by AI (proposals shown dashed until you accept them).
+- **Prompt** for the whole video, optionally split into timed shots by AI (proposals shown dashed until you accept them). AI shots
+  name their framing and camera move, and a shot longer than 5 s is written in time beats of its own length; your shot times never
+  change.
 - **Content** cards from the connected Context nodes, dragged onto the timeline or onto a shot.
 - A **timeline** on a 0.1 s grid: shots you move, resize and reorder by mouse; free **audio lanes** whose clips run across shots
-  and render parts (with an offset into the file); and the coloured render parts the planner will run.
-- **Mode** (First / last frame FL2VA or References Ref2VA) and **Turbo** (H3 turbo LoRA, 4 steps; off = 20 steps; CFG stays 1).
+  and render parts (with an offset into the file); and the coloured render parts the planner will run. A shot that runs over
+  several parts gives each part only its own share of the action, so nothing is played twice.
+- **Mode** (First / last frame FL2VA or References Ref2VA) and **Turbo**: you choose the turbo LoRA for each mode. A known LoRA
+  (the official ComfyUI LoRAs, Taomate, ckpt500) brings its measured steps, sampler and scheduler, per render part. CFG stays 1.
 - A settings bar with resolution as in the Legacy Director (presets, from first picture, aspect/megapixels, fitting, reference size),
   seed, steps, sampler and scheduler, and a drawer showing the real prompt of each render part.
+- **Resume**: Render Sequence keeps every finished part on disk; after a crash the same plan continues where it stopped. The
+  kept parts are deleted when the video is done (on by default).
+
+More nodes around the Director:
+
+- **H3 Storyboard**: a storyboard sheet as its own canvas node. Panels with layers (pictures, text, colour), cut-out, the AI writes
+  every panel's title, caption and shot text, **Qwen Image 2.1** draws figures from a character sheet in any pose, backgrounds,
+  and redraws whole panels. **Send to Director** turns the panels into shots with the sheet as a storyboard reference.
+- **Live preview**: load `taeh3.safetensors` and connect it to the Connector's `preview VAE`; Render Sequence then shows a TAEHV
+  preview of each part while it samples (see [Live preview](#live-preview-while-sampling)).
+- **H3 Control Video** (experimental): steers each part with a pose, depth or canny video, or a mask for inpainting
+  (MiniMax H3 Fun ControlNet-Union).
 
 An optional **H3 AI Loader** (generative CLIP, an installed encoder from disk, or a local/compatible API)
 enables Context analysis and the Studio's AI buttons; everything works without it. [Native AI setup](docs/NG-native-ai.md) explains the separate assistant encoder.
 
 Open **`example_workflows/H3 Director NG - text studio.json`** for the complete render path, **`H3 Director NG - image and voice.json`**
 for references, or **`H3 Director NG - native sampler.json`** to use native Output ports with your sampler.
-Select your own installed model files and reference media as needed.
+Select your own installed model files and reference media as needed. New example workflows for the Storyboard and Control Video
+follow with the release.
 Rendering expands native ComfyUI loops/samplers, preserving preview, progress and Stop. The original timeline Director below remains **Legacy**.
 Technical chunk/laboratory nodes are available under NG/Technical and keep their saved IDs.
 
@@ -80,7 +99,9 @@ The local 1.0.0 version is unreleased; published 0.3.2 is unchanged. Functional 
 
 ## News
 
-**1.0.0** · unreleased — **NG**, the second generation: videos of any length, context nodes, a live plan panel. The original Director is now marked **Legacy**.
+**1.0.0** · unreleased — **NG**, the second generation: videos of any length, context nodes, the Studio in the graph, the
+H3 Storyboard node with Qwen Image 2.1, turbo profiles per LoRA, resume after a crash, live preview in Render Sequence and an
+experimental Control Video node. The original Director is now marked **Legacy**.
 See [docs/NG.md](docs/NG.md) and the [changelog](CHANGELOG.md).
 
 **0.3.2** · 2026-10-02 — a **voice clip on each subject** (issue #10): a button on the
@@ -893,18 +914,20 @@ storyboard is not a workaround: H3's Qwen3-VL encoder was trained on exactly thi
 
 ## Live preview while sampling
 
-**🎯 Preview Override (live)** uses the connected tiny H3 TAEHV VAE. Connect Director
-Output's `MODEL` through this node to your guider. The Director has no preview player
-and sequence rendering does not insert a preview node automatically. The existing
-`MiniMaxH3PreviewOverrideCS` ID and the `NGH3Preview` alias use the same runtime and player.
+**H3 Render Sequence** shows the live preview by itself: connect the tiny H3 TAEHV VAE to the Context Connector's
+`preview VAE` and every render part is previewed while it samples; the player appears on the Render Sequence node with the
+first frames. Without a preview VAE nothing is added.
+
+For your own sampler, **🎯 Preview Override (live)** does the same: connect Director Output's `MODEL` through this node to
+your guider. The existing `MiniMaxH3PreviewOverrideCS` ID and the `NGH3Preview` alias use the same runtime and player.
 
 Place a compatible H3 checkpoint in `ComfyUI/models/vae_approx/taeh3.safetensors`.
 The tested [official TAEHV checkpoint](https://github.com/madebyollin/taehv/blob/011dfc2112197741c540e0bdd5b7b67bcc930771/safetensors/taeh3.safetensors)
 has SHA256 `4fd022bfcab08772fe0536b17ea1a3bbb5625be11e397868d1c5d891863d4c13`
 and uses the [MIT license](https://github.com/madebyollin/taehv/blob/011dfc2112197741c540e0bdd5b7b67bcc930771/LICENSE).
 It needs current ComfyUI H3 TAEHV support (24 latent channels, patch size 2).
-Select `taeh3.safetensors` in a normal **Load VAE** node. Connect it to Context Connector's
-`preview VAE`, then Director Output's `preview VAE` to the Preview Override's `vae` input.
+Select `taeh3.safetensors` in a normal **Load VAE** node and connect it to Context Connector's
+`preview VAE`. With your own sampler, connect Director Output's `preview VAE` to the Preview Override's `vae` input.
 The separate video/audio VAEs still perform conditioning and final output decoding.
 The preview node never downloads or secretly loads another model; an incompatible VAE
 is rejected with a message identifying the required H3 TAEHV checkpoint.

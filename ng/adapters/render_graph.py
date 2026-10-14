@@ -34,11 +34,16 @@ def render_sequence(inputs, settings):
     for name in ("model_fl2va", "model_ref2va"):
         if inputs.get(name) is not None:
             conditioning.set_input(name, inputs[name])
+    model = conditioning.out(0)
+    if inputs.get("preview_vae") is not None:
+        # the Context Connector's preview VAE: each part shows the TAEHV live preview, as Preview Override (live) does
+        model = graph.node("NGH3Preview", "preview", model=model, vae=inputs["preview_vae"], max_resolution=768, preview_fps=24.0,
+                           jpeg_quality=90, every_n_steps=1, max_preview_overhead=25, suppress_default_preview=True).out(0)
     noise = graph.node("NGChunkNoise", "noise", chunk=start.out(3), seed=settings["seed"])
     sampled_with = json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True)
     # per part: a known turbo LoRA on the part's model brings its own steps, sampler and scheduler (core/turbo_profiles.py)
-    sampling = graph.node("NGChunkSampling", "sampling", chunk=start.out(3), model=conditioning.out(0), settings=sampled_with)
-    guider = graph.node("BasicGuider", "guider", model=conditioning.out(0), conditioning=conditioning.out(1))
+    sampling = graph.node("NGChunkSampling", "sampling", chunk=start.out(3), model=model, settings=sampled_with)
+    guider = graph.node("BasicGuider", "guider", model=model, conditioning=conditioning.out(1))
     sample = graph.node("SamplerCustomAdvanced", "sample", noise=noise.out(0), guider=guider.out(0),
                        sampler=sampling.out(0), sigmas=sampling.out(1), latent_image=conditioning.out(2))
     part = sample.out(0)

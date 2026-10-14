@@ -2,6 +2,19 @@
 
 ## 1.0.0 (unreleased)
 
+**Live preview in Render Sequence, one-sentence shots shared, README** (2026-10-14):
+
+- **H3 Render Sequence shows the TAEHV live preview** of every part when the Context Connector has a `preview VAE` (taeh3): it
+  inserts ComfyUI's preview wrapper (`NGH3Preview`) before each part's sampler, and the player appears on the Render Sequence
+  node with the first frames. Without a preview VAE nothing changes. Preview Override (live) stays for your own sampler.
+- **A shot written as one sentence is shared over its render parts**: inside a sentence the text is cut at words that say one
+  step follows another (`…, then`, `and then`, `, before/until/ending/finally`, `and back toward`); a clause goes to a part only
+  when a quarter of its time lies there. Real case: "…away from the camera and back toward it, ending in a close-up" went whole to
+  both parts and Luna turned away again at 13 s; now part 1 walks away, part 2 comes back and ends in the close-up.
+- Studio plan errors checked in the UI (duplicate card names): the timeline shows "The plan failed: …" and Generate is disabled;
+  renaming the card plans again. The older note "stays on Planning …" no longer applies.
+- README: the NG section describes the Storyboard, turbo profiles, resume, live preview and Control Video.
+
 **Drag and drop pictures onto the cards** (2026-10-14):
 
 - H3 Context Image, Video and Audio: a file dragged from a folder onto the card is uploaded by ComfyUI's own upload of that node and becomes the card's file. Before, the card covered the node and ComfyUI added a new Load Image node instead.

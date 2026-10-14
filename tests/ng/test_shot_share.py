@@ -34,6 +34,21 @@ class Share(unittest.TestCase):
     def test_a_shot_only_in_the_pinned_head_gets_no_action(self):
         self.assertEqual(share.share(WALK, 0, 120, 120, 120, 98), share.HEAD_ONLY)
 
+    def test_one_sentence_is_shared_where_its_steps_follow_each_other(self):
+        # the control test 2026-10-13: the whole sentence went to both parts and Luna turned away again at 13 s
+        text = ("@Luna walks through a dark stone hall with tall gothic arches and candles, away from the camera and back toward it, "
+                "ending in a close-up with a calm smile.")
+        first, second = share.share(text, 0, 481, 0, 240, 0), share.share(text, 0, 481, 240, 481, 218)
+        self.assertIn("away from the camera", first)
+        self.assertNotIn("ending in a close-up", first)
+        self.assertNotIn("walks through", second)
+        self.assertTrue(second.startswith("and back toward it"), second)
+        self.assertIn("ending in a close-up", second)
+
+    def test_a_comma_without_a_step_word_does_not_cut(self):
+        text = "She wears a glossy black, purple and gold armour and walks slowly through the misty hall toward the stained-glass window."
+        self.assertEqual(share.share(text, 0, 481, 240, 481, 218), text)
+
     def test_one_sentence_stays_whole(self):
         self.assertEqual(share.share("She dances.", 0, 481, 240, 481, 218), "She dances.")
 

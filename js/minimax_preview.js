@@ -1,4 +1,5 @@
-// Live JPEG playback belongs only to the explicitly connected external Preview nodes.
+// Live JPEG playback belongs to the Preview nodes and to H3 Render Sequence, which previews its parts with the Context
+// Connector's preview VAE.
 import {createPreviewPanel} from "./minimax_preview_player.js";
 import {configurePreviewType} from "./minimax_preview_migrate.js";
 
@@ -46,6 +47,10 @@ app.registerExtension({
   },
   async setup() {
     api.addEventListener("minimax_h3_preview", async ({detail = {}}) => {
+      // H3 Render Sequence previews each part itself when the Context Connector has a preview VAE; its player appears
+      // with the first frames, so a Render Sequence without one stays as it is.
+      const render = app.graph?.getNodeById?.(String(detail.node_id ?? "").split(".")[0]);
+      if (render?.comfyClass === "NGProjectRender") installPanel(render);
       const updates = [];
       for (const node of panels) {
         if (!owns(detail.node_id, node.id)) continue;

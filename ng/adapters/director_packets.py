@@ -90,5 +90,8 @@ def prepare_output(result, chunk_index, previous=None, loop_chunk=None, apply_si
 def render_project(result):
     graph = GraphBuilder()
     chunks = graph.node("NGProjectChunks", "chunks", sequence=result)
-    expanded, outputs = render_sequence({**result.inputs.links(), "chunks": chunks.out(0)}, result.settings.values())
+    inputs = {**result.inputs.links(), "chunks": chunks.out(0)}
+    if result.inputs.preview_vae is not None:
+        inputs["preview_vae"] = result.inputs.preview_vae
+    expanded, outputs = render_sequence(inputs, result.settings.values())
     return {**graph.finalize(), **expanded}, outputs

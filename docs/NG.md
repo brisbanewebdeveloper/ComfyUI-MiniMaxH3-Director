@@ -82,7 +82,9 @@ either place.
   In First / last frame mode the Look opens `[Shot 1]`, in References mode it stands before `[Shot 1]`, as the two guides ask.
 - A shot that runs over several render parts gives each part only the action of its own share of the shot's time: time beats
   in the shot text (`2.5–5s: …`, seconds from the shot's start) go to the parts they fall in, re-timed to the part; other text
-  is cut into sentences and `…, then …` clauses laid over the shot's time by length. A shot whose rest lies only in a part's
+  is cut into sentences and clauses laid over the shot's time by length. Inside a sentence it is cut only at words that say one
+  step follows another (`…, then`, `and then`, `, before` / `until` / `ending` / `finally`, `and back toward`), so a shot written
+  as one sentence is shared too; a clause goes to a part only when at least a quarter of its time lies there. A shot whose rest lies only in a part's
   pinned head gets no new action. Before, each part replayed the whole action (a 20 s walk away and back was walked twice).
 - Each later part of a shot gets "Continue the same scene and action from the preceding video …" before its text, and sentences that move the
   camera (`push`, `pull`, `zoom`, `pan`, `dolly`, `orbit`, …) are left out there; a held camera stays. Every part read
@@ -194,16 +196,18 @@ This is the compiler's real output, refreshed live while you edit.
 - **Your own sampler**: **H3 Director NG - native sampler.json**. Director Output supplies native `MODEL`, positive/negative
   `CONDITIONING`, `LATENT`, fps, width/height, prompt and seed for one chunk; **sequence** carries the whole project.
   A continuation requires the previous chunk's raw latent on `previous`.
-- **Live preview**: put **🎯 Preview Override (live)** between Director Output's MODEL and your guider.
-  Load `taeh3.safetensors` with Load VAE, connect it to Context Connector's `preview VAE`, and connect
-  Director Output's `preview VAE` to the preview node. Only that node has a buffered player with pause,
-  scrubbing and independent playback/update status. At 24 FPS it retains
+- **Live preview**: load `taeh3.safetensors` with Load VAE and connect it to Context Connector's `preview VAE`. Render Sequence
+  then previews every part itself (its player appears on the node with the first frames). With your own sampler, put
+  **🎯 Preview Override (live)** between Director Output's MODEL and your guider and connect Director Output's `preview VAE` to it. Both players buffer, with pause,
+  scrubbing and independent playback/update status. At 24 FPS they retain
   every decoded frame and the clip's full duration. See [decoder setup and controls](../README.md#live-preview-while-sampling).
 - **References**: every path calls ComfyUI's own H3 nodes and never patches them. Before the call the Director brings pictures
   and reference video frames to the Qwen size of H3's released processor and cuts a reference video's soundtrack to the frames
   the stock node keeps (`minimax_refprep.py`).
 - **Resume after a crash**: Render Sequence keeps every finished render part's raw latent in `output/h3-director-resume`. Queue the
   same plan again and the finished parts come from disk without sampling; a changed part and every part after it render again.
+  A shot change usually lies a few frames before the end of a part (H3's frame grid; a cut right after a join would come about
+  2.5 s late), so that part already shows the new shot's first frames: editing a shot's text renders the part before it again too.
   Files older than 14 days are removed. The models are not part of the key: after swapping a checkpoint, empty the folder.
   The Studio's **Resume** switch (under Turbo) turns it off. Its box **Delete the kept parts when the video is done** (on by
   default) removes a video's parts once it is put together, so they do not fill the disk unseen.
