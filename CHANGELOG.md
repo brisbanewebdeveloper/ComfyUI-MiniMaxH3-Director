@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**Turbo profiles measured** (2026-10-14, real renders on the same scenes and seeds):
+
+- Official Ref2VA v0.1: 4 steps stays (6 and 8 look the same at 1.7x / 2.1x the time). ckpt500: 8 steps Euler + Beta stays; 4 steps give green, oversaturated faces.
+- Official FL2VA v1.0 "8step": now **4 steps** (4, 6 and 8 look the same; 4 takes about half the time of 8). FL2VA v1.2: 4 stays (6 the same at 1.4x).
+- Taomate: now **3 steps** (3 and 4 look the same in FL2VA and Ref2VA). On the official Ref2VA model with a storyboard card, Taomate showed the sheet itself in the first frames; the official LoRA did not.
+
 **H3 Storyboard, stages 3 and 4** (2026-10-14):
 
 - **Redraw with Qwen Image 2.1**: a panel's collage becomes one finished picture in the style of the character cards it names (ComfyUI's Qwen Image 2.1 nodes as a queued job, 25 steps). Real test: two cut-out portraits on a colour became Luna and Inferna facing each other in a gothic hall, with halo, horns, wings and tail from their sheets, in 49 s. The result is a new layer over the collage; each redraw takes a new seed. **Redraw all panels** does every panel and names the ones it skipped.

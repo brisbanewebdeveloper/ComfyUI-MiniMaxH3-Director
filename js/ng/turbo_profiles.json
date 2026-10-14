@@ -1,14 +1,14 @@
 {
   "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16": {"steps": 4, "sampler_name": "res_multistep", "scheduler": "simple",
-    "source": "ComfyUI template video_minimax_h3_r2v"},
-  "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16": {"steps": 8, "sampler_name": "res_multistep", "scheduler": "simple",
-    "source": "ComfyUI template video_minimax_h3_i2v"},
+    "source": "ComfyUI template video_minimax_h3_r2v; measured 2026-10-14: 6 and 8 steps look the same at 1.7x and 2.1x the time"},
+  "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16": {"steps": 4, "sampler_name": "res_multistep", "scheduler": "simple",
+    "source": "measured 2026-10-14: 4 steps look like 6 and 8 (the template's), in about half the time"},
   "minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16": {"steps": 4, "sampler_name": "res_multistep", "scheduler": "simple",
-    "source": "4-step LoRA, settings of the official H3 templates"},
-  "minimax_h3_taomate_3step_lora_avg_rank_19_bf16": {"steps": 4, "sampler_name": "res_multistep", "scheduler": "simple",
-    "source": "Director tests, October 2026"},
+    "source": "measured 2026-10-14: 6 steps look the same at 1.4x the time"},
+  "minimax_h3_taomate_3step_lora_avg_rank_19_bf16": {"steps": 3, "sampler_name": "res_multistep", "scheduler": "simple",
+    "source": "measured 2026-10-14 (FL2VA and Ref2VA): 3 steps look like 4"},
   "minimax_h3_turbo_4step_ckpt500": {"steps": 8, "sampler_name": "euler", "scheduler": "beta",
-    "source": "Civitai page: best at 6-8 steps, Euler + Beta"},
+    "source": "Civitai page: best at 6-8 steps, Euler + Beta; measured 2026-10-14: 4 steps give green, oversaturated faces"},
   "minimax_h3_turbo_4step_ckpt500_pruned_comfyui": {"steps": 8, "sampler_name": "euler", "scheduler": "beta",
-    "source": "Civitai page: best at 6-8 steps, Euler + Beta"}
+    "source": "Civitai page: best at 6-8 steps, Euler + Beta; measured 2026-10-14: 4 steps give green, oversaturated faces"}
 }

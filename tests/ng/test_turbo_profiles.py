@@ -11,13 +11,13 @@ if HAVE_COMFY:
 
 OWN = {"steps": 20, "sampler_name": "res_multistep", "scheduler": "simple"}
 REF2V = "MiniMax-H3\\minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors"
-FL2V8 = "minimax-h3/MINIMAX_H3_FL2V_TURBO_8STEP_V1.0_COMFYUI_BF16.safetensors"
+CKPT500 = "minimax-h3/MINIMAX_H3_TURBO_4STEP_CKPT500_PRUNED_COMFYUI.safetensors"  # 8 steps, euler, beta
 
 
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
 class PartSettings(unittest.TestCase):
     def test_each_part_takes_the_profile_of_its_own_model(self):
-        settings = {**OWN, "turbo": True, "turbo_lora_fl2va": FL2V8, "turbo_lora_ref2va": REF2V}
+        settings = {**OWN, "turbo": True, "turbo_lora_fl2va": CKPT500, "turbo_lora_ref2va": REF2V}
         self.assertEqual(profiles.part_settings("fl2va", settings)["steps"], 8, "any folder, any case")
         self.assertEqual(profiles.part_settings("ref2va", settings)["steps"], 4)
 
@@ -41,7 +41,7 @@ class PartSettings(unittest.TestCase):
         fake_select = types.SimpleNamespace(execute=lambda **kw: calls.append(kw) or types.SimpleNamespace(args=("sampler",)))
         render_node = module("ng.nodes.render_node")
         job = types.SimpleNamespace(compiled=types.SimpleNamespace(mode="fl2va"))
-        settings = json.dumps({**OWN, "turbo": True, "turbo_lora_fl2va": FL2V8})
+        settings = json.dumps({**OWN, "turbo": True, "turbo_lora_fl2va": CKPT500})
         original = render_node.BasicScheduler, render_node.KSamplerSelect
         render_node.BasicScheduler, render_node.KSamplerSelect = fake_scheduler, fake_select
         try:
@@ -49,7 +49,7 @@ class PartSettings(unittest.TestCase):
         finally:
             render_node.BasicScheduler, render_node.KSamplerSelect = original
         self.assertEqual(out.args, ("sampler", "sigmas"))
-        self.assertEqual(calls, [{"sampler_name": "res_multistep"}, {"model": "m", "scheduler": "simple", "steps": 8, "denoise": 1.0}])
+        self.assertEqual(calls, [{"sampler_name": "euler"}, {"model": "m", "scheduler": "beta", "steps": 8, "denoise": 1.0}])
 
 
 if __name__ == "__main__":

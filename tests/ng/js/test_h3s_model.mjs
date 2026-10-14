@@ -106,7 +106,7 @@ const shot = (id, start, end) => ({ id, start, end, text: id, media: [], spoken:
   const { readFileSync } = await import("node:fs");
   const table = JSON.parse(readFileSync(new URL("../../../js/ng/turbo_profiles.json", import.meta.url), "utf8"));
   assert.equal(model.turboProfile(table, "MiniMax-H3\\minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors").steps, 4);
-  assert.equal(model.turboProfile(table, "minimax-h3/MINIMAX_H3_FL2V_TURBO_8STEP_V1.0_COMFYUI_BF16.safetensors").steps, 8);
+  assert.equal(model.turboProfile(table, "minimax-h3/MINIMAX_H3_TURBO_4STEP_CKPT500_PRUNED_COMFYUI.safetensors").steps, 8);
   assert.equal(model.turboProfile(table, "flux2/Flux2TurboComfyv2.safetensors"), null);
   assert.equal(model.turboProfile(table, "none"), null);
 }
