@@ -2,6 +2,8 @@
 
 ## 1.0.0 (unreleased)
 
+- H3 Storyboard: the **AI provider** input is gone; the Storyboard uses the AI provider of the Context Connector on its **H3 context** input, as the Director does. One cable is all it needs (user feedback 2026-10-14: two ports for the same thing were confusing).
+
 **Turbo profiles measured** (2026-10-14, real renders on the same scenes and seeds):
 
 - Official Ref2VA v0.1: 4 steps stays (6 and 8 look the same at 1.7x / 2.1x the time). ckpt500: 8 steps Euler + Beta stays; 4 steps give green, oversaturated faces.

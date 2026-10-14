@@ -96,9 +96,10 @@ class Node(unittest.TestCase):
 
     def test_the_editor_links_are_never_run(self):
         node = module("ng.nodes.storyboard_node").NGStoryboard
-        self.assertEqual(node.check_lazy_status(ai_provider=None, context=None), [])
+        self.assertEqual(node.check_lazy_status(context=None), [])
         inputs = {item.id: item for item in node.GET_SCHEMA().inputs}
-        self.assertTrue(inputs["ai_provider"].lazy and inputs["context"].lazy)
+        self.assertTrue(inputs["context"].lazy)
+        self.assertNotIn("ai_provider", inputs, "the AI provider comes through the Context Connector")
 
 
 if __name__ == "__main__":

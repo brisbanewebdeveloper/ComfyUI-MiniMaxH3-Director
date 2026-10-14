@@ -16,6 +16,8 @@ function srcOf(name, type = "input") {
   return { filename: clean.slice(cut + 1), subfolder: cut < 0 ? "" : clean.slice(0, cut), type };
 }
 
+const NO_AI = "Connect H3 context to the Context Connector, and the H3 AI Loader to the Connector's AI provider.";
+
 export function openBoard(node, app, api, host) {
   const root = h("div", { class: "h3s h3b", tabindex: "-1", role: "region", "aria-label": "H3 Storyboard" });
   keepKeys(root);
@@ -138,7 +140,7 @@ export function openBoard(node, app, api, host) {
   // --- AI: the panel texts -----------------------------------------------------------------------------------------------
   async function writeTexts() {
     const provider = connectedProvider(node);
-    if (!provider) { flash("Connect the H3 AI Loader to this node's AI provider input.", true); return; }
+    if (!provider) { flash(NO_AI, true); return; }
     if (!S.board.idea.trim()) { flash("Write what should happen first.", true); return; }
     S.busy = "ai"; S.notice = null; render();
     try {
@@ -240,9 +242,9 @@ export function openBoard(node, app, api, host) {
           area(S.board.idea, quietText((v) => { S.board.idea = v; }), { rows: 3, onfocus: remember, placeholder: "@Luna and @Inferna meet in the candle-lit hall, ..." })),
         h("div", { class: "h3s-row" },
           h("button", { class: "h3s-btn ai", disabled: Boolean(S.busy) || !provider, onclick: writeTexts,
-            title: provider ? "Titles, captions and shot texts of all panels; the panel times stay" : "Connect the H3 AI Loader to AI provider" },
+            title: provider ? "Titles, captions and shot texts of all panels; the panel times stay" : NO_AI },
           icon("spark"), S.busy === "ai" ? "The AI is writing…" : "AI: write panel texts"),
-          provider ? null : h("span", { class: "h3s-lbl" }, "Connect the H3 AI Loader to this node's AI provider input."),
+          provider ? null : h("span", { class: "h3s-lbl" }, NO_AI),
           h("button", { class: "h3s-btn ai", disabled: Boolean(S.busy), onclick: () => redrawPanels(S.board.panels.map((_, i) => i)),
             title: "Every panel's collage redrawn as one finished picture with Qwen Image 2.1, the character cards as references" },
           icon("image"), S.busy === "redraw" ? "Redrawing…" : "Redraw all panels"))));

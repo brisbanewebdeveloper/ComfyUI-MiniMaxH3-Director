@@ -14,7 +14,6 @@ from ..adapters.paths import input_path
 from ..core.storyboard import read_board, shots_document
 from .connector_node import NGInputs
 from .context_nodes import CATEGORY
-from .provider_node import NGAI
 
 
 def _files(rendered):
@@ -48,11 +47,10 @@ class NGStoryboard(io.ComfyNode):
                         "and the panels as shots for the Director.",
             inputs=[io.String.Input("board", multiline=True, default="", tooltip="The storyboard, written by the node's editor."),
                     io.String.Input("rendered", default="", tooltip="The pictures the editor drew, set when the workflow is queued."),
-                    NGAI.Input("ai_provider", display_name="AI provider", optional=True, lazy=True,
-                               tooltip="For AI: write panel texts. Only the editor uses it; it is not run with the workflow."),
                     NGInputs.Input("context", display_name="H3 context", optional=True, lazy=True,
-                                   tooltip="The Context Connector's output: its picture cards can be placed on panels and its "
-                                           "names are used in the texts. Only the editor reads it; it is not run with the workflow.")],
+                                   tooltip="The Context Connector's output, the same one the Director gets: its picture cards can "
+                                           "be placed on panels, its names are used in the texts and its AI provider writes them. "
+                                           "Only the editor reads it; it is not run with the workflow.")],
             outputs=[io.Image.Output(display_name="sheet"), io.Image.Output(display_name="panels"),
                      io.String.Output(display_name="shots", tooltip="The panels as the H3 Director's shots document.")])
 
@@ -70,7 +68,7 @@ class NGStoryboard(io.ComfyNode):
         return hashlib.sha1(json.dumps([board, rendered, stamps]).encode()).hexdigest()
 
     @classmethod
-    def execute(cls, board, rendered, ai_provider=None, context=None):
+    def execute(cls, board, rendered, context=None):
         board = read_board(board)
         paths = _files(rendered)
         sheet = _image(paths[0])[None]

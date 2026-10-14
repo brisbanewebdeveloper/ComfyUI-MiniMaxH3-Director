@@ -86,7 +86,8 @@ export function connectedProvider(node) {
       if (config[key] !== undefined) provider[key] = config[key];
     return provider;
   }
-  if (node.comfyClass === "NGH3Director") {
+  // The Director and the Storyboard take the AI provider of the Context Connector on their "context" input.
+  if (node.comfyClass === "NGH3Director" || node.comfyClass === "NGStoryboard") {
     const connector = upstreamNode(node.graph, node.inputs?.find((input) => input.name === "context"));
     return connector ? connectedProvider(connector) : null;
   }

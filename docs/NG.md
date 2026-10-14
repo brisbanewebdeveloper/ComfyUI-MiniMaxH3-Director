@@ -220,6 +220,11 @@ This is the compiler's real output, refreshed live while you edit.
 1 to 9 numbered panels in a grid (panel format 16:9, 9:16, 1:1, 4:3, 3:4 or 21:9), each with its time and title on the
 picture and a caption below.
 
+- **Wiring:** one cable, from the Context Connector's **H3 context** output (the same output that goes into the Director) to
+  the Storyboard's **H3 context** input. Through it the editor sees the picture cards and the Connector's AI provider. The
+  Storyboard hands the Director nothing by cable: **Send to Director** writes the shots into the Director and adds Context
+  cards that load the drawn files from `input/h3-storyboard`, so there is no loop. The outputs are optional, for saving the
+  sheet and panels or using them in another workflow; left unconnected, the node does not run with the workflow at all.
 - **Panels:** each has its seconds (panels follow each other: 10 s, 2.5 s, ... are 0-10, 10-12.5, ...), a title, the caption
   on the sheet and the **shot text** H3 renders. Its picture is a stack of layers: pictures (from the Context cards connected
   through **H3 context**, from the input folder including subfolders, or uploaded to `input/h3-storyboard`), texts and a
@@ -228,7 +233,7 @@ picture and a caption below.
 - **Cut out** removes a picture's background with ComfyUI's own Load Background Removal Model and Remove Background
   (`models/background_removal`, e.g. `birefnet.safetensors`), queued as a small job; the result is a PNG with transparency
   in `output/h3-storyboard`. Undo brings the original back.
-- **AI: write panel texts** (connect the H3 AI Loader to **AI provider**): from "What should happen" the AI writes the
+- **AI: write panel texts** (the AI provider of the Context Connector on **H3 context**): from "What should happen" the AI writes the
   sheet's title and subtitle and every panel's title, caption and shot text, with the Studio's rules (framing, camera, time
   beats for a panel longer than 5 s). Panel times are never changed; texts the user wrote are kept in meaning.
 - **Outputs:** `sheet` (the sheet as drawn), `panels` (each panel's picture, without caption) and `shots` (the panels as the
