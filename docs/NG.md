@@ -246,6 +246,9 @@ picture and a caption below.
   **+ Background** draws an empty place in the panel's format (about 20 s). Both go onto the panel and into the board's
   pictures: "+ Picture" offers them, and every picture already on a panel, under **From this storyboard** on every panel.
   **Use on all panels** copies a layer onto every other panel at the same place (a bottom layer goes under).
+- **Drag and drop:** picture files dragged from a folder onto the Storyboard land on the panel they are dropped on (a
+  panel of the sheet, or the panel canvas at the drop point; anywhere else: the selected panel). Several files stand side
+  by side. Pictures dragged from ComfyUI itself (queue, the board's own thumbnails) work the same way without a new upload.
 - **Redraw with Qwen Image 2.1** (per panel, or **Redraw all panels**): the panel's collage is image 1 and keeps its
   composition; the Context cards of the characters the panel names (else all character cards, up to four) are the
   references. ComfyUI's own Qwen Image 2.1 nodes run as a queued job (25 steps, Euler, CFG 1, about a minute); the result
@@ -264,7 +267,7 @@ picture and a caption below.
 | H3 Context Connector | Native model/CLIP/video VAE/audio VAE ports, optional preview VAE and AI, and four dynamically growing Context groups |
 | H3 Director | The Studio itself in the graph (Full screen on demand); outputs the project result and the chunk list |
 | H3 Director Output | Current chunk's native sampler values, seed and steps/cfg/sampler/scheduler (also as SAMPLER and SIGMAS), optional preview VAE, plus complete sequence packet for the simple render path |
-| H3 Context Image | Full card: picture, what is in it, default role, what to keep, figure link, description, preset |
+| H3 Context Image | Full card: picture (also by dropping a file on the card), what is in it, default role, what to keep, figure link, description, preset |
 | H3 Context Video | Full card: player, part of the file, motion/camera/continue roles, its own sound |
 | H3 Context Audio | Full card: waveform with selection, voice/copy/lock roles, whose voice, listening controls |
 | H3 Context Text | Full card: note, quick insert, templates, role (Scene / story is read by the AI split) |

@@ -20,6 +20,7 @@ import { assetChoices, assetSubjects, restoreAssetWidget } from "./ng_asset_rela
 import { subjectChoices } from "./ng_subjects.js";
 import { followNoteRenames, knownNames } from "./ng_references.js";
 import { noteGrowth } from "./ng_layout.js";
+import { dropTarget } from "./ng_drop.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -311,6 +312,10 @@ function attach(node, media) {
     removed = true; clearTimeout(timer); controller?.abort(); watcher?.disconnect(); S.els.audio?.pause(); S.els.video?.pause?.();
     document.removeEventListener("ng-context-changed", outside); return gone?.apply(this, args);
   };
+  // A file dragged onto the card goes through ComfyUI's own upload of this node (the same as dropping it on a Load Image).
+  if (media !== "text") dropTarget(root, async (event) => {
+    if (!(node.onDragOver?.(event) && await node.onDragDrop?.(event))) say(`Drop a ${media} file here.`, true);
+  });
   node.setSize([WIDTH[media], node.size?.[1] || 600]);
   refreshPresets(); render();
 }

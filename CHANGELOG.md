@@ -2,6 +2,11 @@
 
 ## 1.0.0 (unreleased)
 
+**Drag and drop pictures onto the cards** (2026-10-14):
+
+- H3 Context Image, Video and Audio: a file dragged from a folder onto the card is uploaded by ComfyUI's own upload of that node and becomes the card's file. Before, the card covered the node and ComfyUI added a new Load Image node instead.
+- H3 Storyboard: picture files dropped on a panel of the sheet or on the panel canvas land on that panel (on the canvas at the drop point); several files stand side by side; pictures dragged from ComfyUI (queue, the board's thumbnails) need no new upload. Shared helper `js/ng/ng_drop.js`.
+
 **H3 Storyboard: figures from sheets, backgrounds, pictures for every panel** (2026-10-14):
 
 - **+ Figure from a sheet**: Qwen Image 2.1 draws a character card's figure in the pose and camera angle the user writes, on a transparent background (the template's RGBA prompt; the PNG carries alpha). Real test: Luna kneeling with her weapon, Inferna in profile with crossed arms and wings, from their sheets, 33 s each.

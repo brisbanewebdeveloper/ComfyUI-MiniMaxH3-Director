@@ -11,6 +11,7 @@ import { noteChange } from "./ng_widgets.js";
 import { boardJobs } from "./h3b_jobs.js";
 import { boardAssets } from "./h3b_assets.js";
 import { SUBFOLDER, comboOptions, canvasOf } from "./h3b_queue.js";
+import { dropTarget, viewSource } from "./ng_drop.js";
 
 function srcOf(name, type = "input") {
   const clean = String(name || "").replace(/ \[(input|output)\]$/, "").replace(/\\/g, "/");
@@ -120,25 +121,47 @@ export function openBoard(node, app, api, host) {
     const source = connector();
     return source ? readContexts(source) : [];
   }
-  // A new picture starts as large as fits into the panel (a portrait in a 16:9 panel would run off it at 0.6 of its width).
-  async function addPicture(src, name) {
+  // A new picture starts as large as fits into the panel (a portrait in a 16:9 panel would run off it at 0.6 of its width),
+  // in its middle or where it was dropped (`at`, panel fractions).
+  async function addPicture(src, name, at = null) {
     const img = await new Promise((resolve) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => resolve(null); i.src = srcUrl(src); });
     const [aw, ah] = ASPECTS[S.board.aspect];
     const scale = img ? Math.min(0.6, 0.9 * (ah / aw) * (img.naturalWidth / img.naturalHeight)) : 0.6;
     change((board) => {
-      const item = newLayer("image", { src, name: name || src.filename, scale });
+      const item = newLayer("image", { src, name: name || src.filename, scale, ...(at && { x: at[0], y: at[1] }) });
       board.panels[S.selected].layers.push(item); S.layer = item.id;
     });
     S.picker = false; render();
   }
-  async function uploadFile(file) {
+  async function uploadFile(file, at = null) {
     const body = new FormData();
     body.append("image", file, file.name); body.append("subfolder", SUBFOLDER); body.append("type", "input");
     const response = await api.fetchApi("/upload/image", { method: "POST", body });
     if (response.status !== 200) { flash(`Upload failed (${response.status}).`, true); return; }
     const data = await response.json();
-    addPicture({ filename: data.name, subfolder: data.subfolder || "", type: "input" }, file.name.replace(/\.[^.]+$/, ""));
+    await addPicture({ filename: data.name, subfolder: data.subfolder || "", type: "input" }, file.name.replace(/\.[^.]+$/, ""), at);
   }
+  // Pictures dragged from a folder (or from ComfyUI's queue): onto a panel of the sheet, the panel canvas (where it lands)
+  // or anywhere else on the editor (the selected panel).
+  async function dropped(event) {
+    if (event.target === views.sheet) {
+      const rect = views.sheet.getBoundingClientRect(), layout = sheetLayout(S.board);
+      const x = (event.clientX - rect.left) * layout.width / rect.width, y = (event.clientY - rect.top) * layout.height / rect.height;
+      const index = layout.panels.findIndex((p) => x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h);
+      if (index >= 0) { S.selected = index; S.layer = null; }
+    }
+    const rect = event.target === views.stage ? views.stage.getBoundingClientRect() : null;
+    const at = rect ? [(event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height] : null;
+    const files = [...(event.dataTransfer?.files || [])].filter((file) => file.type.startsWith("image/"));
+    const linked = files.length ? null : viewSource(event);
+    if (!files.length && !linked) { flash("Only pictures can go onto a panel (PNG, JPG, WebP).", true); return; }
+    // Several files stand side by side around the drop point instead of on top of each other.
+    const spread = (i) => (files.length > 1 ? [(at?.[0] ?? 0.5) + (i - (files.length - 1) / 2) * 0.2, at?.[1] ?? 0.5] : at);
+    for (const [i, file] of files.entries()) await uploadFile(file, spread(i));
+    if (linked) await addPicture(linked, linked.filename.replace(/\.[^.]+$/, ""), at);
+    flash(`${files.length || 1} picture(s) on panel ${S.selected + 1}.`);
+  }
+  dropTarget(root, dropped);
   // --- AI: the panel texts -----------------------------------------------------------------------------------------------
   async function writeTexts() {
     const provider = connectedProvider(node);
