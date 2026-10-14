@@ -215,6 +215,10 @@ This is the compiler's real output, refreshed live while you edit.
   pose, depth or edge video (MiniMax H3 Fun ControlNet-Union via ComfyUI's `ModelPatchLoader` and its apply node), or with a mask
   and the source video behind it. The videos run on the story timeline at 24 fps; each part gets its own window, head included.
   Make the control video with ComfyUI's own nodes: SDPose (pose), Canny, MoGe or Depth Anything (depth), SAM3 Video Track (masks).
+  ComfyUI's **Detect Edges (Canny)** works on the whole batch at once (240 frames of 720x1280 ran out of memory on 8 GB): put
+  **Rebatch Images** (16) before it and **Rebatch Images** (4096) after it. Measured: canny at strength 1.0 makes the figure walk
+  the source's path and framing exactly while keeping its own hair, face and outfit; depth at 1.0 carried the other figure's
+  hair over, 0.5 does not.
 - **Editable loop**: **H3 Director NG - native chunk loop.json** or **two sampler chunk loop.json**. The Director's **chunks** starts
   the loop and one Director Output inside it prepares each chunk. See [connections and continuity contract](NG-external-sampling.md).
 
