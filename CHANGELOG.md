@@ -8,6 +8,8 @@
   Resampling the tail to 24 fps could discard that frame.
 - Video references and control sources use native float colour decoding and display rotation; conversion through 8-bit RGB
   changed the native conditioning. Timestamp offsets are normalized, and EOF padding holds the actual final decoded frame.
+- Audio references retain the source sample rate and samples until the native H3 audio encoder; unnecessary intermediate
+  resampling changed paired video/audio conditioning.
 
 **Control video cards and Studio lane** (2026-10-14):
 

@@ -1,4 +1,6 @@
-"""Load the media a compiled chunk refers to, with the legacy pack's loaders (path lookup, trimming, resampling, size limits)."""
+"""Load a compiled chunk's sources with native audio rates and bounded video decoding."""
+from comfy_extras import nodes_audio as native_audio
+
 from ... import minimax_media as legacy
 from ... import minimax_plan as plan
 from ..core.compile import MediaRef
@@ -38,10 +40,16 @@ def load_video(ref: MediaRef):
 
 def load_audio(ref: MediaRef):
     _require_file(ref, "audio")
-    clip = legacy.load_audio_segment({"audioFile": ref.source, "trimStart": ref.trim_start_f, "length": ref.length_f or FPS * 15}, float(FPS))
-    if clip is None:
-        raise MediaError("the audio '%s' (%s) could not be loaded" % (ref.ctx_id, ref.source))
-    return clip
+    try:
+        wave, rate = native_audio.load(input_path(ref.source))
+    except Exception as error:
+        raise MediaError("the audio '%s' (%s) could not be loaded" % (ref.ctx_id, ref.source)) from error
+    start = max(0, int(ref.trim_start_f / float(FPS) * rate))
+    count = max(1, int((ref.length_f or FPS * 15) / float(FPS) * rate))
+    clip = wave[:, start:start + count]
+    if not clip.shape[-1]:
+        raise MediaError("the selected audio range of '%s' (%s) is empty; choose an earlier source start" % (ref.ctx_id, ref.source))
+    return {"waveform": clip.unsqueeze(0), "sample_rate": rate}
 
 
 def load_audio_source(ref: MediaRef, sample_rate):
