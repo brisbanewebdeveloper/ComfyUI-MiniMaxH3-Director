@@ -893,6 +893,30 @@ def _decode_target_size(width, height, max_short_edge, max_pixels):
     return max(16, int(round(width * scale)) // 2 * 2), max(16, int(round(height * scale)) // 2 * 2)
 
 
+def _video_frame_array(frame, width, height):
+    """Keep ComfyUI's native float colour conversion and display rotation, within the decode size bound."""
+    byte_rgb = frame.format.name in ("yuvj420p", "yuvj422p", "yuvj444p", "rgb24", "rgba", "pal8")
+    scaled = frame.reformat(width=width, height=height)
+    if not byte_rgb and width % 32:
+        # The native loader pads before float conversion: unaligned swscale buffers can otherwise bleed into the edge.
+        pad_w, pad_h = (width + 31) // 32 * 32, (height + 31) // 32 * 32
+        graph = av.filter.Graph()
+        source = graph.add_buffer(template=scaled)
+        pad = graph.add("pad", "%d:%d:0:0" % (pad_w, pad_h))
+        fill = graph.add("fillborders", "left=0:right=%d:top=0:bottom=%d:mode=smear" % (pad_w - width, pad_h - height))
+        sink = graph.add("buffersink")
+        source.link_to(pad); pad.link_to(fill); fill.link_to(sink)
+        graph.configure()
+        source.push(scaled)
+        pixels = sink.pull().to_ndarray(format="gbrpf32le")[:height, :width]
+    else:
+        pixels = scaled.to_ndarray(format="rgb24" if byte_rgb else "gbrpf32le")
+    if byte_rgb:
+        pixels = pixels.astype(np.float32) / 255.0
+    rotation = int(round(frame.rotation // 90)) % 4 if frame.rotation else 0
+    return np.ascontiguousarray(np.rot90(pixels, k=rotation, axes=(0, 1)) if rotation else pixels)
+
+
 def load_video_tensor(file_ref: str, trim_start_sec: float, duration_sec: float,
                       out_fps: float = 24.0, max_short_edge: int = 768,
                       max_pixels: int = 768 * 1344, strict: bool = False) -> torch.Tensor:
@@ -917,15 +941,16 @@ def load_video_tensor(file_ref: str, trim_start_sec: float, duration_sec: float,
         with av.open(path) as container:
             stream = container.streams.video[0]
             stream.thread_type = "AUTO"
+            origin = float(stream.start_time * stream.time_base) if stream.start_time is not None else (container.start_time or 0) / av.time_base
             src_w = stream.width or stream.codec_context.width
             src_h = stream.height or stream.codec_context.height
             dst_w, dst_h = _decode_target_size(src_w, src_h, max_short_edge, max_pixels)
 
             seek_target = max(0.0, trim_start_sec - 0.5)
             if stream.time_base:
-                container.seek(int(seek_target / float(stream.time_base)), stream=stream, backward=True)
+                container.seek(int((origin + seek_target) / float(stream.time_base)), stream=stream, backward=True)
             else:
-                container.seek(int(seek_target * av.time_base), stream=stream, backward=True)
+                container.seek(int((origin + seek_target) * av.time_base), stream=stream, backward=True)
 
             idx = 0
             prev = None
@@ -935,13 +960,14 @@ def load_video_tensor(file_ref: str, trim_start_sec: float, duration_sec: float,
                     ftime = float(frame.pts * stream.time_base)
                 if ftime is None:
                     ftime = 0.0
+                ftime -= origin
 
                 # emit every target timestamp this frame is the closest match for
                 while idx < n_out and ftime >= targets[idx] - 1e-6:
                     pick = frame
                     if prev is not None and abs(prev[0] - targets[idx]) < abs(ftime - targets[idx]):
                         pick = prev[1]
-                    frames.append(pick.reformat(width=dst_w, height=dst_h, format="rgb24").to_ndarray())
+                    frames.append(_video_frame_array(pick, dst_w, dst_h))
                     idx += 1
                 prev = (ftime, frame)
                 if idx >= n_out:
@@ -949,7 +975,8 @@ def load_video_tensor(file_ref: str, trim_start_sec: float, duration_sec: float,
 
             # source ended early: hold the last frame so the clip still has its full length
             if frames and idx < n_out:
-                frames.extend([frames[-1]] * (n_out - idx))
+                last = _video_frame_array(prev[1], dst_w, dst_h)
+                frames.extend([last] * (n_out - idx))
     except Exception as e:
         log.warning("[MiniMaxDirector] Video extract error for %s: %s", file_ref, e)
         if strict:
@@ -959,7 +986,7 @@ def load_video_tensor(file_ref: str, trim_start_sec: float, duration_sec: float,
         if strict:
             raise ValueError("No readable video frames in '%s'" % file_ref)
         return BLANK()
-    return torch.from_numpy(np.asarray(frames, dtype=np.float32) / 255.0)
+    return torch.from_numpy(np.asarray(frames, dtype=np.float32))
 
 
 def _decode_audio_stereo(buffer_or_path, target_sr=AUDIO_SR):

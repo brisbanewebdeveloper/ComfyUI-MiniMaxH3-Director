@@ -2,6 +2,13 @@
 
 ## 1.0.0 (unreleased)
 
+**Video Context source-frame fidelity** (2026-10-15):
+
+- Continue reads the final original frame before the selected source end, including 30/60-fps and variable-rate files.
+  Resampling the tail to 24 fps could discard that frame.
+- Video references and control sources use native float colour decoding and display rotation; conversion through 8-bit RGB
+  changed the native conditioning. Timestamp offsets are normalized, and EOF padding holds the actual final decoded frame.
+
 **Control video cards and Studio lane** (2026-10-14):
 
 - Context Video: Canny/Pose/Depth control role, queued generation with installed native nodes, saved result and original

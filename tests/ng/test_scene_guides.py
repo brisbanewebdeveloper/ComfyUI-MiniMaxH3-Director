@@ -35,15 +35,19 @@ class SceneGuides(unittest.TestCase):
         comp = self.compile
         refs = (comp.MediaRef("keyframe", "i", "image.png", start_f=39),
                 comp.MediaRef("continue_video", "v", "clip.mp4", length_f=24, trim_start_f=120))
-        job = SimpleNamespace(compiled=comp.CompiledChunk(0, "fl2va", "", refs))
+        item = self.context.ContextItem("v", "Source", "video", "clip.mp4", length_s=8,
+                                        options=self.options.ContextOptions(start_s=3, end_s=6))
+        job = SimpleNamespace(compiled=comp.CompiledChunk(0, "fl2va", "", refs),
+                              project=SimpleNamespace(context=self.context.DirectorContext(items=(item,))))
         calls = []
         def execute(**kwargs):
             calls.append(kwargs)
             return SimpleNamespace(args=("next",))
         mm = SimpleNamespace(MiniMaxH3AddGuide=SimpleNamespace(execute=execute))
         image, frames = torch.zeros(1, 2, 2, 3), torch.arange(36).reshape(3, 2, 2, 3)
-        with patch.object(self.adapter.media, "load_picture", return_value=image), patch.object(self.adapter.media, "load_video", return_value=frames):
+        with patch.object(self.adapter.media, "load_picture", return_value=image), patch.object(self.adapter.video_end, "last_frame", return_value=frames[-1:]) as last:
             self.assertEqual(self.adapter.apply_guides(mm, job, "positive", "latent", "vae"), "next")
+        last.assert_called_once_with("clip.mp4", 3, 6)
         self.assertEqual([call["frame_idx"] for call in calls], [39, 0])
         self.assertEqual(calls[1]["positive"], "next")
         self.assertTrue(torch.equal(calls[1]["image"], frames[-1:]))

@@ -104,6 +104,9 @@ take instruction in the shot or shared Look/rules prevents an added cut. Explici
 Drag a card onto the empty timeline to create a shot with it, onto a shot (or click it while a shot is selected) to assign it,
 or an audio card onto an audio lane. Cards the current mode cannot use are dimmed (for example a video in First / last frame mode).
 Files are chosen in the Context nodes themselves, not in the Studio.
+**Continue from video** anchors the shot with the final original frame before the card's selected source end, independent
+of the source frame rate. It produces the continuation; the original source can be joined to it with native Concatenate Video.
+Video decoding keeps native float colours and display rotation and reads source timing relative to the video's first timestamp.
 
 ### Timeline
 

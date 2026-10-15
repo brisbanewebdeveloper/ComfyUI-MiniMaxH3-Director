@@ -297,8 +297,9 @@ class NativeGuideRows(unittest.TestCase):
         previous = empty_latent(result.plan.chunks[0].sampled_frames)
         frames = torch.stack([torch.full((64, 64, 3), value) for value in (.1, .3, .6)])
         with patch.object(media, "load_picture", return_value=torch.full((1, 64, 64, 3), .8)), \
-             patch.object(media, "load_video", return_value=frames):
+             patch.object(module("ng.adapters.video_end"), "last_frame", return_value=frames[-1:]) as last:
             built = builder.build_chunk(project.jobs(result)[1], Encoder(), VAE(), previous=previous, mm=native)
+        last.assert_called_once_with("v.mp4", 0, 3)
         guides = [row for row in built.positive[0][1]["minimax_keyframes"] if row["resolved_frame_index"] >= 22]
         self.assertEqual([row["resolved_frame_index"] for row in guides], [106, 59])
         self.assertAlmostEqual(float(guides[0]["latent"].mean()), .8, delta=1/255)
