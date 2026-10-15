@@ -2,6 +2,7 @@
 // the card (h3c_card.js) owns the state and redraws on change.
 import { h } from "./h3s_dom.js";
 import { CONTENT, USAGE, KEEP, KEEP_LEVELS, roleHint } from "./h3c_model.js";
+import { videoUpload } from "./h3c_upload.js";
 
 export const box = (caption, ...children) => h("div", { class: "h3c-box" }, caption ? h("div", { class: "h3c-cap" }, caption) : null, ...children);
 const cap = (text, ...tools) => h("div", { class: "h3c-cap" }, text, h("span", { class: "h3c-grow" }), ...tools);
@@ -16,7 +17,8 @@ export function topRow(S, actions) {
     S.files.map((value) => h("option", { value }, value)));
   file.value = S.values[S.media] || "";
   return h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr) auto" } }, name,
-    h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, file, h("button", { class: "h3c-btn", onclick: actions.upload }, "Upload")), badge);
+    h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, file,
+      S.media === "video" ? videoUpload(S, actions) : h("button", { class: "h3c-btn", onclick: actions.upload }, "Upload")), badge);
 }
 
 // Analyze and, while it runs, Cancel. On media cards it sits on "What is in it"; the Text card has it on "Use as".

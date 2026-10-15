@@ -25,6 +25,7 @@ import { controlBox } from "./h3c_control.js";
 import { controlGraph, controlSetup } from "./h3c_control_graph.js";
 import { runJob } from "./h3b_queue.js";
 import { uploadMask } from "./h3c_mask.js";
+import { uploadVideo } from "./h3c_upload.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -163,6 +164,16 @@ function attach(node, media) {
     upload() {
       const widget = node.widgets?.find((entry) => entry.name === "upload" || entry.name === "choose file to upload");
       if (widget?.callback) widget.callback(); else say("Use ComfyUI's file upload for this node type.", true);
+    },
+    async uploadVideo(file) {
+      if (S.busy) return;
+      S.busy = "upload-video"; const before = JSON.stringify(values(node)); say("Uploading video …");
+      try {
+        const uploaded = await uploadVideo(api, file);
+        if (!removed && JSON.stringify(values(node)) === before) { actions.set("video", uploaded); say("Video uploaded."); }
+        else say("The card changed during upload. Choose the saved video from input/h3-video.", true);
+      } catch (error) { say(error.message, true); }
+      finally { S.busy = false; if (!removed) render(); }
     },
     toggleContent(key) { const list = S.content.includes(key) ? S.content.filter((value) => value !== key) : [...S.content, key]; writeRoles("content", list); },
     pickUsage(key) { writeRoles("usage", [key]); },

@@ -12,6 +12,8 @@
   resampling changed paired video/audio conditioning.
 - Continue + Send along supplies the selected source as a paired video/audio reference in Auto and Ref2VA, alongside the
   exact continuation frame. Explicit FL2VA reports the soundtrack limitation. Studio keeps Continue cards active in FL2VA.
+- Video-card Upload opens its own picker and saves through ComfyUI's native upload endpoint, including frontends whose
+  generated upload widget has no button callback. Descriptions also reach the prompt for Motion, Continue and Control.
 
 **Control video cards and Studio lane** (2026-10-14):
 
