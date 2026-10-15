@@ -26,6 +26,7 @@ import { controlGraph, controlSetup } from "./h3c_control_graph.js";
 import { runJob } from "./h3b_queue.js";
 import { uploadMask } from "./h3c_mask.js";
 import { uploadVideo } from "./h3c_upload.js";
+import { cardContentHeight } from "./h3c_measure.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -157,6 +158,7 @@ function attach(node, media) {
 
   const writeRoles = (type, list) => applyValues(node, { [type + "_roles"]: JSON.stringify(list), [type]: list[0] || values(node)[type] });
   const actions = {
+    resize() { fit(); },
     set(name, value, redraw = true) {
       if (media === "video" && name === "video" && value !== values(node).video) setOptions(node, { control_original: "", control_result: "", control_mask: "" });
       applyValues(node, { [name]: value }); node.graph?.change?.(); if (!redraw) S.values = values(node);
@@ -314,9 +316,9 @@ function attach(node, media) {
   let measured = { image: 800, video: 820, audio: 820, text: 740 }[media];
   function fit() {
     requestAnimationFrame(() => {
-      const height = root.scrollHeight;
+      const height = cardContentHeight(root);
       if (removed || !root.isConnected || height < 120) return;
-      measured = Math.ceil(height) + 8;
+      measured = height;
       const size = node.computeSize?.() || [WIDTH[media], measured];
       const width = Math.max(node.size?.[0] || 0, WIDTH[media]);
       if (!node.size || Math.abs(node.size[1] - size[1]) > 2 || node.size[0] < WIDTH[media]) node.setSize([width, size[1]]);
@@ -328,7 +330,7 @@ function attach(node, media) {
 
   const names = () => (node.widgets || []).filter((widget) => widget !== dom).map((widget) => widget.name);
   const dom = followNodeWidth(node.addDOMWidget("h3c_card", "h3c_card", root, { serialize: false, hideOnZoom: false }));
-  dom.computeSize = undefined;
+  dom.computeSize = () => [WIDTH[media] - 20, measured];
   dom.computeLayoutSize = () => ({ minHeight: measured, maxHeight: measured, minWidth: WIDTH[media] - 20 });
   hideNative(node, names());
   // Upload previews and players arrive after nodeCreated; they are hidden as they come.

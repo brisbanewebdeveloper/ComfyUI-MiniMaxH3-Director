@@ -14,6 +14,7 @@
   exact continuation frame. Explicit FL2VA reports the soundtrack limitation. Studio keeps Continue cards active in FL2VA.
 - Video-card Upload opens its own picker and saves through ComfyUI's native upload endpoint, including frontends whose
   generated upload widget has no button callback. Descriptions also reach the prompt for Motion, Continue and Control.
+- Opening or closing the original-video comparison resizes the card's node to its actual content without repeated growth.
 
 **Control video cards and Studio lane** (2026-10-14):
 

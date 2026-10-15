@@ -102,7 +102,7 @@ take instruction in the shot or shared Look/rules prevents an added cut. Explici
 
 **Content** shows one card per Context node connected to the Context Connector, in its context colour, plus a plain **Text-Shot** card.
 Drag a card onto the empty timeline to create a shot with it, onto a shot (or click it while a shot is selected) to assign it,
-or an audio card onto an audio lane. Cards the current mode cannot use are dimmed (for example a video in First / last frame mode).
+or an audio card onto an audio lane. Cards the current mode cannot use are dimmed (for example a Motion reference in First / last frame mode).
 Files are chosen in the Context nodes themselves, not in the Studio.
 **Continue from video** anchors the shot with the final original frame before the card's selected source end, independent
 of the source frame rate. It produces the continuation; the original source can be joined to it with native Concatenate Video.
@@ -347,7 +347,8 @@ processor (pictures 65,536–16,777,216 pixels, videos 4,096–25,165,824 across
 
 **Video:** player and **Part of the file to use** (drag across the strip). Motion / camera / whole structure send references
 and prompt guidance, not exact copies; **Continue from video** starts from the last frame of the chosen part.
-**Its own sound** ignores the soundtrack or sends it along as the paired audio reference.
+**Its own sound** ignores the soundtrack or sends it along as a paired video/audio reference in Auto or Ref2VA, including
+Continue. Explicit FL2VA keeps the continuation frame and reports that source sound needs Auto or Ref2VA.
 A reference video is cut to H3's 17k+5 frame grid (72 selected frames keep 56), as ComfyUI's node does; its paired soundtrack is
 cut with it.
 
