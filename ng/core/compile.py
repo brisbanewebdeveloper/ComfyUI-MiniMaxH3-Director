@@ -6,7 +6,7 @@ above it depends on legacy dictionaries, and attaches NG's warnings.
 from dataclasses import dataclass, replace
 
 from ... import minimax_plan as plan
-from . import fields, limits
+from . import continuation, fields, limits
 from .chunks import Chunk, ContinuityPlan
 from .context import DirectorContext, check_item
 from .issues import Issue
@@ -114,7 +114,9 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     context, binding_issues = scoped_context(context, chunk)
     mode = decide_mode(context)
     guide_context = replace(original, items=tuple(original.item(item.id) for item in context.items))
-    guides, timing_issues = plan_guides(guide_context, chunk, mode)
+    item = context.item(chunk.continuation_id) if chunk.continuation_id else None
+    wanted = continuation.preferred_frames(replace(original, mode=mode), item) if item else limits.CONTINUE_VIDEO_FRAMES
+    guides, timing_issues = plan_guides(guide_context, chunk, mode, continue_frames=wanted)
     tdata, mapping, voice_notes = build_timeline(context, chunk, mode, guides)
     result = plan.plan_timeline(tdata, 0, chunk.sampled_frames, float(limits.FPS), use_custom_audio=True, use_custom_motion=True,
                                 prepend_text=context.prepend_text, prompt_format="minimax")

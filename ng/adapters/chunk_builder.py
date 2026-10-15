@@ -153,6 +153,8 @@ def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="m
             continuity = dataclasses.replace(continuity, mode="video")       # a lock inside the head wins over audio carry
     if job.chunk.continuation_id:
         latent = continuation_latent.hold_prefix(latent, positive)
+        if continuation_latent.uses_sound_prefix(job):
+            latent, positive = continuation_latent.hold_sound_prefix(latent, positive)
         return BuiltChunk(positive, latent, job.chunk.head_frames, ())
     if not job.chunk.head_frames:
         return BuiltChunk(positive, latent, 0, ())

@@ -27,6 +27,24 @@ def plan(texts):
 
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
 class Keys(unittest.TestCase):
+    def test_short_ref_source_does_not_reuse_the_old_guide_only_audio_render(self):
+        options = module("ng.core.context_options")
+        source = ctx.ContextItem("v","Source","video","source.mp4",usage=("continue",),length_s=1.625,
+                                 options=options.ContextOptions(video_audio="reference"))
+        result = project.plan_project(ctx.DirectorContext(items=(source,),mode="ref2va",project_seconds=4.25),
+                                      6,chunks.ContinuityPlan())
+        job = project.jobs(result)[0]
+        self.assertEqual(job.chunk.head_frames,39)
+        with mock.patch.object(resume, "_file", return_value=[123,456]):
+            fresh = resume.part_key(job, SETTINGS)
+            with mock.patch.object(resume, "uses_sound_prefix", return_value=False):
+                previous = resume.part_key(job, SETTINGS)
+        self.assertNotEqual(fresh,previous)
+        normal = plan(["One."])[0]
+        with mock.patch.object(resume, "uses_sound_prefix", return_value=False):
+            previous = resume.part_key(normal,SETTINGS)
+        self.assertEqual(resume.part_key(normal,SETTINGS),previous)
+
     def test_a_changed_part_changes_its_key_and_every_later_one(self):
         keys = lambda js: [resume.part_key(j, SETTINGS) for j in js]
         ka = keys(plan(["One.", "Two.", "Three."]))

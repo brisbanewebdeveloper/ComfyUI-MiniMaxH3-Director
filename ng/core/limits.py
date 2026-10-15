@@ -16,6 +16,7 @@ SAMPLED_MAX_FRAMES = _plan.TRAINED_MAX_FRAMES
 PIN_VIDEO_WINDOWS = (5, 22, 39, 56)
 PIN_VIDEO_DEFAULT = 22
 CONTINUE_VIDEO_FRAMES = 39  # 17k+5 video frames and 65 whole audio steps at 24/40 Hz
+CONTINUE_REF_AUDIO_FRAMES = 90  # User-selected Ref2VA sound continuation: 150 whole audio steps.
 PIN_AUDIO_DEFAULT = 24   # one second; multiples of 3 frames land on the 40 Hz audio grid
 PIN_AUDIO_MAX = 240
 

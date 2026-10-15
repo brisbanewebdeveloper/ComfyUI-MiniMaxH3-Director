@@ -9,12 +9,12 @@ from .shots import parse_shots
 from . import continuation
 
 
-def _continue_ref(item, frame):
+def _continue_ref(item, frame, count=None):
     ends = [value for value in (item.options.end_s, item.length_s) if value > 0]
     end = min(ends) if ends else 0
     if end and end <= item.options.start_s:
         return None
-    count = continuation.prefix_frames(item)
+    count = count or continuation.prefix_frames(item)
     start = max(item.options.start_s, end - count / float(FPS)) if end else item.options.start_s
     first = seconds_to_frames(start)
     return MediaRef("continue_video", item.id, item.source, frame, count, first)
@@ -37,7 +37,7 @@ def _global_guides(context, chunk, bound):
                 refs.append(MediaRef("keyframe", item.id, item.source, frame - chunk.story_start_f + chunk.head_frames, 1))
         if item.media == "video" and "continue" in item.effective_usage and chunk.is_first and (
                 not chunk.continuation_id or chunk.continuation_id == item.id):
-            ref = _continue_ref(item, 0)
+            ref = _continue_ref(item, 0, chunk.head_frames if chunk.continuation_id == item.id else None)
             if ref:
                 refs.append(ref)
     return refs
@@ -64,7 +64,7 @@ def _bound_ref(item, role, shot, chunk, mode, at_s=-1.0):
         return None
     local = 0 if role == "continue" and chunk.continuation_id == item.id else frame - chunk.story_start_f + chunk.head_frames
     if role == "continue":
-        return _continue_ref(item, local)
+        return _continue_ref(item, local, chunk.head_frames if chunk.continuation_id == item.id else None)
     kind = "keyframe"
     # A First / Last frame bound to a shot is that slot in both modes, as a global card already is (_global_guides):
     # in Ref2VA it was downgraded to a keyframe, lost its <Picture N> anchor text and its prompt mention (BUG-091).
@@ -75,12 +75,12 @@ def _bound_ref(item, role, shot, chunk, mode, at_s=-1.0):
     return MediaRef(kind, item.id, item.source, local, 1)
 
 
-def plan_guides(context, chunk, mode):
+def plan_guides(context, chunk, mode, *, continue_frames=CONTINUE_VIDEO_FRAMES):
     bound = bound_media_ids(context.shots_text)
     refs = _global_guides(context, chunk, bound)
     issues = [Issue("continue_short", "Only %d source frames are available for the continuation; select a longer range for movement and voice continuity."
                     % ref.length_f, context.item(ref.ctx_id).name) for ref in refs
-              if ref.kind == "continue_video" and ref.length_f < CONTINUE_VIDEO_FRAMES]
+              if ref.kind == "continue_video" and ref.length_f < continue_frames]
     if read_document(context.shots_text) is None:
         return tuple(refs), tuple(issues)
     shots, _ = parse_shots(context.shots_text, seconds_to_frames(context.project_seconds))
@@ -106,7 +106,7 @@ def plan_guides(context, chunk, mode):
                     continue
                 occupied[ref.start_f] = ref
                 refs.append(ref)
-                if ref.kind == "continue_video" and ref.length_f < CONTINUE_VIDEO_FRAMES:
+                if ref.kind == "continue_video" and ref.length_f < continue_frames:
                     issues.append(Issue("continue_short", "Only %d source frames are available for this continuation; select a longer range for movement and voice continuity."
                                         % ref.length_f, item.name))
     return tuple(refs), tuple(issues)

@@ -18,6 +18,7 @@ from comfy.nested_tensor import NestedTensor
 from ..core.project import jobs
 from ..core.turbo_profiles import part_settings
 from ..core import control_timing
+from .continuation_latent import uses_sound_prefix
 from .paths import input_path
 
 FOLDER = "h3-director-resume"
@@ -41,6 +42,8 @@ def _own(job, settings):
     own = {"chunk": chunk.to_dict(), "mode": compiled.mode, "prompt": compiled.prompt, "size": [context.width, context.height],
             "continuity": job.project.plan.continuity.mode,
             "refs": [[r.kind, r.ctx_id, r.source, r.start_f, r.length_f, r.trim_start_f, _file(r.source)] for r in compiled.refs]}
+    if uses_sound_prefix(job):
+        own["continuation_audio"] = "held_prefix_no_guide_v1"
     controls = []
     for clip, a, b, source in control_timing.spans(job) if settings.get("control_strength", 1.0) else ():
         item = context.item(clip.context_id)

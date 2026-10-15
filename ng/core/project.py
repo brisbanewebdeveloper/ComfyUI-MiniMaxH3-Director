@@ -189,7 +189,7 @@ def _part_edges(context, shots, total, head):
     for number, shot in enumerate(shots):
         start = shot.start_f
         following = shots[number + 1] if number + 1 < len(shots) else None
-        external = continuation.opening(continuation.shot_source(context, shot))
+        external = continuation.opening(continuation.shot_source(context, shot), context, shot)
         own_picture = frame_mode and _opens_on_picture(context, shot)
         # the next part edge after this shot's keyframes: the next shot's own opening, else the end of the video
         until = following.start_f if following and (continuation.shot_source(context, following) or

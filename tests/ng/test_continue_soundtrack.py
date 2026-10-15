@@ -28,8 +28,8 @@ class ContinueSoundtrack(unittest.TestCase):
                 refs = job.compiled.of_kind("video")
                 self.assertEqual(refs, ())
                 self.assertNotIn("<Video 1>", job.compiled.prompt)
-                self.assertEqual(job.chunk.head_frames, 39)
-                self.assertEqual(job.compiled.of_kind("continue_video")[0].trim_start_f, 45)
+                self.assertEqual(job.chunk.head_frames, 39 if mode == "auto" else 56)
+                self.assertEqual(job.compiled.of_kind("continue_video")[0].trim_start_f, 45 if mode == "auto" else 28)
                 self.assertFalse(any(i.code == "reference_disabled" for i in job.project.issues))
 
     def test_explicit_fl_uses_its_sound_prefix_without_a_false_unsupported_warning(self):

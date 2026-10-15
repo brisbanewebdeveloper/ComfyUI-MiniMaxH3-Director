@@ -17,6 +17,35 @@ if HAVE_COMFY:
 
 @unittest.skipUnless(HAVE_COMFY,'ComfyUI is not importable')
 class ContinuationMedia(unittest.TestCase):
+    def test_sound_prefix_is_held_and_only_its_duplicate_guide_is_removed(self):
+        video, audio = torch.zeros(1,24,57,4,4), torch.zeros(1,32,2,320)
+        prefix = torch.randn(1,32,2,150)
+        image = torch.ones(1,24,27,4,4)
+        target = {'samples':NestedTensor((video,audio)),
+                  'noise_mask':NestedTensor((torch.ones_like(video[:, :1]),torch.ones_like(audio)))}
+        row = {'resolved_frame_index':0, 'latent':image, 'audio_latent':prefix}
+        later = {'resolved_frame_index':180, 'audio_latent':torch.ones(1,32,2,10)}
+        positive = [[None,{'minimax_keyframes':[row,later], 'other':'kept'}]]
+        result,cond = held.hold_sound_prefix(target,positive)
+        self.assertTrue(torch.equal(result['samples'].unbind()[1][...,:150],prefix))
+        self.assertTrue(torch.all(result['samples'].unbind()[1][...,150:]==0))
+        self.assertTrue(torch.all(result['noise_mask'].unbind()[1][...,:150]==0))
+        self.assertTrue(torch.all(result['noise_mask'].unbind()[1][...,150:]==1))
+        self.assertIs(result['samples'].unbind()[0],video)
+        self.assertIs(cond[0][1]['minimax_keyframes'][0]['latent'],image)
+        self.assertNotIn('audio_latent',cond[0][1]['minimax_keyframes'][0])
+        self.assertIs(cond[0][1]['minimax_keyframes'][1]['audio_latent'],later['audio_latent'])
+        self.assertIn('audio_latent',row)
+        self.assertTrue(torch.all(audio==0))
+        self.assertEqual(cond[0][1]['other'],'kept')
+
+    def test_ignore_has_no_sound_prefix_to_hold(self):
+        target = {'samples':NestedTensor((torch.zeros(1,24,12,4,4),torch.zeros(1,32,2,65)))}
+        positive = [[None,{'minimax_keyframes':[{'resolved_frame_index':0,'latent':torch.zeros(1,24,2,4,4)}]}]]
+        result,cond = held.hold_sound_prefix(target,positive)
+        self.assertIs(result,target)
+        self.assertIs(cond,positive)
+
     def test_source_sound_ends_with_selected_video_and_partial_hops_pad_only_on_the_right(self):
         wave = torch.arange(192000,dtype=torch.float32).reshape(1,-1).expand(2,-1)
         item = ctx.ContextItem('v','Song','video','v.mp4',length_s=6,
@@ -40,22 +69,22 @@ class ContinuationMedia(unittest.TestCase):
             self.assertEqual(media.load(reference,item,None),('images',None))
         load.assert_not_called()
 
-    def test_44100_and_48000_hz_tails_stay_65_audio_steps_after_resampling(self):
+    def test_44100_and_48000_hz_tails_stay_on_whole_audio_steps_after_resampling(self):
         item = ctx.ContextItem('v','Song','video','v.mp4',length_s=5.875,
                                options=opts.ContextOptions(video_audio='reference'))
-        reference = refs.MediaRef('continue_video','v','v.mp4',length_f=39)
         resample = media.comfy.audio.resample
-        for rate in (44100,48000):
+        for rate, count in ((44100,39),(48000,39),(44100,90),(48000,90)):
+            reference = refs.MediaRef('continue_video','v','v.mp4',length_f=count)
             wave = torch.ones(2,rate*6)
             with self.subTest(rate=rate),patch.object(media.video_end,'tail_frames',return_value='images'), \
                  patch.object(media,'input_path',return_value='v.mp4'), \
                  patch.object(media.nodes_audio,'load',return_value=(wave,rate)), \
                  patch.object(media.comfy.audio,'resample',wraps=resample) as convert:
                 _,audio = media.load(reference,item,SimpleNamespace(audio_sample_rate=32000))
-            self.assertEqual(audio['waveform'].shape,(1,2,52000))
+            self.assertEqual(audio['waveform'].shape,(1,2,round(count/24*32000)))
             self.assertEqual(audio['sample_rate'],32000)
             convert.assert_called_once()
-            self.assertEqual(convert.call_args.args[0].shape[-1],round(1.625*rate))
+            self.assertEqual(convert.call_args.args[0].shape[-1],round(count/24*rate))
 
     def test_known_video_prefix_and_existing_audio_mask_are_preserved(self):
         video = torch.zeros(1,24,42,4,4)
