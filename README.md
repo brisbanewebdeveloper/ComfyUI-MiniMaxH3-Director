@@ -77,6 +77,12 @@ without inner scrolling:
   Inside partly covered parts, edge frames are held to the part edges. [Control setup and limits](docs/NG-control.md).
 - **Inpaint** on the same card keeps the source video and a separate mask: generate it with SAM3 and an object description,
   or load/upload a ready mask. Choose bounding box or silhouette and grow; place it on the Control lane to regenerate that region.
+- **Continue** on a Video card uses the last 39 frames of its selected range as hidden movement context in FL2VA and Ref2VA.
+  Enable **Video sound** to guide the continuation with the matching source audio. The prefix is removed by Render Sequence;
+  the project duration describes the new footage. Short sources use a smaller native window and show a warning.
+  Pure Continue does not also send the whole clip as a Ref2VA reference. For an existing full song, use an Audio card with
+  **Lock** and select where the new footage should start in that song (for example 5.875 s after a 5.875 s source clip).
+  Without the original song, voice and melody continuity still need listening review.
 
 More nodes around the Director:
 

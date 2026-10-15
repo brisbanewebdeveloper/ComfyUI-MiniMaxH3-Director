@@ -59,7 +59,7 @@ export function roleHint(media, role, mode) {
   if (media === "video") {
     if (role === "control") return { text: "Place it on the Studio's Control lane. Works in both modes; uses ControlNet, not a video reference slot.", warn: false };
     if (fl && role !== "continue") return { text: "First / last frame mode does not use video references; only Continue works there.", warn: true };
-    return { text: role === "continue" ? "The last frame of the chosen part starts the shot." : "Sent as a reference wherever a shot uses it.", warn: false };
+    return { text: role === "continue" ? "Continues from the end of the chosen part using its recent movement. Send along also carries its sound; use an audio lock to keep an existing song." : "Sent as a reference wherever a shot uses it.", warn: false };
   }
   if (media === "audio") {
     if (fl && role !== "lock") return { text: "First / last frame mode only uses sound as a lock.", warn: true };

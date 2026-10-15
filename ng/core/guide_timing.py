@@ -2,10 +2,11 @@
 from .context import USAGE_BY_MEDIA
 from .frames import seconds_to_frames
 from .issues import Issue
-from .limits import FPS, GRID_STEP
+from .limits import CONTINUE_VIDEO_FRAMES, FPS, GRID_STEP
 from .media_ref import MediaRef
 from .shot_document import read_document, bound_media_ids
 from .shots import parse_shots
+from . import continuation
 
 
 def _continue_ref(item, frame):
@@ -13,10 +14,10 @@ def _continue_ref(item, frame):
     end = min(ends) if ends else 0
     if end and end <= item.options.start_s:
         return None
-    start = max(item.options.start_s, end - 1) if end else item.options.start_s
+    count = continuation.prefix_frames(item)
+    start = max(item.options.start_s, end - count / float(FPS)) if end else item.options.start_s
     first = seconds_to_frames(start)
-    length = max(1, min(FPS, seconds_to_frames(end) - first)) if end else FPS
-    return MediaRef("continue_video", item.id, item.source, frame, length, first)
+    return MediaRef("continue_video", item.id, item.source, frame, count, first)
 
 
 def _global_guides(context, chunk, bound):
@@ -24,7 +25,9 @@ def _global_guides(context, chunk, bound):
     for kind, enabled, frame in (("first_frame", chunk.is_first, 0), ("last_frame", chunk.is_last, chunk.sampled_frames - 1)):
         items = [i for i in context.by_media("image") if i.id not in bound and i.source and kind in i.effective_usage]
         if enabled and items:
-            refs.append(MediaRef(kind, items[0].id, items[0].source, frame, 1))
+            after_prefix = kind == "first_frame" and chunk.continuation_id
+            refs.append(MediaRef("keyframe" if after_prefix else kind, items[0].id, items[0].source,
+                                 chunk.head_frames if after_prefix else frame, 1))
     for item in context.items:
         if item.id in bound or not item.source:
             continue
@@ -32,7 +35,8 @@ def _global_guides(context, chunk, bound):
             frame = seconds_to_frames(item.options.anchor_s)
             if chunk.story_start_f <= frame < chunk.story_end_f:
                 refs.append(MediaRef("keyframe", item.id, item.source, frame - chunk.story_start_f + chunk.head_frames, 1))
-        if item.media == "video" and "continue" in item.effective_usage and chunk.is_first:
+        if item.media == "video" and "continue" in item.effective_usage and chunk.is_first and (
+                not chunk.continuation_id or chunk.continuation_id == item.id):
             ref = _continue_ref(item, 0)
             if ref:
                 refs.append(ref)
@@ -58,7 +62,7 @@ def _bound_ref(item, role, shot, chunk, mode, at_s=-1.0):
         return None
     if not chunk.story_start_f <= frame < chunk.story_end_f:
         return None
-    local = frame - chunk.story_start_f + chunk.head_frames
+    local = 0 if role == "continue" and chunk.continuation_id == item.id else frame - chunk.story_start_f + chunk.head_frames
     if role == "continue":
         return _continue_ref(item, local)
     kind = "keyframe"
@@ -74,12 +78,14 @@ def _bound_ref(item, role, shot, chunk, mode, at_s=-1.0):
 def plan_guides(context, chunk, mode):
     bound = bound_media_ids(context.shots_text)
     refs = _global_guides(context, chunk, bound)
+    issues = [Issue("continue_short", "Only %d source frames are available for the continuation; select a longer range for movement and voice continuity."
+                    % ref.length_f, context.item(ref.ctx_id).name) for ref in refs
+              if ref.kind == "continue_video" and ref.length_f < CONTINUE_VIDEO_FRAMES]
     if read_document(context.shots_text) is None:
-        return tuple(refs), ()
+        return tuple(refs), tuple(issues)
     shots, _ = parse_shots(context.shots_text, seconds_to_frames(context.project_seconds))
     active = {shot.shot_id for shot in chunk.shots}
     occupied = {ref.start_f: ref for ref in refs if ref.kind in ("first_frame", "last_frame")}
-    issues = []
     for shot in shots:
         if shot.id not in active:
             continue
@@ -100,4 +106,7 @@ def plan_guides(context, chunk, mode):
                     continue
                 occupied[ref.start_f] = ref
                 refs.append(ref)
+                if ref.kind == "continue_video" and ref.length_f < CONTINUE_VIDEO_FRAMES:
+                    issues.append(Issue("continue_short", "Only %d source frames are available for this continuation; select a longer range for movement and voice continuity."
+                                        % ref.length_f, item.name))
     return tuple(refs), tuple(issues)

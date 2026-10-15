@@ -32,7 +32,7 @@ def check_context(context):
         reference = item.uses_video_reference or (
             item.media == "audio" and bool(set(item.effective_usage) & {"voice", "copy", "music_style", "rhythm", "sound_reference"}))
         if context.mode == "fl2va" and reference:
-            text = ("The continuation frame is used, but its soundtrack needs auto or ref2va mode."
+            text = ("Choose auto or ref2va for video references; Continue still uses its selected tail and enabled sound."
                     if item.media == "video" and "continue" in item.effective_usage else
                     "Is omitted by explicit fl2va mode; choose auto or ref2va to use it.")
             issues.append(Issue("reference_disabled", text, item.name))

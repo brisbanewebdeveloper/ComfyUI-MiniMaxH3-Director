@@ -76,7 +76,7 @@ class ContextDetails(unittest.TestCase):
                                 options=options.ContextOptions(start_s=1, end_s=6, video_audio="ignore"))
         plan = self.plan(video)
         ref = plan.compiled[0].of_kind("continue_video")[0]
-        self.assertEqual((ref.trim_start_f, ref.length_f), (120, 24))
+        self.assertEqual((ref.trim_start_f, ref.length_f), (105, 39))
         self.assertEqual(plan.compiled[1].of_kind("continue_video"), ())
 
 

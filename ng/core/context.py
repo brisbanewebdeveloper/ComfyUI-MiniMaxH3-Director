@@ -86,8 +86,7 @@ class ContextItem:
     @property
     def uses_video_reference(self):
         roles = set(self.effective_usage)
-        return self.media == "video" and bool(roles & {"motion", "camera", "structure"} or
-                                             ("continue" in roles and self.options.video_audio == "reference"))
+        return self.media == "video" and bool(roles & {"motion", "camera", "structure"})
 
 
 def check_item(item):

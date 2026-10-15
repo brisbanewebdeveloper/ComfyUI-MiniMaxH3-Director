@@ -34,7 +34,7 @@ def _joined_runs(videos, plan):
     A chunk without a head is an independent clip and starts a new run."""
     runs = []
     for video, chunk in zip(videos, plan.chunks):
-        if chunk.head_frames and runs:
+        if chunk.head_frames and runs and not chunk.continuation_id:
             runs[-1][0].append(video[:, :, pin.steps_for_frames(chunk.head_frames):])
             runs[-1][1].append(chunk)
         else:
@@ -60,7 +60,8 @@ def delivered_pictures(videos, plan, decode_video):
     one clip early and runs through the clip that covers the chunk's last frame gives the frames a decode of the whole run would."""
     final = plan.chunks[-1].index
     for pieces, run in _joined_runs(videos, plan):
-        total, origin = sum(p.shape[2] for p in pieces), run[0].story_start_f
+        total = sum(p.shape[2] for p in pieces)
+        origin = run[0].story_start_f - (run[0].head_frames if run[0].continuation_id else 0)
         for chunk in run:
             first = (chunk.story_start_f - origin) // VAE_CLIP_FRAMES
             last = (chunk.story_end_f - origin - 1) // VAE_CLIP_FRAMES

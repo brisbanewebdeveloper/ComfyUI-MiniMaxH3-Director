@@ -71,7 +71,7 @@ class NGChunkConditioning(io.ComfyNode):
     def execute(cls, chunk, clip, vae, audio_vae=None, model_fl2va=None, model_ref2va=None, previous=None,
                 shift_video=12.0, shift_audio=3.0, ref_image_size="match", apply_sigma_shift=True, resize_method="crop"):
         job = _job(chunk)
-        if job.chunk.head_frames:
+        if job.chunk.head_frames and not job.chunk.continuation_id:
             if previous is None:
                 raise ValueError("Chunk %d needs the previous full AV latent; connect Start Loop's current_iteration_value to previous." % (job.index + 1))
             latents.validate_chunk(previous, job.project.plan.chunks[job.index - 1].sampled_frames, "Previous chunk")

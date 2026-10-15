@@ -126,6 +126,10 @@ def timed_segments(item, chunk, windows, retention, in_file=False):
     out = []
     for origin, end, offset in spans:
         first = max(origin, window_start)
+        if chunk.continuation_id and retention == "lock" and origin == chunk.story_start_f:
+            # Earlier source samples provide hidden VAE context for the known
+            # prefix. The delivered audio still begins at the selected offset.
+            first = max(window_start, origin - source_start - offset)
         last = min(end, chunk.story_end_f, origin + available - offset if available is not None else end)
         if last <= first:
             continue

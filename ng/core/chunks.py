@@ -95,6 +95,7 @@ class Chunk:
     head_frames: int
     shots: tuple = ()
     is_last: bool = False
+    continuation_id: str = ""
     SCHEMA_VERSION = 1
 
     @property
@@ -112,7 +113,7 @@ class Chunk:
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "index": self.index, "story_start_f": self.story_start_f,
                 "delivered_frames": self.delivered_frames, "head_frames": self.head_frames, "is_last": self.is_last,
-                "shots": [s.to_dict() for s in self.shots]}
+                "shots": [s.to_dict() for s in self.shots], "continuation_id": self.continuation_id}
 
     @classmethod
     def from_dict(cls, data, path="chunk"):
@@ -121,7 +122,14 @@ class Chunk:
         shots = tuple(ChunkShot.from_dict(d, "%s.shots[%d]" % (path, n)) for n, d in enumerate(fields.read_list(data, "shots", path)))
         return cls(index=int(fields.read_number(data, "index", path, minimum=0)), story_start_f=int(fields.read_number(data, "story_start_f", path)),
                    delivered_frames=int(fields.read_number(data, "delivered_frames", path, minimum=1)),
-                   head_frames=int(fields.read_number(data, "head_frames", path, minimum=0)), shots=shots, is_last=bool(data.get("is_last", False)))
+                   head_frames=int(fields.read_number(data, "head_frames", path, minimum=0)), shots=shots, is_last=bool(data.get("is_last", False)),
+                   continuation_id=fields.read_str(data, "continuation_id", path, ""))
+
+
+@dataclass(frozen=True)
+class ChunkOpening:
+    head_frames: int = 0
+    context_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -151,9 +159,9 @@ class SequencePlan:
                    issues=tuple(Issue.from_dict(d) for d in fields.read_list(data, "issues", path)))
 
 
-def _delivered_options(head):
+def _delivered_options(head, minimum=limits.SAMPLED_MIN_FRAMES):
     """Every delivered length whose sampled clip is inside H3's trained range, for a chunk with this head."""
-    lo = max(limits.SAMPLED_MIN_FRAMES - head, 1)
+    lo = max(minimum - head, 1)
     hi = limits.SAMPLED_MAX_FRAMES - head
     return frames.delivered_candidates(0, head, lo, hi)
 
@@ -162,11 +170,11 @@ def _pick(options, ideal):
     return min(options, key=lambda v: (abs(v - ideal), v))
 
 
-def plan_lengths(total_frames, chunk_target_frames, head, first_head=0):
+def plan_lengths(total_frames, chunk_target_frames, head, first_head=0, minimum=limits.SAMPLED_MIN_FRAMES):
     """Delivered frames per chunk. Error diffusion: each chunk takes the grid length nearest to what is still needed per chunk.
 
     `first_head` is the first chunk's own pin: 0 at the start of the video or of an unpinned part, `head` after a join."""
-    first_options, next_options = _delivered_options(first_head), _delivered_options(head)
+    first_options, next_options = _delivered_options(first_head, minimum), _delivered_options(head, minimum)
     longest = max(next_options)
     # One grid step over the target is no reason for another part: a keyframe at 10 s with 10 s parts ends its part on
     # H3's grid at 10.08 s, and 243 of 240 frames made two parts of 5 s instead of one (2026-10-11).
@@ -185,14 +193,16 @@ def plan_lengths(total_frames, chunk_target_frames, head, first_head=0):
     return lengths
 
 
-def _shots_for_chunk(shots, story_start, story_end, head):
-    window_start = story_start - head
+def _shots_for_chunk(shots, story_start, story_end, head, external=False):
+    window_start = story_start if external else story_start - head
+    sample_start = story_start - head
     out = []
     for shot in shots:
         if shot.end_f <= window_start or shot.start_f >= story_end:
             continue
-        out.append(ChunkShot(shot_index=shot.index, local_start_f=max(shot.start_f, window_start) - window_start,
-                             local_end_f=min(shot.end_f, story_end) - window_start, text=shot.text,
+        local_start = 0 if external and shot.start_f <= story_start else max(shot.start_f, window_start) - sample_start
+        out.append(ChunkShot(shot_index=shot.index, local_start_f=local_start,
+                             local_end_f=min(shot.end_f, story_end) - sample_start, text=shot.text,
                              carried=shot.start_f < story_start, continues=shot.end_f > story_end,
                              shot_id=shot.id, media=shot.media, spoken=shot.spoken, locked_fields=shot.locked_fields,
                              shot_start_f=shot.start_f, shot_end_f=shot.end_f))
@@ -214,7 +224,7 @@ def _plan_issues(requested, planned, count, continuity):
 def _late_changes(shots, chunks):
     issues = []
     for chunk in chunks[1:]:
-        if not chunk.head_frames:
+        if not chunk.head_frames or chunk.continuation_id:
             continue                    # nothing is pinned in front of it, so nothing holds the previous action
         for shot in shots:
             offset = shot.start_f - chunk.story_start_f
@@ -233,20 +243,26 @@ def plan_chunks(project_frames, chunk_target_frames, continuity, shots=(), cuts=
     if project_frames < 1:
         raise ValueError("the project needs at least one frame")
     head = continuity.head
+    openings = cuts if isinstance(cuts, dict) else {frame: ChunkOpening() for frame in cuts}
+    external = any(opening.context_id for opening in openings.values())
     edges = sorted({0, *cuts, *joins, project_frames})
-    lengths, heads = [], []
+    lengths, heads, sources = [], [], []
     for start, end in zip(edges, edges[1:]):
-        first_head = head if start in joins and start not in cuts else 0
-        part = plan_lengths(end - start, max(chunk_target_frames, 1), head, first_head)
+        opening = openings.get(start, ChunkOpening(head if start in joins else 0))
+        first_head = opening.head_frames
+        minimum = limits.GRID_OFFSET if external else limits.SAMPLED_MIN_FRAMES
+        part = plan_lengths(end - start, max(chunk_target_frames, 1), head, first_head, minimum)
         if head and shots:
-            part = align_to_shots(part, head, [replace(s, start_f=s.start_f - start) for s in shots if start < s.start_f < end])
+            part = align_to_shots(part, head, [replace(s, start_f=s.start_f - start) for s in shots if start < s.start_f < end], first_head)
         lengths += part
         heads += [first_head] + [head] * (len(part) - 1)
+        sources += [opening.context_id] + [""] * (len(part) - 1)
     chunks, cursor = [], 0
     for index, delivered in enumerate(lengths):
         this_head = heads[index]
         chunks.append(Chunk(index=index, story_start_f=cursor, delivered_frames=delivered, head_frames=this_head,
-                            shots=_shots_for_chunk(shots, cursor, cursor + delivered, this_head), is_last=index == len(lengths) - 1))
+                            shots=_shots_for_chunk(shots, cursor, cursor + delivered, this_head, bool(sources[index])),
+                            is_last=index == len(lengths) - 1, continuation_id=sources[index]))
         cursor += delivered
     issues = _plan_issues(project_frames, cursor, len(chunks), continuity)
     if continuity.mode != "none":

@@ -1,5 +1,24 @@
 # H3 Director NG validation
 
+## Video continuation update (2026-10-15)
+
+The historical single-frame Continue results below are superseded by the current selected-tail path documented in
+[NG.md](NG.md). Continue now uses a hidden native 39-frame source prefix with matching sound when enabled, in both
+FL2VA and Ref2VA. Pure Continue does not also send a general full-clip reference. First frame pictures with separate
+locked sound remain supported.
+
+Four complete native/Director comparisons (both models, with and without an original-song lock) matched input video,
+input audio, conditioning and sampled video/audio latents exactly. Each used 20 steps, res_multistep/simple, Sigma 12/3,
+384×576, fixed seed and no turbo LoRA. A real three-part Render Sequence delivered 306 frames / 12.75 s with 39/22/39
+hidden prefixes; the song matched the correct source position in every part at correlations 0.9988–0.9991.
+Separate collector exports delivered exactly 102 frames / 4.25 s and held the selected song offset at 5.875 s.
+A 44.1 kHz source-audio test also matched the native VAE conditioning exactly after matching TrimAudioDuration rounding.
+
+Software: 1,032 NG tests, 1,031 passed and one environment-dependent skip; Legacy 374/374 + 74/74; compileall and all
+67 JavaScript syntax checks. These are execution and signal checks. The new videos still require user listening/viewing
+review for voice, melody, lip sync and an invisible picture seam. Evidence is in the local notes:
+`_notes/NG/CODEX-AV-FORTSETZUNG-UMSETZUNG-2026-10-15.md` and `continuation-av-audit-2026-10-15/verified-product-results.json`.
+
 Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 

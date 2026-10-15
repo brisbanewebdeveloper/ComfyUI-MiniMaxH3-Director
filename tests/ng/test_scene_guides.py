@@ -30,13 +30,13 @@ class SceneGuides(unittest.TestCase):
         ref = load.call_args.args[0]
         self.assertEqual((ref.source, ref.length_f, ref.trim_start_f), ("b.mp4", 72, 48))
 
-    def test_keyframe_uses_local_sample_time_and_continuation_uses_final_source_frame(self):
+    def test_keyframe_keeps_local_time_and_continuation_sends_its_source_clip_and_sound(self):
         import torch
         comp = self.compile
         refs = (comp.MediaRef("keyframe", "i", "image.png", start_f=39),
-                comp.MediaRef("continue_video", "v", "clip.mp4", length_f=24, trim_start_f=120))
+                comp.MediaRef("continue_video", "v", "clip.mp4", length_f=39, trim_start_f=105))
         item = self.context.ContextItem("v", "Source", "video", "clip.mp4", length_s=8,
-                                        options=self.options.ContextOptions(start_s=3, end_s=6))
+                                        options=self.options.ContextOptions(start_s=3, end_s=6, video_audio="reference"))
         job = SimpleNamespace(compiled=comp.CompiledChunk(0, "fl2va", "", refs),
                               project=SimpleNamespace(context=self.context.DirectorContext(items=(item,))))
         calls = []
@@ -44,13 +44,16 @@ class SceneGuides(unittest.TestCase):
             calls.append(kwargs)
             return SimpleNamespace(args=("next",))
         mm = SimpleNamespace(MiniMaxH3AddGuide=SimpleNamespace(execute=execute))
-        image, frames = torch.zeros(1, 2, 2, 3), torch.arange(36).reshape(3, 2, 2, 3)
-        with patch.object(self.adapter.media, "load_picture", return_value=image), patch.object(self.adapter.video_end, "last_frame", return_value=frames[-1:]) as last:
-            self.assertEqual(self.adapter.apply_guides(mm, job, "positive", "latent", "vae"), "next")
-        last.assert_called_once_with("clip.mp4", 3, 6)
+        image, frames = torch.zeros(1, 2, 2, 3), torch.zeros(39, 2, 2, 3)
+        sound = {"waveform": torch.zeros(1,2,52000), "sample_rate":32000}
+        with patch.object(self.adapter.media, "load_picture", return_value=image), \
+             patch.object(self.adapter.continuation_media, "load", return_value=(frames,sound)) as load:
+            self.assertEqual(self.adapter.apply_guides(mm, job, "positive", "latent", "vae", "audio_vae"), "next")
+        load.assert_called_once_with(refs[1],item,"audio_vae")
         self.assertEqual([call["frame_idx"] for call in calls], [39, 0])
         self.assertEqual(calls[1]["positive"], "next")
-        self.assertTrue(torch.equal(calls[1]["image"], frames[-1:]))
+        self.assertTrue(torch.equal(calls[1]["image"], frames))
+        self.assertIs(calls[1]["audio"],sound)
 
     def test_global_ref_first_last_are_timed_guides_without_duplicating_fl_anchors(self):
         import torch

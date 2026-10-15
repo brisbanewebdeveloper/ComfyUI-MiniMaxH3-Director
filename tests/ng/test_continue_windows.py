@@ -21,8 +21,8 @@ def continued(start, end, duration=5):
 
 class ContinueWindow(unittest.TestCase):
     def test_continuation_stays_inside_short_and_long_source_windows(self):
-        for start, end, expected in ((2, 2.25, (48, 6)), (2, 2.125, (48, 3)), (2, 2.0416666667, (48, 1)),
-                                     (2, 4, (72, 24)), (2, 0, (96, 24))):
+        for start, end, expected in ((2, 2.25, (49, 5)), (2, 2.125, (50, 1)), (2, 2.0416666667, (48, 1)),
+                                     (2, 4, (57, 39)), (2, 0, (81, 39))):
             with self.subTest(start=start, end=end):
                 result = continued(start, end)
                 guide = result.compiled[0].of_kind("continue_video")[0]

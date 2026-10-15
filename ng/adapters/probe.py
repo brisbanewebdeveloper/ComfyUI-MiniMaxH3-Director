@@ -7,6 +7,14 @@ from PIL import Image, UnidentifiedImageError
 from .paths import input_path
 
 
+def video_duration(container):
+    stream = container.streams.video[0]
+    if stream.duration is not None:
+        return max(0.0, float(stream.duration * stream.time_base))
+    origin = float(stream.start_time * stream.time_base) if stream.start_time is not None else 0.0
+    return max(0.0, (container.duration or 0) / float(av.time_base) - max(0.0, origin))
+
+
 def duration_seconds(source):
     """Length in seconds of an audio or video file in ComfyUI's input folder; 0.0 when it cannot be found or read."""
     path = input_path(source)
@@ -14,6 +22,8 @@ def duration_seconds(source):
         return 0.0
     try:
         with av.open(path) as container:
+            if container.streams.video:
+                return video_duration(container)
             return max(container.duration or 0, 0) / float(av.time_base)
     except (av.error.FFmpegError, OSError, ValueError):
         return 0.0

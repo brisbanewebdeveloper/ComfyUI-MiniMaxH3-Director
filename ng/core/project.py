@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass, replace
 
 from . import frames, limits
-from .chunks import ContinuityPlan, SequencePlan, plan_chunks
+from .chunks import ChunkOpening, ContinuityPlan, SequencePlan, plan_chunks
 from .compile import compile_chunk
 from .context import USAGE_BY_MEDIA, ContextItem, DirectorContext
 from .context_checks import check_context, check_guide_times
@@ -18,7 +18,7 @@ from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
 from .shot_document import has_shots, read_document
 from .audio_timing import clip_issues, covers, locked_spans
-from . import control_timing
+from . import control_timing, continuation
 
 CANVAS_MULTIPLE = 32
 H3_SHORT_EDGE, H3_MAX_PIXELS = 768, 768 * 1344
@@ -176,32 +176,37 @@ def _edge(previous, previous_head, wanted):
 
 
 def _part_edges(context, shots, total, head):
-    """Where render parts must start in FL2VA: (cuts, joins, moved shot starts, moved keyframes, issues).
+    """Source openings and FL2VA picture edges: (cuts, joins, moved shot starts, moved keyframes, issues).
 
     A shot opening on its own First frame picture starts an unpinned part (cut): inside a pinned part H3 took such a
     picture as the end of the running take and cut one frame later (measured 2026-10-11). A Keyframe picture inside a
     shot ends a part on its last frame, the trained place for a picture; the next part keeps its pin (join), so the
     shot runs on. Parts start on H3's grid, so a shot start or keyframe moves to the nearest grid frame."""
-    cuts, joins, moved, moved_keys, issues = [], [], {}, {}, []
-    previous, previous_head = 0, 0
+    initial = continuation.initial_opening(context, shots)
+    cuts, joins, moved, moved_keys, issues = ({0: initial} if initial else {}), [], {}, {}, []
+    previous, previous_head = 0, initial.head_frames if initial else 0
+    frame_mode = decide_mode(context) == "fl2va"
     for number, shot in enumerate(shots):
         start = shot.start_f
         following = shots[number + 1] if number + 1 < len(shots) else None
+        external = continuation.opening(continuation.shot_source(context, shot))
+        own_picture = frame_mode and _opens_on_picture(context, shot)
         # the next part edge after this shot's keyframes: the next shot's own opening, else the end of the video
-        until = following.start_f if following and _opens_on_picture(context, following) else total
-        if start > 0 and _opens_on_picture(context, shot):
+        until = following.start_f if following and (continuation.shot_source(context, following) or
+                                                    (frame_mode and _opens_on_picture(context, following))) else total
+        if start > 0 and (external or own_picture):
             cut = _edge(previous, previous_head, start)
-            if cut - previous < _shortest(previous_head) or total - cut < _shortest(0):
-                issues.append(Issue("opening_too_close", "opens on a First frame picture but is too close to the previous opening "
-                                    "or the end for a render part of its own; the picture is used inside the running part.", "shot %d" % shot.index))
+            if cut - previous < (1 if external else _shortest(previous_head)) or total - cut < (1 if external else _shortest(0)):
+                issues.append(Issue("opening_too_close", "has an opening source too close to the previous opening "
+                                    "or the end for a render part of its own; it is used inside the running part.", "shot %d" % shot.index))
             else:
-                cuts.append(cut)
-                previous, previous_head = cut, 0
+                cuts[cut] = external or ChunkOpening()
+                previous, previous_head = cut, external.head_frames if external else 0
                 if cut != start:
                     moved[shot.id] = start = cut
-                    issues.append(Issue("opening_moved", "starts at %.2fs instead of %.2fs so that its First frame picture opens a render part."
+                    issues.append(Issue("opening_moved", "starts at %.2fs instead of %.2fs so that its source opens a render part."
                                         % (frames.frames_to_seconds(cut), frames.frames_to_seconds(shot.start_f)), "shot %d" % shot.index))
-        for binding in _keyframes(context, shot):
+        for binding in _keyframes(context, shot) if frame_mode else ():
             name = context.item(binding.context_id).name
             wanted = start + frames.seconds_to_frames(binding.at_s) + 1      # the part ends on the keyframe; the next one starts after it
             join = _edge(previous, previous_head, wanted)
@@ -263,7 +268,8 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
     cuts = joins = ()
     if has_shots(context.shots_text):
         shots, shot_issues = parse_shots(context.shots_text, total)
-        if continuity.head and decide_mode(context) == "fl2va":
+        if (continuity.head and decide_mode(context) == "fl2va") or continuation.initial_opening(context, shots) or any(
+                continuation.shot_source(context, shot) for shot in shots):
             cuts, joins, moved, moved_keys, edge_issues = _part_edges(context, shots, total, continuity.head)
             issues = issues + edge_issues
         else:
@@ -273,6 +279,8 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
             shots, shot_issues = parse_shots(context.shots_text, total)
     else:
         shots, shot_issues = auto_shots(context.idea, total), ()
+        initial = continuation.initial_opening(context, shots)
+        cuts = {0: initial} if initial else ()
     chunk_frames = frames.seconds_to_frames(chunk_seconds or limits.DEFAULT_CHUNK_SECONDS)
     plan = plan_chunks(total, chunk_frames, continuity, shots, cuts, joins)
     # A song locked over the whole video is put back into every part from its file, so a long chain does not dull it

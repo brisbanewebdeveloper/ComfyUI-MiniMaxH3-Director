@@ -20,7 +20,8 @@ def _add_roles(roles, identity, values):
 
 def _select_clips(context, chunk, clips, selected, roles, issues):
     """Audio-lane clips take part in the chunks whose sampled window they touch, with their own mode as role."""
-    window_start, end = chunk.story_start_f - chunk.head_frames, chunk.story_end_f
+    window_start = chunk.story_start_f if chunk.continuation_id else chunk.story_start_f - chunk.head_frames
+    end = chunk.story_end_f
     for clip in clips:
         item = context.item(clip.context_id)
         if item is None or item.media != "audio":

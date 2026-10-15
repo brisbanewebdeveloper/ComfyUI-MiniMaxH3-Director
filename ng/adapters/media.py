@@ -44,8 +44,8 @@ def load_audio(ref: MediaRef):
         wave, rate = native_audio.load(input_path(ref.source))
     except Exception as error:
         raise MediaError("the audio '%s' (%s) could not be loaded" % (ref.ctx_id, ref.source)) from error
-    start = max(0, int(ref.trim_start_f / float(FPS) * rate))
-    count = max(1, int((ref.length_f or FPS * 15) / float(FPS) * rate))
+    start = max(0, round(ref.trim_start_f / float(FPS) * rate))
+    count = max(1, round((ref.length_f or FPS * 15) / float(FPS) * rate))
     clip = wave[:, start:start + count]
     if not clip.shape[-1]:
         raise MediaError("the selected audio range of '%s' (%s) is empty; choose an earlier source start" % (ref.ctx_id, ref.source))
@@ -64,4 +64,3 @@ def load_audio_source(ref: MediaRef, sample_rate):
 def numbered(prefix, tensors):
     """The core nodes take references as ref_image_1, ref_image_2, ... in label order."""
     return {"%s_%d" % (prefix, n): t for n, t in enumerate(tensors, 1)} or None
-

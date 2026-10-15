@@ -31,7 +31,7 @@ class ShotGuides(unittest.TestCase):
         self.assertNotIn("shot_boundary_role", {i.code for i in result.issues})
         result = plan([shot("late", 6, 8, [("v", "continue")])], (video,), 12, 5, chunks.ContinuityPlan())
         found = [(chunk, ref) for chunk, compiled in zip(result.plan.chunks, result.compiled) for ref in compiled.refs]
-        self.assertEqual([(r.kind, r.start_f, r.trim_start_f, r.length_f) for c, r in found], [("continue_video", 59, 120, 24)])
+        self.assertEqual([(r.kind, r.start_f, r.trim_start_f, r.length_f) for c, r in found], [("continue_video", 0, 105, 39)])
 
     def test_a_keyframe_bound_to_a_shot_guides_its_start_unless_the_card_names_a_time(self):
         records = [shot("k", 4, 6, [("a", "keyframe")])]
@@ -256,10 +256,10 @@ class ShotGuides(unittest.TestCase):
                                 options=opts.ContextOptions(start_s=2, end_s=2 + 1/24))
         records = [shot("one", 1, 3, [("v", "continue")]), shot("two", 7, 9, [("v", "continue")])]
         result = plan(records, (video,), 10, 10)
-        compiled = result.compiled[0]
-        self.assertEqual([(r.start_f, r.trim_start_f, r.length_f) for r in compiled.of_kind("continue_video")],
-                         [(24, 48, 1), (168, 48, 1)])
-        self.assertEqual(module("ng.core.compile").CompiledChunk.from_dict(compiled.to_dict()), compiled)
+        refs = [r for compiled in result.compiled for r in compiled.of_kind("continue_video")]
+        self.assertEqual([(r.start_f, r.trim_start_f, r.length_f) for r in refs], [(0, 48, 1), (0, 48, 1)])
+        for compiled in result.compiled:
+            self.assertEqual(module("ng.core.compile").CompiledChunk.from_dict(compiled.to_dict()), compiled)
 
 
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
@@ -288,23 +288,27 @@ class NativeGuideRows(unittest.TestCase):
             def tokenize(self, prompt, **kwargs): return "tokens"
             def encode_from_tokens_scheduled(self, tokens): return [[torch.zeros(1, 1, 8), {}]]
         class VAE:
-            def encode(self, images): return torch.full((1, 24, 1, 4, 4), float(images.mean()))
+            def encode(self, images): return torch.full((1, 24, native.video_latent_t(images.shape[0]), 4, 4), float(images.mean()))
         video = ctx.ContextItem("v", "Video", "video", "v.mp4", length_s=3)
         records = [shot("one", 6, 8, [("v", "continue"), ("b", "last_frame")])]
         result = plan(records, (video, image("b")), 12, 5, chunks.ContinuityPlan())
         result = project.plan_project(ctx.DirectorContext.from_dict({**result.context.to_dict(), "width": 64, "height": 64}),
                                       5, chunks.ContinuityPlan())
         previous = empty_latent(result.plan.chunks[0].sampled_frames)
-        frames = torch.stack([torch.full((64, 64, 3), value) for value in (.1, .3, .6)])
+        frames = torch.full((39,64,64,3),.6)
+        job = next(job for job in project.jobs(result) if job.chunk.continuation_id)
         with patch.object(media, "load_picture", return_value=torch.full((1, 64, 64, 3), .8)), \
-             patch.object(module("ng.adapters.video_end"), "last_frame", return_value=frames[-1:]) as last:
-            built = builder.build_chunk(project.jobs(result)[1], Encoder(), VAE(), previous=previous, mm=native)
-        last.assert_called_once_with("v.mp4", 0, 3)
-        guides = [row for row in built.positive[0][1]["minimax_keyframes"] if row["resolved_frame_index"] >= 22]
-        self.assertEqual([row["resolved_frame_index"] for row in guides], [106, 59])
+             patch.object(module("ng.adapters.video_end"), "tail_frames", return_value=frames) as tail:
+            built = builder.build_chunk(job, Encoder(), VAE(), previous=previous, mm=native)
+        tail.assert_called_once_with("v.mp4", 0, 3,39)
+        guides = built.positive[0][1]["minimax_keyframes"]
+        expected = [ref.start_f for ref in job.compiled.refs if ref.kind=="keyframe"]+[0]
+        self.assertEqual([row["resolved_frame_index"] for row in guides], expected)
         self.assertAlmostEqual(float(guides[0]["latent"].mean()), .8, delta=1/255)
         self.assertAlmostEqual(float(guides[1]["latent"].mean()), .6, delta=1/255)
         self.assertEqual(built.dropped_anchors, ())
+        self.assertEqual(built.trim_frames,39)
+        self.assertTrue(torch.all(built.latent['noise_mask'].unbind()[0][:,:,:12]==0))
 
 
 if __name__ == "__main__":

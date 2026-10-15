@@ -104,8 +104,11 @@ take instruction in the shot or shared Look/rules prevents an added cut. Explici
 Drag a card onto the empty timeline to create a shot with it, onto a shot (or click it while a shot is selected) to assign it,
 or an audio card onto an audio lane. Cards the current mode cannot use are dimmed (for example a Motion reference in First / last frame mode).
 Files are chosen in the Context nodes themselves, not in the Studio.
-**Continue from video** anchors the shot with the final original frame before the card's selected source end, independent
-of the source frame rate. It produces the continuation; the original source can be joined to it with native Concatenate Video.
+**Continue from video** uses the last 39 frames before the card's selected source end as hidden movement context, with
+matching audio when **Its own sound** is sent along. FL2VA and Ref2VA both use native time-anchored guides. Short selections
+use 22, 5 or 1 frame and show a warning. The final original source frame is included, independent of the source frame rate.
+Render Sequence removes this prefix from picture and sound; Duration describes the new footage. The original source can
+be joined to it with native Concatenate Video. A later shot with its own Continue source starts an independent render part.
 Video decoding keeps native float colours and display rotation and reads source timing relative to the video's first timestamp.
 
 ### Timeline
@@ -204,7 +207,8 @@ This is the compiler's real output, refreshed live while you edit.
   `LoraLoaderModelOnly` is inserted on the model.
 - **Your own sampler**: **H3 Director NG - native sampler.json**. Director Output supplies native `MODEL`, positive/negative
   `CONDITIONING`, `LATENT`, fps, width/height, prompt and seed for one chunk; **sequence** carries the whole project.
-  A continuation requires the previous chunk's raw latent on `previous`.
+  An internal continuation requires the previous chunk's raw latent on `previous`; a part with its own Continue video does not.
+  Native LATENT ports include the hidden prefix; use NG Collect or Render Sequence to remove it from picture and sound.
 - **Live preview**: load `taeh3.safetensors` with Load VAE and connect it to Context Connector's `preview VAE`. Render Sequence
   then previews every part itself (its player appears on the node with the first frames). With your own sampler, put
   **🎯 Preview Override (live)** between Director Output's MODEL and your guider and connect Director Output's `preview VAE` to it. Both players buffer, with pause,
@@ -346,9 +350,12 @@ Before ComfyUI's H3 nodes get them, pictures and reference video frames are brou
 processor (pictures 65,536–16,777,216 pixels, videos 4,096–25,165,824 across all sampled frames).
 
 **Video:** player and **Part of the file to use** (drag across the strip). Motion / camera / whole structure send references
-and prompt guidance, not exact copies; **Continue from video** starts from the last frame of the chosen part.
-**Its own sound** ignores the soundtrack or sends it along as a paired video/audio reference in Auto or Ref2VA, including
-Continue. Explicit FL2VA keeps the continuation frame and reports that source sound needs Auto or Ref2VA.
+and prompt guidance, not exact copies. **Continue from video** uses the selected tail as a hidden video prefix.
+**Its own sound** ignores the soundtrack or sends it along. For Continue it anchors the matching tail in both FL2VA and
+Ref2VA; pure Continue does not additionally send the whole clip as a general reference. Other video reference roles keep
+their paired video/audio references in Auto or Ref2VA. Without the full original song, voice and melody may still change.
+To continue an existing full song, add an Audio card with **Lock** and select the source offset where the new footage
+begins (5.875 s after a 5.875 s source clip). First frame pictures with a separate audio card remain supported.
 A reference video is cut to H3's 17k+5 frame grid (72 selected frames keep 56), as ComfyUI's node does; its paired soundtrack is
 cut with it.
 

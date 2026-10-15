@@ -1,4 +1,4 @@
-"""Continue keeps its exact frame guide and sends selected source sound through a native paired reference."""
+"""Continuation sound belongs to the timed source prefix, never a general AV reference."""
 import unittest
 
 from _pack import module
@@ -19,24 +19,26 @@ class ContinueSoundtrack(unittest.TestCase):
         project = self.project.plan_project(context, 6, self.chunks.ContinuityPlan("video_audio", 22, 24))
         return self.project.jobs(project)[0]
 
-    def test_auto_and_ref_keep_guide_and_pair_selected_video_sound(self):
+    def test_auto_and_ref_keep_a_timed_prefix_without_a_repeating_video_reference(self):
         for mode in ("auto", "ref2va"):
             with self.subTest(mode=mode):
                 job = self.plan(mode, "reference")
-                self.assertEqual(job.compiled.mode, "ref2va")
+                self.assertEqual(job.compiled.mode, "t2va" if mode == "auto" else "ref2va")
                 self.assertEqual(len(job.compiled.of_kind("continue_video")), 1)
                 refs = job.compiled.of_kind("video")
-                self.assertEqual([(r.ctx_id, r.trim_start_f, r.length_f) for r in refs], [("source", 12, 72)])
-                self.assertIn("<Video 1>", job.compiled.prompt)
+                self.assertEqual(refs, ())
+                self.assertNotIn("<Video 1>", job.compiled.prompt)
+                self.assertEqual(job.chunk.head_frames, 39)
+                self.assertEqual(job.compiled.of_kind("continue_video")[0].trim_start_f, 45)
                 self.assertFalse(any(i.code == "reference_disabled" for i in job.project.issues))
 
-    def test_explicit_fl_warns_about_sound_but_keeps_continuation_frame(self):
+    def test_explicit_fl_uses_its_sound_prefix_without_a_false_unsupported_warning(self):
         job = self.plan("fl2va", "reference")
         self.assertEqual(job.compiled.mode, "t2va")
         self.assertEqual(len(job.compiled.of_kind("continue_video")), 1)
         self.assertEqual(job.compiled.of_kind("video"), ())
         warnings = [i.text for i in job.project.issues if i.code == "reference_disabled"]
-        self.assertTrue(any("continuation frame is used" in text and "soundtrack" in text for text in warnings), warnings)
+        self.assertEqual(warnings, [])
 
     def test_ignore_keeps_auto_fl_without_video_reference(self):
         job = self.plan("auto", "ignore")

@@ -47,6 +47,17 @@ def decode_audio_factory(frames_by_marker, extra_samples=0):
 
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
 class Collect(unittest.TestCase):
+    def test_external_prefix_is_removed_from_first_and_later_independent_runs(self):
+        parts = (chunks.Chunk(0,0,102,39,continuation_id='first'),
+                 chunks.Chunk(1,102,102,22),
+                 chunks.Chunk(2,204,102,39,continuation_id='second'))
+        plan = chunks.SequencePlan(306,chunks.ContinuityPlan(),parts)
+        values = [fake_latent(part.sampled_frames,n)['samples'].unbind()[0] for n,part in enumerate(parts)]
+        pictures = list(collect.delivered_pictures(values,plan,decode_video))
+        self.assertEqual([len(frames) for frames in pictures],[102,102,102])
+        self.assertEqual([int(frames[20,0,0,0]) for frames in pictures],[0,1,2])
+        self.assertEqual(len(collect._joined_runs(values,plan)),2)
+
     def plan(self, total=600, window=22):
         return chunks.plan_chunks(total, 240, chunks.ContinuityPlan("video_audio", window, 24))
 

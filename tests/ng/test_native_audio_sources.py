@@ -41,3 +41,13 @@ class NativeAudioSources(unittest.TestCase):
                 mock.patch.object(self.media.native_audio, "load", return_value=(torch.zeros(2, 32000), 32000)):
             with self.assertRaisesRegex(self.media.MediaError, "sound.*empty"):
                 self.media.load_audio(self.ref("audio", "sound", "sound.wav", trim_start_f=48, length_f=24))
+
+    def test_44100_hz_half_sample_boundaries_match_native_audio_trim(self):
+        import torch
+        wave = torch.arange(44100 * 11).repeat(2, 1).float()
+        with mock.patch.object(self.media, "input_path", return_value="exists"), \
+                mock.patch.object(self.media.native_audio, "load", return_value=(wave, 44100)):
+            result = self.media.load_audio(self.ref("audio", "song", "song.mp3", trim_start_f=141, length_f=102))
+        start = round(5.875 * 44100)
+        count = round(4.25 * 44100)
+        self.assertTrue(torch.equal(result["waveform"], wave[:, start:start + count].unsqueeze(0)))

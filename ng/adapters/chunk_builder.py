@@ -13,7 +13,7 @@ from ...minimax_core import core
 from ...minimax_director import lock_audio_latent
 from ..core.chunks import ContinuityPlan
 from ..core.limits import FPS
-from . import conditioning, media, scene_guides
+from . import conditioning, media, scene_guides, continuation_latent
 
 
 @dataclass(frozen=True)
@@ -143,7 +143,7 @@ def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="m
     else:
         out = _frame_conditioning(mm, job, clip, vae, resize_method, ref_image_size)
     positive, latent = _first_two(out)
-    positive = scene_guides.apply_guides(mm, job, positive, latent, vae)
+    positive = scene_guides.apply_guides(mm, job, positive, latent, vae, audio_vae)
     continuity: ContinuityPlan = job.project.plan.continuity
     locks = compiled.of_kind("lock")
     if locks:
@@ -151,6 +151,9 @@ def build_chunk(job, clip, vae, audio_vae=None, previous=None, ref_image_size="m
         head_steps = math.ceil(job.chunk.head_frames / float(FPS) * mm.AUDIO_LATENT_FPS)
         if continuity.mode == "video_audio" and any(math.floor(r.start_f / float(FPS) * mm.AUDIO_LATENT_FPS) < head_steps for r in locks):
             continuity = dataclasses.replace(continuity, mode="video")       # a lock inside the head wins over audio carry
+    if job.chunk.continuation_id:
+        latent = continuation_latent.hold_prefix(latent, positive)
+        return BuiltChunk(positive, latent, job.chunk.head_frames, ())
     if not job.chunk.head_frames:
         return BuiltChunk(positive, latent, 0, ())
     positive, trim, dropped = conditioning.pin_previous(positive, latent, previous, continuity)
