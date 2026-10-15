@@ -47,6 +47,27 @@ def decode_audio_factory(frames_by_marker, extra_samples=0):
 
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
 class Collect(unittest.TestCase):
+    def test_picture_correction_only_visits_external_openings_and_keeps_audio(self):
+        parts = (chunks.Chunk(0, 0, 102, 39, continuation_id="a"),
+                 chunks.Chunk(1, 102, 102, 22),
+                 chunks.Chunk(2, 204, 102, 39, continuation_id="b"))
+        plan = chunks.SequencePlan(306, chunks.ContinuityPlan(), parts)
+        returned = [fake_latent(part.sampled_frames, n) for n, part in enumerate(parts)]
+        decode = decode_audio_factory({part.index: part.sampled_frames for part in parts})
+        visits = []
+        def correct(index, known, frames):
+            visits.append((index, float(known[0, 0, 0])))
+            frames[:6].add_(.125)
+            return frames
+        expected, sound, _ = collect.collect_chunks(returned, plan, decode_video, decode)
+        frames, audio, _ = collect.collect_chunks(returned, plan, decode_video, decode, restore_picture=correct)
+        self.assertEqual(visits, [(0, 0.), (2, 2.)])
+        self.assertTrue(torch.equal(audio["waveform"], sound["waveform"]))
+        for index in (0, 204):
+            self.assertTrue(torch.equal(frames[index:index + 6], expected[index:index + 6] + .125))
+        self.assertTrue(torch.equal(frames[6:204], expected[6:204]))
+        self.assertTrue(torch.equal(frames[210:], expected[210:]))
+
     def test_external_prefix_is_removed_from_first_and_later_independent_runs(self):
         parts = (chunks.Chunk(0,0,102,39,continuation_id='first'),
                  chunks.Chunk(1,102,102,22),

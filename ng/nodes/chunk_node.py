@@ -8,7 +8,7 @@ import folder_paths
 from comfy_api.latest import InputImpl, io
 
 from ...minimax_core import audio_nodes, core
-from ..adapters import audio_locks, chunk_builder, collect, latents, resume
+from ..adapters import audio_locks, chunk_builder, collect, continuation_join, latents, resume
 from ..adapters.media import MediaError
 from ..core.limits import FPS, RESIZE_METHODS
 from .context_nodes import CATEGORY
@@ -103,18 +103,21 @@ class NGCollect(io.ComfyNode):
             inputs=[io.Latent.Input("latents", tooltip="End Loop output (accumulate on)."), NGChunk.Input("chunks", tooltip="The Director's chunks."),
                     io.Vae.Input("vae"), io.Vae.Input("audio_vae"),
                     io.String.Input("resume_settings", optional=True, advanced=True,
-                                    tooltip="Set by Render Sequence when the kept render parts are deleted once the video is put together.")],
+                                    tooltip="Set by Render Sequence when the kept render parts are deleted once the video is put together."),
+                    io.Boolean.Input("smooth_source_join", default=True, optional=True, advanced=True,
+                                     tooltip="Ease the source/VAE picture difference over the first six new frames of Continue. Sound is unchanged.")],
             outputs=[io.Image.Output(display_name="images"), io.Audio.Output(display_name="audio"), io.String.Output(display_name="warnings"),
                      io.Float.Output(display_name="fps", tooltip="24, for CreateVideo. Outside the loop, unlike Director Output's fps.")],
         )
 
     @classmethod
-    def execute(cls, latents, chunks, vae, audio_vae, resume_settings=None):
+    def execute(cls, latents, chunks, vae, audio_vae, resume_settings=None, smooth_source_join=None):
         project = _jobs_of(chunks)
         decode_audio = audio_nodes().vae_decode_audio
         frames, sound, issues = collect.collect_chunks(
             latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}),
-            restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate))
+            restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate),
+            restore_picture=_picture_restorer(chunks, smooth_source_join))
         if resume_settings:
             resume.forget(chunks, json.loads(resume_settings[0]))
         return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues), float(FPS))
@@ -127,6 +130,12 @@ def _jobs_of(chunks):
     return project
 
 
+def _picture_restorer(chunks, enabled):
+    if enabled is not None and not enabled[0]:
+        return None
+    return lambda index, known, frames: continuation_join.smooth(chunks[index], known, frames)
+
+
 class NGCollectVideo(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -135,19 +144,22 @@ class NGCollectVideo(io.ComfyNode):
             description="After the loop, for long projects such as a whole song: decodes one render part at a time straight into a video "
                         "file, so the frames never have to fit in memory at once. Connect SaveVideo.",
             inputs=[io.Latent.Input("latents", tooltip="End Loop output (accumulate on)."), NGChunk.Input("chunks", tooltip="The Director's chunks."),
-                    io.Vae.Input("vae"), io.Vae.Input("audio_vae")],
+                    io.Vae.Input("vae"), io.Vae.Input("audio_vae"),
+                    io.Boolean.Input("smooth_source_join", default=True, optional=True, advanced=True,
+                                     tooltip="Ease the source/VAE picture difference over the first six new frames of Continue. Sound is unchanged.")],
             outputs=[io.Video.Output(display_name="video"), io.String.Output(display_name="warnings")],
         )
 
     @classmethod
-    def execute(cls, latents, chunks, vae, audio_vae):
+    def execute(cls, latents, chunks, vae, audio_vae, smooth_source_join=None):
         project = _jobs_of(chunks)
         decode_audio = audio_nodes().vae_decode_audio
         path = os.path.join(folder_paths.get_temp_directory(), "ng_collect_%s.mp4" % uuid.uuid4().hex)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         issues = collect.write_video(path, latents, project.plan, lambda video: _decode_video(vae[0], video),
                                      lambda audio: decode_audio(audio_vae[0], {"samples": audio}),
-                                     restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate))
+                                     restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate),
+                                     restore_picture=_picture_restorer(chunks, smooth_source_join))
         return io.NodeOutput(InputImpl.VideoFromFile(path), "\n".join(str(i) for i in issues))
 
 

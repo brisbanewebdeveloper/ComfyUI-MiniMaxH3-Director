@@ -153,6 +153,17 @@ class ExternalSampling(unittest.TestCase):
             out = self.nodes["NGCollect"].execute([], self.jobs(self.result()), [object()], [object()])
         self.assertEqual(out.args[3], 24.0)
 
+    def test_both_collectors_expose_and_honor_source_join_switch(self):
+        jobs = self.jobs(self.result())
+        for name in ("NGCollect", "NGCollectVideo"):
+            self.assertIn("smooth_source_join", [i.id for i in self.nodes[name].GET_SCHEMA().inputs])
+        self.assertIsNone(self.chunk_module._picture_restorer(jobs, [False]))
+        frames, known = torch.zeros(8, 4, 4, 3), torch.zeros(4, 4, 3)
+        with patch.object(self.chunk_module.continuation_join, "smooth", return_value=frames) as smooth:
+            callback = self.chunk_module._picture_restorer(jobs, None)
+            self.assertIs(callback(0, known, frames), frames)
+            smooth.assert_called_once_with(jobs[0], known, frames)
+
     def test_collect_video_streams_the_same_join_into_a_file(self):
         # A whole song (177 s, 4248 frames at 768x1152) is 45 GB as one float picture tensor; the file is written part by part.
         import os

@@ -51,7 +51,7 @@ def _steps(pieces, start, stop):
     return torch.cat(out, 2)
 
 
-def delivered_pictures(videos, plan, decode_video):
+def delivered_pictures(videos, plan, decode_video, *, restore_picture=None):
     """Each chunk's delivered frames, decoded from its run's joined latent one window at a time.
 
     The video VAE decodes 17-frame clips of 5 steps and blends the first 5 frames of each clip with the previous clip's lookahead.
@@ -75,16 +75,18 @@ def delivered_pictures(videos, plan, decode_video):
             # Keep owned outputs across subsequent VAE calls, including decoders that reuse their buffers. After the last
             # chunk no call follows: a copy there only doubled the peak (one 12 s part: 3.1 GB more, out of memory).
             delivered = frames[offset:offset + chunk.delivered_frames]
+            if chunk.continuation_id and offset and restore_picture is not None:
+                delivered = restore_picture(chunk.index, frames[offset - 1], delivered)
             yield delivered if chunk.index == final else delivered.clone()
 
 
-def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *, restore_audio=None):
+def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *, restore_audio=None, restore_picture=None):
     """Each chunk's delivered (frames [n,H,W,3], waveform [1,C,S], sample rate), decoded only when it is asked for."""
     if len(chunk_latents) != len(plan.chunks):
         raise ValueError("the plan has %d chunks but %d were generated" % (len(plan.chunks), len(chunk_latents)))
     streams = [latents.validate_chunk(latent, chunk.sampled_frames, "Chunk %d" % (chunk.index + 1))
                for latent, chunk in zip(chunk_latents, plan.chunks)]
-    pictures = delivered_pictures([video for video, _ in streams], plan, decode_video)
+    pictures = delivered_pictures([video for video, _ in streams], plan, decode_video, restore_picture=restore_picture)
     for (_, audio), chunk, frames in zip(streams, plan.chunks, pictures):
         decoded = decode_audio(audio)
         wave, rate = decoded["waveform"].clone(), int(decoded["sample_rate"])
@@ -101,20 +103,22 @@ def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *,
         yield frames, wave, rate
 
 
-def collect_chunks(chunk_latents, plan, decode_video, decode_audio, *, restore_audio=None):
+def collect_chunks(chunk_latents, plan, decode_video, decode_audio, *, restore_audio=None, restore_picture=None):
     """chunk_latents: list of AV latents in chunk order. plan: SequencePlan. Returns (frames [N,H,W,3], audio dict, issues)."""
     pictures, waves, issues, rate = [], [], [], None
-    for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, restore_audio=restore_audio):
+    for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues,
+                                              restore_audio=restore_audio, restore_picture=restore_picture):
         pictures.append(frames)
         waves.append(wave)
     return torch.cat(pictures, 0), {"waveform": torch.cat(waves, -1), "sample_rate": rate}, tuple(issues)
 
 
-def write_video(path, chunk_latents, plan, decode_video, decode_audio, crf=17, *, restore_audio=None):
+def write_video(path, chunk_latents, plan, decode_video, decode_audio, crf=17, *, restore_audio=None, restore_picture=None):
     """The same join written chunk by chunk into an MP4 (H.264, AAC): only one chunk is ever decoded at a time."""
     issues, video_stream, audio_stream, sample = [], None, None, 0
     with av.open(path, mode="w", format="mp4") as output:
-        for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, restore_audio=restore_audio):
+        for frames, wave, rate in delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues,
+                                                  restore_audio=restore_audio, restore_picture=restore_picture):
             layout = "stereo" if wave.shape[1] == 2 else "mono"
             if video_stream is None:
                 video_stream = output.add_stream("libx264", rate=Fraction(FPS, 1))

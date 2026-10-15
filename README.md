@@ -239,7 +239,7 @@ any OpenAI-compatible endpoint) with automatic VRAM release before a run.
 * **ComfyUI ≥ 0.37.0** for this NG release, including native Start Loop / End Loop with List mode.
   H3 and the Legacy nodes originally required 0.30.0; NG's live validation uses 0.37.0.
 * **Python 3.10+** (ComfyUI's own environment; the portable build's `python_embeded` is fine).
-* **No extra pip packages.** Everything the nodes import ships with ComfyUI already.
+* **OpenCV** is used to preserve motion while easing the picture join when continuing a source video.
 * **VRAM:** the fp8 checkpoints are ~21 GB on disk. 16 GB VRAM works with ComfyUI's
   offloading at 480p–768p; below that expect heavy swapping. The text encoder is a
   separate ~15 GB load.
@@ -271,7 +271,7 @@ git clone https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director
 On the Windows portable build the folder is
 `ComfyUI_windows_portable\ComfyUI\custom_nodes`.
 
-There is **nothing to pip install** — the package declares no third-party dependencies.
+From this package's directory, install the declared dependency with ComfyUI's Python: `python -m pip install -r requirements.txt`. OpenCV may already be installed by another node package.
 
 Then restart ComfyUI **and hard-reload the browser** (Ctrl+F5). The timeline is a
 frontend extension; a stale cached `.js` is the single most common "node looks broken"
