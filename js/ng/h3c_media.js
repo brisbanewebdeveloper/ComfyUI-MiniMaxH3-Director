@@ -60,7 +60,7 @@ export function videoSoundBox(S, actions) {
     h("div", { class: "h3c-segs", style: { gridTemplateColumns: "repeat(2,minmax(0,1fr))" } },
       h("button", { class: send ? "" : "on", onclick: () => actions.setOptions({ video_audio: "ignore" }) }, "Ignore"),
       h("button", { class: send ? "on" : "", onclick: () => actions.setOptions({ video_audio: "reference" }) }, "Send along")),
-    h("span", { class: "h3c-hint" }, send ? "Its soundtrack goes with it as a paired audio reference." : "Only the picture is used."));
+    h("span", { class: "h3c-hint" }, send ? "Its soundtrack goes with it as a paired video/audio reference in Auto or Ref2VA mode." : "Only the picture is used."));
 }
 
 function drawWave(canvas, envelope, range) {

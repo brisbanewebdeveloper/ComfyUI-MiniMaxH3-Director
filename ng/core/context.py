@@ -83,6 +83,12 @@ class ContextItem:
         """The usage the compiler acts on: what the user set, else the default role of the medium."""
         return self.usage or (USAGE_BY_MEDIA[self.media][0],)
 
+    @property
+    def uses_video_reference(self):
+        roles = set(self.effective_usage)
+        return self.media == "video" and bool(roles & {"motion", "camera", "structure"} or
+                                             ("continue" in roles and self.options.video_audio == "reference"))
+
 
 def check_item(item):
     """Soft problems with one item. Hard problems are SchemaError at load time."""

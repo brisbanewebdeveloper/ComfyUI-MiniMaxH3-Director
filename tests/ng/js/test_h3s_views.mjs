@@ -165,6 +165,14 @@ function recorder() {
   assert.equal(cards.length, 4, "Text-Shot plus three Context cards");
   assert.ok(cards[1].classList.contains("on"), "Mage is in the selected shot");
   assert.ok(cards[2].classList.contains("off"), "a video is unused in FL2VA");
+  for (const usage of ["continue", "control"]) {
+    const supported = contentEntries([{ media: "video", widgets: { context_id: "source", name: "Source", video: "source.mp4", usage } }], () => "#E6BE57");
+    const card = contentView(state({ contexts: supported, values: { mode: "fl2va" } }), actions).byClass("h3s-ctx")[1];
+    assert.equal(card.classList.contains("off"), false, `${usage} works in FL2VA`);
+    assert.equal(card.title.includes("Not used"), false);
+    card.onclick();
+    assert.deepEqual(calls.at(-1), ["toggleBinding", "source"]);
+  }
   cards[3].onclick();
   assert.deepEqual(calls.at(-1), ["toggleBinding", "song"]);
   const prompt = promptView(state({ ai: false }), actions);

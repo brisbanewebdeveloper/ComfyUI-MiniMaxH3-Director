@@ -49,7 +49,7 @@ def has_references(context):
         usage = item.effective_usage
         if item.media == "image" and "reference" in usage:
             return True
-        if (item.media == "video" and set(usage) & {"motion", "camera", "structure"}) or (item.media == "audio" and set(usage) & set(_AUDIO_RETENTION) - {"lock"}):
+        if item.uses_video_reference or (item.media == "audio" and set(usage) & set(_AUDIO_RETENTION) - {"lock"}):
             return True
     return False
 
@@ -265,7 +265,7 @@ def _audio_segments(context, chunk, voices):
 def _motion_segments(context):
     out = []
     for item in context.by_media("video"):
-        if item.source and set(item.effective_usage) & {"motion", "camera", "structure"}:
+        if item.source and item.uses_video_reference:
             source_start, available = source_window(item)
             length = available if available is not None else 120
             out.append({"type": "video", "videoFile": item.source, "fileName": item.name, "start": FAR_AWAY, "length": length,

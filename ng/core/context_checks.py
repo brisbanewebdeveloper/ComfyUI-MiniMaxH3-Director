@@ -29,11 +29,13 @@ def check_context(context):
         if item.media == "audio" and "voice" in item.effective_usage and item.speaker and item.speaker not in subjects:
             issues.append(Issue("voice_unbound", "Speaker is not a reference image; this voice is sent as an unbound audio reference.", item.name))
         # an image reference is used in fl2va too (ng.core.fl2va_refs); video and audio references are not
-        reference = (
-            item.media == "video" and bool(set(item.effective_usage) & {"motion", "camera", "structure"})) or (
+        reference = item.uses_video_reference or (
             item.media == "audio" and bool(set(item.effective_usage) & {"voice", "copy", "music_style", "rhythm", "sound_reference"}))
         if context.mode == "fl2va" and reference:
-            issues.append(Issue("reference_disabled", "Is omitted by explicit fl2va mode; choose auto or ref2va to use it.", item.name))
+            text = ("The continuation frame is used, but its soundtrack needs auto or ref2va mode."
+                    if item.media == "video" and "continue" in item.effective_usage else
+                    "Is omitted by explicit fl2va mode; choose auto or ref2va to use it.")
+            issues.append(Issue("reference_disabled", text, item.name))
     return issues
 
 

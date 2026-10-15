@@ -74,7 +74,7 @@ export function contentView(S, actions) {
   for (const entry of S.contexts) {
     const assigned = Boolean(selectedShot?.media.some((binding) => binding.context_id === entry.id));
     const control = entry.usage.includes("control");
-    const unused = S.values.mode === "fl2va" && entry.media === "video" && !control;
+    const unused = S.values.mode === "fl2va" && entry.media === "video" && !control && !entry.usage.includes("continue");
     const tip = control ? "Drag onto the Control lane, or click to place it at the start" : unused ? "Not used in First/last frame mode (FL2VA)" : entry.media === "audio"
       ? "Drag onto an audio lane = plays throughout · onto a shot = only in that shot"
       : selectedShot ? `Click: ${assigned ? "remove from" : "add to"} ${actions.shotLabel(selectedShot.id)}` : "Drag onto the timeline";

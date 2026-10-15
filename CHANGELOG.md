@@ -10,6 +10,8 @@
   changed the native conditioning. Timestamp offsets are normalized, and EOF padding holds the actual final decoded frame.
 - Audio references retain the source sample rate and samples until the native H3 audio encoder; unnecessary intermediate
   resampling changed paired video/audio conditioning.
+- Continue + Send along supplies the selected source as a paired video/audio reference in Auto and Ref2VA, alongside the
+  exact continuation frame. Explicit FL2VA reports the soundtrack limitation. Studio keeps Continue cards active in FL2VA.
 
 **Control video cards and Studio lane** (2026-10-14):
 
