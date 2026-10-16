@@ -25,11 +25,13 @@ export function pictureCache(onload) {
       return img.complete && img.naturalWidth ? img : null;
     },
     failed(src) { return Boolean(cache.get(srcUrl(src))?.failed); },
-    // Resolves once every picture of the board has loaded or failed, for drawing the final sheet.
-    async ready(board) {
-      const waits = board.panels.flatMap((p) => p.layers).filter((l) => l.kind === "image" && l.src).map((layer) => {
-        this.get(layer.src);
-        const img = cache.get(srcUrl(layer.src));
+    // Resolves once every picture of the board (and optional cast bar) has loaded or failed, for drawing the final sheet.
+    async ready(board, cast = []) {
+      const items = [...board.panels.flatMap((p) => p.layers).filter((l) => l.kind === "image" && l.src),
+        ...(Array.isArray(cast) ? cast.filter((c) => c?.src) : [])];
+      const waits = items.map((item) => {
+        this.get(item.src);
+        const img = cache.get(srcUrl(item.src));
         return img.complete ? null : new Promise((resolve) => {
           img.addEventListener("load", resolve, { once: true }); img.addEventListener("error", resolve, { once: true });
         });
@@ -129,6 +131,25 @@ export function drawSheet(ctx, board, layout, pictures, { placeholder = false, s
     ctx.font = `700 30px ${FONT}`; ctx.fillText((board.title || "").toUpperCase(), layout.width / 2, 40, layout.width - 40);
     ctx.fillStyle = COLORS.sub; ctx.font = `500 15px ${FONT}`; ctx.fillText((board.subtitle || "").toUpperCase(), layout.width / 2, 62, layout.width - 40);
   }
+  (layout.cast || []).forEach((actor) => {
+    ctx.save();
+    roundRect(ctx, actor.x, actor.y, actor.w, actor.h, 8);
+    ctx.fillStyle = COLORS.card; ctx.fill();
+    ctx.strokeStyle = COLORS.border; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.clip();
+    const pad = 6, size = actor.h - 2 * pad, img = pictures.get(actor.src);
+    ctx.fillStyle = COLORS.empty; ctx.fillRect(actor.x + pad, actor.y + pad, size, size);
+    if (img) {
+      const s = Math.min(img.naturalWidth || size, img.naturalHeight || size);
+      const sx = ((img.naturalWidth || size) - s) / 2, sy = Math.max(0, ((img.naturalHeight || size) - s) * 0.15);
+      ctx.drawImage(img, sx, sy, s, s, actor.x + pad, actor.y + pad, size, size);
+    }
+    ctx.fillStyle = COLORS.text; ctx.font = `700 16px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(`@${actor.name}`, actor.x + pad + size + 10, actor.y + actor.h * 0.4, actor.w - size - pad * 2 - 14);
+    ctx.fillStyle = COLORS.sub; ctx.font = `500 12px ${FONT}`;
+    ctx.fillText("CHARACTER", actor.x + pad + size + 10, actor.y + actor.h * 0.68, actor.w - size - pad * 2 - 14);
+    ctx.restore();
+  });
   const times = panelTimes(board);
   board.panels.forEach((panel, index) => {
     const box = layout.panels[index];

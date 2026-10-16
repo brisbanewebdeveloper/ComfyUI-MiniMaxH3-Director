@@ -152,4 +152,68 @@ const model = await import("../../../js/ng/h3b_model.js");
   assert.deepEqual(model.readBoard(JSON.stringify({ ...board, library: [{ name: "broken" }, { kind: "figure", src: bg }] })).board.library.map((i) => i.kind), ["figure"]);
 }
 
+// Multi-storyboard scenes and Studio <-> Storyboard sync: Scene 2 appends after Scene 1 with unique IDs; editing Scene 1
+// updates its slice in-place (preserving spoken lines and locked text) and shifts Scene 2's times; syncFromDirector pulls
+// edited durations and shot texts back into the matching board's panels.
+{
+  const scene1 = model.newBoard(), scene2 = structuredClone(scene1);
+  scene1.panels = scene1.panels.slice(0, 2); scene2.panels = scene2.panels.slice(0, 2);
+  scene1.panels[0].shot = "Scene 1 A"; scene1.panels[1].shot = "Scene 1 B";
+  scene2.panels[0].shot = "Scene 2 A"; scene2.panels[1].shot = "Scene 2 B";
+  let shots = model.mergeDirectorShots([], scene1, { storyboard: "ctx_sb1" });
+  assert.deepEqual(shots.map((s) => [s.id, s.start, s.end]), [[`sb-${scene1.panels[0].id}`, 0, 2.5], [`sb-${scene1.panels[1].id}`, 2.5, 5]]);
+  // Scene 2 (cloned panel IDs) appends at 5..10 s with disambiguated shot IDs.
+  shots = model.mergeDirectorShots(shots, scene2, { storyboard: "ctx_sb2" });
+  assert.equal(shots.length, 4);
+  assert.equal(new Set(shots.map((s) => s.id)).size, 4, "all shot IDs remain unique across cloned boards");
+  assert.deepEqual(shots.slice(2).map((s) => [s.start, s.end, s.text]), [[5, 7.5, "Scene 2 A"], [7.5, 10, "Scene 2 B"]]);
+  // Studio edits: add spoken line + lock text on shot 0, resize shot 2 (Scene 2 panel 1) to 4 s and edit its text.
+  shots[0].spoken = [{ schema_version: 1, speaker_id: "luna", text: "Hello" }];
+  shots[0].locked_fields = ["text"];
+  shots[0].media.push({ schema_version: 1, context_id: "ctx_luna", role: "subject" });
+  scene1.panels[0].seconds = 4; scene1.panels[0].shot = "Should not overwrite locked text";
+  shots = model.mergeDirectorShots(shots, scene1, { storyboard: "ctx_sb1", frames: { 0: "ctx_f1" } });
+  assert.deepEqual(shots.map((s) => [s.start, s.end]), [[0, 4], [4, 6.5], [6.5, 9], [9, 11.5]], "Scene 2 shifted by +1.5 s");
+  assert.equal(shots[0].text, "Scene 1 A", "locked text preserved");
+  assert.equal(shots[0].spoken.length, 1, "spoken lines preserved");
+  assert.deepEqual(shots[0].media.map((m) => m.role), ["storyboard", "first_frame", "subject"]);
+  // Studio resizes Scene 2's first shot from 2.5 s to 5 s (6.5..11.5) and edits its text; syncFromDirector pulls it back.
+  shots[2].end = 11.5; shots[2].text = "Scene 2 A edited in Studio";
+  shots[3].start = 11.5; shots[3].end = 14;
+  const res = model.syncFromDirector(scene2, shots, "ctx_sb2");
+  assert.deepEqual(res, { updated: 1, matched: 2 });
+  assert.equal(scene2.panels[0].seconds, 5);
+  assert.equal(scene2.panels[0].shot, "Scene 2 A edited in Studio");
+  assert.equal(scene2.panels[1].seconds, 2.5);
+}
+
+// Character bar (Figurenleiste) on the sheet and PNG tEXt project roundtrip (embedBoardPng -> extractBoardPng).
+{
+  const board = { ...model.newBoard(), title: "CAST TEST" };
+  const baseLayout = model.sheetLayout(board);
+  const cast = [
+    { name: "Luna", src: { filename: "luna.png", subfolder: "", type: "input" } },
+    { name: "Inferna", src: { filename: "inferna.png", subfolder: "", type: "input" } },
+  ];
+  const castLayout = model.sheetLayout(board, model.SHEET_WIDTH, cast);
+  assert.equal(castLayout.cast.length, 2);
+  assert.deepEqual(castLayout.cast.map((c) => c.name), ["Luna", "Inferna"]);
+  assert.ok(castLayout.panels[0].y > baseLayout.panels[0].y, "panels shift down below the character bar");
+  assert.equal(castLayout.height - baseLayout.height, castLayout.panels[0].y - baseLayout.panels[0].y);
+
+  // Minimal valid PNG: 8-byte signature + 13-byte IHDR + 0-byte IEND.
+  const minimalPng = new Uint8Array([
+    137, 80, 78, 71, 13, 10, 26, 10,
+    0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137,
+    0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+  ]);
+  assert.equal(model.extractBoardPng(minimalPng), null, "plain PNG has no storyboard chunk");
+  board.panels[0].caption = "Luna — 0–2.5 s: Grüße im Saal.";
+  const embedded = model.embedBoardPng(minimalPng, board);
+  assert.ok(embedded.length > minimalPng.length);
+  const restored = model.extractBoardPng(embedded);
+  assert.deepEqual(restored, board);
+}
+
 console.log("h3b model ok");
+

@@ -1,7 +1,7 @@
 // The H3 Storyboard's jobs outside the drawing: Cut out (ComfyUI's Remove Background) and Redraw (Qwen Image 2.1), both queued
 // like any job, and the Director side: the sheet and frame panels as Context cards, the panels as the Director's shots.
 // boardJobs takes the editor's state and functions (h3b_editor.js).
-import { ASPECTS, newLayer, newId, panelTimes, fmtSeconds, pictureSize, loadName, srcUrl, redrawPrompt, directorShots } from "./h3b_model.js";
+import { ASPECTS, newLayer, newId, panelTimes, fmtSeconds, pictureSize, loadName, srcUrl, redrawPrompt, mergeDirectorShots, syncFromDirector } from "./h3b_model.js";
 import { drawPicture } from "./h3b_draw.js";
 import { SUBFOLDER, comboOptions, canvasOf, runJob, qwenSetup, qwenGraph } from "./h3b_queue.js";
 import { isContextNode, upstreamNode } from "./ng_read.js";
@@ -85,16 +85,40 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
     return directors.find((d) => source && upstreamNode(d.graph, d.inputs?.find((i) => i.name === "context")) === source)
       || (directors.length === 1 ? directors[0] : null);
   }
-  // Stage 4: the panels become the Director's shots, with the sheet's card on every shot and a panel's own picture as the
-  // first/last frame of its shot where the panel says so. The Director's sound lanes, Look and Prompt stay.
+  function sheetCardId() {
+    const suffix = `${S.board.id}_${node.id}_sheet.png`;
+    const last = S.lastFiles ? (() => { try { return JSON.parse(S.lastFiles).sheet; } catch { return ""; } })() : "";
+    const found = (last && cardOf(last)) || app.graph._nodes.find((n) => n.comfyClass === "NGContextImage"
+      && String(n.widgets?.find((w) => w.name === "image")?.value || "").replace(/\\/g, "/").endsWith(suffix));
+    return found ? cardId(found) : "";
+  }
+  function pullFromDirector() {
+    const target = director();
+    if (!target) { flash("No H3 Director found: connect both nodes to the same Context Connector.", true); return; }
+    const raw = String(target.widgets?.find((w) => w.name === "shots")?.value || "").trim();
+    let project = {};
+    try { project = raw.startsWith("{") ? JSON.parse(raw) : {}; } catch { project = {}; }
+    const sbId = sheetCardId(), probe = syncFromDirector(structuredClone(S.board), project.shots || [], sbId);
+    if (!probe.matched) { flash("No matching shots found in the Director yet. Send the panels to the Director first.", true); return; }
+    if (!probe.updated) { flash(`All ${probe.matched} panel(s) are already in sync with the Director.`); return; }
+    change((board) => { syncFromDirector(board, project.shots || [], sbId); });
+    S.notice = { text: `Synced ${probe.updated} of ${probe.matched} panel(s) from the Director (times and shot texts). Undo restores the previous values.`, error: false };
+    render();
+  }
+  // Stage 4: the panels become (or update/append) the Director's shots, with the sheet's card on every shot and a panel's own
+  // picture as the first/last frame of its shot where the panel says so. The Director's sound lanes, Look, spoken lines and
+  // other storyboard scenes stay.
   async function sendToDirector() {
     const target = director();
     if (!target) { flash("No H3 Director found: connect both nodes to the same Context Connector.", true); return; }
-    const values = Object.fromEntries((target.widgets || []).map((w) => [w.name, w.value]));
+    const vals = Object.fromEntries((target.widgets || []).map((w) => [w.name, w.value]));
     let project = {};
-    try { project = String(values.shots || "").trim().startsWith("{") ? JSON.parse(values.shots) : {}; } catch { project = {}; }
-    const before = Array.isArray(project.shots) ? project.shots.length : String(values.shots || "").trim() ? 1 : 0;
-    if (before && !window.confirm(`Replace the Director's ${before} shot${before === 1 ? "" : "s"} with the ${S.board.panels.length} panels? Its sound lanes stay.`)) return;
+    try { project = String(vals.shots || "").trim().startsWith("{") ? JSON.parse(vals.shots) : {}; } catch { project = {}; }
+    const existing = Array.isArray(project.shots) ? project.shots : [];
+    const hasSb = existing.some((s) => (s.media || []).some((m) => m.role === "storyboard") || String(s.id || "").startsWith("sb-"));
+    const nonJson = !existing.length && Boolean(String(vals.shots || "").trim());
+    if ((nonJson || (existing.length && !hasSb))
+      && !window.confirm(`Replace the Director's ${existing.length || 1} shot${existing.length === 1 || nonJson ? "" : "s"} with the ${S.board.panels.length} panels? Its sound lanes stay.`)) return;
     S.busy = "send"; render();
     try {
       const files = JSON.parse(await renderFiles());
@@ -108,14 +132,14 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
         if (item.first_frame) frames[index] = cardId(card);
         if (item.last_frame) lastFrames[index] = cardId(card);
       });
-      const shots = directorShots(S.board, { storyboard: cardId(sheetCard), frames, lastFrames });
-      const times = panelTimes(S.board);
+      const shots = mergeDirectorShots(existing, S.board, { storyboard: cardId(sheetCard), frames, lastFrames }, { replaceAll: !hasSb });
+      const total = shots.length ? shots[shots.length - 1].end : panelTimes(S.board).at(-1)[1];
       const doc = { format: "h3-director-shots", schema_version: 1, ...project, shots };
-      const changes = { shots: JSON.stringify(doc), project_seconds: times[times.length - 1][1] };
-      if (!String(values.idea || "").trim() && S.board.idea.trim()) changes.idea = S.board.idea;
+      const changes = { shots: JSON.stringify(doc), project_seconds: total };
+      if (!String(vals.idea || "").trim() && S.board.idea.trim()) changes.idea = S.board.idea;
       applyValues(target, changes);
       target.graph?.change?.();
-      S.notice = { text: `The Director has the ${shots.length} panels as shots (${fmtSeconds(changes.project_seconds)} s), the storyboard on every shot`
+      S.notice = { text: `The Director has ${shots.length === S.board.panels.length ? `the ${shots.length} panels as shots` : `${S.board.panels.length} panels (${shots.length} total shots)`} (${fmtSeconds(changes.project_seconds)} s), the storyboard on every shot`
         + `${Object.keys(frames).length ? `, ${Object.keys(frames).length} first frame(s)` : ""}`
         + `${Object.keys(lastFrames).length ? `, ${Object.keys(lastFrames).length} last frame(s)` : ""}.`, error: false };
     } catch (error) {
@@ -177,5 +201,5 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
     } finally { S.busy = ""; render(); }
   }
 
-  return { cutOut, useInDirector, sendToDirector, redrawPanels };
+  return { cutOut, useInDirector, pullFromDirector, sendToDirector, redrawPanels };
 }

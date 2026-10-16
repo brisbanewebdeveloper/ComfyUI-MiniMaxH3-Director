@@ -46,4 +46,21 @@ assert.equal(graph._nodes.length,6,"sending again reuses generated cards");
 assert.equal(read(created[1],"context_id"),firstId);
 assert.deepEqual(JSON.parse(read(director,"shots")).shots[0].media.map(m=>m.role),["storyboard","first_frame","last_frame"]);
 assert.equal(new Set(graph._nodes.filter(n=>n.comfyClass.startsWith("NGContext") && n!==connector).map(n=>read(n,"name").toLowerCase())).size,4);
+// A second Storyboard node appends its scene after the first instead of wiping it, and pullFromDirector syncs Studio edits back.
+const board2=newBoard(); board2.panels=board2.panels.slice(0,2); board2.panels[0].shot="Part two opens.";
+const S2={board:board2,busy:"",notice:null,lastFiles:""};
+const jobs2=boardJobs({S:S2,node:{id:27,pos:[0,950],size:[1300,900]},app:{graph},api:{},pictures:{},
+  change(fn){fn(S2.board);},render(){},flash(text,error){S2.notice={text,error};},
+  renderFiles:async()=>{S2.lastFiles=JSON.stringify({sheet:"board2-sheet.png",panels:["b2p1.png","b2p2.png"]});return S2.lastFiles;},
+  connector:()=>connector,contexts:()=>[]});
+await jobs2.sendToDirector();
+const merged=JSON.parse(read(director,"shots"));
+assert.equal(merged.shots.length,3,"1 shot from board 1 + 2 shots from board 2");
+assert.deepEqual(merged.shots.map(s=>[s.start,s.end]),[[0,2.5],[2.5,5],[5,7.5]]);
+assert.equal(read(director,"project_seconds"),7.5);
+merged.shots[1].end=6.5; merged.shots[1].text="Edited in Studio."; merged.shots[2].start=6.5; merged.shots[2].end=9;
+director.widgets[0].value=JSON.stringify(merged);
+jobs2.pullFromDirector();
+assert.equal(S2.board.panels[0].seconds,4);
+assert.equal(S2.board.panels[0].shot,"Edited in Studio.");
 console.log("h3b transfer ok");

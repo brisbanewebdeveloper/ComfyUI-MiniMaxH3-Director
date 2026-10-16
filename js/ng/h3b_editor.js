@@ -3,7 +3,7 @@
 // folder or an upload; the jobs (cut out, redraw, the Director side) are in h3b_jobs.js.
 import { h, icon, field, select, keepKeys } from "./h3s_dom.js";
 import { ASPECTS, MAX_PANELS, readBoard, writeBoard, newLayer, newId, setPanelCount, panelTimes, fmtSeconds, sheetLayout,
-  pictureSize, layerBox, hits, srcUrl } from "./h3b_model.js";
+  pictureSize, layerBox, hits, srcUrl, embedBoardPng, extractBoardPng } from "./h3b_model.js";
 import { pictureCache, drawPicture, drawSheet } from "./h3b_draw.js";
 import { connectedProvider, readContexts, upstreamNode } from "./ng_read.js";
 import { aiAction } from "./ng_ai_request.js";
@@ -62,10 +62,24 @@ export function openBoard(node, app, api, host) {
   }
   function flash(text, error = false) { S.notice = { text, error }; render(); }
 
+  // --- pictures: context cards, input folder, upload, cut-out ------------------------------------------------------------
+  function connector() {
+    return upstreamNode(node.graph, node.inputs?.find((input) => input.name === "context"));
+  }
+  function contexts() {
+    const source = connector();
+    return source ? readContexts(source) : [];
+  }
+  function castCards() {
+    return contexts().filter((entry) => entry.media === "image" && entry.widgets.image && entry.widgets.name
+      && !/storyboard|first_frame|last_frame|keyframe/.test(`${entry.widgets.usage} ${entry.widgets.usage_roles || ""}`))
+      .map((entry) => ({ name: entry.widgets.name, src: srcOf(entry.widgets.image) }));
+  }
+
   // --- drawing -------------------------------------------------------------------------------------------------------
   function draw() {
     if (views.sheet) {
-      const layout = sheetLayout(S.board);
+      const layout = sheetLayout(S.board, undefined, castCards());
       if (views.sheet.width !== layout.width || views.sheet.height !== layout.height) { views.sheet.width = layout.width; views.sheet.height = layout.height; }
       drawSheet(views.sheet.getContext("2d"), S.board, layout, pictures, { placeholder: true, selected: S.selected });
     }
@@ -85,8 +99,11 @@ export function openBoard(node, app, api, host) {
   }
 
   // --- the files ComfyUI renders from ------------------------------------------------------------------------------------
-  async function upload(canvas, name) {
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  async function upload(canvas, name, boardMeta = null) {
+    let blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (boardMeta && blob?.arrayBuffer) {
+      blob = new Blob([embedBoardPng(new Uint8Array(await blob.arrayBuffer()), boardMeta)], { type: "image/png" });
+    }
     const body = new FormData();
     body.append("image", blob, name); body.append("subfolder", SUBFOLDER); body.append("type", "input"); body.append("overwrite", "true");
     const response = await api.fetchApi("/upload/image", { method: "POST", body });
@@ -96,13 +113,14 @@ export function openBoard(node, app, api, host) {
   }
   // The sheet and every panel's picture, uploaded to input/h3-storyboard; the same board is not uploaded twice.
   async function renderFiles() {
-    await pictures.ready(S.board);
-    const key = writeBoard(S.board);
+    const cast = castCards();
+    await pictures.ready(S.board, cast);
+    const key = `${writeBoard(S.board)}|${JSON.stringify(cast)}`;
     if (key === S.lastKey && S.lastFiles) return S.lastFiles;
-    const base = `${S.board.id}_${node.id}`, layout = sheetLayout(S.board);
+    const base = `${S.board.id}_${node.id}`, layout = sheetLayout(S.board, undefined, cast);
     const sheet = canvasOf(layout.width, layout.height);
     drawSheet(sheet.getContext("2d"), S.board, layout, pictures);
-    const files = { sheet: await upload(sheet, `${base}_sheet.png`), panels: [] };
+    const files = { sheet: await upload(sheet, `${base}_sheet.png`, S.board), panels: [] };
     const [w, h] = pictureSize(S.board.aspect);
     for (const [index, item] of S.board.panels.entries()) {
       const picture = canvasOf(w, h);
@@ -111,15 +129,6 @@ export function openBoard(node, app, api, host) {
     }
     S.lastKey = key; S.lastFiles = JSON.stringify(files);
     return S.lastFiles;
-  }
-
-  // --- pictures: context cards, input folder, upload, cut-out ------------------------------------------------------------
-  function connector() {
-    return upstreamNode(node.graph, node.inputs?.find((input) => input.name === "context"));
-  }
-  function contexts() {
-    const source = connector();
-    return source ? readContexts(source) : [];
   }
   // A new picture starts as large as fits into the panel (a portrait in a 16:9 panel would run off it at 0.6 of its width),
   // in its middle or where it was dropped (`at`, panel fractions).
@@ -134,18 +143,28 @@ export function openBoard(node, app, api, host) {
     S.picker = false; render();
   }
   async function uploadFile(file, at = null) {
+    if (file.arrayBuffer && (file.type === "image/png" || /\.png$/i.test(file.name || ""))) {
+      const loaded = extractBoardPng(new Uint8Array(await file.arrayBuffer()));
+      if (loaded) {
+        change((board) => { Object.keys(board).forEach((k) => delete board[k]); Object.assign(board, loaded); S.selected = 0; S.layer = null; });
+        S.picker = false;
+        flash(`Restored storyboard (${loaded.panels.length} panel${loaded.panels.length === 1 ? "" : "s"}) from ${file.name}. Undo goes back.`);
+        return "board";
+      }
+    }
     const body = new FormData();
     body.append("image", file, file.name); body.append("subfolder", SUBFOLDER); body.append("type", "input");
     const response = await api.fetchApi("/upload/image", { method: "POST", body });
-    if (response.status !== 200) { flash(`Upload failed (${response.status}).`, true); return; }
+    if (response.status !== 200) { flash(`Upload failed (${response.status}).`, true); return false; }
     const data = await response.json();
     await addPicture({ filename: data.name, subfolder: data.subfolder || "", type: "input" }, file.name.replace(/\.[^.]+$/, ""), at);
+    return true;
   }
   // Pictures dragged from a folder (or from ComfyUI's queue): onto a panel of the sheet, the panel canvas (where it lands)
   // or anywhere else on the editor (the selected panel).
   async function dropped(event) {
     if (event.target === views.sheet) {
-      const rect = views.sheet.getBoundingClientRect(), layout = sheetLayout(S.board);
+      const rect = views.sheet.getBoundingClientRect(), layout = sheetLayout(S.board, undefined, castCards());
       const x = (event.clientX - rect.left) * layout.width / rect.width, y = (event.clientY - rect.top) * layout.height / rect.height;
       const index = layout.panels.findIndex((p) => x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h);
       if (index >= 0) { S.selected = index; S.layer = null; }
@@ -157,9 +176,10 @@ export function openBoard(node, app, api, host) {
     if (!files.length && !linked) { flash("Only pictures can go onto a panel (PNG, JPG, WebP).", true); return; }
     // Several files stand side by side around the drop point instead of on top of each other.
     const spread = (i) => (files.length > 1 ? [(at?.[0] ?? 0.5) + (i - (files.length - 1) / 2) * 0.2, at?.[1] ?? 0.5] : at);
-    for (const [i, file] of files.entries()) await uploadFile(file, spread(i));
+    let restored = false;
+    for (const [i, file] of files.entries()) if (await uploadFile(file, spread(i)) === "board") restored = true;
     if (linked) await addPicture(linked, linked.filename.replace(/\.[^.]+$/, ""), at);
-    flash(`${files.length || 1} picture(s) on panel ${S.selected + 1}.`);
+    if (!restored) flash(`${files.length || 1} picture(s) on panel ${S.selected + 1}.`);
   }
   dropTarget(root, dropped);
   // --- AI: the panel texts -----------------------------------------------------------------------------------------------
@@ -184,7 +204,7 @@ export function openBoard(node, app, api, host) {
     } finally { S.busy = ""; render(); }
   }
 
-  const { cutOut, useInDirector, sendToDirector, redrawPanels } = boardJobs({ S, node, app, api, pictures, change, render, flash,
+  const { cutOut, useInDirector, pullFromDirector, sendToDirector, redrawPanels } = boardJobs({ S, node, app, api, pictures, change, render, flash,
     renderFiles, upload, connector, contexts });
   const assets = boardAssets({ S, api, change, render, contexts });
   // A layer copied onto every other panel at the same place: a background (the bottom layer) goes under, anything else on top.
@@ -257,14 +277,18 @@ export function openBoard(node, app, api, host) {
       h("button", { class: "h3s-btn ghost small", title: "Redo", disabled: !S.future.length, onclick: () => undo(false) }, "Redo"),
       h("button", { class: "h3s-btn", disabled: Boolean(S.busy), title: "Draws the sheet into input/h3-storyboard and adds a Context card with it (usage Storyboard)",
         onclick: useInDirector }, icon("image"), S.busy === "card" ? "Adding…" : "Use in Director"),
-      h("button", { class: "h3s-btn go", disabled: Boolean(S.busy), title: "The panels become the Director's shots (times, shot texts), with the sheet on every shot and the marked panels as first or last frames",
+      h("button", { class: "h3s-btn", disabled: Boolean(S.busy), title: "Pulls updated shot lengths and shot texts from the connected H3 Director back into these panels",
+        onclick: pullFromDirector }, "Sync from Director"),
+      h("button", { class: "h3s-btn go", disabled: Boolean(S.busy), title: "Updates or appends these panels in the Director's shots (times, shot texts), with the sheet on every shot and the marked panels as first or last frames",
         onclick: sendToDirector }, icon("play"), S.busy === "send" ? "Sending…" : "Send to Director"));
   }
 
   function sheetCard() {
     views.sheet = h("canvas", { class: "h3b-sheet", onclick: (event) => {
-      const rect = views.sheet.getBoundingClientRect(), layout = sheetLayout(S.board);
+      const rect = views.sheet.getBoundingClientRect(), layout = sheetLayout(S.board, undefined, castCards());
       const x = (event.clientX - rect.left) * layout.width / rect.width, y = (event.clientY - rect.top) * layout.height / rect.height;
+      const actor = (layout.cast || []).find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h);
+      if (actor) { addPicture(actor.src, actor.name); return; }
       const index = layout.panels.findIndex((p) => x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h);
       if (index >= 0 && index !== S.selected) { S.selected = index; S.layer = null; render(); }
     } });

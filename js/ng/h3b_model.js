@@ -7,7 +7,7 @@ export const ASPECTS = { "16:9": [16, 9], "9:16": [9, 16], "1:1": [1, 1], "4:3":
 export const SHEET_WIDTH = 1672;   // the width of the user's ChatGPT boards (1672 x 941 for four 16:9 panels)
 export const PICTURE_LONG = 1280;  // a panel's own picture, long side
 
-const MARGIN = 10, GAP = 12, TITLE = 64, CAPTION = 74;
+const MARGIN = 10, GAP = 12, TITLE = 64, CAPTION = 74, CAST_H = 76;
 
 export function newId(prefix) {
   return `${prefix}${Math.random().toString(36).slice(2, 9)}`;
@@ -108,17 +108,23 @@ export function grid(count, aspect) {
 }
 
 // Where everything sits on the sheet, in sheet pixels.
-export function sheetLayout(board, width = SHEET_WIDTH) {
+export function sheetLayout(board, width = SHEET_WIDTH, cast = []) {
   const [aw, ah] = ASPECTS[board.aspect] || ASPECTS["16:9"];
   const { cols, rows } = grid(board.panels.length, board.aspect);
   const title = board.title || board.subtitle ? TITLE : 0;
+  const actors = (Array.isArray(cast) ? cast : []).filter((c) => c && c.name && c.src).slice(0, 8);
+  const castBand = actors.length ? CAST_H + GAP : 0;
+  const cw = actors.length ? Math.min(240, (width - 2 * MARGIN - (actors.length - 1) * GAP) / actors.length) : 0;
+  const castX0 = Math.round((width - (actors.length * cw + Math.max(0, actors.length - 1) * GAP)) / 2);
+  const castBoxes = actors.map((actor, i) => ({ x: Math.round(castX0 + i * (cw + GAP)), y: MARGIN + title,
+    w: Math.round(cw), h: CAST_H, name: String(actor.name), src: actor.src }));
   const pw = (width - 2 * MARGIN - (cols - 1) * GAP) / cols, ph = pw * ah / aw;
   const panels = board.panels.map((_, index) => {
     const col = index % cols, row = Math.floor(index / cols);
-    const x = MARGIN + col * (pw + GAP), y = MARGIN + title + row * (ph + CAPTION + GAP);
+    const x = MARGIN + col * (pw + GAP), y = MARGIN + title + castBand + row * (ph + CAPTION + GAP);
     return { x, y, w: pw, h: ph + CAPTION, pic: { x, y, w: pw, h: ph }, cap: { x, y: y + ph, w: pw, h: CAPTION } };
   });
-  return { width, height: Math.round(2 * MARGIN + title + rows * (ph + CAPTION) + (rows - 1) * GAP), title, panels };
+  return { width, height: Math.round(2 * MARGIN + title + castBand + rows * (ph + CAPTION) + (rows - 1) * GAP), title, cast: castBoxes, panels };
 }
 
 // The size of one panel's own picture (the panels output), long side PICTURE_LONG.
@@ -225,4 +231,138 @@ export function directorShots(board, ids = {}) {
     ...(ids.storyboard ? [{ schema_version: 1, context_id: ids.storyboard, role: "storyboard" }] : []),
     ...(ids.frames?.[index] ? [{ schema_version: 1, context_id: ids.frames[index], role: "first_frame" }] : []),
     ...(ids.lastFrames?.[index] ? [{ schema_version: 1, context_id: ids.lastFrames[index], role: "last_frame" }] : []) ] }));
+}
+
+const round3 = (v) => Math.round(Number(v || 0) * 1000) / 1000;
+const hasCard = (shot, id) => (shot.media || []).some((m) => m.role === "storyboard" && m.context_id === id);
+const anyCard = (shot) => (shot.media || []).find((m) => m.role === "storyboard")?.context_id || "";
+
+// Updates this board's shots in the Director's shot list in-place (preserving spoken lines, locks, extra media and other
+// scenes, shifting later scenes if the board's length changed), or appends the board as the next scene after existing shots.
+export function mergeDirectorShots(existingShots, board, ids = {}, { replaceAll = false } = {}) {
+  const fresh = directorShots(board, ids);
+  if (!Array.isArray(existingShots) || !existingShots.length || replaceAll) return fresh;
+  const panelSet = new Set(board.panels.map((p) => `sb-${p.id}`));
+  const byCard = Boolean(ids.storyboard) && existingShots.some((s) => hasCard(s, ids.storyboard));
+  const isOwned = (shot) => byCard ? hasCard(shot, ids.storyboard)
+    : panelSet.has(shot.id) && (!ids.storyboard || !anyCard(shot) || anyCard(shot) === ids.storyboard);
+  const ownedIdx = existingShots.map((s, i) => (isOwned(s) ? i : -1)).filter((i) => i >= 0);
+  const taken = new Set(existingShots.filter((_, i) => !ownedIdx.includes(i)).map((s) => s.id));
+  if (!ownedIdx.length) {
+    const offset = round3(Math.max(0, ...existingShots.map((s) => Number(s.end) || 0)));
+    const appended = fresh.map((shot, index) => {
+      const pid = board.panels[index].id;
+      const id = taken.has(shot.id) ? `sb-${ids.storyboard || board.id}-${pid}` : shot.id;
+      taken.add(id);
+      return { ...shot, id, start: round3(offset + shot.start), end: round3(offset + shot.end) };
+    });
+    return [...existingShots, ...appended];
+  }
+  const first = ownedIdx[0], last = ownedIdx[ownedIdx.length - 1];
+  const offset = round3(existingShots[first].start), oldEnd = round3(existingShots[last].end);
+  const owned = ownedIdx.map((i) => existingShots[i]);
+  const updated = fresh.map((shot, index) => {
+    const pid = board.panels[index].id;
+    const prev = owned.find((s) => s.id === `sb-${pid}` || String(s.id || "").endsWith(`-${pid}`)) || owned[index];
+    let id = prev?.id && !taken.has(prev.id) ? prev.id : shot.id;
+    if (taken.has(id)) id = `sb-${ids.storyboard || board.id}-${pid}`;
+    taken.add(id);
+    const locked = Array.isArray(prev?.locked_fields) ? prev.locked_fields : [];
+    const extra = (prev?.media || []).filter((m) => !["storyboard", "first_frame", "last_frame"].includes(m.role));
+    return { ...shot, id, start: round3(offset + shot.start), end: round3(offset + shot.end),
+      text: locked.includes("text") && typeof prev?.text === "string" ? prev.text : shot.text,
+      media: locked.includes("media") && Array.isArray(prev?.media) ? prev.media : [...shot.media, ...extra],
+      spoken: Array.isArray(prev?.spoken) ? prev.spoken : [], locked_fields: locked, draft: prev?.draft ?? null };
+  });
+  const delta = round3((updated.at(-1)?.end ?? offset) - oldEnd);
+  const before = existingShots.slice(0, first).filter((_, i) => !ownedIdx.includes(i));
+  const after = existingShots.slice(first + 1).filter((_, i) => !ownedIdx.includes(first + 1 + i))
+    .map((s) => ({ ...s, start: round3(s.start + delta), end: round3(s.end + delta) }));
+  return [...before, ...updated, ...after];
+}
+
+// Pulls updated panel durations and shot texts from the connected Director back into the board's panels.
+export function syncFromDirector(board, shots, storyboardId = "") {
+  if (!Array.isArray(shots) || !shots.length) return { updated: 0, matched: 0 };
+  const byCard = Boolean(storyboardId) && shots.some((s) => hasCard(s, storyboardId));
+  const panelSet = new Set(board.panels.map((p) => `sb-${p.id}`));
+  const byId = shots.filter((s) => (panelSet.has(s.id) || board.panels.some((p) => String(s.id || "").endsWith(`-${p.id}`)))
+    && (!storyboardId || !anyCard(s) || anyCard(s) === storyboardId));
+  const owned = byCard ? shots.filter((s) => hasCard(s, storyboardId))
+    : byId.length ? byId : !shots.some(anyCard) && shots.length === board.panels.length ? shots : [];
+  if (!owned.length) return { updated: 0, matched: 0 };
+  let updated = 0, matched = 0;
+  board.panels.forEach((panel, index) => {
+    const shot = owned.find((s) => s.id === `sb-${panel.id}` || String(s.id || "").endsWith(`-${panel.id}`)) || owned[index];
+    if (!shot) return;
+    matched += 1;
+    const seconds = num(round3(Number(shot.end) - Number(shot.start)), panel.seconds, 0.1, 600);
+    const text = typeof shot.text === "string" ? shot.text.trim() : "";
+    const cur = (panel.shot || panel.caption || panel.title || "").trim();
+    let changed = false;
+    if (Math.abs(seconds - panel.seconds) > 1e-4) { panel.seconds = seconds; changed = true; }
+    if (typeof shot.text === "string" && text !== cur && (text || panel.shot)) { panel.shot = text; changed = true; }
+    if (changed) updated += 1;
+  });
+  return { updated, matched };
+}
+
+const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
+const TEXT_KEY = "h3-storyboard\0";
+const CRC_TABLE = new Uint32Array(256).map((_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// Embeds the storyboard project JSON into a PNG tEXt chunk ("h3-storyboard") before IEND so the sheet PNG can reload the board.
+export function embedBoardPng(pngBytes, board) {
+  const src = pngBytes instanceof Uint8Array ? pngBytes : new Uint8Array(pngBytes || []);
+  if (src.length < 20 || PNG_SIG.some((b, i) => src[i] !== b)) return src;
+  const payload = new TextEncoder().encode(TEXT_KEY + (typeof board === "string" ? board : writeBoard(board)));
+  const chunk = new Uint8Array(12 + payload.length), view = new DataView(chunk.buffer);
+  view.setUint32(0, payload.length);
+  chunk.set([116, 69, 88, 116], 4);
+  chunk.set(payload, 8);
+  view.setUint32(8 + payload.length, crc32(chunk.subarray(4, 8 + payload.length)));
+  let iend = src.length - 12, pos = 8;
+  while (pos + 8 <= src.length) {
+    const len = new DataView(src.buffer, src.byteOffset + pos, 8).getUint32(0);
+    if (String.fromCharCode(src[pos + 4], src[pos + 5], src[pos + 6], src[pos + 7]) === "IEND") { iend = pos; break; }
+    pos += 12 + len;
+  }
+  const out = new Uint8Array(src.length + chunk.length);
+  out.set(src.subarray(0, iend), 0);
+  out.set(chunk, iend);
+  out.set(src.subarray(iend), iend + chunk.length);
+  return out;
+}
+
+// Extracts and validates an embedded storyboard project from a PNG file's "h3-storyboard" tEXt chunk, or returns null.
+export function extractBoardPng(pngBytes) {
+  const src = pngBytes instanceof Uint8Array ? pngBytes : new Uint8Array(pngBytes || []);
+  if (src.length < 20 || PNG_SIG.some((b, i) => src[i] !== b)) return null;
+  const keyBytes = new TextEncoder().encode(TEXT_KEY);
+  let pos = 8;
+  while (pos + 12 <= src.length) {
+    const len = new DataView(src.buffer, src.byteOffset + pos, 8).getUint32(0);
+    if (pos + 12 + len > src.length) break;
+    const type = String.fromCharCode(src[pos + 4], src[pos + 5], src[pos + 6], src[pos + 7]);
+    if (type === "tEXt" && len > keyBytes.length) {
+      const data = src.subarray(pos + 8, pos + 8 + len);
+      if (keyBytes.every((b, i) => data[i] === b)) {
+        const { board, error } = readBoard(new TextDecoder().decode(data.subarray(keyBytes.length)));
+        if (!error) return board;
+      }
+    }
+    if (type === "IEND") break;
+    pos += 12 + len;
+  }
+  return null;
 }
