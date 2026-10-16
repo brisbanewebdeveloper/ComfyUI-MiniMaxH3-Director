@@ -1,5 +1,16 @@
 // The card owns its file picker: some frontend versions expose the native video upload as a selector, not a button callback.
 import { h } from "./h3s_dom.js";
+import { comboOptions } from "./h3b_queue.js";
+
+// Upload/import responses use '/', but Windows node schemas list '\\'. The
+// preview accepts both; native prompt validation requires the exact combo value.
+export async function videoSource(api, source) {
+  const choices = await comboOptions(api, "NGContextVideo", "video");
+  const normalize = (value) => String(value).replaceAll("\\", "/");
+  const found = choices.find((value) => normalize(value) === normalize(source));
+  if (!found) throw new Error("The video was saved, but ComfyUI does not list it. Refresh node definitions and select the saved file.");
+  return found;
+}
 
 export function videoUpload(S, actions) {
   const input = h("input", { type: "file", accept: "video/*", "aria-label": "Upload video", hidden: true,
@@ -14,5 +25,5 @@ export async function uploadVideo(api, file) {
   const response = await api.fetchApi("/upload/image", { method: "POST", body: data });
   if (!response.ok) throw new Error("Video upload failed. Choose a video file and try again.");
   const saved = await response.json();
-  return [saved.subfolder, saved.name].filter(Boolean).join("/");
+  return videoSource(api, [saved.subfolder, saved.name].filter(Boolean).join("/"));
 }

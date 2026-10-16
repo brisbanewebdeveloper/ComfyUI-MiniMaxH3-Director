@@ -25,7 +25,7 @@ import { controlBox } from "./h3c_control.js";
 import { controlGraph, controlSetup } from "./h3c_control_graph.js";
 import { runJob } from "./h3b_queue.js";
 import { uploadMask } from "./h3c_mask.js";
-import { uploadVideo } from "./h3c_upload.js";
+import { uploadVideo, videoSource } from "./h3c_upload.js";
 import { cardContentHeight } from "./h3c_measure.js";
 
 const { app } = window.comfyAPI.app;
@@ -209,10 +209,11 @@ function attach(node, media) {
         const saved = await runJob(api, controlGraph(kind, source, { ...setup, prompt: opts.mask_prompt ?? "person" }, prefix), "save");
         if (removed || JSON.stringify(values(node)) !== before) { say("The card changed during generation. Its saved result was left in output/h3-control; the card was not replaced.", true); return; }
         const imported = await request(api, "/ng/control/import", saved);
+        const importedSource = kind === "mask" ? imported.source : await videoSource(api, imported.source);
         if (removed || JSON.stringify(values(node)) !== before) return;
         const result = kind === "mask" ? { control_mask: imported.source, control_result: source, control_original: "" }
-          : { control_original: source, control_result: imported.source, control_mask: "" };
-        applyValues(node, { video: kind === "mask" ? source : imported.source, content: "control", content_roles: JSON.stringify(["control"]),
+          : { control_original: source, control_result: importedSource, control_mask: "" };
+        applyValues(node, { video: kind === "mask" ? source : importedSource, content: "control", content_roles: JSON.stringify(["control"]),
           context_options: JSON.stringify({ ...opts, ...result, control_kind: kind, video_audio: "ignore" }) });
         node.graph?.change?.(); say("Control video saved. Drag this card onto the Director's Control lane.");
       } catch (error) {
