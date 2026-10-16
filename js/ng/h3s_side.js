@@ -2,6 +2,7 @@
 import { h, icon, field, select } from "./h3s_dom.js";
 import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding, boundAndLaned, turboProfile } from "./h3s_model.js";
 import { controlSettings, controlPanel } from "./h3s_control.js";
+import { subjectChoices } from "./ng_subjects.js";
 
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
 // How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
@@ -54,8 +55,8 @@ function modeCard(S, actions) {
       "Delete the kept parts when the video is done (otherwise they stay 14 days)"));
 }
 
-function speakers(S) {
-  const subjects = S.contexts.filter((entry) => entry.media === "image" && entry.usage.includes("reference") && entry.id);
+function speakers(S, current) {
+  const subjects = subjectChoices(S.contexts.map((entry) => entry.raw), current);
   return [["", "Narrator (no character)"], ...subjects.map((entry) => [entry.id, entry.name])];
 }
 
@@ -69,7 +70,7 @@ function spokenLines(S, actions, shot, showAdd) {
     if (shot.spoken.length) removeBox.append(remove);
     return h("div", { class: "h3s-spoken", style: { display: "flex", flexDirection: "column", gap: "6px" } },
     h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1fr) minmax(0,0.9fr) auto", gap: "8px" } },
-      select(speakers(S), line.speaker_id, (value) => actions.setSpoken(shot.id, index, { speaker_id: value }), { "aria-label": `Speaker of line ${index + 1}` }),
+      select(speakers(S, line.speaker_id), line.speaker_id, (value) => actions.setSpoken(shot.id, index, { speaker_id: value }), { "aria-label": `Speaker of line ${index + 1}` }),
       select(LANGUAGES, line.language, (value) => actions.setSpoken(shot.id, index, { language: value }), { "aria-label": `Language of line ${index + 1}` }),
       select(DELIVERY, line.delivery || "says", (value) => actions.setSpoken(shot.id, index, { delivery: value }), { "aria-label": `Delivery of line ${index + 1}` }),
       removeBox),

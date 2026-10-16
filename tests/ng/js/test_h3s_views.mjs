@@ -238,6 +238,24 @@ function recorder() {
   assert.ok(!refs.innerText.includes("does not use voice references"));
 }
 
+// A related outfit is not a speaker; the Studio follows the Audio card's figure choices.
+{
+  const entries = contentEntries([
+    { media: "image", widgets: { context_id: "mage", name: "Mage", image: "mage.png", usage: "reference", content: "character" } },
+    { media: "image", widgets: { context_id: "outfit", name: "Outfit", image: "outfit.png", usage: "reference", content: "outfit", subject_ids: '["mage"]' } },
+    { media: "image", widgets: { context_id: "place", name: "Place", image: "place.png", usage: "reference", content: "environment" } },
+    { media: "image", widgets: { context_id: "empty", name: "Empty", image: "", usage: "reference", content: "character" } },
+    { media: "image", widgets: { context_id: "anchor", name: "Anchor", image: "anchor.png", usage: "first_frame", content: "character" } },
+  ], () => "#123456");
+  const S = state({ contexts: entries, selected: { kind: "shot", id: "a" } });
+  const speaker = () => sideView(S, recorder().actions)[1].byTag("select").find((el) => el.getAttribute("aria-label") === "Speaker of line 1");
+  assert.deepEqual(speaker().children.map((option) => option.value), ["", "mage"]);
+  S.shots[0].spoken = [{ text: "Hello.", speaker_id: "missing", language: "English", delivery: "says" }];
+  const orphan = speaker();
+  assert.equal(orphan.value, "missing", "a saved unavailable speaker must remain visible until explicitly repaired");
+  assert.ok(orphan.children.some((option) => option.value === "missing" && option.innerText.includes("not connected")));
+}
+
 // BUG-008: the strip after the project end is marked as the frame grid's extra.
 {
   const view = timelineView(state({ values: { project_seconds: 10 }, plan: { ...plan, total_s: 10.125 } }), recorder().actions);
