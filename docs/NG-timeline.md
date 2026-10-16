@@ -4,6 +4,10 @@ The Director's Studio, in the node or full screen, has a shared timeline with
 Shots, independent Audio lanes, Control video and the automatically planned Render parts.
 All tracks scroll together; track names remain visible. Add shots and audio lanes
 with the buttons above the tracks; drag connected Content onto a shot or track.
+Each Audio/Control track header also offers a **+** source picker. It lists only
+connected sources suitable for that track and inserts into the next free range.
+New Ref2VA audio clips inherit the card's Lock/Copy choice; other audio references
+start as Ref. FL2VA clips start as Lock. Existing clip modes remain their own.
 
 Use **+ / −** to zoom, **Fit project** for the whole duration or **Fit selection**
 to work on a short selected shot, audio clip or control clip. The horizontal
@@ -21,6 +25,9 @@ and their clipped media. Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) work outside text
 fields; text fields retain their normal text undo. History is local to this
 open Studio and is cleared after an external project change. Saving stores the
 current project, not the undo stack. Undo is disabled during an AI operation.
+ComfyUI's deferred graph-undo handler excludes key events already handled by
+the Studio through its exported ChangeTracker API. Other graph shortcuts keep
+their normal behavior; closing a Studio releases its key listener.
 
 Select a block with the mouse, or Tab to it and press Enter/Space. Left/Right
 arrows move the selection by 0.1 s; Shift uses 1 s. Delete/Backspace removes only

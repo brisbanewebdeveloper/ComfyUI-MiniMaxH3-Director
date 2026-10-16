@@ -48,3 +48,12 @@ assert.equal(tools.button("Fit selection").disabled, true);
 tools.button("Fit project").onclick();
 assert.deepEqual(S.timeline, { zoom: 1, scroll: 0 });
 console.log("Timeline toolbar, workflow view state and scroll restoration passed.");
+
+const { nextClipStart } = await import("../../../js/ng/h3s_model.js");
+assert.equal(nextClipStart([], 10), 0);
+assert.equal(nextClipStart([{ start: 0.5, end: 4 }], 10), 4, "click insertion continues after existing material");
+assert.equal(nextClipStart([{ start: 2, end: 10 }], 10), 0, "can still use an earlier gap when the end is full");
+assert.equal(nextClipStart([{ start: 0, end: 3 }, { start: 4, end: 10 }], 10), 3);
+assert.equal(nextClipStart([{ start: 0, end: 10 }], 10), null, "never creates an overlapping clip");
+assert.equal(nextClipStart([{ start: 0.2, end: 10 }], 10), null, "a gap shorter than the minimum is not an insertion point");
+console.log("Timeline click insertion points passed.");

@@ -62,6 +62,9 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-time-tracks .h3s-track{border-radius:3px}
 .h3s-time-zoom{min-width:48px;text-align:center;font:12px Consolas,monospace}
 .h3s-time-tools{gap:6px}
+.h3s-lane-source{appearance:none;flex:0 0 22px;width:22px;height:24px;padding:0;border:1px solid #46546A;border-radius:4px;background:#202938;text-align:center;cursor:pointer}
+.h3s-lane-source:disabled{opacity:.4;cursor:not-allowed}
+.h3s-time-tracks .h3s-lane-name{gap:4px}
 .h3s-timeline{container-type:inline-size}
 .h3s-time-tracks .h3s-shot,.h3s-time-tracks .h3s-clip{overflow:clip}
 .h3s-shot-body{position:sticky;left:132px;display:flex;flex-direction:column;gap:4px;width:min(100%,calc(100cqw - 160px));min-width:0;height:100%;overflow:hidden;flex-shrink:0}

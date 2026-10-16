@@ -31,14 +31,15 @@ function keepInput(page, fresh, active, next) {
 export function updateStudioPage(page, children) {
   const fields = (root) => [...root.querySelectorAll("input,textarea,select")];
   const active = document.activeElement, before = fields(page), index = before.indexOf(active);
+  const wasInside = pathTo(active, page).length > 0;
   const fresh = h("div", { class: page.className }, children), after = fields(fresh);
   const next = index >= 0 && before.length === after.length && active.tagName === after[index].tagName ? after[index] : null;
-  const text = active?.tagName === "TEXTAREA" || active?.getAttribute?.("type") === "text";
+  const text = active?.tagName === "TEXTAREA" || (active?.tagName === "INPUT" && (active.getAttribute("type") || "text") === "text");
   if (next && text && next.value === active.value && keepInput(page, fresh, active, next)) return;
   const caret = index >= 0 && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
   const draft = next && active.getAttribute("type") === "number" ? active.value : null;
   page.replaceChildren(...fresh.childNodes);
-  if (!next) return;
+  if (!next) { if (wasInside) page.parentNode?.focus?.({ preventScroll: true }); return; }
   if (draft !== null && next.getAttribute("type") === "number" && next.value !== draft) {
     const committed = next.value; next.value = draft;
     next.onblur = (event) => { if (next.isConnected && next.value !== committed) next.onchange?.(event); };

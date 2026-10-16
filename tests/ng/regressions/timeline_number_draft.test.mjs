@@ -23,7 +23,17 @@ test("a plan redraw keeps the focused text element and its browser editing histo
   const parent = field.parentNode;
   document.activeElement = field;
   f.handle.refresh();
-  assert.equal(f.root.byTag("textarea").find((el) => el.value === "Words being edited."), field,
+  assert.ok(f.root.byTag("textarea").find((el) => el.value === "Words being edited.") === field,
     "the browser undo stack belongs to the same DOM input");
-  assert.equal(field.parentNode, parent, "the input's containing branch must never be detached");
+  assert.ok(field.parentNode === parent, "the input's containing branch must never be detached");
+});
+
+test("implicit text inputs such as Look keep their native editing element", (t) => {
+  const f = studio(t);
+  const field = f.root.byTag("input").find((el) => el.getAttribute("id") === "h3s-look");
+  field.value = "Keep the violet costume."; field.oninput({ target: field }); document.activeElement = field;
+  const parent = field.parentNode;
+  f.handle.refresh();
+  assert.ok(f.root.byTag("input").find((el) => el.getAttribute("id") === "h3s-look") === field);
+  assert.ok(field.parentNode === parent);
 });

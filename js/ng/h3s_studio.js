@@ -9,6 +9,7 @@ import { timelineView } from "./h3s_timeline.js";
 import { restoreTimeline, rememberTimeline } from "./h3s_navigation.js";
 import { timeView } from "./h3s_time.js";
 import { timelineEditor } from "./h3s_edits.js";
+import { bindTimelineKeys } from "./h3s_keys.js";
 import { updateStudioPage } from "./h3s_focus.js";
 import { sideView } from "./h3s_side.js";
 import { footerView } from "./h3s_footer.js";
@@ -123,8 +124,9 @@ export function openStudio(node, app, api, host = null) {
     return item ? [item.start, item.end] : null;
   }
   function setItems(kind, items, selectId) {
+    const previous = kind === "shot" ? S.shots : kind === "control" ? S.control : S.audio;
     if (kind === "shot") S.shots = items; else if (kind === "control") S.control = items; else S.audio = items;
-    if (selectId) S.selected = { kind, id: selectId };
+    if (selectId) { S.selected = { kind, id: selectId }; if (!previous.some((item) => item.id === selectId)) S.timelineFocus = { ...S.selected }; }
     save(); render();
   }
   function patchShot(id, change, rerender = true) {
@@ -214,7 +216,8 @@ export function openStudio(node, app, api, host = null) {
       const at = placeAt(S.audio.filter((clip) => clip.lane === lane), sec, S.values.project_seconds, length);
       if (!at) { flash("There is no room on this audio lane there."); return; }
       // First / last frame mode can only take sound as a lock; a reference clip would not reach the model.
-      const clip = { ...newClip(id, lane, at.start, at.end, S.values.mode === "fl2va" ? "lock" : "ref"), offset: from };
+      const mode = S.values.mode === "fl2va" || entry.usage.includes("lock") ? "lock" : entry.usage.includes("copy") ? "copy" : "ref";
+      const clip = { ...newClip(id, lane, at.start, at.end, mode), offset: from };
       setItems("clip", [...S.audio, clip], clip.id);
     },
     addLane(id) {
@@ -453,6 +456,7 @@ export function openStudio(node, app, api, host = null) {
   }
   function close() {
     closed = true; clearTimeout(timer); clearTimeout(toastTimer); clearInterval(tick); ai.dispose(); progress.dispose();
+    releaseKeys();
     document.removeEventListener("ng-context-changed", outside);
     open.delete(node); root.remove();
     if (!host) document.dispatchEvent(new CustomEvent("ng-context-changed"));
@@ -465,8 +469,7 @@ export function openStudio(node, app, api, host = null) {
     event.stopPropagation(); if (host) setFull(false); else close();
   };
   document.addEventListener("ng-context-changed", outside);
-  // Studio shortcuts run before ComfyUI's graph shortcuts see the same key.
-  root.addEventListener("keydown", (event) => { edits.key(event); }, true);
+  const releaseKeys = bindTimelineKeys(root, (event) => edits.key(event));
   if (host) keepKeys(root); // in the graph and lifted to full screen alike
   (host || document.body).append(root);
   const handle = { root, close, refresh, setFull };

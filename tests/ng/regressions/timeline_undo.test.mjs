@@ -59,6 +59,14 @@ test("capture and bubble handlers apply a shortcut once and stop graph shortcuts
   assert.equal(toolbar(f, "Redo").disabled, false);
 });
 
+test("button actions and Undo retain focus in the Studio for the next shortcut", (t) => {
+  const f = studio(t);
+  const add = f.root.button("Shot"); document.activeElement = add; add.onclick();
+  assert.ok(f.root.all().includes(document.activeElement), "adding a clip/shot must not leave focus on the page body");
+  const undo = toolbar(f, "Undo"); document.activeElement = undo; undo.onclick();
+  assert.ok(f.root.all().includes(document.activeElement), "Undo must leave the next Ctrl+Y inside the Studio");
+});
+
 test("external graph changes clear local history instead of overwriting new work", (t) => {
   const f = studio(t); f.select(); f.edit("Local text.");
   const widget = f.node.widgets.find((entry) => entry.name === "shots");

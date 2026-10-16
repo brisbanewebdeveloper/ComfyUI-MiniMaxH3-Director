@@ -42,7 +42,7 @@ function modeCard(S, actions) {
     h("button", { class: "h3s-toggle", "aria-pressed": String(turbo), onclick: () => actions.setTurbo(!turbo) },
       h("span", { class: turbo ? "h3s-switch on" : "h3s-switch" }),
       h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Turbo ${turbo ? "on" : "off"}`),
-        h("span", { class: "h3s-lbl" }, turbo ? "Turbo LoRA, few steps, CFG 1. Fast for trying things out." : "20 steps, full model, CFG 1. For the final run."))),
+        h("span", { class: "h3s-lbl" }, turbo ? "Turbo LoRA, few steps, CFG 1. Fast for trying things out." : `${S.values.steps} steps, CFG 1. Uses the sampler settings below.`))),
     loras,
     h("button", { class: "h3s-toggle", "aria-pressed": String(resume), onclick: () => actions.setWidget("resume", !resume) },
       h("span", { class: resume ? "h3s-switch on" : "h3s-switch" }),

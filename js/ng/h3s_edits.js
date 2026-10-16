@@ -17,12 +17,12 @@ export function timelineEditor(S, { actions, write, plan, render, reload }) {
     plan(); render();
   }
   function key(event) {
-    if (event.target.closest?.("input,textarea,select,[contenteditable=true]")) return false;
+    if (event.target.closest?.("input,textarea,[contenteditable=true]")) return false;
     const key = event.key.toLowerCase();
     if ((event.ctrlKey || event.metaKey) && ["z", "y"].includes(key)) {
       event.preventDefault(); event.stopPropagation(); restore(key === "z" && !event.shiftKey); return true;
     }
-    if (event.ctrlKey || event.metaKey || event.altKey || !S.selected || S.dragging) return false;
+    if (event.target.closest?.("select") || event.ctrlKey || event.metaKey || event.altKey || !S.selected || S.dragging) return false;
     const kind = S.selected.kind, list = kind === "shot" ? S.shots : kind === "control" ? S.control : S.audio;
     const item = list.find((entry) => entry.id === S.selected.id);
     if (!item || !["ArrowLeft", "ArrowRight", "Delete", "Backspace"].includes(event.key)) return false;

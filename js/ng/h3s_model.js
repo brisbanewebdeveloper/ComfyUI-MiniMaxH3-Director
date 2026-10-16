@@ -174,6 +174,15 @@ export function placeAt(items, sec, total, length) {
   return { start, end: snapWithin(start + length, start + MIN_LENGTH, gap.next) };
 }
 
+export function nextClipStart(items, total) {
+  const ordered = sorted(items);
+  for (const sec of [ordered.at(-1)?.end || 0, 0, ...ordered.map((item) => item.end)]) {
+    const gap = gapAt(items, sec, total);
+    if (gap && gap.next - sec + 1e-9 >= MIN_LENGTH) return sec;
+  }
+  return null;
+}
+
 // "+ Shot": a 4 s shot in free room after `afterId` (or the last shot), else in the first free room of the project,
 // else the anchor shot is halved and the new shot takes its second half. Returns {shots, id, split?} or null.
 export function addShotAt(items, afterId, total, length = 4) {

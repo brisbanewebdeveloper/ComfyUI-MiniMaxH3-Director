@@ -63,6 +63,17 @@ function recorder() {
   assert.deepEqual(fresh.calls.find(([name]) => name === "select"), ["select", "shot", "a"]);
 }
 
+// Lane source choices only offer media the track can execute.
+{
+  const guide = { id: "pose", name: "Pose guide", media: "video", usage: ["control"] };
+  const S = state({ contexts: [...contexts, guide], control: [{ id: "guide_1", context_id: "pose", start: 0, end: 4, offset: 1 }] });
+  const { actions, calls } = recorder(), view = timelineView(S, actions);
+  const picker = view.byTag("select").find((el) => el.getAttribute("aria-label") === "Add control clip to Control");
+  assert.deepEqual(picker.children.map((option) => option.value), ["", "pose"], "motion video cards are not control sources");
+  picker.onchange({ target: { value: "pose" } });
+  assert.deepEqual(calls.at(-1), ["newControl", 4, "pose"]);
+}
+
 // Ghost suggestions say what Accept does.
 {
   const view = timelineView(state({ ghosts: [{ start: 0, end: 20, text: "One take." }] }), recorder().actions);
@@ -90,6 +101,13 @@ function recorder() {
   assert.ok(panel.innerText.includes("In: Render part 1, Render part 2"));
   assert.ok(panel.innerText.includes("Mage"));
   assert.equal(panel.button("AI: improve text").disabled, true, "no AI suggestion without a loader");
+}
+
+// The summary follows custom sampling settings and does not guess the upstream model graph.
+{
+  const [mode] = sideView(state({ values: { turbo: false, steps: 7 } }), recorder().actions);
+  assert.ok(mode.innerText.includes("7 steps"), "the mode summary must show the actual sampler settings");
+  assert.ok(!mode.innerText.includes("full model"), "an upstream LoRA may be connected even with the internal Turbo switch off");
 }
 
 // Every spoken line of a shot has its own editor and remove button.

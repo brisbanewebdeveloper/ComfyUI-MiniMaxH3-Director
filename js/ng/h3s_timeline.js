@@ -1,7 +1,7 @@
 // Timeline: picture track with shots, free audio lanes and the render parts the plan produced.
 // During a mouse drag only the dragged block is moved; the project is written once, on release.
 import { h, icon } from "./h3s_dom.js";
-import { dragTo, reorder, sorted, span, fmt, partColor, r1, isKeyframe, keyframeAt } from "./h3s_model.js";
+import { dragTo, reorder, sorted, span, fmt, partColor, r1, isKeyframe, keyframeAt, nextClipStart } from "./h3s_model.js";
 import { timeView, tickTimes } from "./h3s_time.js";
 import { timelineNavigation, rememberTimeline } from "./h3s_navigation.js";
 
@@ -136,13 +136,29 @@ export function timelineView(S, actions) {
     return block;
   }
 
+  function sourcePicker(kind, name, items, laneId = "") {
+    const choices = (S.contexts || []).filter((entry) => kind === "control"
+      ? entry.media === "video" && entry.usage.includes("control") : entry.media === "audio");
+    const sec = nextClipStart(items, S.duration);
+    return h("select", { class: "h3s-lane-source", "aria-label": `Add ${kind === "control" ? "control" : "audio"} clip to ${name}`,
+      disabled: !choices.length || sec === null,
+      title: !choices.length ? `Connect ${kind === "control" ? "a Control video" : "an Audio"} card first`
+        : sec === null ? "No free room on this lane: shorten or move a clip first" : `Add a clip to ${name}, after existing clips or in free room`,
+      onchange: (event) => {
+        if (!event.target.value || sec === null) return;
+        if (kind === "control") actions.newControl(sec, event.target.value);
+        else actions.newClip(laneId, sec, event.target.value);
+      } }, h("option", { value: "" }, "+"), choices.map((entry) => h("option", { value: entry.id }, entry.name)));
+  }
+
   function laneRow(laneId, index) {
     const items = S.audio.filter((clip) => clip.lane === laneId);
     const track = h("div", { class: "h3s-track", style: { height: "34px" } }, grid());
     dropZone(track, (sec, id) => actions.newClip(laneId, sec, id));
-    if (!items.length) track.append(h("span", { class: "h3s-empty", style: { justifyContent: "flex-start", fontSize: "12px" } }, "empty · drag audio here"));
+    if (!items.length) track.append(h("span", { class: "h3s-empty", style: { justifyContent: "flex-start", fontSize: "12px" } }, "empty · use + at left, or drag audio here"));
     for (const clip of sorted(items)) track.append(clipBlock(clip, items, track));
     const name = h("span", { class: "h3s-lane-name" }, h("span", { class: "h3s-swatch", style: { background: "#B38CF5" } }), `Audio ${index + 1}`,
+      sourcePicker("clip", `Audio ${index + 1}`, items, laneId),
       items.length ? null : h("button", { class: "h3s-btn ghost small", title: "Remove empty audio lane", "aria-label": "Remove empty audio lane",
         onclick: () => actions.removeLane(laneId) }, icon("close", 12)));
     return lane(name, track);
@@ -159,9 +175,10 @@ export function timelineView(S, actions) {
   function controlRow() {
     const items = S.control || [], track = h("div", { class: "h3s-track", style: { height: "40px" }, "aria-label": "Control lane" }, grid());
     dropZone(track, (sec, id) => actions.newControl(sec, id));
-    if (!items.length) track.append(h("span", { class: "h3s-empty", style: { fontSize: "12px" } }, "Drag a Control video card here · Canny, Pose, Depth or Inpaint"));
+    if (!items.length) track.append(h("span", { class: "h3s-empty", style: { fontSize: "12px" } }, "Use + at left or drag a Control video card here · Canny, Pose, Depth or Inpaint"));
     for (const clip of sorted(items)) track.append(clipBlock(clip, items, track, "control"));
-    return lane(h("span", { class: "h3s-lane-name" }, h("span", { class: "h3s-swatch", style: { background: "#E6BE57" } }), "Control"), track);
+    return lane(h("span", { class: "h3s-lane-name" }, h("span", { class: "h3s-swatch", style: { background: "#E6BE57" } }), "Control",
+      sourcePicker("control", "Control", items)), track);
   }
 
   function partsRow() {
