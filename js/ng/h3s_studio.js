@@ -8,6 +8,8 @@ import { contentEntries, promptView, contentView, contextId } from "./h3s_conten
 import { timelineView } from "./h3s_timeline.js";
 import { restoreTimeline, rememberTimeline } from "./h3s_navigation.js";
 import { timeView } from "./h3s_time.js";
+import { timelineEditor } from "./h3s_edits.js";
+import { updateStudioPage } from "./h3s_focus.js";
 import { sideView } from "./h3s_side.js";
 import { footerView } from "./h3s_footer.js";
 import { drawerView } from "./h3s_prompts.js";
@@ -73,7 +75,7 @@ export function openStudio(node, app, api, host = null) {
   function save() {
     const text = S.docError ? null : writeProject({ shots: S.shots, audio: S.audio, lanes: S.lanes, control: S.control, look: S.look, partPrompts: S.partPrompts });
     if (text !== null && text !== (values(node).shots || "")) { write({ shots: text }); node.graph?.change?.(); }
-    S.values = values(node); schedulePlan();
+    S.values = values(node); edits.record(); schedulePlan();
   }
   function flash(message) {
     S.toast = message; clearTimeout(toastTimer);
@@ -94,6 +96,7 @@ export function openStudio(node, app, api, host = null) {
     return data;
   }
   function schedulePlan() {
+    S.plan = null; S.planError = "";
     clearTimeout(timer); const mine = ++serial;
     timer = setTimeout(async () => {
       try {
@@ -141,6 +144,7 @@ export function openStudio(node, app, api, host = null) {
 
   const actions = {
     shotLabel: (id) => labels().get(id) || "Shot",
+    undoTimeline: () => edits.undo(), redoTimeline: () => edits.redo(),
     setTimeline(view) { rememberTimeline(S, view); node.graph?.change?.(); render(); },
     select(kind, id) { S.selected = { kind, id }; render(); },
     setShots: (shots, id) => setItems("shot", shots, id),
@@ -386,6 +390,8 @@ export function openStudio(node, app, api, host = null) {
     thumb,
   };
 
+  const edits = timelineEditor(S, { actions, write, plan: schedulePlan, render, reload: () => load(S) });
+
   function setFull(on) {
     if (!host || on === full) return;
     full = on; root.classList.toggle("full", on); root.setAttribute("role", on ? "dialog" : "region");
@@ -417,12 +423,8 @@ export function openStudio(node, app, api, host = null) {
     if (closed) return;
     if (S.dragging) { S.pending = true; return; }
     S.pending = false; S.selectedRange = selectedRange(); S.duration = Number(S.values.project_seconds) || 1;
-    // A redraw replaces the fields; the one being typed in gets its focus and caret back by its place among the fields.
-    const fields = () => [...root.querySelectorAll("input,textarea,select")];
-    const active = document.activeElement, before = fields(), index = before.indexOf(active);
-    const caret = index >= 0 && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
     const top = root.scrollTop;
-    page.replaceChildren(...[header(),
+    updateStudioPage(page, [header(),
       S.docError ? h("div", { class: "h3s-toast h3s-warn" }, `The saved shot data is invalid and is left unchanged: ${S.docError}`) : null,
       h("div", { class: "h3s-body" },
         h("main", { class: "h3s-main" }, promptView(S, actions), contentView(S, actions), timelineView(S, actions)),
@@ -431,14 +433,9 @@ export function openStudio(node, app, api, host = null) {
     clearInterval(tick); tick = S.busy ? setInterval(() => { const clock = root.querySelector(".h3s-ai-clock"); if (clock) clock.textContent = aiClock(); }, 1000) : null;
     root.scrollTop = top;
     restoreTimeline(root, S);
-    const after = fields(), next = index >= 0 && after.length === before.length ? after[index] : null;
-    if (next && next.tagName === active.tagName) {
-      next.focus({ preventScroll: true });
-      if (caret && next.setSelectionRange) try { next.setSelectionRange(...caret); } catch {}
-    }
   }
 
-  function refresh() { if (S.dragging) return; load(S); schedulePlan(); render(); }
+  function refresh() { if (S.dragging) return; load(S); edits.refresh(); schedulePlan(); render(); }
   function aiClock() { return `${fmt(Math.floor((Date.now() - S.aiStarted) / 1000))} of at most ${fmt(S.aiTimeout)}`; }
   // Messages float over the bottom of the window, so they are seen wherever the Studio is scrolled to.
   function floating() {
@@ -463,10 +460,13 @@ export function openStudio(node, app, api, host = null) {
   // Changes from elsewhere (a Context node edited, a link changed) reach an open Studio, but not its own writes.
   function outside() { if (!echo) refresh(); }
   root.onkeydown = (event) => {
+    if (event.defaultPrevented || edits.key(event)) return;
     if (event.key !== "Escape" || event.target.closest?.("select") || !full) return;
     event.stopPropagation(); if (host) setFull(false); else close();
   };
   document.addEventListener("ng-context-changed", outside);
+  // Studio shortcuts run before ComfyUI's graph shortcuts see the same key.
+  root.addEventListener("keydown", (event) => { edits.key(event); }, true);
   if (host) keepKeys(root); // in the graph and lifted to full screen alike
   (host || document.body).append(root);
   const handle = { root, close, refresh, setFull };

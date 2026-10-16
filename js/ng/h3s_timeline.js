@@ -6,7 +6,7 @@ import { timeView, tickTimes } from "./h3s_time.js";
 import { timelineNavigation, rememberTimeline } from "./h3s_navigation.js";
 
 const MODE_SHORT = { lock: "locked", copy: "copy", ref: "reference" };
-const DEFAULT_HINT = "Drag = move, or put before/after another shot · edges = length · 0.1 s grid";
+const DEFAULT_HINT = "Drag = move/reorder · edges = trim · ←/→ = move selected (Shift: 1 s) · Delete = remove · 0.1 s grid";
 
 export function timelineView(S, actions) {
   const axis = Math.max(S.duration, S.plan?.total_s || 0);
@@ -26,6 +26,7 @@ export function timelineView(S, actions) {
   // kind "shot" or "clip"; items are the shots or the clips of one lane.
   function grab(event, kind, item, mode, items, track, block) {
     event.stopPropagation(); event.preventDefault();
+    block.focus?.({ preventScroll: true });
     const drag = { id: item.id, mode, start: item.start, end: item.end, reorder: kind === "shot" && mode === "move" };
     const width = track.getBoundingClientRect().width, x0 = event.clientX, layout = sorted(items).map(({ id, start, end }) => ({ id, start, end }));
     const handle = event.currentTarget;
@@ -49,6 +50,7 @@ export function timelineView(S, actions) {
       if (cancelled) { block.style.left = pct(item.start); block.style.width = pct(item.end - item.start); info.textContent = DEFAULT_HINT; }
       actions.endPointer();
       if (cancelled) return;
+      S.timelineFocus = { kind, id: item.id };
       const moved = result?.items.find((entry) => entry.id === item.id);
       if (!moved || (moved.start === item.start && moved.end === item.end)) { actions.select(kind, item.id); return; }
       const changed = result.target !== null && kind === "shot" ? reorder(result.items, item.id, result.target, layout) : result.items;
@@ -58,6 +60,16 @@ export function timelineView(S, actions) {
     };
     handle.onpointerup = () => finish(false);
     handle.onpointercancel = handle.onlostpointercapture = () => finish(true);
+  }
+
+  function selectable(block, kind, item, label) {
+    block.setAttribute("role", "button"); block.setAttribute("tabindex", "0");
+    block.setAttribute("aria-label", `${label}: ${span(item.start, item.end)}`);
+    Object.assign(block.dataset, { timelineKind: kind, timelineId: item.id });
+    block.onkeydown = (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      event.preventDefault(); event.stopPropagation(); S.timelineFocus = { kind, id: item.id }; actions.select(kind, item.id);
+    };
   }
 
   function dropZone(track, onDrop, overClass = "over") {
@@ -72,6 +84,7 @@ export function timelineView(S, actions) {
     const selected = S.selected?.kind === "shot" && S.selected.id === shot.id;
     const block = h("div", { class: selected ? "h3s-shot sel" : "h3s-shot", style: { left: pct(shot.start), width: pct(shot.end - shot.start) },
       title: shot.text || "No text yet" });
+    selectable(block, "shot", shot, actions.shotLabel(shot.id));
     const grip = (side) => h("span", { class: "h3s-grip", style: { [side]: 0 }, onpointerdown: (event) => grab(event, "shot", shot, side, S.shots, track, block) });
     block.onpointerdown = (event) => grab(event, "shot", shot, "move", S.shots, track, block);
     block.ondragover = (event) => { event.preventDefault(); event.stopPropagation(); };
@@ -87,12 +100,12 @@ export function timelineView(S, actions) {
           transform: "rotate(45deg)", background: entry.color, border: "1px solid #0B0E13", pointerEvents: "none" } });
     });
     block.append(...marks);
-    block.append(grip("left"),
+    block.append(grip("left"), h("div", { class: "h3s-shot-body" },
       h("span", { class: "h3s-row", style: { gap: "8px", fontSize: "12px" } }, h("strong", {}, actions.shotLabel(shot.id)),
         h("span", { class: "h3s-muted", style: { fontFamily: "IBM Plex Mono, Consolas, monospace" } }, span(shot.start, shot.end)),
         S.suggestions[shot.id] ? h("span", { class: "h3s-chip", style: { background: "#3A2F66", color: "#E1D8FF" } }, "AI suggestion") : null),
       h("span", { class: "h3s-shot-text", style: { color: shot.text ? "#C9D1DE" : "#7F8A9C" } }, shot.text || "No text yet"),
-      h("span", { class: "h3s-row", style: { gap: "4px", marginTop: "auto", flexWrap: "nowrap" } }, chips),
+      h("span", { class: "h3s-row", style: { gap: "4px", marginTop: "auto", flexWrap: "nowrap" } }, chips)),
       grip("right"));
     return block;
   }
@@ -114,10 +127,12 @@ export function timelineView(S, actions) {
     const entry = S.byId.get(clip.context_id), selected = S.selected?.kind === kind && S.selected.id === clip.id;
     const block = h("div", { class: selected ? "h3s-clip sel" : "h3s-clip", style: { left: pct(clip.start), width: pct(clip.end - clip.start),
       borderColor: selected ? undefined : entry?.color }, title: `${entry?.name || clip.context_id}: ${span(clip.start, clip.end)}, from ${fmt(clip.offset)} in the file` });
+    selectable(block, kind, clip, `${kind === "control" ? "Control" : "Audio"}: ${entry?.name || clip.context_id}`);
     const grip = (side) => h("span", { class: "h3s-grip", style: { [side]: 0 }, onpointerdown: (event) => grab(event, kind, clip, side, items, track, block) });
     block.onpointerdown = (event) => grab(event, kind, clip, "move", items, track, block);
-    block.append(grip("left"), h("span", { class: "h3s-swatch", style: { background: entry?.color || "#B38CF5" } }),
-      h("strong", {}, entry?.name || "Not connected"), h("span", { style: { color: "#B9ADD6" } }, `${kind === "control" ? entry?.controlKind || "canny" : MODE_SHORT[clip.mode]} · ${span(clip.start, clip.end)}`), grip("right"));
+    block.append(grip("left"), h("span", { class: "h3s-clip-label" },
+      h("span", { class: "h3s-swatch", style: { background: entry?.color || "#B38CF5" } }),
+      h("strong", {}, entry?.name || "Not connected"), h("span", { style: { color: "#B9ADD6" } }, `${kind === "control" ? entry?.controlKind || "canny" : MODE_SHORT[clip.mode]} · ${span(clip.start, clip.end)}`)), grip("right"));
     return block;
   }
 

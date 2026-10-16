@@ -16,6 +16,19 @@ clips advances their source offset so the remaining material stays at the same
 story time. Moving a clip keeps its source offset. Aborted pointer gestures
 restore their initial position without saving the preview.
 
+The curved arrows undo/redo timeline project edits, including duration changes
+and their clipped media. Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) work outside text
+fields; text fields retain their normal text undo. History is local to this
+open Studio and is cleared after an external project change. Saving stores the
+current project, not the undo stack. Undo is disabled during an AI operation.
+
+Select a block with the mouse, or Tab to it and press Enter/Space. Left/Right
+arrows move the selection by 0.1 s; Shift uses 1 s. Delete/Backspace removes only
+that shot or clip. The inspector offers precise times and source offset. Long
+shots retain their labels when the view is scrolled into their middle.
+Number edits survive asynchronous plan redraws until confirmed by leaving the
+field. A changed project clears the old render-part display while replanning.
+
 Control clips use their own lane, not image/video-reference slots. A partially
 covered render part holds its nearest control edge frames over uncovered time;
 parts with no control clip do not use ControlNet. The selected clip's inspector

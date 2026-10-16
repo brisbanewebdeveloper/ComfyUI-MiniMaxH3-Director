@@ -24,6 +24,12 @@ class FakeElement extends FakeNode {
     }
   }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((entry) => entry !== this); this.parentNode = null; }
+  get childNodes() { return this.children; }
+  removeChild(node) { this.children = this.children.filter((entry) => entry !== node); node.parentNode = null; return node; }
+  insertBefore(node, anchor) {
+    node.parentNode?.removeChild(node);
+    this.children.splice(this.children.indexOf(anchor), 0, node); node.parentNode = this;
+  }
   replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
   setAttribute(key, value) { this.attributes[key] = String(value); }
   getAttribute(key) { return this.attributes[key]; }
@@ -41,7 +47,7 @@ class FakeElement extends FakeNode {
   addEventListener(type, listener) { ((this.listeners ||= {})[type] ||= []).push(listener); }
   removeEventListener(type, listener) { this.listeners?.[type] && (this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener)); }
   // Calls this element's listeners for one event (no bubbling in this fake).
-  fire(type, event) { for (const listener of this.listeners?.[type] || []) listener(event); }
+  fire(type, event) { event.target ??= this; for (const listener of this.listeners?.[type] || []) listener(event); }
 }
 
 export function installDom() {

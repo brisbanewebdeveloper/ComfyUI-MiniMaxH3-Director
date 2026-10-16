@@ -62,6 +62,10 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-time-tracks .h3s-track{border-radius:3px}
 .h3s-time-zoom{min-width:48px;text-align:center;font:12px Consolas,monospace}
 .h3s-time-tools{gap:6px}
+.h3s-timeline{container-type:inline-size}
+.h3s-time-tracks .h3s-shot,.h3s-time-tracks .h3s-clip{overflow:clip}
+.h3s-shot-body{position:sticky;left:132px;display:flex;flex-direction:column;gap:4px;width:min(100%,calc(100cqw - 160px));min-width:0;height:100%;overflow:hidden;flex-shrink:0}
+.h3s-clip-label{position:sticky;left:130px;display:flex;align-items:center;gap:6px;max-width:calc(100cqw - 156px);overflow:hidden;flex-shrink:0}
 .h3s-lane-name{display:flex;align-items:center;gap:6px;font-size:12px;color:#B4BDCC}
 .h3s-ruler{position:relative;height:18px}
 .h3s-tick{position:absolute;transform:translateX(-50%);font:11px "IBM Plex Mono",Consolas,monospace;color:#7F8A9C}
@@ -73,6 +77,7 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-shot{position:absolute;top:6px;bottom:6px;border-radius:8px;background:#1C2433;border:1px solid #3A475D;cursor:grab;touch-action:none;overflow:hidden;display:flex;flex-direction:column;padding:6px 14px;gap:4px;user-select:none}
 .h3s-shot:hover{border-color:#5B6B86}
 .h3s-shot.sel{border-color:#8FC1FF;box-shadow:0 0 0 1px #8FC1FF;background:#1F2B3F}
+.h3s-shot:focus-visible,.h3s-clip:focus-visible{outline:2px solid #E6EAF2;outline-offset:1px}
 .h3s-shot.drag{z-index:3;opacity:.92;cursor:grabbing;box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 0 1px #8FC1FF}
 .h3s-track.ghosting .h3s-shot:not(.ghost){opacity:.35}
 .h3s-shot.ghost{background:transparent;border:1px dashed #9C86F0;cursor:default}

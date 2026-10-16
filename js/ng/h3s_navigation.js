@@ -7,6 +7,10 @@ export function timelineNavigation(S, actions) {
   return h("div", { class: "h3s-row h3s-time-tools", role: "toolbar", "aria-label": "Timeline navigation" },
     h("strong", {}, "Timeline"),
     h("span", { class: "h3s-lbl" }, "Shots · Audio · Control"),
+    h("button", { class: "h3s-btn small", disabled: !S.history?.canUndo || Boolean(S.busy || S.docError), "aria-label": "Undo timeline edit",
+      title: "Undo a project edit (Ctrl+Z outside text fields)", onclick: actions.undoTimeline }, "↶"),
+    h("button", { class: "h3s-btn small", disabled: !S.history?.canRedo || Boolean(S.busy || S.docError), "aria-label": "Redo timeline edit",
+      title: "Redo a project edit (Ctrl+Shift+Z or Ctrl+Y)", onclick: actions.redoTimeline }, "↷"),
     h("span", { class: "h3s-grow" }),
     h("button", { class: "h3s-btn small", "aria-label": "Zoom out timeline", disabled: view.zoom <= 1,
       onclick: () => change(zoomView(view, view.zoom / 2)) }, "−"),
@@ -23,6 +27,11 @@ export function timelineNavigation(S, actions) {
 export function restoreTimeline(root, S) {
   const viewport = root.querySelector(".h3s-time-scroll");
   if (viewport) viewport.scrollLeft = timeView(S.timeline).scroll * Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+  if (S.timelineFocus) {
+    const { kind, id } = S.timelineFocus;
+    const block = [...root.querySelectorAll("[data-timeline-id]")].find((el) => el.dataset.timelineKind === kind && el.dataset.timelineId === id);
+    (block || viewport)?.focus?.({ preventScroll: true }); S.timelineFocus = null;
+  }
 }
 
 export function rememberTimeline(S, view) {
