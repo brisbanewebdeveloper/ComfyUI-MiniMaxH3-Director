@@ -1,8 +1,25 @@
 # Story and generation timeline contract
 
-> **Studio (2026-10-04):** the in-node editor this page describes was replaced by the full-screen Studio
-> ([guide](NG.md#the-studio)). Shots now move on a 0.1 s grid and are reordered by dragging one over another
-> instead of earlier/later arrows; audio clips have their own lanes. The planner contract below is unchanged.
+The Director's Studio, in the node or full screen, has a shared timeline with
+Shots, independent Audio lanes, Control video and the automatically planned Render parts.
+All tracks scroll together; track names remain visible. Add shots and audio lanes
+with the buttons above the tracks; drag connected Content onto a shot or track.
+
+Use **+ / −** to zoom, **Fit project** for the whole duration or **Fit selection**
+to work on a short selected shot, audio clip or control clip. The horizontal
+scrollbar moves through a zoomed project. Selection and incoming plan responses
+keep the view in place. Save/Reload preserves zoom and horizontal position in
+the Director's workflow properties, separately from the shot/clip data.
+
+Drag a block to move it, or an edge to trim. Left-trimming audio and control
+clips advances their source offset so the remaining material stays at the same
+story time. Moving a clip keeps its source offset. Aborted pointer gestures
+restore their initial position without saving the preview.
+
+Control clips use their own lane, not image/video-reference slots. A partially
+covered render part holds its nearest control edge frames over uncovered time;
+parts with no control clip do not use ControlNet. The selected clip's inspector
+and the plan warnings explain this, including when shorter render parts help.
 
 Story shots and generation chunks share one time axis covering both requested
 and delivered duration. The requested end remains visible when H3's frame grid
@@ -26,6 +43,6 @@ allowed for fields protected from AI. Reordering does not rewrite prose.
 
 Required proofs: real planner frame boundaries for 10 seconds, 5+5 targets and
 120 seconds/12 targets; UI geometry, selection/carry membership, stale clearing,
-drag/resize/cancel, reorder identity and Save/Reload. GPU rendering is unnecessary
-for this editor-only behavior. E45 audio placement/mixing and interior frame
-anchors remain separate unfinished contracts; this change does not implement them.
+drag/resize/cancel, reorder identity and Save/Reload. Editor geometry is verified
+separately from real media rendering. Audio placement/mixing and interior frame
+anchors use the existing execution contracts; see [shot audio](NG-shot-audio.md).

@@ -6,6 +6,8 @@ import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotA
 import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView, contextId } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
+import { restoreTimeline, rememberTimeline } from "./h3s_navigation.js";
+import { timeView } from "./h3s_time.js";
 import { sideView } from "./h3s_side.js";
 import { footerView } from "./h3s_footer.js";
 import { drawerView } from "./h3s_prompts.js";
@@ -28,6 +30,7 @@ const profilesLoaded = fetch(new URL("./turbo_profiles.json", import.meta.url)).
 
 function load(S) {
   S.values = values(S.node);
+  S.timeline = timeView(S.node.properties?.ng_timeline);
   S.options = Object.fromEntries(COMBOS.map((name) => [name, S.node.widgets?.find((w) => w.name === name)?.options?.values]));
   S.contexts = contentEntries(readContexts(S.node), contextColor);
   S.byId = new Map(S.contexts.map((entry) => [entry.id, entry]));
@@ -138,6 +141,7 @@ export function openStudio(node, app, api, host = null) {
 
   const actions = {
     shotLabel: (id) => labels().get(id) || "Shot",
+    setTimeline(view) { rememberTimeline(S, view); node.graph?.change?.(); render(); },
     select(kind, id) { S.selected = { kind, id }; render(); },
     setShots: (shots, id) => setItems("shot", shots, id),
     setClips: (audio, id) => setItems("clip", audio, id),
@@ -426,6 +430,7 @@ export function openStudio(node, app, api, host = null) {
       footerView(S, actions), drawerView(S, actions), floating()].filter(Boolean));
     clearInterval(tick); tick = S.busy ? setInterval(() => { const clock = root.querySelector(".h3s-ai-clock"); if (clock) clock.textContent = aiClock(); }, 1000) : null;
     root.scrollTop = top;
+    restoreTimeline(root, S);
     const after = fields(), next = index >= 0 && after.length === before.length ? after[index] : null;
     if (next && next.tagName === active.tagName) {
       next.focus({ preventScroll: true });

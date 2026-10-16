@@ -201,7 +201,7 @@ function neighbours(items, id, total) {
 export function dragTo(items, drag, delta, total) {
   const ds = r1(delta), length = drag.end - drag.start;
   const source = items.find((item) => item.id === drag.id);
-  const fileClip = CLIP_MODES.includes(source?.mode) && Number.isFinite(source?.offset);
+  const fileClip = typeof source?.context_id === "string" && Number.isFinite(source?.offset);
   let start = drag.start, end = drag.end, target = null;
   if (drag.mode === "move" && drag.reorder) {
     start = snapWithin(drag.start + ds, 0, total - length) ?? drag.start;

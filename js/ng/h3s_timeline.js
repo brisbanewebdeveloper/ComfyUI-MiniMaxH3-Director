@@ -2,23 +2,20 @@
 // During a mouse drag only the dragged block is moved; the project is written once, on release.
 import { h, icon } from "./h3s_dom.js";
 import { dragTo, reorder, sorted, span, fmt, partColor, r1, isKeyframe, keyframeAt } from "./h3s_model.js";
+import { timeView, tickTimes } from "./h3s_time.js";
+import { timelineNavigation, rememberTimeline } from "./h3s_navigation.js";
 
 const MODE_SHORT = { lock: "locked", copy: "copy", ref: "reference" };
 const DEFAULT_HINT = "Drag = move, or put before/after another shot · edges = length · 0.1 s grid";
 
-function ticks(axis) {
-  const step = axis <= 10 ? 1 : axis <= 30 ? 5 : axis <= 60 ? 10 : 20, out = [];
-  for (let t = 0; t <= axis + 1e-9; t += step) out.push(t);
-  return out;
-}
-
 export function timelineView(S, actions) {
   const axis = Math.max(S.duration, S.plan?.total_s || 0);
+  const view = timeView(S.timeline), ticks = tickTimes(axis, view.zoom);
   const pct = (seconds) => `${seconds / axis * 100}%`;
   const info = h("span", { class: "h3s-lbl" }, DEFAULT_HINT);
   const beyond = () => axis - S.duration > 0.01 ? h("span", { class: "h3s-beyond", style: { left: pct(S.duration), width: pct(axis - S.duration) },
     title: `After the project end (${fmt(S.duration)}): H3 renders in fixed frame steps and delivers ${fmt(axis)}. Shots and audio end at ${fmt(S.duration)}.` }) : null;
-  const grid = () => [...ticks(axis).map((t) => h("span", { class: "h3s-grid", style: { left: pct(t) } })), beyond()].filter(Boolean);
+  const grid = () => [...ticks.map((t) => h("span", { class: "h3s-grid", style: { left: pct(t) } })), beyond()].filter(Boolean);
   const lane = (name, track) => h("div", { class: "h3s-lane" }, name, track);
 
   function secondsAt(event, track) {
@@ -46,11 +43,12 @@ export function timelineView(S, actions) {
           : `Release: goes to the end, after ${actions.shotLabel(others[others.length - 1].id)}.`;
       } else info.textContent = `${span(moved.start, moved.end)} · length ${fmt(moved.end - moved.start)}`;
     };
-    // A lost capture (the window lost focus, the element was replaced) ends the drag like a release, so the Studio never stays frozen.
-    handle.onpointerup = handle.onpointercancel = handle.onlostpointercapture = () => {
+    const finish = (cancelled) => {
       handle.onpointermove = handle.onpointerup = handle.onpointercancel = handle.onlostpointercapture = null;
       block.classList.remove("drag");
+      if (cancelled) { block.style.left = pct(item.start); block.style.width = pct(item.end - item.start); info.textContent = DEFAULT_HINT; }
       actions.endPointer();
+      if (cancelled) return;
       const moved = result?.items.find((entry) => entry.id === item.id);
       if (!moved || (moved.start === item.start && moved.end === item.end)) { actions.select(kind, item.id); return; }
       const changed = result.target !== null && kind === "shot" ? reorder(result.items, item.id, result.target, layout) : result.items;
@@ -58,6 +56,8 @@ export function timelineView(S, actions) {
       else if (kind === "control") actions.setControls(changed, item.id);
       else actions.setClips(changed.concat(S.audio.filter((clip) => clip.lane !== item.lane)), item.id);
     };
+    handle.onpointerup = () => finish(false);
+    handle.onpointercancel = handle.onlostpointercapture = () => finish(true);
   }
 
   function dropZone(track, onDrop, overClass = "over") {
@@ -169,20 +169,24 @@ export function timelineView(S, actions) {
     h("button", { class: "h3s-btn ai", onclick: actions.acceptGhosts }, "Accept"), h("button", { class: "h3s-btn ghost", onclick: actions.dropGhosts }, "Discard")) : null;
   const summary = S.plan ? `${S.plan.chunks.length} ${S.plan.chunks.length === 1 ? "part" : "parts"}, delivers ${fmt(S.plan.total_s)} (${S.plan.total_frames} frames)` : "";
 
-  return h("section", { class: "h3s-card", style: { gap: "6px" } },
-    h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Shots"), info, h("span", { class: "h3s-grow" }),
-      h("button", { class: "h3s-btn", onclick: () => actions.addShot() }, icon("plus"), "Shot")),
+  const scroller = h("div", { class: "h3s-time-scroll", tabindex: "0", role: "region", "aria-label": "Timeline tracks",
+    onscroll: (event) => {
+      const el = event.currentTarget, room = el.scrollWidth - el.clientWidth;
+      rememberTimeline(S, { ...view, scroll: room > 0 ? el.scrollLeft / room : 0 });
+    } }, h("div", { class: "h3s-time-tracks", style: { width: `calc(128px + (100% - 128px) * ${view.zoom})` } },
+    lane(h("span", { class: "h3s-lane-name" }, "Time (s)"), h("div", { class: "h3s-ruler" },
+      ticks.map((t) => h("span", { class: "h3s-tick", style: { left: pct(t) } }, `${t}`)))),
+    lane(h("span", { class: "h3s-lane-name" }, h("span", { class: "h3s-swatch", style: { background: "#8FC1FF" } }), "Shots"), shotTrack()),
+    S.lanes.map(laneRow), newLaneRow(), controlRow(), partsRow()));
+
+  return h("section", { class: "h3s-card h3s-timeline" }, timelineNavigation(S, actions),
+    h("div", { class: "h3s-row" }, info, h("span", { class: "h3s-grow" }),
+      h("button", { class: "h3s-btn small", onclick: () => actions.addShot() }, icon("plus"), "Shot"),
+      h("button", { class: "h3s-btn small", onclick: () => actions.addLane() }, icon("plus"), "Audio lane")),
     ghostBanner,
-    lane(h("span"), h("div", { class: "h3s-ruler" }, ticks(axis).map((t) => h("span", { class: "h3s-tick", style: { left: pct(t) } }, `${t} s`)))),
-    lane(h("span", { class: "h3s-lane-name" }, h("span", { class: "h3s-swatch", style: { background: "#8FC1FF" } }), "Picture"), shotTrack()),
-    h("div", { class: "h3s-row", style: { marginTop: "4px" } }, h("span", { class: "h3s-strong" }, "Audio"),
-      h("span", { class: "h3s-lbl" }, "Drag audio Content onto a lane, move it, trim it at the edges. Runs independently of the shots."),
-      h("span", { class: "h3s-grow" }), h("button", { class: "h3s-btn", onclick: () => actions.addLane() }, icon("plus"), "Audio lane")),
-    S.lanes.map(laneRow), newLaneRow(),
-    h("div", { class: "h3s-row", style: { marginTop: "4px" } }, h("span", { class: "h3s-strong" }, "Control video"),
-      h("span", { class: "h3s-lbl" }, "Move, trim and select clips. Edge frames are held inside partly covered render parts.")),
-    controlRow(),
+    scroller,
+    h("span", { class: "h3s-lbl" }, "Audio runs independently of shots. Control clips affect whole render parts: uncovered edges hold their nearest control frame."),
     h("div", { class: "h3s-row", style: { marginTop: "4px" } }, h("span", { class: "h3s-lbl" }, "How H3 renders it (planned automatically)"),
       h("span", { class: "h3s-lbl", title: "H3 produces lengths in fixed frame steps (17·k+5 at 24 FPS)." }, summary)),
-    partsRow());
+    );
 }
