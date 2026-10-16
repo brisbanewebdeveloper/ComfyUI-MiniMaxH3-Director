@@ -187,7 +187,7 @@ export function timelineView(S, actions) {
     for (const chunk of S.plan?.chunks || []) {
       const [color, bg] = partColor(chunk.index), hit = chosen && chosen[0] < chunk.end_s && chosen[1] > chunk.start_s;
       track.append(h("div", { class: "h3s-part", style: { left: pct(chunk.start_s), width: pct(chunk.end_s - chunk.start_s), borderColor: color, background: hit ? bg : "#141922" },
-        title: `Part ${chunk.index + 1}: ${chunk.delivered_frames} frames${chunk.head_frames ? `, preceded by ${chunk.head_frames} frames of the previous part for continuity` : ""}` },
+        title: `Part ${chunk.index + 1}: ${chunk.delivered_frames} new frames${chunk.head_frames ? `, with ${chunk.head_frames} preceding frames for continuity` : ""}` },
         h("span", { class: "h3s-swatch", style: { background: color } }), `Part ${chunk.index + 1} · ${span(chunk.start_s, chunk.end_s)}`));
     }
     // A failed plan is said in warning colour: in grey small print it read like "still planning" (2026-10-11).

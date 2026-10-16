@@ -51,6 +51,8 @@ Story shots and generation chunks share one time axis covering both requested
 and delivered duration. The requested end remains visible when H3's frame grid
 extends or shortens output. Labels derive from integer frame counts at native
 24 fps; sampled frames include the pinned head, delivered frames exclude it.
+The preceding continuity frames come from the earlier render part or from a
+Continue video source; they are not added to the new output duration.
 The existing planner remains the authority; this editor does not replan chunks.
 
 Selecting a shot selects its card/bar and highlights chunks containing its stable

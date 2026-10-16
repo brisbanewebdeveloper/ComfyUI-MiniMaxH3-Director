@@ -46,6 +46,10 @@ function recorder() {
   assert.equal(view.byClass("h3s-clip")[0].innerText.includes("locked · 4–18 s"), true);
   const parts = view.byClass("h3s-part");
   assert.deepEqual(parts.map((node) => node.style.borderColor), ["#4FB8C4", "#E58A5C"], "each render part has its own colour");
+  assert.equal(parts[0].title, "Part 1: 240 new frames");
+  assert.equal(parts[1].title, "Part 2: 240 new frames, with 22 preceding frames for continuity");
+  const external = timelineView(state({ plan: { ...plan, chunks: [{ ...plan.chunks[0], head_frames: 90, delivered_frames: 102 }] } }), actions);
+  assert.equal(external.byClass("h3s-part")[0].title, "Part 1: 102 new frames, with 90 preceding frames for continuity");
   assert.ok(view.innerText.includes("Audio 2"), "an empty lane is shown");
   // Drag shot b over shot a: the drop reorders.
   const block = view.byClass("h3s-shot")[1];
