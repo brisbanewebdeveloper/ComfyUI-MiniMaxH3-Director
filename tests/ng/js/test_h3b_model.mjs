@@ -112,6 +112,22 @@ const model = await import("../../../js/ng/h3b_model.js");
   assert.deepEqual(model.directorShots(board)[0].media, []);
 }
 
+// End pictures survive save/reload and use their own explicit role, including both roles on one panel.
+{
+  const board = model.newBoard();
+  board.panels[1].last_frame = true;
+  board.panels[2].first_frame = board.panels[2].last_frame = true;
+  const saved = model.readBoard(model.writeBoard(board)).board;
+  assert.equal(saved.panels[1].last_frame, true);
+  assert.equal(saved.panels[1].first_frame, false);
+  const shots = model.directorShots(saved, { frames: { 2: "both" }, lastFrames: { 1: "end", 2: "both" } });
+  assert.deepEqual(shots[1].media, [{ schema_version: 1, context_id: "end", role: "last_frame" }]);
+  assert.deepEqual(shots[2].media.map((item) => [item.context_id, item.role]), [["both", "first_frame"], ["both", "last_frame"]]);
+  const old = JSON.parse(model.writeBoard(board));
+  delete old.panels[1].last_frame;
+  assert.equal(model.readBoard(JSON.stringify(old)).board.panels[1].last_frame, false);
+}
+
 // Pictures made with Qwen Image 2.1: a figure from a sheet in the template's RGBA wording, an empty background, about a
 // megapixel in the panel format; the board's library and every picture on a panel are offered on all panels, once each.
 {

@@ -17,7 +17,8 @@ ASPECTS = {"16:9": (16, 9), "9:16": (9, 16), "1:1": (1, 1), "4:3": (4, 3), "3:4"
 
 def new_board():
     return {"format": FORMAT, "schema_version": 1, "title": "", "subtitle": "", "aspect": "16:9", "idea": "",
-            "panels": [{"id": "p1", "seconds": 2.5, "title": "", "caption": "", "shot": "", "layers": []}]}
+            "panels": [{"id": "p1", "seconds": 2.5, "title": "", "caption": "", "shot": "",
+                        "first_frame": False, "last_frame": False, "layers": []}]}
 
 
 def read_board(text):
@@ -43,6 +44,8 @@ def read_board(text):
         fields.read_number(panel, "seconds", path, minimum=0.1)
         for name in ("title", "caption", "shot"):
             fields.read_str(panel, name, path, "")
+        panel["first_frame"] = bool(panel.get("first_frame"))
+        panel["last_frame"] = bool(panel.get("last_frame"))
         fields.read_list(panel, "layers", path)
     return data
 

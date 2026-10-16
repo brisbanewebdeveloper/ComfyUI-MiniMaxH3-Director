@@ -14,7 +14,7 @@ export function newId(prefix) {
 }
 
 export function newPanel(seconds = 2.5) {
-  return { id: newId("p"), seconds, title: "", caption: "", shot: "", first_frame: false, layers: [] };
+  return { id: newId("p"), seconds, title: "", caption: "", shot: "", first_frame: false, last_frame: false, layers: [] };
 }
 
 export function newBoard() {
@@ -67,7 +67,7 @@ export function readBoard(text) {
   if (!raw || raw.format !== FORMAT) return { board: newBoard(), error: "The saved data is no H3 storyboard; a new one is shown." };
   const panels = (Array.isArray(raw.panels) ? raw.panels : []).slice(0, MAX_PANELS).map((p) => ({
     id: String(p?.id || newId("p")), seconds: num(p?.seconds, 2.5, 0.1, 600), title: String(p?.title || ""),
-    caption: String(p?.caption || ""), shot: String(p?.shot || ""), first_frame: Boolean(p?.first_frame),
+    caption: String(p?.caption || ""), shot: String(p?.shot || ""), first_frame: Boolean(p?.first_frame), last_frame: Boolean(p?.last_frame),
     layers: (Array.isArray(p?.layers) ? p.layers : []).map(readLayer).filter(Boolean) }));
   return { board: { format: FORMAT, schema_version: 1, id: String(raw.id || newId("sb")), title: String(raw.title || ""),
     subtitle: String(raw.subtitle || ""), aspect: ASPECTS[raw.aspect] ? raw.aspect : "16:9", idea: String(raw.idea || ""),
@@ -219,9 +219,10 @@ export function libraryItems(board) {
 }
 
 // The Director's shots of the board: one shot per panel, the storyboard card on every shot and a panel's own card as the
-// first frame of its shot. ids: { storyboard: context id or "", frames: { panel index: context id } }.
+// first or last frame of its shot. ids.frames / ids.lastFrames map panel index to context id.
 export function directorShots(board, ids = {}) {
   return shotsDocument(board).shots.map((shot, index) => ({ ...shot, media: [
     ...(ids.storyboard ? [{ schema_version: 1, context_id: ids.storyboard, role: "storyboard" }] : []),
-    ...(ids.frames?.[index] ? [{ schema_version: 1, context_id: ids.frames[index], role: "first_frame" }] : []) ] }));
+    ...(ids.frames?.[index] ? [{ schema_version: 1, context_id: ids.frames[index], role: "first_frame" }] : []),
+    ...(ids.lastFrames?.[index] ? [{ schema_version: 1, context_id: ids.lastFrames[index], role: "last_frame" }] : []) ] }));
 }

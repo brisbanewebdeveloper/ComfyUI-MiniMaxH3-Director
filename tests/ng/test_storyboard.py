@@ -29,7 +29,13 @@ class Board(unittest.TestCase):
         self.assertEqual(module("ng.core.shots").parse_shots(storyboard.shots_document(data), 240)[1], (), "the Director reads it")
 
     def test_an_empty_widget_is_a_new_board_and_bad_data_is_named(self):
-        self.assertEqual(storyboard.read_board("")["format"], "h3-storyboard")
+        fresh = storyboard.read_board("")
+        self.assertEqual(fresh["format"], "h3-storyboard")
+        self.assertEqual((fresh["panels"][0]["first_frame"], fresh["panels"][0]["last_frame"]), (False, False))
+        raw = board(2.5)
+        raw["panels"][0]["last_frame"] = True
+        parsed = storyboard.read_board(json.dumps(raw))
+        self.assertEqual((parsed["panels"][0]["first_frame"], parsed["panels"][0]["last_frame"]), (False, True))
         for bad, words in (("{", "readable JSON"), ('{"format":"x"}', "not H3 storyboard"),
                            (json.dumps(board(*[1] * 10)), "1 to 9 panels"), (json.dumps(board(2, aspect="5:2")), "panel format"),
                            (json.dumps(board(0)), "seconds")):

@@ -257,7 +257,7 @@ export function openBoard(node, app, api, host) {
       h("button", { class: "h3s-btn ghost small", title: "Redo", disabled: !S.future.length, onclick: () => undo(false) }, "Redo"),
       h("button", { class: "h3s-btn", disabled: Boolean(S.busy), title: "Draws the sheet into input/h3-storyboard and adds a Context card with it (usage Storyboard)",
         onclick: useInDirector }, icon("image"), S.busy === "card" ? "Adding…" : "Use in Director"),
-      h("button", { class: "h3s-btn go", disabled: Boolean(S.busy), title: "The panels become the Director's shots (times, shot texts), with the sheet on every shot and the marked panels as first frames",
+      h("button", { class: "h3s-btn go", disabled: Boolean(S.busy), title: "The panels become the Director's shots (times, shot texts), with the sheet on every shot and the marked panels as first or last frames",
         onclick: sendToDirector }, icon("play"), S.busy === "send" ? "Sending…" : "Send to Director"));
   }
 
@@ -379,7 +379,11 @@ export function openBoard(node, app, api, host) {
         h("label", { class: "h3s-lbl", style: { display: "flex", gap: "6px", alignItems: "center", cursor: "pointer" },
           title: "Send to Director then binds this panel's picture (without caption) as the first frame of its shot" },
         h("input", { type: "checkbox", checked: Boolean(item.first_frame), onchange: () => change(() => { item.first_frame = !item.first_frame; }) }),
-        "First frame of its shot")),
+        "First frame of its shot"),
+        h("label", { class: "h3s-lbl", style: { display: "flex", gap: "6px", alignItems: "center", cursor: "pointer" },
+          title: "Send to Director then binds this panel's picture (without caption) as the last frame of its shot" },
+        h("input", { type: "checkbox", checked: Boolean(item.last_frame), onchange: () => change(() => { item.last_frame = !item.last_frame; }) }),
+        "Last frame of its shot")),
       layerRows(), layerProps(),
       field("Caption on the sheet", area(item.caption, quietText((v) => { item.caption = v; }), { rows: 2, onfocus: remember })),
       field("Shot text for H3 (framing, action, camera; time beats for a long panel)", area(item.shot, quietText((v) => { item.shot = v; }), { rows: 4, onfocus: remember })));

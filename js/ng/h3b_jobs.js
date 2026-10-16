@@ -1,11 +1,11 @@
 // The H3 Storyboard's jobs outside the drawing: Cut out (ComfyUI's Remove Background) and Redraw (Qwen Image 2.1), both queued
-// like any job, and the Director side: the sheet and first-frame panels as Context cards, the panels as the Director's shots.
+// like any job, and the Director side: the sheet and frame panels as Context cards, the panels as the Director's shots.
 // boardJobs takes the editor's state and functions (h3b_editor.js).
 import { ASPECTS, newLayer, newId, panelTimes, fmtSeconds, pictureSize, loadName, srcUrl, redrawPrompt, directorShots } from "./h3b_model.js";
 import { drawPicture } from "./h3b_draw.js";
 import { SUBFOLDER, comboOptions, canvasOf, runJob, qwenSetup, qwenGraph } from "./h3b_queue.js";
-import { upstreamNode } from "./ng_read.js";
-import { applyValues } from "./ng_widgets.js";
+import { isContextNode, upstreamNode } from "./ng_read.js";
+import { applyValues, ownIdentity, values } from "./ng_widgets.js";
 
 export function boardJobs({ S, node, app, api, pictures, change, render, flash, renderFiles, upload, connector, contexts }) {
   // ComfyUI's Remove Background on the picture: a new PNG with the figure on a transparent background, in output/h3-storyboard.
@@ -35,7 +35,7 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
     } finally { S.busy = ""; render(); }
   }
 
-  // --- Context cards for the Director: the sheet (usage Storyboard) and panels used as first frames ----------------------
+  // --- Context cards for the Director: the sheet and panels used as first/last frames ----------------------------------
   const same = (a, b) => String(a || "").replace(/\\/g, "/") === String(b || "").replace(/\\/g, "/");
   function cardOf(file) {
     return app.graph._nodes.find((n) => n.comfyClass === "NGContextImage" && same(n.widgets?.find((w) => w.name === "image")?.value, file)) || null;
@@ -53,7 +53,8 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
     const listed = card.widgets?.find((x) => x.name === "image")?.options?.values || [];
     const spelled = listed.find((v) => same(v, file)) || (listed.some((v) => v.includes("\\")) ? file.replace(/\//g, "\\") : file);
     if (!listed.includes(spelled)) listed.push(spelled);
-    set("image", spelled); set("name", name); set("description", description);
+    const others = app.graph._nodes.filter((n) => n !== card && isContextNode(n)).map(values);
+    set("image", spelled); set("name", ownIdentity({ name }, others).name || name); set("description", description);
     set("content", "composition"); set("usage", usage);
     set("content_roles", JSON.stringify(["composition"])); set("usage_roles", JSON.stringify([usage]));
     if (!card.widgets?.find((x) => x.name === "context_id")?.value) set("context_id", newId("ctx_sb_"));
@@ -85,7 +86,7 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
       || (directors.length === 1 ? directors[0] : null);
   }
   // Stage 4: the panels become the Director's shots, with the sheet's card on every shot and a panel's own picture as the
-  // first frame of its shot where the panel says so. The Director's sound lanes, Look and Prompt stay.
+  // first/last frame of its shot where the panel says so. The Director's sound lanes, Look and Prompt stay.
   async function sendToDirector() {
     const target = director();
     if (!target) { flash("No H3 Director found: connect both nodes to the same Context Connector.", true); return; }
@@ -99,14 +100,15 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
       const files = JSON.parse(await renderFiles());
       const [sheetCard] = ensureCard(files.sheet, { name: "Storyboard", usage: "storyboard",
         description: `Storyboard of ${S.board.panels.length} panels with times and captions.` });
-      const frames = {};
+      const frames = {}, lastFrames = {};
       S.board.panels.forEach((item, index) => {
-        if (!item.first_frame) return;
-        const [card] = ensureCard(files.panels[index], { name: `Panel ${index + 1}`, usage: "first_frame",
+        if (!item.first_frame && !item.last_frame) return;
+        const [card] = ensureCard(files.panels[index], { name: `Panel ${index + 1}`, usage: item.first_frame ? "first_frame" : "last_frame",
           description: item.caption || `Panel ${index + 1} of the storyboard.` }, 260 * (index + 1));
-        frames[index] = cardId(card);
+        if (item.first_frame) frames[index] = cardId(card);
+        if (item.last_frame) lastFrames[index] = cardId(card);
       });
-      const shots = directorShots(S.board, { storyboard: cardId(sheetCard), frames });
+      const shots = directorShots(S.board, { storyboard: cardId(sheetCard), frames, lastFrames });
       const times = panelTimes(S.board);
       const doc = { format: "h3-director-shots", schema_version: 1, ...project, shots };
       const changes = { shots: JSON.stringify(doc), project_seconds: times[times.length - 1][1] };
@@ -114,7 +116,8 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
       applyValues(target, changes);
       target.graph?.change?.();
       S.notice = { text: `The Director has the ${shots.length} panels as shots (${fmtSeconds(changes.project_seconds)} s), the storyboard on every shot`
-        + `${Object.keys(frames).length ? ` and ${Object.keys(frames).length} panel picture(s) as first frames` : ""}.`, error: false };
+        + `${Object.keys(frames).length ? `, ${Object.keys(frames).length} first frame(s)` : ""}`
+        + `${Object.keys(lastFrames).length ? `, ${Object.keys(lastFrames).length} last frame(s)` : ""}.`, error: false };
     } catch (error) {
       S.notice = { text: `Could not send the panels: ${error.message}`, error: true };
     } finally { S.busy = ""; render(); }
