@@ -228,12 +228,14 @@ function recorder() {
   assert.equal(contextId({ context_id: "", name: "", audio: "" }, "audio"), "audio_audio");
 }
 
-// BUG-009: First / last frame mode explains why no character can speak.
+// FL2VA supports appearance pictures, but not voice-reference audio.
 {
   const [, panel] = sideView(state({ selected: { kind: "shot", id: "a" }, values: { mode: "fl2va" } }), recorder().actions);
-  assert.ok(panel.innerText.includes("First / last frame mode has no character references"));
+  assert.ok(panel.innerText.includes("First / last frame mode does not use voice references"));
+  assert.ok(panel.innerText.includes("Reference pictures still guide appearance"));
+  assert.ok(!panel.innerText.includes("has no character references"));
   const [, refs] = sideView(state({ selected: { kind: "shot", id: "a" } }), recorder().actions);
-  assert.ok(!refs.innerText.includes("has no character references"));
+  assert.ok(!refs.innerText.includes("does not use voice references"));
 }
 
 // BUG-008: the strip after the project end is marked as the frame grid's extra.

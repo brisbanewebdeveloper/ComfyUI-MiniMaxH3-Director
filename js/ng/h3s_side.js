@@ -138,8 +138,8 @@ function shotPanel(S, actions, shot) {
       media.map(([binding, entry]) => bindingRow(S, actions, shot, binding, entry))),
     h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, h("span", { class: "h3s-lbl" }, "Spoken (optional, used word for word, in this order)"),
       spokenLines(S, actions, shot, showAdd),
-      S.values.mode === "fl2va" ? h("span", { class: "h3s-lbl" }, "First / last frame mode has no character references, so a line is spoken by a described voice, "
-        + "not by a character from a picture. Switch the mode to References to let a character speak.") : null,
+      S.values.mode === "fl2va" ? h("span", { class: "h3s-lbl" }, "First / last frame mode does not use voice references. Reference pictures still guide appearance; "
+        + "describe the voice in the text, or switch to References to use a voice card.") : null,
       addBox),
     h("span", { class: "h3s-lbl" }, `In: ${chunks.join(", ") || "–"}`));
 }
