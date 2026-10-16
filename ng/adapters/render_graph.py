@@ -39,10 +39,13 @@ def render_sequence(inputs, settings):
         model = graph.node("NGControlChunk", "control", model=model, chunk=start.out(3), vae=inputs["vae"],
                            model_patch=inputs["model_patch"], strength=settings.get("control_strength", 1.0),
                            start_percent=settings.get("control_start", 0.0), end_percent=settings.get("control_end", 1.0)).out(0)
-    if inputs.get("preview_vae") is not None:
-        # the Context Connector's preview VAE: each part shows the TAEHV live preview, as Preview Override (live) does
-        model = graph.node("NGH3Preview", "preview", model=model, vae=inputs["preview_vae"], max_resolution=768, preview_fps=24.0,
-                           jpeg_quality=90, every_n_steps=1, max_preview_overhead=25, suppress_default_preview=True).out(0)
+    if inputs.get("preview_vae") is not None or inputs.get("preview"):
+        # H3 Render Sequence previews each part with the Context Connector's preview VAE or the installed taeh3 decoder
+        preview = graph.node("NGH3Preview", "preview", model=model, max_resolution=768, preview_fps=24.0,
+                             jpeg_quality=90, every_n_steps=1, max_preview_overhead=25, suppress_default_preview=True)
+        if inputs.get("preview_vae") is not None:
+            preview.set_input("vae", inputs["preview_vae"])
+        model = preview.out(0)
     noise = graph.node("NGChunkNoise", "noise", chunk=start.out(3), seed=settings["seed"])
     sampled_with = json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True)
     # per part: a known turbo LoRA on the part's model brings its own steps, sampler and scheduler (core/turbo_profiles.py)

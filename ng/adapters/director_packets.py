@@ -97,7 +97,7 @@ def render_project(result):
         raise ValueError("Connect ModelPatchLoader to the Context Connector's model_patch for control clips.")
     graph = GraphBuilder()
     chunks = graph.node("NGProjectChunks", "chunks", sequence=result)
-    inputs = {**result.inputs.links(), "chunks": chunks.out(0)}
+    inputs = {**result.inputs.links(), "chunks": chunks.out(0), "preview": True}
     if result.inputs.preview_vae is not None:
         inputs["preview_vae"] = result.inputs.preview_vae
     if result.inputs.model_patch is not None:

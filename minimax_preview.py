@@ -8,15 +8,16 @@ from .minimax_preview_runtime import PreviewOptions, OuterSamplePreview, require
 WRAPPER_KEY = "minimax_h3_preview"
 
 
-def preview_schema(node_id, display_name, category):
+def preview_schema(node_id, display_name, category, optional_vae=False):
     return io.Schema(
         node_id=node_id, display_name=display_name, category=category,
         description="TAEHV preview of the complete H3 shot while sampling. "
                     "Connect after the Director model output and attach an H3 TAEHV VAE.",
         inputs=[
             io.Model.Input("model"),
-            io.Vae.Input("vae", tooltip="Connect an H3 TAEHV VAE loaded from taeh3.safetensors. "
-                                        "A full video VAE is not supported for live previews."),
+            io.Vae.Input("vae", optional=optional_vae,
+                         tooltip="Connect an H3 TAEHV VAE loaded from taeh3.safetensors. "
+                                 "A full video VAE is not supported for live previews."),
             io.Int.Input("max_resolution", default=768, min=128, max=2048, step=32,
                          tooltip="Maximum preview long edge. TAEHV decodes real image detail; "
                                  "larger values cost more time and memory."),

@@ -17,8 +17,19 @@ function installPanel(node) {
     getValue: () => "", setValue: () => {}, getMinHeight: () => 240,
   });
   widget.serialize = false;
-  node.size[0] = Math.max(node.size[0], 340);
-  node.size[1] = Math.max(node.size[1], 520, node.computeSize?.()[1] || 0);
+  widget.computeLayoutSize = () => ({minHeight: 240, maxHeight: Number.MAX_SAFE_INTEGER, minWidth: 0});
+  node.imgs = null; node.imageIndex = null;
+  const width = Math.max(node.size[0], 340), height = Math.max(node.size[1], 520, node.computeSize?.()[1] || 0);
+  node.size[0] = width; node.size[1] = height; node.setSize?.([width, height]);
+  node._widgetSlotsDirty = true; node.setDirtyCanvas?.(true, true);
+  if (!PREVIEW_NODES.has(node.comfyClass) && !node._mmxPreviewCleanup) {
+    node._mmxPreviewCleanup = true;
+    const removed = node.onRemoved;
+    node.onRemoved = function () {
+      this._mmxPreview?.player.dispose(); this._mmxPreview = null; panels.delete(this);
+      return removed?.apply(this, arguments);
+    };
+  }
 }
 
 app.registerExtension({
@@ -47,13 +58,13 @@ app.registerExtension({
   },
   async setup() {
     api.addEventListener("minimax_h3_preview", async ({detail = {}}) => {
-      // H3 Render Sequence previews each part itself when the Context Connector has a preview VAE; its player appears
-      // with the first frames, so a Render Sequence without one stays as it is.
+      // H3 Render Sequence previews each part itself; its player appears with the first preview event.
       const render = app.graph?.getNodeById?.(String(detail.node_id ?? "").split(".")[0]);
       if (render?.comfyClass === "NGProjectRender") installPanel(render);
       const updates = [];
       for (const node of panels) {
         if (!owns(detail.node_id, node.id)) continue;
+        node.imgs = null; node.imageIndex = null;
         const update = node._mmxPreview?.player.update(detail);
         if (update) updates.push(update.then(() => node.setDirtyCanvas?.(true, false)));
       }

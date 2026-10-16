@@ -211,14 +211,17 @@ test("real extension routes preview panels, keeps native callbacks and cleans re
 
 test("H3 Render Sequence gets its player with the first preview of its own parts",async()=>{
   const b=installPreviewBrowser();await import(product("minimax_preview.js")+`?audit=${moduleId++}`);const extension=b.extensions[0];
-  class RenderNode {constructor(id){this.id=id;this.comfyClass="NGProjectRender";this.size=[300,120];this.widgets=[];}
+  class RenderNode {constructor(id){this.id=id;this.comfyClass="NGProjectRender";this.size=[300,120];this.widgets=[];this.imgs=["still"];this.imageIndex=0;}
     addDOMWidget(name,_type,root){this.root=root;const w={name};this.widgets.push(w);return w;}computeSize(){return [340,420];}setDirtyCanvas(){}}
   const render=new RenderNode(12),other=new RenderNode(13);b.app.graph._nodes.push(render,other);
   b.app.graph.getNodeById=(id)=>b.app.graph._nodes.find((n)=>String(n.id)===String(id));await extension.setup();
   assert.equal(render._mmxPreview,undefined,"no player before a preview arrives");
   await b.emit("minimax_h3_preview",{...payload(b,"part",24,1,24),node_id:"12"});
   assert.ok(render._mmxPreview,"the Render Sequence shows the player");assert.equal(b.label(render._mmxPreview.img.src),"part0");
+  assert.equal(render.imgs,null,"native single-frame preview image is cleared");
+  assert.deepEqual(render.widgets.at(-1).computeLayoutSize(),{minHeight:240,maxHeight:Number.MAX_SAFE_INTEGER,minWidth:0});
   assert.equal(other._mmxPreview,undefined,"another Render Sequence stays as it is");assert.ok(render.size[1]>=520);
+  render.onRemoved();assert.equal(render._mmxPreview,null);assert.equal(b.urls.size,0);
 });
 
 function deferredImages() {

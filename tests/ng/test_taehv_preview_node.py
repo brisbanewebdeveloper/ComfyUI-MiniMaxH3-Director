@@ -202,19 +202,41 @@ class TAEHVPreviewNode(unittest.TestCase):
         self.assertEqual(patcher_extension.get_all_wrappers(patcher_extension.WrappersMP.OUTER_SAMPLE,
                                                            model.model_options, is_model_options=True), [])
 
-    def test_render_and_project_render_without_preview_vae_insert_no_preview(self):
+    def test_render_sequence_without_preview_vae_inserts_no_preview(self):
         self.assert_no_automatic_preview(self.nodes["NGRenderSequence"].execute(**self.values()))
-        self.assert_no_automatic_preview(self.nodes["NGProjectRender"].execute(self.result()))
 
-    def test_project_render_previews_each_part_with_the_connectors_preview_vae(self):
-        graph = self.nodes["NGProjectRender"].execute(self.result(["preview_vae", 0])).expand
-        preview_id, preview = next((key, node) for key, node in graph.items() if node["class_type"] == "NGH3Preview")
-        self.assertEqual(preview["inputs"]["vae"], ["preview_vae", 0])
-        self.assertEqual(graph[preview["inputs"]["model"][0]]["class_type"], "NGChunkConditioning")
-        guider = next(node for node in graph.values() if node["class_type"] == "BasicGuider")
-        sampling = next(node for node in graph.values() if node["class_type"] == "NGChunkSampling")
-        self.assertEqual(guider["inputs"]["model"], [preview_id, 0])
-        self.assertEqual(sampling["inputs"]["model"], [preview_id, 0])
+    def test_project_render_previews_each_part_with_connector_or_default_taeh3(self):
+        for connected in (["preview_vae", 0], None):
+            with self.subTest(connected=connected):
+                graph = self.nodes["NGProjectRender"].execute(self.result(connected)).expand
+                preview_id, preview = next((key, node) for key, node in graph.items() if node["class_type"] == "NGH3Preview")
+                if connected is None:
+                    self.assertNotIn("vae", preview["inputs"])
+                else:
+                    self.assertEqual(preview["inputs"]["vae"], connected)
+                self.assertEqual(graph[preview["inputs"]["model"][0]]["class_type"], "NGChunkConditioning")
+                guider = next(node for node in graph.values() if node["class_type"] == "BasicGuider")
+                sampling = next(node for node in graph.values() if node["class_type"] == "NGChunkSampling")
+                self.assertEqual(guider["inputs"]["model"], [preview_id, 0])
+                self.assertEqual(sampling["inputs"]["model"], [preview_id, 0])
+
+    def test_ng_preview_falls_back_to_default_taeh3_when_omitted_or_taesd3(self):
+        preview_mod = importlib.import_module(self.pack.__name__ + ".ng.nodes.preview_node")
+        stage = TAEHV.__new__(TAEHV)
+        torch.nn.Module.__init__(stage)
+        stage.latent_channels, stage.patch_size = 24, 2
+        fallback = SimpleNamespace(first_stage_model=stage)
+        model = ModelPatcher(torch.nn.Linear(1, 1), torch.device("cpu"), torch.device("cpu"))
+        node = self.nodes["NGH3Preview"]
+        node.hidden = SimpleNamespace(unique_id="8.0.preview", dynprompt=SimpleNamespace(get_display_node_id=lambda _: "8"))
+        with patch.object(preview_mod, "_load_default_taeh3", return_value=fallback):
+            for given in (None, SimpleNamespace(first_stage_model=SimpleNamespace(latent_channels=16, patch_size=1))):
+                wrapped = node.execute(model, vae=given).args[0]
+                wrappers = patcher_extension.get_all_wrappers(patcher_extension.WrappersMP.OUTER_SAMPLE,
+                                                             wrapped.model_options, is_model_options=True)
+                self.assertEqual(len(wrappers), 1)
+                self.assertIs(wrappers[0].vae, fallback)
+                self.assertEqual(wrappers[0].node_id, "8")
 
     def test_studio_does_not_insert_automatic_preview(self):
         values = self.values()
