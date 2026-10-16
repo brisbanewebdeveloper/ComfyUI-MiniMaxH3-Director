@@ -69,8 +69,12 @@ export function ownerBox(S, actions, hint) {
 }
 
 export function descriptionBox(S, actions) {
+  const hint = S.media === "video" && S.usage === "control"
+    ? "A note about this steering source; describe the target figure and scene in the shot."
+    : "One sentence about what this is; it goes into the prompt.";
   return h("div", { class: "h3c-box" }, h("div", { class: "h3c-cap" }, "Description"),
-    h("textarea", { class: "h3c-in", rows: 3, value: S.values.description || "", placeholder: "One sentence about what this is; it goes into the prompt.",
+    h("textarea", { class: "h3c-in", rows: 3, value: S.values.description || "", placeholder: hint,
+      title: hint,
       "aria-label": "Description", oninput: (event) => actions.set("description", event.target.value, false) }));
 }
 

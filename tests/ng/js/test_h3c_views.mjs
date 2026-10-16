@@ -40,6 +40,17 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   assert.ok(!parts.usageBox(state({ mode: "fl2va" }), actions).byClass("h3c-warn").length, "a reference in FL2VA is used as a reference");
 }
 
+// Control source notes stay editable without promising a narrative prompt instruction.
+{
+  const { actions } = recorder();
+  const note = parts.descriptionBox(state({ media: "video", usage: "control", values: { description: "Source actor in a red coat." } }), actions).byTag("textarea")[0];
+  assert.equal(note.value, "Source actor in a red coat.");
+  assert.match(note.getAttribute("placeholder"), /note about this steering source/);
+  assert.equal(note.title, note.getAttribute("placeholder"));
+  for (const usage of ["motion", "camera", "structure", "continue"])
+    assert.match(parts.descriptionBox(state({ media: "video", usage }), actions).byTag("textarea")[0].getAttribute("placeholder"), /goes into the prompt/);
+}
+
 // Keep in the video: stored level is highlighted; background has its own words.
 {
   const { actions, calls } = recorder();

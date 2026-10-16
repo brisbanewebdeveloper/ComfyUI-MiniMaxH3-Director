@@ -45,6 +45,30 @@ class Timing(unittest.TestCase):
         self.assertFalse(any(i.code in ("reference_disabled", "usage_unknown") for i in p.issues))
         self.assertFalse(any(r.kind == "video" for c in p.compiled for r in c.refs))
 
+    def test_control_source_description_does_not_change_any_part_of_the_story(self):
+        for mode in ("fl2va", "ref2va"):
+            for kind in ("canny", "pose", "depth", "mask"):
+                with self.subTest(mode=mode, kind=kind):
+                    control = replace(card(description="A red-coated woman walks beside a blue wall."),
+                                      options=options.ContextOptions(control_kind=kind, control_mask="mask.mp4" if kind == "mask" else ""))
+                    p = plan([clip(start=1, end=2)], [control])
+                    p = project.plan_project(replace(p.context, mode=mode), 4, chunks.ContinuityPlan("video_audio"))
+                    self.assertTrue(timing.spans(project.jobs(p)[0]))
+                    self.assertFalse(timing.spans(project.jobs(p)[-1]))
+                    for part in p.compiled:
+                        self.assertNotIn(control.description, part.prompt)
+                        self.assertNotIn("Video context pose:", part.prompt)
+                    self.assertEqual(p.context.item(control.id).description, control.description)
+
+    def test_explicit_narrative_video_roles_keep_their_description(self):
+        for role in ("motion", "camera", "structure", "continue"):
+            for roles in ((role,), ("control", role)):
+                with self.subTest(roles=roles):
+                    video = replace(card(description="An intentional narrative video description."), usage=roles)
+                    p = project.plan_project(ctx.DirectorContext(idea="A walk.", project_seconds=12, width=64, height=64,
+                                             mode="ref2va", items=(video,)), 4, chunks.ContinuityPlan("video_audio"))
+                    self.assertIn(video.description, p.compiled[0].prompt)
+
     def test_offsets_and_pin_window_keep_their_story_position(self):
         p = plan([clip(start=0, end=12, offset=2)])
         for job in project.jobs(p):

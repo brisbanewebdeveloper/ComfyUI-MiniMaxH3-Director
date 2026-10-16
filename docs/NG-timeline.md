@@ -36,7 +36,13 @@ shots retain their labels when the view is scrolled into their middle.
 Number edits survive asynchronous plan redraws until confirmed by leaving the
 field. A changed project clears the old render-part display while replanning.
 
-Control clips use their own lane, not image/video-reference slots. A partially
+Control clips use their own lane, not image/video-reference slots.
+The description on a Control video card is a saved note about the source;
+it does not describe the generated scene. Put the target figure and scene in
+the shot text. Ordinary Motion, Camera, Structure and Continue video roles
+still contribute their descriptions to the prompt.
+
+For ControlNet, a partially
 covered render part holds its nearest control edge frames over uncovered time;
 parts with no control clip do not use ControlNet. The selected clip's inspector
 and the plan warnings explain this, including when shorter render parts help.

@@ -1,4 +1,4 @@
-"""The Video card promises its description reaches H3 for each offered usage and respects shot scope."""
+"""Narrative video descriptions reach H3 within shot scope; control source notes stay on the card."""
 import json
 import unittest
 
@@ -18,11 +18,11 @@ class VideoDescriptions(unittest.TestCase):
         context = ctx.DirectorContext(idea="A woman walks.", items=(item,), project_seconds=10.33, shots_text=shots)
         return project.jobs(project.plan_project(context, 5.167, chunks.ContinuityPlan("video_audio", 22, 24)))
 
-    def test_description_is_sent_once_for_each_offered_video_usage(self):
+    def test_description_is_sent_once_for_narrative_roles_and_never_for_control(self):
         for role in ctx.USAGE_BY_MEDIA["video"]:
             item = self.item(role)
             with self.subTest(role=role):
-                self.assertEqual(self.jobs(item)[0].compiled.prompt.count(item.description), 1)
+                self.assertEqual(self.jobs(item)[0].compiled.prompt.count(item.description), 0 if role == "control" else 1)
 
     def test_bound_description_leaves_parts_where_the_card_is_out_of_scope(self):
         shots = json.dumps(dict(format="h3-director-shots", schema_version=1, shots=[

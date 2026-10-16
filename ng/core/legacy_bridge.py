@@ -358,7 +358,7 @@ def _global_prompt(context):
             parts.append("Use %s as the camera movement reference. %s" % (item.name, item.description))
         if "structure" in roles:
             parts.append("Follow the overall scene structure and rhythm of %s. %s" % (item.name, item.description))
-        if item.description.strip() and roles & {"motion", "continue", "control"} and not roles & {"camera", "structure"}:
+        if item.description.strip() and roles & {"motion", "continue"} and not roles & {"camera", "structure"}:
             parts.append("Video context %s: %s" % (item.name, item.description))
     for item in context.by_media("audio"):
         if "rhythm" in item.effective_usage:
