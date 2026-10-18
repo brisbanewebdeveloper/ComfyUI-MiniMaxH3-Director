@@ -2,6 +2,24 @@
 
 ## 1.0.0 (unreleased)
 
+**A simpler Director** (2026-10-18, user: "it works, but it is hard to use"):
+
+- **Settings behind a gear** (header and bottom bar): render part, size, fitting, reference size, seed, steps, sampler,
+  scheduler, shift, turbo LoRA, resume, ControlNet strength, ambience, music, style, transitions and the manual prompt. The page
+  keeps Prompt, Look, Content, Timeline, Mode, Turbo on/off, Duration and Resolution; explanations are small i tooltips.
+- **One Prompt card**: the story, the Look and every AI button (Make H3 prompt with its options, AI: split into shots,
+  Whole prompt = one shot) in one place.
+- **Manual prompt warning**: while a manual prompt is set the page says so, with Clear and Edit (it had silently become "true").
+  Turbo without a LoRA says so on the page with a button to Settings.
+- **"Made from"** under each part in Prompts per render part: the shots, cards, Look, rules and settings its prompt comes from,
+  hover shows the text, a shot chip selects the shot, a shot without text is flagged.
+- **The AI gets everything**: Make H3 prompt now also sees the Text cards (style, rules, characters) and the Video cards; a
+  control video's source is never described (also in AI: split into shots).
+- **H3 Context Text (Style & Rules)**: the story belongs in the Director's Prompt; new Text cards no longer offer Scene, an
+  existing Scene card keeps working and says so.
+- AI fixes: the text "true" in Prompt override is repaired on load; writing AI tasks get at least 2048 tokens; time beats keep
+  one camera sentence and drop copied beats.
+
 **Video Context source-frame fidelity** (2026-10-15):
 
 - Continue reads the final original frame before the selected source end, including 30/60-fps and variable-rate files.
