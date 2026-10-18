@@ -122,7 +122,7 @@ class NGContextAudio(io.ComfyNode):
 class NGContextText(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGContextText", display_name="H3 Context Text", category=CATEGORY,
+        return io.Schema(node_id="NGContextText", display_name="H3 Context Text (Style & Rules)", category=CATEGORY,
                          description="A note that applies to the whole video: style, camera rules, world.",
                          inputs=[io.String.Input("text", multiline=True, default="")] + _common_inputs("text") + _identity_inputs() + _subject_inputs(),
                          outputs=[NGContext.Output(display_name="context")])

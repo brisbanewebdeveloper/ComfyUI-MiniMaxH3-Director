@@ -28,7 +28,8 @@ class Registration(unittest.TestCase):
         self.assertEqual(self.pack.NODE_DISPLAY_NAME_MAPPINGS["MiniMaxH3DirectorCS"], "MiniMax H3 Director (Legacy)")
 
     def test_display_names_exist(self):
-        expected = {"NGContext" + kind: "H3 Context " + kind for kind in ("Image", "Video", "Audio", "Text")}
+        expected = {"NGContext" + kind: "H3 Context " + kind for kind in ("Image", "Video", "Audio")}
+        expected["NGContextText"] = "H3 Context Text (Style & Rules)"   # the story belongs in the Director's Prompt (2026-10-18)
         expected.update(NGDirector="NG Chunk Planner", NGChunkConditioning="NG Chunk Conditioning", NGCollect="NG Collect")
         for node_id, name in expected.items():
             self.assertEqual(self.pack.NODE_DISPLAY_NAME_MAPPINGS[node_id], name, node_id)

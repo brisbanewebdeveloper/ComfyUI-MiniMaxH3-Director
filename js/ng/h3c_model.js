@@ -67,8 +67,8 @@ export function roleHint(media, role, mode) {
     return { text: "On an audio lane the Studio chooses lock, copy or reference per clip.", warn: false };
   }
   if (media === "text") {
-    if (role === "scene") return { text: "The story, like the Director's Prompt: AI: split into shots reads it. With shots, H3 gets the shots instead.", warn: false };
-    return { text: "Sent in every render part, after the Look.", warn: false };
+    if (role === "scene") return { text: "The story belongs in the Director's Prompt: move this text there, then choose Style, Rule or Character here. It still works as it is.", warn: true };
+    return { text: "Added to every render part as it is, and the AI plans the shots to fit it.", warn: false };
   }
   return { text: "", warn: false };
 }

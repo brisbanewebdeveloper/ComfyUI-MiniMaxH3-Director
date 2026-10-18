@@ -40,7 +40,8 @@ export function usageBox(S, actions, columns = 1) {
   const hint = roleHint(S.media, S.usage, S.mode);
   return h("div", { class: "h3c-box" }, S.media === "text" ? cap("Use as (default)", ...analyzeTools(S, actions)) : h("div", { class: "h3c-cap" }, "Use as (default)"),
     h("div", { style: { display: "grid", gridTemplateColumns: `repeat(${columns},minmax(0,1fr))`, gap: "2px 6px" } },
-      USAGE[S.media].map(([key, label, note]) => h("button", { class: S.usage === key ? "h3c-radio on" : "h3c-radio", "aria-pressed": String(S.usage === key),
+      // The story belongs in the Director's Prompt: a Text card offers "Scene" only while it still has it (2026-10-18).
+      USAGE[S.media].filter(([key]) => !(S.media === "text" && key === "scene" && S.usage !== "scene")).map(([key, label, note]) => h("button", { class: S.usage === key ? "h3c-radio on" : "h3c-radio", "aria-pressed": String(S.usage === key),
         onclick: () => actions.pickUsage(key) }, h("span", { class: "h3c-rd" }), h("span", { class: "h3c-grow" }, label), note ? h("span", { class: "h3c-lbl" }, note) : null))),
     hint.text ? h("span", { class: hint.warn ? "h3c-hint h3c-warn" : "h3c-hint" }, hint.text) : null);
 }
