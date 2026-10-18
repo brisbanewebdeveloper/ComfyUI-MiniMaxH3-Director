@@ -3,7 +3,7 @@
 import { h, icon, keepKeys } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
 import { readProject, writeProject, newShot, newClip, newLane, placeAt, addShotAt, snapWithin, trimToDuration, growToDuration, editSpoken, addSpoken, removeSpoken, sorted, MIN_LENGTH, r1, turboProfile, fmt, setPartPrompt, clipToFit, isKeyframe, middleOf, removeLane } from "./h3s_model.js";
-import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP } from "./h3s_canvas.js";
+import { fitAspect, snap32, ASPECTS, isAuto, NATIVE_MP, pictureSize } from "./h3s_canvas.js";
 import { contentEntries, promptView, contentView, contextId } from "./h3s_content.js";
 import { timelineView } from "./h3s_timeline.js";
 import { restoreTimeline, rememberTimeline } from "./h3s_navigation.js";
@@ -59,7 +59,7 @@ export function openStudio(node, app, api, host = null) {
   const page = h("div", { class: "h3s-page" });
   root.append(page);
   const S = { node, root, selected: null, ghosts: [], ghostSound: null, suggestions: {}, partDrafts: {}, partEdit: null, plan: null, planError: "", promptOpen: false,
-    settingsOpen: false, busy: "", toast: "", notice: null, suggestionBase: {}, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
+    settingsOpen: false, busy: "", toast: "", notice: null, suggestionBase: {}, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), ratios: new Map(), lengths: new Map() };
   load(S);
   let timer = null, serial = 0, toastTimer = null, tick = null, closed = false;
   const status = h("span", { class: "h3s-lbl" });
@@ -119,6 +119,21 @@ export function openStudio(node, app, api, host = null) {
         .then((data) => { if (data.thumbnail?.startsWith("data:image/")) { S.thumbs.set(key, data.thumbnail); render(); } }).catch(() => {});
     }
     return S.thumbs.get(key);
+  }
+  // The picture the server takes the size from (ng/core/project.py auto_canvas): the first frame, else the first image.
+  // Its shape comes from its preview, which keeps the aspect ratio.
+  function firstPicture() {
+    const images = S.contexts.filter((entry) => entry.media === "image" && entry.source);
+    const entry = images.find((item) => (item.usage || []).includes("first_frame")) || images[0];
+    const src = entry ? thumb(entry) : "";
+    if (!src) return null;
+    if (!S.ratios.has(src)) {
+      S.ratios.set(src, 0);
+      const image = new Image();
+      image.onload = () => { S.ratios.set(src, image.naturalWidth / image.naturalHeight); render(); };
+      image.src = src;
+    }
+    return S.ratios.get(src) ? { name: entry.name, ratio: S.ratios.get(src) } : null;
   }
   function selectedRange() {
     const item = S.selected && (S.selected.kind === "shot" ? S.shots : S.selected.kind === "control" ? S.control : S.audio).find((entry) => entry.id === S.selected.id);
@@ -277,6 +292,7 @@ export function openStudio(node, app, api, host = null) {
     },
     setPreset(value) {
       if (value === "auto") write({ width: 0, height: 0 });
+      else if (value.startsWith("picture:") && S.picture) { const [w, hh] = pictureSize(S.picture.ratio, value.slice(8)); write({ width: w, height: hh }); }
       else if (value !== "custom") { const [w, hh] = value.split("x").map(Number); write({ width: w, height: hh }); }
       else if (isAuto(S.values.width, S.values.height)) write({ width: 1344, height: 768 });
       setWidget("width", values(node).width);
@@ -427,7 +443,7 @@ export function openStudio(node, app, api, host = null) {
   function render() {
     if (closed) return;
     if (S.dragging) { S.pending = true; return; }
-    S.pending = false; S.selectedRange = selectedRange(); S.duration = Number(S.values.project_seconds) || 1;
+    S.pending = false; S.selectedRange = selectedRange(); S.duration = Number(S.values.project_seconds) || 1; S.picture = firstPicture();
     const top = root.scrollTop;
     updateStudioPage(page, [header(),
       S.docError ? h("div", { class: "h3s-toast h3s-warn" }, `The saved shot data is invalid and is left unchanged: ${S.docError}`) : null,

@@ -212,3 +212,21 @@ console.log("h3s model ok");
   assert.deepEqual(model.keyframeLanding(plan, "s1", "k"), { seconds: null, part: 1, inside: true });
   assert.equal(model.keyframeLanding(null, "s1", "k"), null);
 }
+
+// The first picture's shape at three sizes (user 2026-10-18: smaller or larger, but keep the aspect, as in the Legacy Director).
+{
+  const portrait = 2 / 3, wide = 16 / 9;
+  assert.deepEqual(canvas.pictureSize(portrait, "small"), [480, 736]);
+  assert.deepEqual(canvas.pictureSize(portrait, "native"), [768, 1152], "native is the server's own picture size");
+  assert.deepEqual(canvas.pictureSize(portrait, "large"), [1088, 1632]);
+  assert.deepEqual(canvas.pictureSize(wide, "native"), [1344, 768], "native keeps H3's area cap");
+  for (const tier of ["small", "native", "large"]) {
+    const [w, h] = canvas.pictureSize(portrait, tier);
+    assert.ok(Math.abs(w / h - portrait) / portrait < 0.04, `${tier} keeps the shape`);
+    assert.equal(w % 32 + h % 32, 0);
+  }
+  assert.equal(canvas.presetValue(480, 736, portrait), "picture:small");
+  assert.equal(canvas.presetValue(480, 736), "480x736", "without a picture the same size is the fixed Fast format");
+  assert.equal(canvas.presetValue(1088, 1632), "custom", "and the large one a custom size");
+  assert.equal(canvas.presetValue(0, 0, portrait), "auto");
+}

@@ -22,8 +22,21 @@ const PRESET_KEYS = new Set(PRESET_GROUPS.flatMap(([, list]) => list.map(([, w, 
 
 export const isAuto = (width, height) => !(width > 0 && height > 0);
 
-export function presetValue(width, height) {
+// The first picture's shape at three sizes, as the Legacy Director offered (user, 2026-10-18: "smaller, but keep the aspect").
+// Native follows the server's own picture size (ng/core/project.py h3_canvas): short side 768, at most the area of 1344×768.
+export const PICTURE_TIERS = [["small", "Small", 480], ["native", "Native", 768], ["large", "Large (slow)", 1088]];
+
+export function pictureSize(ratio, tier) {
+  const short = PICTURE_TIERS.find(([key]) => key === tier)?.[2] || 768;
+  let [w, hh] = ratio >= 1 ? [short * ratio, short] : [short, short / ratio];
+  if (tier === "native" && w * hh > NATIVE_MP * 1e6) { const scale = Math.sqrt(NATIVE_MP * 1e6 / (w * hh)); w *= scale; hh *= scale; }
+  return [snap32(w), snap32(hh)];
+}
+
+export function presetValue(width, height, ratio = 0) {
   if (isAuto(width, height)) return "auto";
+  const tier = ratio > 0 && PICTURE_TIERS.find(([key]) => pictureSize(ratio, key).join("x") === `${width}x${height}`);
+  if (tier) return `picture:${tier[0]}`;
   return PRESET_KEYS.has(`${width}x${height}`) ? `${width}x${height}` : "custom";
 }
 

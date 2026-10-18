@@ -1,7 +1,7 @@
 // The fixed bar under the Studio: duration, resolution and the way to the settings.
 import { h, icon, field, select } from "./h3s_dom.js";
 import { DURATIONS, fmt } from "./h3s_model.js";
-import { PRESET_GROUPS, presetValue, isAuto } from "./h3s_canvas.js";
+import { PRESET_GROUPS, PICTURE_TIERS, presetValue, pictureSize, isAuto, nearestAspect } from "./h3s_canvas.js";
 
 function number(value, onchange, props = {}) {
   return h("input", { class: "h3s-in", type: "number", value, onchange: (event) => onchange(Number(event.target.value)), ...props });
@@ -24,13 +24,19 @@ function durationField(S, actions) {
 // The page keeps only what a first video needs; everything else is behind the gear (h3s_settings.js).
 export function footerView(S, actions) {
   const v = S.values;
-  const presets = [["auto", "From first picture (H3 chooses)"], ...PRESET_GROUPS.map(([group, list]) => ({ group, items: list.map(([label, w, hh]) => [`${w}x${hh}`, `${label} · ${w}×${hh}`]) })),
+  // The first picture's own shape at three sizes; the fixed formats below it.
+  const picture = S.picture, shape = picture && (nearestAspect(...pictureSize(picture.ratio, "native")) || picture.ratio.toFixed(2));
+  const own = picture ? [{ group: `Like ${picture.name} (${shape}, keeps its shape)`, items: PICTURE_TIERS.map(([key, label]) => {
+    const [w, hh] = pictureSize(picture.ratio, key);
+    return [`picture:${key}`, `${label} · ${w}×${hh}`];
+  }) }] : [];
+  const presets = [["auto", "From first picture (H3 chooses)"], ...own, ...PRESET_GROUPS.map(([group, list]) => ({ group, items: list.map(([label, w, hh]) => [`${w}x${hh}`, `${label} · ${w}×${hh}`]) })),
     ["custom", "Custom size"]];
   const plan = S.plan, size = isAuto(v.width, v.height) ? (plan ? `${plan.width}×${plan.height} from picture` : "size from picture") : `${v.width}×${v.height}`;
   const parts = plan ? plan.chunks.length : "?";
   return h("footer", { class: "h3s-foot" }, h("div", { class: "h3s-foot-row" },
     durationField(S, actions),
-    field("Resolution", select(presets, presetValue(v.width, v.height), actions.setPreset, { style: { maxWidth: "260px" } })),
+    field("Resolution", select(presets, presetValue(v.width, v.height, picture?.ratio), actions.setPreset, { style: { maxWidth: "300px" } })),
     h("button", { class: "h3s-btn", onclick: () => actions.toggle("settingsOpen"), title: "Render part, size, seed, steps, sampler, turbo LoRA, resume, ControlNet, sound and style" },
       icon("gear"), "Settings"),
     h("span", { class: "h3s-grow" }),
