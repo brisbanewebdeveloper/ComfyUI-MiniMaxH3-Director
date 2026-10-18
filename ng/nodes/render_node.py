@@ -127,8 +127,8 @@ class NGPlaceStill(io.ComfyNode):
     @classmethod
     def execute(cls, chunk, sampled, vae):
         job = chunk[0] if isinstance(chunk, list) else chunk
-        for path in places.write(job, sampled, lambda video: _decode_video(vae, video)):
-            logging.info("[H3 Director] render part %d: place picture %s", job.index + 1, path)
+        for path, how in places.write(job, sampled, lambda video: _decode_video(vae, video)):
+            logging.info("[H3 Director] render part %d: place picture %s (%s)", job.index + 1, path, how)
         return io.NodeOutput(sampled)
 
 

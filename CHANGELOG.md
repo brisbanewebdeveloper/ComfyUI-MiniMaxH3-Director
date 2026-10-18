@@ -5,8 +5,10 @@
 **Place like Shot N** (2026-10-18): a shot can take the place of an earlier shot (shot panel, *Place*). While rendering, the
 Director saves a picture of that shot's render (1 s in) and gives it to the later shot as a Place card, so a room H3 invented
 comes back the same after a cut; it shows as "Place of Shot N" under Made from. The later shot opens a render part of its own
-for it. Tested with tavern -> market square -> tavern: without it H3 drew another room, with it the same tavern. The picture
-also brings its camera, and a figure in it can appear twice. Idea from ATAS (arXiv 2610.20571).
+for it, as a cut. Tested with tavern -> market square -> tavern: without it H3 drew another room, with it the same tavern.
+*Picture*: **Without people** (default) takes the frame with the least person in it (SAM3) and lets Qwen Image 2.1 paint out
+a person still there, so the figure does not appear twice; **As rendered** keeps the frame 1 s in; **From another view**
+has Qwen paint the place from the camera you describe (the picture brings its camera along). Idea from ATAS (arXiv 2610.20571).
 
 **Tidier node list** (2026-10-18): the 11 internal nodes (chunk conditioning, noise, sampling, resume, control chunk, project
 chunks, turbo LoRA, AI request/result/media/encoder check) are no longer listed in ComfyUI (dev only; saved workflows and Render

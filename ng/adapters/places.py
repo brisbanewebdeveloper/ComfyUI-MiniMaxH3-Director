@@ -3,18 +3,37 @@ shots take their place from are decoded and saved to ComfyUI's input folder, whe
 picture card.
 
 Only a window of the part is decoded: the video VAE decodes 17-frame clips of 5 steps and blends each clip with the one
-before, so the window starts one clip early (as collect.delivered_pictures does for the whole video)."""
+before, so the window starts one clip early (as collect.delivered_pictures does for the whole video).
+
+"clean" and "view" pictures use ComfyUI's own nodes: SAM3 Detect ("person") picks the candidate with the least person in it,
+Qwen Image 2.1 (as the Storyboard builds it, js/ng/h3b_queue.js) paints a person out or paints the new view. Each model is
+loaded only when it is needed; without SAM3 the frame 1 s in is used, without Qwen the picture stays as rendered."""
+import hashlib
+import logging
 import os
+import re
 
 import numpy as np
+import torch
 from PIL import Image
 
 import folder_paths
+import nodes
+from comfy_extras.nodes_qwen import QwenImage21Cache, TextEncodeQwenImage21
+from comfy_extras.nodes_sam3 import SAM3_Detect
 
 from ..core import pin
 from ..core.places import in_chunk
 from .collect import VAE_CLIP_FRAMES, VAE_CLIP_STEPS
 from .latents import split_av
+
+PERSON_SHARE = 0.003        # of the picture: below this nobody is in it (SAM3 leaves a few stray pixels)
+REMOVE = ("Remove every person and every character from <image1> and fill in what was behind them. Keep the place, its furniture, "
+          "materials, colours, light, camera and style exactly the same. No people.")
+# "seen from the opposite side: the camera is ..." turned the tavern around (bar on the other side, the door beside the fireplace);
+# "seen from another camera" or "a new photograph from ..." kept its layout (Qwen tests 2026-10-18, ort-test/view_try_ab.jpg)
+VIEW = ("The same place as in <image1>, with exactly the same furniture, materials and light, but seen from the opposite side: the "
+        "camera is %s. Same style, same lighting, cinematic film still. No people, no text.")
 
 
 def path_of(place):
@@ -29,21 +48,88 @@ def window(local_frame, total_steps):
     return start, stop, local_frame - start // VAE_CLIP_STEPS * VAE_CLIP_FRAMES
 
 
+def candidate_pictures(video, local_frames, decode_video):
+    """The candidate frames [N,H,W,3], from one decoded window that covers them all."""
+    start, _, _ = window(min(local_frames), video.shape[2])
+    _, stop, _ = window(max(local_frames), video.shape[2])
+    decoded = decode_video(video[:, :, start:stop])
+    if decoded.shape[0] != pin.pixel_frames(stop - start):
+        raise ValueError("a place picture window of %d steps decoded to %d frames" % (stop - start, decoded.shape[0]))
+    offset = start // VAE_CLIP_STEPS * VAE_CLIP_FRAMES
+    return decoded[[f - offset for f in local_frames]]
+
+
+def _file(folder, *patterns):
+    names = folder_paths.get_filename_list(folder)
+    return next((name for pattern in patterns for name in names if re.search(pattern, name, re.I)), None)
+
+
+def person_shares(images):
+    """The share of each picture SAM3 sees a person in, or None without a SAM3 checkpoint."""
+    checkpoint = _file("checkpoints", r"sam3\.1_multiplex_fp16\.safetensors$", r"sam3.*\.safetensors$")
+    if checkpoint is None:
+        return None
+    model, clip, _ = nodes.CheckpointLoaderSimple().load_checkpoint(checkpoint)[:3]
+    text = nodes.CLIPTextEncode().encode(clip, "person")[0]
+    masks = SAM3_Detect.execute(model=model, image=images, conditioning=text, threshold=0.5, refine_iterations=2,
+                                individual_masks=False).args[0]
+    return [float(mask.float().mean()) for mask in masks]
+
+
+def qwen_files():
+    files = dict(model=_file("diffusion_models", r"qwen_image_2\.1_int8", r"qwen_image_2\.1"),
+                 encoder=_file("text_encoders", r"qwen3vl_8b_int8", r"qwen3vl_8b"), vae=_file("vae", r"qwen_image_2\.1_vae"))
+    return files if all(files.values()) else None
+
+
+def qwen_edit(files, picture, prompt, seed):
+    """Qwen Image 2.1 with `picture` as <image1>, at its shape, 25 steps Euler CFG 1 like the official template."""
+    model = QwenImage21Cache.execute(model=nodes.UNETLoader().load_unet(files["model"], "default")[0], device="auto", dtype="default").args[0]
+    clip = nodes.CLIPLoader().load_clip(files["encoder"], type="qwen_image")[0]
+    vae = nodes.VAELoader().load_vae(files["vae"])[0]
+    positive, negative, latent = TextEncodeQwenImage21.execute(clip=clip, prompt=prompt, negative_prompt="", vae=vae, resolution=1024,
+                                                                images={"image_1": picture}).args
+    sampled = nodes.common_ksampler(model, seed, 25, 1.0, "euler", "simple", positive, negative, latent)[0]
+    return nodes.VAEDecode().decode(vae, sampled)[0][:, :, :, :3]
+
+
+def picture(place, images):
+    """The picture of one place from its candidate frames (the frame 1 s in comes first), and what was done to it."""
+    if place.kind == "raw":
+        return images[:1], "as rendered"
+    shares = person_shares(images)
+    best = 0 if shares is None else min(range(len(shares)), key=lambda n: (shares[n] >= PERSON_SHARE, shares[n], n))
+    chosen, steps = images[best:best + 1], ["frame %d of %d" % (best + 1, len(images))]
+    needs_removal = shares is not None and shares[best] >= PERSON_SHARE
+    if not needs_removal and place.kind != "view":
+        return chosen, ", ".join(steps + ["nobody in it" if shares is not None else "no SAM3, not checked"])
+    files = qwen_files()
+    if files is None:
+        logging.warning("[H3 Director] the place picture needs Qwen Image 2.1 (qwen_image_2.1, qwen3vl_8b, qwen_image_2.1_vae) "
+                        "to paint out a person or paint a new view; it is used as rendered.")
+        return chosen, ", ".join(steps + ["no Qwen Image 2.1"])
+    seed = int(hashlib.sha1(place.source.encode()).hexdigest()[:8], 16)
+    if needs_removal:
+        chosen = qwen_edit(files, chosen, REMOVE, seed)
+        steps.append("person painted out (%.0f%% of the picture)" % (shares[best] * 100))
+    if place.kind == "view":
+        chosen = qwen_edit(files, chosen, VIEW % (place.view or "at the other end of the place, looking back"), seed + 1)
+        steps.append("new view: %s" % (place.view or "opposite side"))
+    return chosen, ", ".join(steps)
+
+
 def write(job, latent, decode_video):
-    """Save every Place picture this part shows. Returns the written paths."""
+    """Save every Place picture this part shows. Returns [(path, what was done)]."""
     wanted = in_chunk(job.project.places, job.chunk)
     if not wanted:
         return []
     video, _ = split_av(latent)
     written = []
-    for place, local in wanted:
-        start, stop, index = window(local, video.shape[2])
-        frames = decode_video(video[:, :, start:stop])
-        if not 0 <= index < frames.shape[0] or frames.shape[0] != pin.pixel_frames(stop - start):
-            raise ValueError("the place picture of %s: frame %d is not in the %d decoded frames" % (place.source_id, index, frames.shape[0]))
+    for place, local_frames in wanted:
+        made, how = picture(place, candidate_pictures(video, local_frames, decode_video))
         target = path_of(place)
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        picture = (frames[index].float().clamp(0, 1) * 255).round().byte().cpu().numpy()
-        Image.fromarray(np.ascontiguousarray(picture)).save(target)
-        written.append(target)
+        pixels = (made[0].float().clamp(0, 1) * 255).round().to(torch.uint8).cpu().numpy()
+        Image.fromarray(np.ascontiguousarray(pixels)).save(target)
+        written.append((target, how))
     return written

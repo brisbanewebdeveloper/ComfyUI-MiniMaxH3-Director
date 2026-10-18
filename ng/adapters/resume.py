@@ -38,13 +38,18 @@ def _file(source):
     return [stat.st_size, stat.st_mtime_ns]
 
 
+def _place(job, context_id):
+    place = next(p for p in job.project.places if p.context_id == context_id)
+    return ["rendered", place.kind, place.view]
+
+
 def _own(job, settings):
     compiled, chunk, context = job.compiled, job.chunk, job.project.context
     own = {"chunk": chunk.to_dict(), "mode": compiled.mode, "prompt": compiled.prompt, "size": [context.width, context.height],
             "continuity": job.project.plan.continuity.mode,
             # a Place picture is written anew by every render (adapters/places.py); the earlier part it comes from is in the chain
             "refs": [[r.kind, r.ctx_id, r.source, r.start_f, r.length_f, r.trim_start_f,
-                      "rendered" if is_place(r.ctx_id) else _file(r.source)] for r in compiled.refs]}
+                      _place(job, r.ctx_id) if is_place(r.ctx_id) else _file(r.source)] for r in compiled.refs]}
     if uses_sound_prefix(job):
         own["continuation_audio"] = "held_prefix_no_guide_v1"
     controls = []

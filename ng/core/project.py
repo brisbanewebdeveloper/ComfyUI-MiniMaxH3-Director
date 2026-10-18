@@ -176,10 +176,10 @@ def _edge(previous, previous_head, wanted):
     return min((low, low + step), key=lambda f: (abs(f - wanted), f))
 
 
-def _place_edge(shot, start, previous, previous_head, until, head):
-    """The join at which a shot in the place of an earlier one opens its own part, or None; with the issue to report."""
+def _place_edge(shot, start, previous, previous_head, until):
+    """The cut at which a shot in the place of an earlier one opens its own part, or None; with the issue to report."""
     join = _edge(previous, previous_head, start)
-    if join - previous < _shortest(previous_head) or until - join < _shortest(head):
+    if join - previous < _shortest(previous_head) or until - join < _shortest(0):
         return None, Issue("place_too_close", "starts too close to the previous render part or the end for a part of its own, "
                            "which the place picture of an earlier shot needs; it is not used.", "shot %d" % shot.index)
     if join == start:
@@ -195,8 +195,9 @@ def _part_edges(context, shots, total, head, place_targets=()):
     picture as the end of the running take and cut one frame later (measured 2026-10-11). A Keyframe picture inside a
     shot ends a part on its last frame, the trained place for a picture; the next part keeps its pin (join), so the
     shot runs on. Parts start on H3's grid, so a shot start or keyframe moves to the nearest grid frame.
-    A shot in the place of an earlier shot (`place_targets`) starts a part as a join too: its Place picture comes from the
-    render of an earlier part (core/places.py); one that cannot get a part of its own goes into `place_targets.dropped`."""
+    A shot in the place of an earlier shot (`place_targets`) is a cut back to that place: its Place picture comes from the
+    render of an earlier part (core/places.py); pinned, H3 kept the market square running (2026-10-18). One that cannot get
+    a part of its own goes into `place_targets.dropped`."""
     initial = continuation.initial_opening(context, shots)
     cuts, joins, moved, moved_keys, issues = ({0: initial} if initial else {}), [], {}, {}, []
     previous, previous_head = 0, initial.head_frames if initial else 0
@@ -222,15 +223,15 @@ def _part_edges(context, shots, total, head, place_targets=()):
                     issues.append(Issue("opening_moved", "starts at %.2fs instead of %.2fs so that its source opens a render part."
                                         % (frames.frames_to_seconds(cut), frames.frames_to_seconds(shot.start_f)), "shot %d" % shot.index))
         elif start > 0 and shot.id in place_targets:
-            join, issue = _place_edge(shot, start, previous, previous_head, until, head)
+            cut, issue = _place_edge(shot, start, previous, previous_head, until)
             issues += [issue] if issue else []
-            if join is None:
+            if cut is None:
                 place_targets.dropped.add(shot.id)
             else:
-                joins.append(join)
-                previous, previous_head = join, head
-                if join != start:
-                    moved[shot.id] = start = join
+                cuts[cut] = ChunkOpening()
+                previous, previous_head = cut, 0
+                if cut != start:
+                    moved[shot.id] = start = cut
         for binding in _keyframes(context, shot) if frame_mode else ():
             name = context.item(binding.context_id).name
             wanted = start + frames.seconds_to_frames(binding.at_s) + 1      # the part ends on the keyframe; the next one starts after it

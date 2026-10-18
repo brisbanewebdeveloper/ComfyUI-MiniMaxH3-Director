@@ -6,9 +6,16 @@ another room, with it the tavern came back with its bar, copper pots, wagon-whee
 also brings its camera: a later "reverse angle" kept the old view. The idea comes from ATAS (arXiv 2610.20571), which keeps
 a memory of every place; this is its 2D form.
 
-The picture exists only once the earlier shot is rendered, so the later shot starts a render part of its own (a join: the
-pin stays, the shot runs on from the one before) and the picture is written inside the render loop, right after the part
-that holds it (adapters/places.py). Plain arithmetic and plan data here; no files, no tensors."""
+The picture exists only once the earlier shot is rendered, so the later shot starts a render part of its own (a cut, not
+pinned to the part before: see project._part_edges) and the picture is written inside the render loop, right after the
+part that holds it (adapters/places.py). Plain arithmetic and plan data here; no files, no tensors.
+
+The picture comes in three kinds (`place_picture` of the later shot):
+  clean  (default) the candidate frame with the least person in it (SAM3); if someone is still there, Qwen Image 2.1 paints
+         them out. A figure left in the picture showed up twice in the test (Luna at the table and walking in).
+  raw    the frame 1 s into the earlier shot, as rendered.
+  view   the clean picture painted by Qwen from the camera the shot describes (`place_view`): the picture brings its camera
+         along, so a reverse angle needs a picture from that side (test: Qwen's view gave the reverse angle in the same tavern)."""
 import hashlib
 import json
 from dataclasses import dataclass
@@ -20,6 +27,8 @@ from .shot_document import read_document
 PREFIX = "h3place_"
 FOLDER = "h3-director-places"
 PICTURE_AT_S = 1.0          # into the earlier shot: its place is set up, its camera has barely moved (the test used 1.0 s)
+CANDIDATES = 6              # frames of the earlier shot that SAM3 compares for "clean" and "view"
+KINDS = ("clean", "raw", "view")
 DESCRIPTION = "the place where this scene happens, exactly as it looked earlier in the film"
 
 
@@ -30,6 +39,9 @@ class Place:
     context_id: str         # the Place card the plan adds
     source: str             # its picture, relative to ComfyUI's input folder
     frame: int              # story frame of the picture
+    kind: str = "clean"     # see KINDS
+    view: str = ""          # kind "view": the camera Qwen paints the place from
+    candidates: tuple = ()  # story frames to choose from, `frame` first; all in the part that shows `frame`
 
 
 def is_place(context_id):
@@ -72,17 +84,34 @@ def picture_frame(source_shot, target_start_f):
     return max(source_shot.start_f, min(frame, source_shot.end_f - 1, target_start_f - 1))
 
 
+def candidate_frames(source_shot, target_start_f, frame):
+    """`frame` and up to CANDIDATES - 1 more frames spread over the earlier shot, half a second in from its edges."""
+    margin = frames.seconds_to_frames(0.5)
+    first, last = source_shot.start_f + margin, min(source_shot.end_f, target_start_f) - 1 - margin
+    if last <= first:
+        return (frame,)
+    step = (last - first) / float(CANDIDATES - 2)
+    spread = [int(round(first + n * step)) for n in range(CANDIDATES - 1)]
+    return tuple(dict.fromkeys([frame] + spread))
+
+
 def plan_places(context, shots, chosen):
     """Place records for `chosen` ({target: source}) over the final shots."""
     by_id, out = {shot.id: shot for shot in shots}, []
+    records = {record["id"]: record for record in read_document(context.shots_text) or ()}
     for target_id, source_id in chosen.items():
         target, source = by_id.get(target_id), by_id.get(source_id)
         if target is None or source is None:
             continue
+        record = records.get(target_id, {})
+        kind = record.get("place_picture") if record.get("place_picture") in KINDS else "clean"
+        view = str(record.get("place_view") or "").strip() if kind == "view" else ""
         # one file per project and shot pair, so two Directors in one workflow do not share pictures
         key = hashlib.sha1(json.dumps([context.shots_text, context.width, context.height, source_id, target_id]).encode()).hexdigest()[:12]
-        out.append(Place(target_id=target_id, source_id=source_id, context_id=PREFIX + source_id,
-                         source="%s/%s.png" % (FOLDER, key), frame=picture_frame(source, target.start_f)))
+        frame = picture_frame(source, target.start_f)
+        out.append(Place(target_id=target_id, source_id=source_id, context_id=PREFIX + target_id,
+                         source="%s/%s.png" % (FOLDER, key), frame=frame, kind=kind, view=view,
+                         candidates=(frame,) if kind == "raw" else candidate_frames(source, target.start_f, frame)))
     return tuple(out)
 
 
@@ -110,9 +139,10 @@ def add_cards(context, places, shots):
 
 
 def in_chunk(places, chunk):
-    """(place, frame index in the chunk's sampled latent timeline) for the pictures this chunk shows."""
+    """(place, its candidate frames as indices in the chunk's sampled latent timeline) for the places this chunk shows."""
     out = []
     for place in places:
         if chunk.story_start_f <= place.frame < chunk.story_end_f:
-            out.append((place, place.frame - chunk.story_start_f + chunk.head_frames))
+            inside = [f for f in place.candidates if chunk.story_start_f <= f < chunk.story_end_f]
+            out.append((place, [f - chunk.story_start_f + chunk.head_frames for f in inside]))
     return out

@@ -128,7 +128,25 @@ function recorder() {
   const place = placeOf(panel);
   assert.deepEqual(place.children.map((option) => option.innerText), ["Its own place", "Like Shot 1"]);
   place.onchange({ target: { value: "a" } });
-  assert.deepEqual(calls.at(-1), ["setPlace", "b", "a"]);
+  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_from: "a" }]);
+  assert.equal(panel.byTag("select").find((one) => one.getAttribute("aria-label") === "Place picture of this shot"), undefined,
+    "no picture choice before a place is chosen");
+  const placed = state({ selected: { kind: "shot", id: "b" } });
+  placed.shots = placed.shots.map((one) => one.id === "b" ? { ...one, place_from: "a" } : one);
+  [, panel] = sideView(placed, actions);
+  const kind = panel.byTag("select").find((one) => one.getAttribute("aria-label") === "Place picture of this shot");
+  assert.deepEqual(kind.children.map((option) => option.innerText), ["Without people", "As rendered (1 s in)", "From another view …"]);
+  assert.equal(panel.byTag("input").some((one) => one.getAttribute("aria-label") === "Camera of the place picture"), false);
+  kind.onchange({ target: { value: "view" } });
+  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_picture: "view" }]);
+  kind.onchange({ target: { value: "clean" } });
+  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_picture: undefined }], "the default is not stored");
+  placed.shots = placed.shots.map((one) => one.id === "b" ? { ...one, place_picture: "view", place_view: "from the door" } : one);
+  [, panel] = sideView(placed, actions);
+  const camera = panel.byTag("input").find((one) => one.getAttribute("aria-label") === "Camera of the place picture");
+  assert.equal(camera.value, "from the door");
+  camera.oninput({ target: { value: "from the bar" } });
+  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_view: "from the bar" }, false]);
   const gone = state({ selected: { kind: "shot", id: "b" } });
   gone.shots = gone.shots.map((one) => one.id === "b" ? { ...one, place_from: "deleted" } : one);
   [, panel] = sideView(gone, actions);

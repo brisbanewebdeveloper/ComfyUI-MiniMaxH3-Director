@@ -7,8 +7,11 @@ import { subjectChoices } from "./ng_subjects.js";
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
 // How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
 const DELIVERY = ["says", "sings", "whispers", "shouts", "murmurs"].map((word) => [word, word]);
-const PLACE_HINT = "H3 gets a picture from that shot's render (1 s in) as this shot's place, so the room looks the same again. "
-  + "The camera tends to take that picture's view, and a figure in the picture can show up twice.";
+const PLACE_HINT = "H3 gets a picture from that shot's render as this shot's place, so the room looks the same again. "
+  + "The camera tends to take that picture's view.";
+const PLACE_PICTURES = [["clean", "Without people"], ["raw", "As rendered (1 s in)"], ["view", "From another view …"]];
+const PICTURE_HINT = "Without people: the frame with the least person in it (SAM3); if someone is still there, Qwen Image 2.1 paints "
+  + "them out, otherwise the figure can show up twice. From another view: Qwen paints the place from the camera you describe.";
 const CLIP_MODES = [["lock", "Lock exactly (the sound stays fixed)"], ["copy", "Copy as closely as possible (H3 may vary)"],
   ["ref", "Reference only (mood, voice, style)"]];
 
@@ -100,10 +103,17 @@ function placeField(S, actions, shot) {
   const options = [["", "Its own place"], ...earlier.map((entry) => [entry.id, `Like ${actions.shotLabel(entry.id)}`])];
   const lost = shot.place_from && !earlier.some((entry) => entry.id === shot.place_from);
   if (lost) options.push([shot.place_from, "Like a shot that is gone"]);
+  const kind = shot.place_picture || "clean";
   return h("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
     h("div", { class: "h3s-row" }, h("span", { class: "h3s-lbl" }, "Place"), tip(PLACE_HINT)),
-    select(options, shot.place_from || "", (value) => actions.setPlace(shot.id, value), { "aria-label": "Place of this shot" }),
-    lost ? h("span", { class: "h3s-warn", style: { fontSize: "12px" } }, "That shot is gone or no longer comes first; choose another or Its own place.") : null);
+    select(options, shot.place_from || "", (value) => actions.setPlace(shot.id, { place_from: value || undefined }), { "aria-label": "Place of this shot" }),
+    lost ? h("span", { class: "h3s-warn", style: { fontSize: "12px" } }, "That shot is gone or no longer comes first; choose another or Its own place.") : null,
+    shot.place_from ? h("div", { class: "h3s-row" }, h("span", { class: "h3s-lbl" }, "Picture"), tip(PICTURE_HINT)) : null,
+    shot.place_from ? select(PLACE_PICTURES, kind, (value) => actions.setPlace(shot.id, { place_picture: value === "clean" ? undefined : value }),
+      { "aria-label": "Place picture of this shot" }) : null,
+    shot.place_from && kind === "view" ? h("input", { class: "h3s-in", type: "text", value: shot.place_view || "",
+      placeholder: "Camera, e.g. from the bar toward the door", "aria-label": "Camera of the place picture",
+      oninput: (event) => actions.setPlace(shot.id, { place_view: event.target.value }, false) }) : null);
 }
 
 function shotPanel(S, actions, shot) {
