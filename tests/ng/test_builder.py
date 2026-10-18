@@ -51,6 +51,23 @@ class Request(unittest.TestCase):
         self.assertIn('"uses":[]', text)
         self.assertIn("lines is [] in every shot", text)
 
+    def test_rule_cards_and_videos_reach_the_plan(self):
+        # 2026-10-18: the AI planned without the style notes and videos that every part then got anyway.
+        rule = {"media": "text", "widgets": {"name": "House style", "text": "Always anime CGI, no blood.", "usage": "style",
+                                             "usage_roles": json.dumps(["style"])}}
+        story = {"media": "text", "widgets": {"name": "Story", "text": "They meet at dawn.", "usage": "scene", "usage_roles": json.dumps(["scene"])}}
+        camera = {"media": "video", "widgets": {"name": "Orbit", "description": "A slow orbit around a statue.", "usage": "camera",
+                                                "usage_roles": json.dumps(["camera"])}}
+        control = {"media": "video", "widgets": {"name": "Walk", "description": "A woman in a red coat walks.", "usage": "control",
+                                                 "usage_roles": json.dumps(["control"])}}
+        text = builder.plan_prompt(QUICK, "", 10, [MAGE, rule, story, camera, control], shown=1)
+        self.assertIn('- "House style" (style): Always anime CGI, no blood.', text)
+        self.assertNotIn('"Story"', text.split("Rules")[-1], "a Scene note is the story, not a rule")
+        self.assertIn("They meet at dawn.", text)
+        self.assertIn("- @Orbit - video, camera: A slow orbit around a statue.", text)
+        self.assertIn("Walk - a control video", text)
+        self.assertNotIn("red coat", text, "a control video's source is never described")
+
     def test_speech_shapes_the_example_line(self):
         song = builder.plan_prompt({**QUICK, "direction": "song", "speech": "singing"}, "", 10, [MAGE])
         self.assertIn('"lines":[{"speaker":"Mage","delivery":"sings"', song)

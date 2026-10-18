@@ -34,9 +34,13 @@ def timing_hints(director, contexts, probe=None):
 
 def _meanings(contexts):
     return [{"name": entry["widgets"].get("name", ""), "media": entry["media"],
-             "description": entry["widgets"].get("description", ""), "usage": entry["widgets"].get("usage", ""),
+             # a control video's source is never described: its figure turned up in the video (T6, 2026-10-16)
+             "description": "" if "control" in _roles(entry["widgets"]) else entry["widgets"].get("description", ""),
+             "usage": entry["widgets"].get("usage", ""),
              "speaker": entry["widgets"].get("speaker", ""), "context_id": card_id(entry),
-             "subject_ids": entry["widgets"].get("subject_ids", "")} for entry in contexts]
+             "subject_ids": entry["widgets"].get("subject_ids", ""),
+             # a Text card's own words (a style or rule note), so the AI writes shots that fit them (2026-10-18)
+             **({"text": widget_text(entry["widgets"], "text").strip()} if entry["media"] == "text" else {})} for entry in contexts]
 
 
 def story(idea, contexts):

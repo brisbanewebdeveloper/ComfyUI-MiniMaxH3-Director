@@ -10,7 +10,7 @@ import re
 from . import fields
 from .ai_json import read_object
 from .auto_direct import story
-from .context_build import card_id
+from .context_build import card_id, widget_text
 from .directions import DIRECTIONS, LANGUAGES, SPEECH, check_adults, direction, shot_count
 from .split import BEAT_RULE, CAMERA_RULE, _seconds, parse_split, shots_example
 
@@ -106,6 +106,26 @@ def _audio_line(entry):
            "a sound reference (%s)" % ", ".join(usage) if usage else "a sound reference")
     described = (widgets.get("description") or "").strip()
     return "- @%s - audio, %s; contains %s%s" % (name, how, ", ".join(content) or "sound", ": " + described if described else "")
+
+
+def _rule_line(entry):
+    """A Text card that is not the story: written into every part as it is, so the plan must fit it (2026-10-18)."""
+    widgets = entry["widgets"]
+    usage = [u for u in _roles(widgets, "usage_roles") if u != "scene"]
+    text = widget_text(widgets, "text").strip()
+    return '- "%s" (%s): %s' % (widgets.get("name") or "Note", ", ".join(usage) or "rule", text) if usage and text else None
+
+
+def _video_line(entry):
+    """A Video card: what H3 takes from it. A control video only steers movement and framing; its source's look is never
+    described, or the source's figure turns up in the video (T6, 2026-10-16)."""
+    widgets = entry["widgets"]
+    usage = _roles(widgets, "usage_roles")
+    name = widgets.get("name") or "Video"
+    if "control" in usage:
+        return "- %s - a control video: it steers movement and framing of the shots it lies under; do not describe what it shows" % name
+    described = (widgets.get("description") or "").strip()
+    return "- @%s - video, %s%s" % (name, ", ".join(usage) or "reference", ": " + described if described else "")
 
 
 def soundtrack(contexts):
@@ -251,6 +271,12 @@ def plan_prompt(quick, idea, seconds, contexts, shown=0, parts=(), sung=()):
     sounds = [_audio_line(entry) for entry in contexts if entry.get("media") == "audio"]
     if sounds:
         lines += ["", "Sound:"] + sounds
+    videos = [_video_line(entry) for entry in contexts if entry.get("media") == "video"]
+    if videos:
+        lines += ["", "Videos:"] + videos
+    notes = [line for line in (_rule_line(entry) for entry in contexts if entry.get("media") == "text") if line]
+    if notes:
+        lines += ["", "Rules (added to every part as they are; plan shots that fit them, do not repeat them):"] + notes
     names = [name for name, (sort, _) in kinds_of.items() if name and sort in ("figure", "place")]
     rules = _rules(quick, seconds, found, names, played, parts, sung, kinds_of)
     if undescribed:
