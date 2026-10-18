@@ -178,16 +178,19 @@ class TestBug093Fl2vaContinueVideoSpuriousReferenceDisabled(unittest.TestCase):
         # Create a job with compiled continue_video ref
         ref = compile_mod.MediaRef("continue_video", "v_cont", "prequel.mp4", start_f=0, length_f=24, trim_start_f=0)
         # mode and refs as a compiled chunk has them (the first mock lacked both and failed before the call)
+        # since 6baa992 the guide loads the card's video and sound through continuation_media, with the card from the project
+        card = ctx.ContextItem("v_cont", "Prequel", "video", "prequel.mp4", usage=("continue",))
         job = types.SimpleNamespace(compiled=types.SimpleNamespace(mode="fl2va", refs=(ref,),
-                                                                   of_kind=lambda k: (ref,) if k == "continue_video" else ()))
+                                                                   of_kind=lambda k: (ref,) if k == "continue_video" else ()),
+                                    project=types.SimpleNamespace(context=ctx.DirectorContext(items=(card,), mode="fl2va")))
 
         # Mock MiniMax core and media loader
         mm = MagicMock()
         mm.MiniMaxH3AddGuide.execute.return_value = ("guided_positive",)
 
-        orig_load = scene_guides.media.load_video
+        orig_load = scene_guides.continuation_media.load
         try:
-            scene_guides.media.load_video = MagicMock(return_value=torch.zeros(10, 3, 64, 64))
+            scene_guides.continuation_media.load = MagicMock(return_value=(torch.zeros(10, 3, 64, 64), None))
             positive = "base_positive"
             latent = {"samples": torch.zeros(1, 4, 16, 16)}
             vae = MagicMock()
@@ -197,7 +200,7 @@ class TestBug093Fl2vaContinueVideoSpuriousReferenceDisabled(unittest.TestCase):
             self.assertTrue(mm.MiniMaxH3AddGuide.execute.called,
                             "MiniMaxH3AddGuide.execute must be called for continue_video")
         finally:
-            scene_guides.media.load_video = orig_load
+            scene_guides.continuation_media.load = orig_load
 
         # Now verify that context_checks falsely claims this same card is omitted:
         v = ctx.ContextItem("v_cont", "Prequel", "video", "prequel.mp4", usage=("continue",))
