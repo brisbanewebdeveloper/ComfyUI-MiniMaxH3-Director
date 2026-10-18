@@ -34,7 +34,7 @@ def _chunk_view(chunk, compiled, context):
             "sampled_frames": chunk.sampled_frames, "head_frames": chunk.head_frames, "mode": compiled.mode, "prompt": compiled.prompt,
             "prompt_key": compiled.key, "prompt_source": compiled.source,
             "refs": [{"kind": r.kind, "ctx_id": r.ctx_id, "name": _name(context, r)} for r in compiled.refs],
-            "prompt_labels": dict(compiled.prompt_labels), "shots": [s.to_dict() for s in chunk.shots]}
+            "prompt_labels": dict(compiled.prompt_labels), "shots": [s.to_dict() for s in chunk.shots], "sources": list(compiled.sources)}
 
 
 def plan_preview(payload, probe=None, image_size=None):

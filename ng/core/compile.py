@@ -19,6 +19,7 @@ from .guide_timing import plan_guides
 from .fl2va_refs import add_references
 from .part_prompt import prompt_key
 from .shot_document import read_part_prompts
+from .prompt_sources import prompt_sources
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,7 @@ class CompiledChunk:
     prompt_labels: tuple = ()  # (native label, owning context ID); optional display metadata for v1 saves
     key: str = ""              # of the compiled prompt; a part's own prompt is valid only for this key
     source: str = "compiled"   # compiled | ai | user (the part's own prompt) | manual (prompt_override)
+    sources: tuple = ()        # what the prompt is made from (prompt_sources.py), display only
     SCHEMA_VERSION = 1
 
     def of_kind(self, kind):
@@ -39,7 +41,7 @@ class CompiledChunk:
     def to_dict(self):
         return {"schema_version": self.SCHEMA_VERSION, "index": self.index, "mode": self.mode, "prompt": self.prompt,
                 "refs": [r.to_dict() for r in self.refs], "issues": [i.to_dict() for i in self.issues],
-                "prompt_labels": dict(self.prompt_labels), "key": self.key, "source": self.source}
+                "prompt_labels": dict(self.prompt_labels), "key": self.key, "source": self.source, "sources": list(self.sources)}
 
     @classmethod
     def from_dict(cls, data, path="compiled"):
@@ -50,7 +52,8 @@ class CompiledChunk:
                    refs=tuple(MediaRef.from_dict(d, "%s.refs[%d]" % (path, n)) for n, d in enumerate(fields.read_list(data, "refs", path))),
                    issues=tuple(Issue.from_dict(d) for d in fields.read_list(data, "issues", path)),
                    prompt_labels=read_prompt_labels(data, path), key=fields.read_str(data, "key", path, ""),
-                   source=fields.read_choice(data, "source", path, ("compiled", "ai", "user", "manual"), "compiled"))
+                   source=fields.read_choice(data, "source", path, ("compiled", "ai", "user", "manual"), "compiled"),
+                   sources=tuple(entry for entry in data.get("sources") or () if isinstance(entry, dict)))
 
 
 def _picture_refs(result, mapping):
@@ -131,7 +134,8 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     final, source, own_issues = _own_prompt(original, chunk, prompt)
     return CompiledChunk(index=chunk.index, mode=result["mode"], prompt=final, refs=tuple(refs),
                          issues=binding_issues + timing_issues + tuple(voice_notes) + relation_issues + guide_issues + lock_issues + own_issues + tuple(_issues(context, chunk, result, continuity)),
-                         prompt_labels=labels, key=prompt_key(prompt), source=source)
+                         prompt_labels=labels, key=prompt_key(prompt), source=source,
+                         sources=prompt_sources(original, chunk, refs, tdata["segments"]))
 
 
 def _own_prompt(context, chunk, compiled):

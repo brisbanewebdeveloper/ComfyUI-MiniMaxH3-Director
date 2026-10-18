@@ -333,6 +333,10 @@ def _add_sung_lines(segments, context, chunk, groups, substitute):
         segment["prompt"] = "\n".join(part for part in (segment["prompt"], substitute(_sung_line(line, speakers, context))) if part)
 
 
+# Text card usages written into every part's prompt as a line of their own (a Scene note only without Shots, see below).
+RULE_USAGES = frozenset(("style", "rule", "character", "world", "scene", "camera", "dialogue", "constraint", "instruction"))
+
+
 def _global_prompt(context):
     # With structured Shots the Prompt is the story they were made from; what every part shares is the Look.
     # Timed text ("0-8: ...") predates both and keeps the Prompt as its global line.
@@ -348,7 +352,7 @@ def _global_prompt(context):
         # pasted into every part again; the 27 s elf song carried its whole verse into each of three parts that way.
         if structured and has_shots(context.shots_text) and item.effective_usage == ("scene",):
             continue
-        if item.source.strip() and set(item.effective_usage) & {"style", "rule", "character", "world", "scene", "camera", "dialogue", "constraint", "instruction"}:
+        if item.source.strip() and set(item.effective_usage) & RULE_USAGES:
             owners = [context.item(identity).name for identity in item.subject_ids if context.item(identity)]
             prefix = "For %s: " % " and ".join("@" + name for name in owners) if owners else ""
             parts.append(prefix + item.source.strip())

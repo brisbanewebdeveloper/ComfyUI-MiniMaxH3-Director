@@ -123,6 +123,18 @@ function recorder() {
   assert.equal(panel.button("AI: improve text").disabled, true, "no AI suggestion without a loader");
 }
 
+// Each part says what its prompt is made from; a shot chip selects the shot, a shot without text is flagged.
+{
+  const { sourcesRow } = await import("../../../js/ng/h3s_prompts.js");
+  const { actions, calls } = recorder();
+  const row = sourcesRow(state(), actions, { sources: [{ kind: "shot", id: "a", label: "Shot 1", text: "(no text)" },
+    { kind: "rule", id: "r", label: "Style rule", text: "Anime CGI." }, { kind: "manual", id: "", label: "Manual prompt", text: "x" }] });
+  assert.ok(row.innerText.includes("no text") && row.innerText.includes("Style rule"), row.innerText);
+  row.find((node) => node.tagName === "BUTTON")[0].onclick();
+  assert.equal(calls.at(-1)[0], "select");
+  assert.equal(sourcesRow(state(), actions, { sources: [] }), null);
+}
+
 // The summary follows custom sampling settings and does not guess the upstream model graph.
 {
   const [mode] = sideView(state({ values: { turbo: false, steps: 7 } }), recorder().actions);

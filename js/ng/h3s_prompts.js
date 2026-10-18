@@ -12,6 +12,25 @@ export function outdated(S, index) {
   return (S.partPrompts || []).some((entry) => entry.index === index) && S.plan?.chunks?.[index]?.prompt_source === "compiled";
 }
 
+// What this part's prompt is made from (ng/core/prompt_sources.py): one chip per shot, card, Look, rule and setting; hover shows
+// its text, a shot chip selects the shot, the manual prompt opens Settings.
+const KINDS = { manual: ["#F2A65A", "Manual"], shot: ["#6CB6FF", "Shot"], look: ["#C9A2FF", "Look"], rule: ["#F7D774", "Rule"],
+  picture: ["#5BD08A", "Picture"], video: ["#FF8A8A", "Video"], audio: ["#B38CF5", "Audio"], setting: ["#9AA6B8", "Setting"] };
+
+export function sourcesRow(S, actions, chunk) {
+  const sources = chunk.sources || [];
+  if (!sources.length) return null;
+  return h("div", { class: "h3s-row", style: { padding: "6px 12px 0", gap: "6px" } }, h("span", { class: "h3s-lbl" }, "Made from"),
+    sources.map((entry) => {
+      const empty = entry.kind === "shot" && entry.text === "(no text)";
+      const [color, kind] = empty ? ["#F2A65A", "Shot without text"] : KINDS[entry.kind] || KINDS.setting;
+      const label = entry.kind === "shot" && entry.id && actions.shotLabel ? actions.shotLabel(entry.id) : entry.label;
+      const click = entry.kind === "shot" && entry.id ? () => actions.select("shot", entry.id) : entry.kind === "manual" ? () => actions.toggle("settingsOpen") : null;
+      return h(click ? "button" : "span", { class: "h3s-chip", title: `${kind}: ${entry.text}`, onclick: click,
+        style: { border: `1px solid ${color}`, color, background: "transparent", cursor: click ? "pointer" : "help" } }, empty ? `${label}: no text` : label);
+    }));
+}
+
 function partView(S, actions, chunk) {
   const [color, bg] = partColor(chunk.index), use = chunkBudget(chunk), i = chunk.index;
   const [label, tone] = SOURCE[chunk.prompt_source] || SOURCE.compiled, old = outdated(S, i);
@@ -29,6 +48,7 @@ function partView(S, actions, chunk) {
       h("span", { class: `h3s-chip ${old ? "h3s-warn" : tone}`, title: old ? "The plan changed after this part's own prompt was written; the compiled prompt is used." : "" },
         old ? "own prompt outdated" : label),
       h("span", { class: "h3s-grow" }), ...tools, h("span", { class: "h3s-lbl" }, chunk.mode.toUpperCase())),
+    sourcesRow(S, actions, chunk),
     h("span", { class: "h3s-lbl", style: { padding: "6px 12px 0" }, title: "Reference slots H3 gets in this part (the model's limits)" },
       `Images ${use.image}/9 · Video ${use.video}/3 · Audio ${use.audio}/3 · total ${use.total}/12`),
     draft ? h("div", { class: "h3s-banner", style: { margin: "8px 12px", flexDirection: "column", alignItems: "stretch" } },
