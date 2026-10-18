@@ -153,6 +153,17 @@ class ExternalSampling(unittest.TestCase):
             out = self.nodes["NGCollect"].execute([], self.jobs(self.result()), [object()], [object()])
         self.assertEqual(out.args[3], 24.0)
 
+    def test_collect_with_an_empty_resume_field_does_not_fail(self):
+        # 2026-10-18: a saved hand-built loop got the new resume_settings field empty, [""] as a list input, and Collect
+        # failed with JSONDecodeError although the workflow was not touched.
+        frames, sound = torch.zeros(1, 4, 4, 3), {"waveform": torch.zeros(1, 2, 10), "sample_rate": 32000}
+        with patch.object(self.chunk_module.collect, "collect_chunks", return_value=(frames, sound, ())),              patch.object(self.chunk_module, "audio_nodes"), patch.object(self.chunk_module.resume, "forget") as forget:
+            out = self.nodes["NGCollect"].execute([], self.jobs(self.result()), [object()], [object()], resume_settings=[""])
+            self.assertFalse(forget.called, "an empty field keeps the parts")
+            self.nodes["NGCollect"].execute([], self.jobs(self.result()), [object()], [object()], resume_settings=['{"seed": 1}'])
+            self.assertTrue(forget.called, "Render Sequence's settings still delete them")
+        self.assertEqual(out.args[3], 24.0)
+
     def test_both_collectors_expose_and_honor_source_join_switch(self):
         jobs = self.jobs(self.result())
         for name in ("NGCollect", "NGCollectVideo"):

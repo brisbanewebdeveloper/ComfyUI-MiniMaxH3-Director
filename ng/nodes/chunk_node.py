@@ -118,7 +118,8 @@ class NGCollect(io.ComfyNode):
             latents, project.plan, lambda video: _decode_video(vae[0], video), lambda audio: decode_audio(audio_vae[0], {"samples": audio}),
             restore_audio=lambda index, wave, rate: audio_locks.restore_waveform(chunks[index], wave, rate),
             restore_picture=_picture_restorer(chunks, smooth_source_join))
-        if resume_settings:
+        # A list input: an empty field in a hand-built loop arrives as [""] (2026-10-18: Collect failed with JSONDecodeError).
+        if resume_settings and resume_settings[0]:
             resume.forget(chunks, json.loads(resume_settings[0]))
         return io.NodeOutput(frames, sound, "\n".join(str(i) for i in issues), float(FPS))
 
