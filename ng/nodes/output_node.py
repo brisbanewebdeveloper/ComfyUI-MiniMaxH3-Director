@@ -78,7 +78,7 @@ class NGProjectRender(io.ComfyNode):
 class NGProjectChunks(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGProjectChunks", display_name="NG Project Chunks", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGProjectChunks", display_name="NG Project Chunks", category=CATEGORY + "/Technical", is_dev_only=True,
                          inputs=[NGResult.Input("sequence")], outputs=[NGChunk.Output(is_output_list=True)])
 
     @classmethod

@@ -2,6 +2,11 @@
 
 ## 1.0.0 (unreleased)
 
+**Tidier node list** (2026-10-18): the 11 internal nodes (chunk conditioning, noise, sampling, resume, control chunk, project
+chunks, turbo LoRA, AI request/result/media/encoder check) are no longer listed in ComfyUI (dev only; saved workflows and Render
+Sequence still use them). The blocks of an own loop moved to **MiniMax H3/NG/Custom loop**, Enhance Prompt, Retake Stitch and Save
+Last Frame to **MiniMax H3/Legacy** beside the Legacy Director. NG Collect no longer fails on an empty `resume_settings` field.
+
 **A simpler Director** (2026-10-18, user: "it works, but it is hard to use"):
 
 - **Settings behind a gear** (header and bottom bar): render part, size, fitting, reference size, seed, steps, sampler,

@@ -13,7 +13,7 @@ from .product_director_node import NGResult
 class NGControlVideo(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGControlVideo", display_name="H3 Control Video (experimental)", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGControlVideo", display_name="H3 Control Video (experimental)", category=CATEGORY + "/Custom loop",
                          description="Steer each render part with a pose, depth or edge video (MiniMax H3 Fun ControlNet-Union), or "
                                      "regenerate masked regions of a source video. The videos run on the story timeline at 24 fps; "
                                      "each part gets its own window, its pinned head included.",
@@ -47,7 +47,7 @@ class NGControlVideo(io.ComfyNode):
 class NGControlChunk(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGControlChunk", display_name="NG Control Chunk", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGControlChunk", display_name="NG Control Chunk", category=CATEGORY + "/Technical", is_dev_only=True,
                          inputs=[io.Model.Input("model"), NGChunk.Input("chunk"),
                                  io.ModelPatch.Input("model_patch", optional=True, lazy=True),
                                  io.Vae.Input("vae", optional=True, lazy=True),

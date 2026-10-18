@@ -58,7 +58,7 @@ def execute_preview(cls, model, vae, **values):
 class MiniMaxH3PreviewOverride(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return preview_schema("MiniMaxH3PreviewOverrideCS", "🎯 Preview Override (live)", "MiniMax H3")
+        return preview_schema("MiniMaxH3PreviewOverrideCS", "🎯 Preview Override (live)", "MiniMax H3/NG/Custom loop")
 
     @classmethod
     def execute(cls, model, vae, **values) -> io.NodeOutput:

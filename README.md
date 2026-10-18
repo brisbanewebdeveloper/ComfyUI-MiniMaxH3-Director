@@ -93,7 +93,7 @@ More nodes around the Director:
   and redraws whole panels. **Send to Director** turns the panels into shots with the sheet as a storyboard reference.
 - **Live preview**: load `taeh3.safetensors` and connect it to the Connector's `preview VAE`; Render Sequence then shows a TAEHV
   preview of each part while it samples (see [Live preview](#live-preview-while-sampling)).
-- **H3 Control Video** (experimental, **NG/Technical**): the separate ControlNet node for your own sampler workflow,
+- **H3 Control Video** (experimental, **NG/Custom loop**): the separate ControlNet node for your own sampler workflow,
   including the existing mask/inpainting inputs. The simple Render Sequence path uses the Control lane internally.
 
 An optional **H3 AI Loader** (generative CLIP, an installed encoder from disk, or a local/compatible API)
@@ -104,7 +104,7 @@ for references, or **`H3 Director NG - native sampler.json`** to use native Outp
 Select your own installed model files and reference media as needed. New example workflows for the Storyboard and Control Video
 follow with the release.
 Rendering expands native ComfyUI loops/samplers, preserving preview, progress and Stop. The original timeline Director below remains **Legacy**.
-Technical chunk/laboratory nodes are available under NG/Technical and keep their saved IDs.
+The blocks for your own loop (Collect, Collect Video, Control Video, Chunk Planner, Preview Override …) are under NG/Custom loop. Internal nodes that Render Sequence builds in itself are no longer listed; saved workflows still load them.
 
 Read [the NG guide](docs/NG.md) and [validation/quality limits](docs/NG-validation.md).
 The local 1.0.0 version is unreleased; published 0.3.2 is unchanged. Functional tests do not guarantee invisible seams or unchanged audio.

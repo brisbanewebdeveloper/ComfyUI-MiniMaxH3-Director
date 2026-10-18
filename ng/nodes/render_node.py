@@ -46,7 +46,7 @@ def split_render_inputs(values):
 class NGRenderSequence(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGRenderSequence", display_name="NG Chunk Sequence", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGRenderSequence", display_name="NG Chunk Sequence", category=CATEGORY + "/Custom loop",
                          description="Connect the Director's chunks and your models. Renders and joins the entire sequence using native sampling, progress and interrupt.",
                          inputs=[NGChunk.Input("chunks", raw_link=True), *model_inputs(), *sampling_inputs()],
                          outputs=render_outputs(), enable_expand=True)
@@ -61,7 +61,7 @@ class NGRenderSequence(io.ComfyNode):
 class NGChunkNoise(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGChunkNoise", display_name="NG Chunk Noise", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGChunkNoise", display_name="NG Chunk Noise", category=CATEGORY + "/Technical", is_dev_only=True,
                          inputs=[NGChunk.Input("chunk"), io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff)],
                          outputs=[io.Noise.Output()])
 
@@ -76,7 +76,7 @@ class NGChunkSampling(io.ComfyNode):
     scheduler (core/turbo_profiles.py), so a video mixing FL2VA and Ref2VA parts samples each with the values of its LoRA."""
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGChunkSampling", display_name="NG Chunk Sampling", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGChunkSampling", display_name="NG Chunk Sampling", category=CATEGORY + "/Technical", is_dev_only=True,
                          inputs=[NGChunk.Input("chunk"), io.Model.Input("model"), io.String.Input("settings")],
                          outputs=[io.Sampler.Output(), io.Sigmas.Output()])
 
@@ -94,7 +94,7 @@ class NGResumeChunk(io.ComfyNode):
     does not run at all."""
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGResumeChunk", display_name="NG Resume Chunk", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGResumeChunk", display_name="NG Resume Chunk", category=CATEGORY + "/Technical", is_dev_only=True,
                          inputs=[NGChunk.Input("chunk"), io.String.Input("settings"),
                                  io.Latent.Input("sampled", lazy=True, optional=True)],
                          outputs=[io.Latent.Output()])
@@ -119,7 +119,7 @@ class NGTurboLora(io.ComfyNode):
     """The Director's turbo LoRA, without the pieces that do not fit the model (see adapters/lora_fit.py)."""
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="NGTurboLora", display_name="NG Turbo LoRA", category=CATEGORY + "/Technical",
+        return io.Schema(node_id="NGTurboLora", display_name="NG Turbo LoRA", category=CATEGORY + "/Technical", is_dev_only=True,
                          inputs=[io.Model.Input("model"), io.String.Input("lora_name"),
                                  io.Float.Input("strength", default=1.0, min=-10.0, max=10.0)],
                          outputs=[io.Model.Output()])

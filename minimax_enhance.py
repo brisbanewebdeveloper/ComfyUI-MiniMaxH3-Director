@@ -372,7 +372,7 @@ class MiniMaxH3EnhancePrompt(io.ComfyNode):
         return io.Schema(
             node_id="MiniMaxH3EnhancePromptCS",
             display_name="MiniMax H3 Enhance Prompt",
-            category="MiniMax H3",
+            category="MiniMax H3/Legacy",
             description=(
                 "Turns a one-line idea plus reference images into a MiniMax-H3 prompt, "
                 "using a local vision model (Ollama / LM Studio / OpenAI-compatible). "

@@ -64,5 +64,5 @@ regeneration, so there is no black source background to preserve there. Inside i
 The whole render part still passes through one native ControlNet patch. Final image quality depends on the model and sampling.
 Resume also tracks the mask file stamp, shape and grow; changing the detection text alone does not change an already saved mask.
 
-The existing **H3 Control Video (experimental)** node stays under **MiniMax H3/NG/Technical** for external samplers, including
+The existing **H3 Control Video (experimental)** node stays under **MiniMax H3/NG/Custom loop** for external samplers, including
 its direct mask and source-video inputs.

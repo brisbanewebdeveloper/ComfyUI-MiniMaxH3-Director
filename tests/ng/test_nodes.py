@@ -34,19 +34,28 @@ class Registration(unittest.TestCase):
         for node_id, name in expected.items():
             self.assertEqual(self.pack.NODE_DISPLAY_NAME_MAPPINGS[node_id], name, node_id)
 
-    def test_technical_nodes_keep_ids_in_one_named_category(self):
-        technical = ("NGDirector", "NGChunkConditioning", "NGCollect", "NGDirectorStudio", "NGRenderSequence",
-                     "NGChunkNoise", "NGProjectChunks", "NGAIRequest", "NGAICheckEncoder", "NGAIReadMedia", "NGAIResult")
-        for node_id in technical:
+    def test_node_list_shows_what_users_build_with(self):
+        # User 2026-10-18: too many test nodes, the list did not fit. Internal nodes stay registered (Render Sequence expands
+        # into them, saved workflows load them) but ComfyUI does not list them; the blocks of an own loop have their group.
+        internal = ("NGChunkConditioning", "NGChunkNoise", "NGChunkSampling", "NGResumeChunk", "NGControlChunk", "NGProjectChunks",
+                    "NGTurboLora", "NGAIRequest", "NGAICheckEncoder", "NGAIReadMedia", "NGAIResult")
+        loop = ("NGCollect", "NGCollectVideo", "NGControlVideo", "NGDirector", "NGDirectorStudio", "NGRenderSequence", "MiniMaxH3PreviewOverrideCS")
+        for node_id in internal:
             schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
-            self.assertEqual(schema.category, "MiniMax H3/NG/Technical", node_id)
+            self.assertEqual((schema.category, schema.is_dev_only), ("MiniMax H3/NG/Technical", True), node_id)
+        for node_id in loop:
+            schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
+            self.assertEqual((schema.category, schema.is_dev_only), ("MiniMax H3/NG/Custom loop", False), node_id)
+        for node_id in ("MiniMaxH3DirectorCS", "MiniMaxH3EnhancePromptCS", "MiniMaxH3RetakeStitchCS", "MiniMaxH3SaveLastFrameCS"):
+            self.assertEqual(self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA().category, "MiniMax H3/Legacy", node_id)
 
     def test_schemas_have_unique_input_ids_and_a_category(self):
         for node_id in NG_IDS:
             schema = self.pack.NODE_CLASS_MAPPINGS[node_id].GET_SCHEMA()
             ids = [i.id for i in schema.inputs]
             self.assertEqual(len(ids), len(set(ids)), node_id)
-            category = "MiniMax H3/NG/Technical" if node_id in ("NGDirector", "NGChunkConditioning", "NGCollect") else "MiniMax H3/NG"
+            category = {"NGChunkConditioning": "MiniMax H3/NG/Technical", "NGDirector": "MiniMax H3/NG/Custom loop",
+                        "NGCollect": "MiniMax H3/NG/Custom loop"}.get(node_id, "MiniMax H3/NG")
             self.assertEqual(schema.category, category)
 
     def test_loop_nodes_take_and_give_what_the_loop_needs(self):
