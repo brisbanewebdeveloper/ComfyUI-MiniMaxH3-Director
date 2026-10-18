@@ -18,7 +18,7 @@ from .shots import auto_shots, parse_shots
 from .subjects import resolve_subjects
 from .shot_document import has_shots, read_document
 from .audio_timing import clip_issues, covers, locked_spans
-from . import control_timing, continuation
+from . import control_timing, continuation, places
 
 CANVAS_MULTIPLE = 32
 H3_SHORT_EDGE, H3_MAX_PIXELS = 768, 768 * 1344
@@ -86,6 +86,7 @@ class ProjectPlan:
     plan: SequencePlan
     compiled: tuple
     issues: tuple
+    places: tuple = ()          # core/places.Place: pictures of earlier shots the render loop writes for later shots
 
 
 @dataclass(frozen=True)
@@ -175,13 +176,27 @@ def _edge(previous, previous_head, wanted):
     return min((low, low + step), key=lambda f: (abs(f - wanted), f))
 
 
-def _part_edges(context, shots, total, head):
+def _place_edge(shot, start, previous, previous_head, until, head):
+    """The join at which a shot in the place of an earlier one opens its own part, or None; with the issue to report."""
+    join = _edge(previous, previous_head, start)
+    if join - previous < _shortest(previous_head) or until - join < _shortest(head):
+        return None, Issue("place_too_close", "starts too close to the previous render part or the end for a part of its own, "
+                           "which the place picture of an earlier shot needs; it is not used.", "shot %d" % shot.index)
+    if join == start:
+        return join, None
+    return join, Issue("place_moved", "starts at %.2fs instead of %.2fs so that it opens a render part of its own for its place "
+                       "picture." % (frames.frames_to_seconds(join), frames.frames_to_seconds(shot.start_f)), "shot %d" % shot.index)
+
+
+def _part_edges(context, shots, total, head, place_targets=()):
     """Source openings and FL2VA picture edges: (cuts, joins, moved shot starts, moved keyframes, issues).
 
     A shot opening on its own First frame picture starts an unpinned part (cut): inside a pinned part H3 took such a
     picture as the end of the running take and cut one frame later (measured 2026-10-11). A Keyframe picture inside a
     shot ends a part on its last frame, the trained place for a picture; the next part keeps its pin (join), so the
-    shot runs on. Parts start on H3's grid, so a shot start or keyframe moves to the nearest grid frame."""
+    shot runs on. Parts start on H3's grid, so a shot start or keyframe moves to the nearest grid frame.
+    A shot in the place of an earlier shot (`place_targets`) starts a part as a join too: its Place picture comes from the
+    render of an earlier part (core/places.py); one that cannot get a part of its own goes into `place_targets.dropped`."""
     initial = continuation.initial_opening(context, shots)
     cuts, joins, moved, moved_keys, issues = ({0: initial} if initial else {}), [], {}, {}, []
     previous, previous_head = 0, initial.head_frames if initial else 0
@@ -206,6 +221,16 @@ def _part_edges(context, shots, total, head):
                     moved[shot.id] = start = cut
                     issues.append(Issue("opening_moved", "starts at %.2fs instead of %.2fs so that its source opens a render part."
                                         % (frames.frames_to_seconds(cut), frames.frames_to_seconds(shot.start_f)), "shot %d" % shot.index))
+        elif start > 0 and shot.id in place_targets:
+            join, issue = _place_edge(shot, start, previous, previous_head, until, head)
+            issues += [issue] if issue else []
+            if join is None:
+                place_targets.dropped.add(shot.id)
+            else:
+                joins.append(join)
+                previous, previous_head = join, head
+                if join != start:
+                    moved[shot.id] = start = join
         for binding in _keyframes(context, shot) if frame_mode else ():
             name = context.item(binding.context_id).name
             wanted = start + frames.seconds_to_frames(binding.at_s) + 1      # the part ends on the keyframe; the next one starts after it
@@ -222,6 +247,13 @@ def _part_edges(context, shots, total, head):
                 issues.append(Issue("keyframe_moved", "'%s' is shown at %.2fs instead of %.2fs: a render part ends on it, and parts end on H3's grid."
                                     % (name, frames.frames_to_seconds(join - 1), frames.frames_to_seconds(wanted - 1)), "shot %d" % shot.index))
     return cuts, joins, moved, moved_keys, issues
+
+
+class _Targets(dict):
+    """The shots that take the place of an earlier one, with the ones that could not get a render part of their own."""
+    def __init__(self, chosen):
+        super().__init__(chosen)
+        self.dropped = set()
 
 
 def _move_shot_starts(shots_text, moved, moved_keys=None):
@@ -268,16 +300,26 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
     cuts = joins = ()
     if has_shots(context.shots_text):
         shots, shot_issues = parse_shots(context.shots_text, total)
+        chosen, place_issues = places.links(context.shots_text, shots)
+        issues = issues + place_issues
+        targets = _Targets(chosen)
         if (continuity.head and decide_mode(context) == "fl2va") or continuation.initial_opening(context, shots) or any(
-                continuation.shot_source(context, shot) for shot in shots):
-            cuts, joins, moved, moved_keys, edge_issues = _part_edges(context, shots, total, continuity.head)
+                continuation.shot_source(context, shot) for shot in shots) or chosen:
+            cuts, joins, moved, moved_keys, edge_issues = _part_edges(context, shots, total, continuity.head, targets)
             issues = issues + edge_issues
         else:
             moved, moved_keys = {}, {}
         if moved or moved_keys:
             context = replace(context, shots_text=_move_shot_starts(context.shots_text, moved, moved_keys))
             shots, shot_issues = parse_shots(context.shots_text, total)
+        planned_places = places.plan_places(context, shots, {k: v for k, v in chosen.items() if k not in targets.dropped})
+        if planned_places:
+            # the Place cards are references the user did not add: they must not turn an automatic First / last frame
+            # project into a References one
+            context = places.add_cards(replace(context, mode=decide_mode(context)), planned_places, shots)
+            shots, shot_issues = parse_shots(context.shots_text, total)
     else:
+        planned_places = ()
         shots, shot_issues = auto_shots(context.idea, total), ()
         initial = continuation.initial_opening(context, shots)
         cuts = {0: initial} if initial else ()
@@ -292,7 +334,7 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
     issues.extend(control_timing.issues(context, plan.chunks))
     for one in compiled:
         issues.extend(one.issues)       # the same problem repeats per chunk; _merge lists it once
-    return ProjectPlan(context=context, plan=plan, compiled=compiled, issues=_merge(issues, len(plan.chunks)))
+    return ProjectPlan(context=context, plan=plan, compiled=compiled, issues=_merge(issues, len(plan.chunks)), places=planned_places)
 
 
 def describe(project: ProjectPlan) -> str:

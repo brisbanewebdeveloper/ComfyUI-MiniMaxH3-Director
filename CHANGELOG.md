@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**Place like Shot N** (2026-10-18): a shot can take the place of an earlier shot (shot panel, *Place*). While rendering, the
+Director saves a picture of that shot's render (1 s in) and gives it to the later shot as a Place card, so a room H3 invented
+comes back the same after a cut; it shows as "Place of Shot N" under Made from. The later shot opens a render part of its own
+for it. Tested with tavern -> market square -> tavern: without it H3 drew another room, with it the same tavern. The picture
+also brings its camera, and a figure in it can appear twice. Idea from ATAS (arXiv 2610.20571).
+
 **Tidier node list** (2026-10-18): the 11 internal nodes (chunk conditioning, noise, sampling, resume, control chunk, project
 chunks, turbo LoRA, AI request/result/media/encoder check) are no longer listed in ComfyUI (dev only; saved workflows and Render
 Sequence still use them). The blocks of an own loop moved to **MiniMax H3/NG/Custom loop**, Enhance Prompt, Retake Stitch and Save

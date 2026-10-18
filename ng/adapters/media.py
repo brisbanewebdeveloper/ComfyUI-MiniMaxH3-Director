@@ -5,6 +5,7 @@ from ... import minimax_media as legacy
 from ... import minimax_plan as plan
 from ..core.compile import MediaRef
 from ..core.limits import FPS
+from ..core.places import is_place
 from .paths import input_path
 
 
@@ -14,6 +15,9 @@ class MediaError(RuntimeError):
 
 def _require_file(ref: MediaRef, what):
     """The legacy loaders turn a missing file into a blank picture or silence; NG stops and names the item instead."""
+    if not input_path(ref.source) and is_place(ref.ctx_id):
+        raise MediaError("the place picture '%s' is made while rendering, after the part that shows the earlier shot; render with "
+                         "H3 Render Sequence or the Studio, or loop with NG Place Still after the sampler" % ref.ctx_id)
     if not input_path(ref.source):
         raise MediaError("the %s '%s' (%s) is not in ComfyUI's input folder" % (what, ref.ctx_id, ref.source))
 

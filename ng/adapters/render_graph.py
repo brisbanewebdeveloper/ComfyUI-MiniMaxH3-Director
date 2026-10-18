@@ -57,6 +57,8 @@ def render_sequence(inputs, settings):
     if settings.get("resume", True):
         # a finished part is kept on disk and reused after a crash (adapters/resume.py)
         part = graph.node("NGResumeChunk", "resume", chunk=start.out(3), sampled=part, settings=sampled_with).out(0)
+    # pictures of this part that later shots take their place from (core/places.py); a pass-through for every other part
+    part = graph.node("NGPlaceStill", "place", chunk=start.out(3), sampled=part, vae=inputs["vae"]).out(0)
     end = graph.node("EndLoop", "end", output_value=part, next_iteration_value=part, accumulate=True)
     collect = graph.node("NGCollect", "collect", latents=end.out(0), chunks=inputs["chunks"],
                          vae=inputs["vae"], audio_vae=inputs["audio_vae"])

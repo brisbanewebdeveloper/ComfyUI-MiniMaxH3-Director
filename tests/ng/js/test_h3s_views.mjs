@@ -121,6 +121,18 @@ function recorder() {
   assert.ok(panel.innerText.includes("In: Render part 1, Render part 2"));
   assert.ok(panel.innerText.includes("Mage"));
   assert.equal(panel.button("AI: improve text").disabled, true, "no AI suggestion without a loader");
+  // "Place like Shot N" (core/places.py): only a later shot offers it, and only earlier shots as its source.
+  const placeOf = (node) => node.byTag("select").find((one) => one.getAttribute("aria-label") === "Place of this shot");
+  assert.equal(placeOf(panel), undefined, "the first shot has no earlier place");
+  [, panel] = sideView(state({ selected: { kind: "shot", id: "b" } }), actions);
+  const place = placeOf(panel);
+  assert.deepEqual(place.children.map((option) => option.innerText), ["Its own place", "Like Shot 1"]);
+  place.onchange({ target: { value: "a" } });
+  assert.deepEqual(calls.at(-1), ["setPlace", "b", "a"]);
+  const gone = state({ selected: { kind: "shot", id: "b" } });
+  gone.shots = gone.shots.map((one) => one.id === "b" ? { ...one, place_from: "deleted" } : one);
+  [, panel] = sideView(gone, actions);
+  assert.ok(panel.innerText.includes("That shot is gone"), panel.innerText);
 }
 
 // Each part says what its prompt is made from; a shot chip selects the shot, a shot without text is flagged.

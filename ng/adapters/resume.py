@@ -18,6 +18,7 @@ from comfy.nested_tensor import NestedTensor
 from ..core.project import jobs
 from ..core.turbo_profiles import part_settings
 from ..core import control_timing
+from ..core.places import is_place
 from .continuation_latent import uses_sound_prefix
 from .paths import input_path
 
@@ -41,7 +42,9 @@ def _own(job, settings):
     compiled, chunk, context = job.compiled, job.chunk, job.project.context
     own = {"chunk": chunk.to_dict(), "mode": compiled.mode, "prompt": compiled.prompt, "size": [context.width, context.height],
             "continuity": job.project.plan.continuity.mode,
-            "refs": [[r.kind, r.ctx_id, r.source, r.start_f, r.length_f, r.trim_start_f, _file(r.source)] for r in compiled.refs]}
+            # a Place picture is written anew by every render (adapters/places.py); the earlier part it comes from is in the chain
+            "refs": [[r.kind, r.ctx_id, r.source, r.start_f, r.length_f, r.trim_start_f,
+                      "rendered" if is_place(r.ctx_id) else _file(r.source)] for r in compiled.refs]}
     if uses_sound_prefix(job):
         own["continuation_audio"] = "held_prefix_no_guide_v1"
     controls = []

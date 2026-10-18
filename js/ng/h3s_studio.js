@@ -214,9 +214,9 @@ export function openStudio(node, app, api, host = null) {
       patchShot(shotId, { media });
     },
     unassign(shotId, id) {
-      const shot = S.shots.find((entry) => entry.id === shotId);
-      patchShot(shotId, { media: shot.media.filter((binding) => binding.context_id !== id) });
+      patchShot(shotId, { media: S.shots.find((entry) => entry.id === shotId).media.filter((binding) => binding.context_id !== id) });
     },
+    setPlace(shotId, sourceId) { patchShot(shotId, { place_from: sourceId || undefined }); },     // core/places.py
     toggleBinding(id) {
       if (S.byId.get(id)?.usage.includes("control")) { actions.newControl(0, id); return; }
       const shot = S.selected?.kind === "shot" && S.shots.find((entry) => entry.id === S.selected.id);

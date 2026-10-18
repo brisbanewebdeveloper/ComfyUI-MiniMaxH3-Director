@@ -7,6 +7,8 @@ import { subjectChoices } from "./ng_subjects.js";
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
 // How a line is delivered; the compiler writes it into the prompt ("<Subject 1> sings"). A song needs "sings".
 const DELIVERY = ["says", "sings", "whispers", "shouts", "murmurs"].map((word) => [word, word]);
+const PLACE_HINT = "H3 gets a picture from that shot's render (1 s in) as this shot's place, so the room looks the same again. "
+  + "The camera tends to take that picture's view, and a figure in the picture can show up twice.";
 const CLIP_MODES = [["lock", "Lock exactly (the sound stays fixed)"], ["copy", "Copy as closely as possible (H3 may vary)"],
   ["ref", "Reference only (mood, voice, style)"]];
 
@@ -91,6 +93,19 @@ function bindingRow(S, actions, shot, binding, entry) {
       h("span", { class: landing?.inside && S.plan?.mode === "fl2va" ? "h3s-warn" : "h3s-muted", style: { fontSize: "12px" } }, where)));
 }
 
+// "Place like Shot N": only earlier shots can lend their place; a source that was deleted is shown so it can be cleared.
+function placeField(S, actions, shot) {
+  const earlier = sorted(S.shots).filter((entry) => entry.start < shot.start);
+  if (!earlier.length && !shot.place_from) return null;
+  const options = [["", "Its own place"], ...earlier.map((entry) => [entry.id, `Like ${actions.shotLabel(entry.id)}`])];
+  const lost = shot.place_from && !earlier.some((entry) => entry.id === shot.place_from);
+  if (lost) options.push([shot.place_from, "Like a shot that is gone"]);
+  return h("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
+    h("div", { class: "h3s-row" }, h("span", { class: "h3s-lbl" }, "Place"), tip(PLACE_HINT)),
+    select(options, shot.place_from || "", (value) => actions.setPlace(shot.id, value), { "aria-label": "Place of this shot" }),
+    lost ? h("span", { class: "h3s-warn", style: { fontSize: "12px" } }, "That shot is gone or no longer comes first; choose another or Its own place.") : null);
+}
+
 function shotPanel(S, actions, shot) {
   const add = h("button", { class: "h3s-btn small", onclick: () => actions.addSpoken(shot.id) }, icon("plus", 14), "Spoken line");
   const addBox = h("span", { style: { alignSelf: "flex-start" } });
@@ -120,6 +135,7 @@ function shotPanel(S, actions, shot) {
     h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } }, h("span", { class: "h3s-lbl" }, "Content in this shot"),
       media.length ? null : h("span", { class: "h3s-muted", style: { fontSize: "13px" } }, "None: a text-only shot. Click Content above or drag it onto the shot."),
       media.map(([binding, entry]) => bindingRow(S, actions, shot, binding, entry))),
+    placeField(S, actions, shot),
     h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, h("span", { class: "h3s-lbl" }, "Spoken (optional, used word for word, in this order)"),
       spokenLines(S, actions, shot, showAdd),
       S.values.mode === "fl2va" ? h("span", { class: "h3s-lbl" }, "First / last frame mode does not use voice references. Reference pictures still guide appearance; "

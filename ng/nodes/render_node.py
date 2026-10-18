@@ -6,9 +6,10 @@ from comfy_extras.nodes_custom_sampler import BasicScheduler, KSamplerSelect, Ra
 import json
 import logging
 
-from ..adapters import lora_fit, resume
+from ..adapters import lora_fit, places, resume
 from ..core.turbo_profiles import part_settings
 from ..adapters.render_graph import render_sequence
+from .chunk_node import _decode_video
 from .context_nodes import CATEGORY
 from .director_node import NGChunk
 
@@ -115,6 +116,22 @@ class NGResumeChunk(io.ComfyNode):
         return io.NodeOutput(sampled)
 
 
+class NGPlaceStill(io.ComfyNode):
+    """After a part is sampled: the pictures later shots take their place from ("Place like Shot 1", core/places.py)."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="NGPlaceStill", display_name="NG Place Still", category=CATEGORY + "/Technical", is_dev_only=True,
+                         inputs=[NGChunk.Input("chunk"), io.Latent.Input("sampled"), io.Vae.Input("vae")],
+                         outputs=[io.Latent.Output()])
+
+    @classmethod
+    def execute(cls, chunk, sampled, vae):
+        job = chunk[0] if isinstance(chunk, list) else chunk
+        for path in places.write(job, sampled, lambda video: _decode_video(vae, video)):
+            logging.info("[H3 Director] render part %d: place picture %s", job.index + 1, path)
+        return io.NodeOutput(sampled)
+
+
 class NGTurboLora(io.ComfyNode):
     """The Director's turbo LoRA, without the pieces that do not fit the model (see adapters/lora_fit.py)."""
     @classmethod
@@ -136,4 +153,4 @@ class NGTurboLora(io.ComfyNode):
         return io.NodeOutput(patched)
 
 
-NODES = [NGRenderSequence, NGChunkNoise, NGChunkSampling, NGResumeChunk, NGTurboLora]
+NODES = [NGRenderSequence, NGChunkNoise, NGChunkSampling, NGResumeChunk, NGPlaceStill, NGTurboLora]
