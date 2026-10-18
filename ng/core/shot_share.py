@@ -81,6 +81,14 @@ def tidy_beats(text):
                 if _STATIC.search(sentence):
                     body = body.replace(sentence, "", 1)
         tidy.append((start, end, " ".join(body.split())))
+    # A beat that copies an earlier beat's action and only changes the camera keeps just its camera sentence.
+    seen, whole = [], [_plain(body) for _, _, body in tidy]
+    for index, (start, end, body) in enumerate(tidy):
+        cameras = _CAMERA_SENTENCE.findall(body)
+        action = _plain(_CAMERA_SENTENCE.sub("", body))
+        if action and action in seen and cameras and whole[index] not in whole[:index]:
+            tidy[index] = (start, end, " ".join(" ".join(cameras).split()))
+        seen.append(action)
     plain = [_plain(body) for _, _, body in tidy]
     if len(set(plain)) < len(plain):
         once = [body for index, (_, _, body) in enumerate(tidy) if plain[index] not in plain[:index]]

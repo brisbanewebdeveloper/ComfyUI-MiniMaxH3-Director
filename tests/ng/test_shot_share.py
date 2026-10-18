@@ -61,6 +61,14 @@ class Share(unittest.TestCase):
         beat = "A medium shot of @Micha in a steampunk workshop. The camera holds a static shot."
         self.assertEqual(share.tidy_beats("0–5s: %s 5–10s: %s" % (beat, beat)), beat)
 
+    def test_tidy_beats_keeps_only_the_camera_of_a_beat_that_copies_the_action(self):
+        # qwen3.5:9b, 2026-10-18: the same description in both beats, only the camera sentence differed
+        action = "A full-body shot of @Micha in a steampunk workshop. She looks determined."
+        text = "0–5s: %s The camera pushes in with small amplitude at slow speed. 5–10s: %s The camera holds a static shot." % (
+            action, action)
+        self.assertEqual(share.tidy_beats(text), "0–5s: %s The camera pushes in with small amplitude at slow speed. "
+                                                 "5–10s: The camera holds a static shot." % action)
+
     def test_tidy_beats_leaves_good_beats_and_plain_text(self):
         self.assertEqual(share.tidy_beats(BEATS), BEATS)
         self.assertEqual(share.tidy_beats(WALK), WALK)
