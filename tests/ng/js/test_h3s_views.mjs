@@ -302,6 +302,13 @@ function recorder() {
   const lost = { widgets: [widget("prompt_override", false), widget("resume", true)] };
   repairLaterWidgets(lost);
   assert.deepEqual(lost.widgets.map((w) => w.value), ["", true], "a switch value is never Prompt override text");
+  // Frontend 1.55 makes the text box hold "true" (2026-10-18: every part's prompt was "true", the AI's texts were refused).
+  const texted = { widgets: [widget("prompt_override", "true"), widget("resume", true)] };
+  repairLaterWidgets(texted);
+  assert.deepEqual(texted.widgets.map((w) => w.value), ["", true], "the text true is the misplaced switch, not a prompt");
+  const kept = { widgets: [widget("prompt_override", "true love at dawn"), widget("resume", true)] };
+  repairLaterWidgets(kept);
+  assert.equal(kept.widgets[0].value, "true love at dawn", "a real override text stays");
 }
 
 // The Studio speaks English: no German text is left in its modules (comments included, to keep them consistent).

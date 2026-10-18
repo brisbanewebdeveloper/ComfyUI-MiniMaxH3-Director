@@ -43,10 +43,12 @@ export function repairInsertedWidgets(node, saved, named) {
 export function repairLaterWidgets(node) {
   // For a few hours on 2026-10-13 "resume" was a required input and so stood before prompt_override; a workflow saved then
   // swaps the two on load (the Prompt override became true, "expected text, got bool"). Text never belongs to the switch.
+  // The text box turns a boolean into the text "true"/"false" as it is set (ComfyUI frontend 1.55, 2026-10-18: every part's
+  // prompt became "true" and the AI's prompts were refused), so that text counts as the misplaced switch as well.
   const override = node.widgets?.find((w) => w.name === "prompt_override"), resume = node.widgets?.find((w) => w.name === "resume");
-  if (override && typeof override.value === "boolean") {
+  if (override && (typeof override.value === "boolean" || ["true", "false"].includes(override.value))) {
     const text = typeof resume?.value === "string" ? resume.value : "";
-    if (resume && typeof resume.value !== "boolean") resume.value = override.value;
+    if (resume && typeof resume.value !== "boolean") resume.value = String(override.value) === "true";
     override.value = text;
   }
   for (const widget of node.widgets || []) {
