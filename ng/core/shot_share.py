@@ -57,6 +57,37 @@ def _stamp(value):
     return ("%.1f" % value).rstrip("0").rstrip(".")
 
 
+_CAMERA_SENTENCE = re.compile(r"[^.!?]*\bcamera\b[^.!?]*[.!?]", re.IGNORECASE)
+_STATIC = re.compile(r"\bholds? a static shot\b", re.IGNORECASE)
+
+
+def _plain(text):
+    return " ".join(re.findall(r"\w+", text.lower()))
+
+
+def tidy_beats(text):
+    """The AI's time beats as H3 can follow them (qwen3.5:9b, 2026-10-18): a beat that says the camera pushes in and also
+    "holds a static shot" keeps the move; beats that repeat each other word for word give no order of events, so the text
+    keeps each of them once, without the time marks. Text without beats is returned as it is."""
+    beats = _beats(text)
+    if not beats:
+        return text
+    preamble, timed = beats
+    tidy = []
+    for start, end, body in timed:
+        cameras = _CAMERA_SENTENCE.findall(body)
+        if any(_STATIC.search(s) for s in cameras) and not all(_STATIC.search(s) for s in cameras):
+            for sentence in cameras:
+                if _STATIC.search(sentence):
+                    body = body.replace(sentence, "", 1)
+        tidy.append((start, end, " ".join(body.split())))
+    plain = [_plain(body) for _, _, body in tidy]
+    if len(set(plain)) < len(plain):
+        once = [body for index, (_, _, body) in enumerate(tidy) if plain[index] not in plain[:index]]
+        return " ".join(part for part in [preamble] + once if part)
+    return " ".join(part for part in [preamble] + ["%s–%ss: %s" % (_stamp(a), _stamp(b), body) for a, b, body in tidy] if part)
+
+
 def share(text, shot_start_f, shot_end_f, new_start_f, new_end_f, local_base_f):
     """`text` for the story frames [new_start_f, new_end_f) of a shot spanning [shot_start_f, shot_end_f). The part's own
     clip starts at story frame `local_base_f` (its pinned head included). Returns the text unchanged when the part holds

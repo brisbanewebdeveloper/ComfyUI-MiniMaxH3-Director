@@ -49,6 +49,22 @@ class Share(unittest.TestCase):
         text = "She wears a glossy black, purple and gold armour and walks slowly through the misty hall toward the stained-glass window."
         self.assertEqual(share.share(text, 0, 481, 240, 481, 218), text)
 
+    def test_tidy_beats_keeps_the_move_when_a_beat_also_says_static(self):
+        # qwen3.5:9b, Make H3 prompt 2026-10-18
+        text = ("0–5s: @Micha holds her ground. The camera continues its slow push-in. The camera holds a static shot within "
+                "this beat. 5–10s: She smiles. The camera holds a static shot.")
+        self.assertEqual(share.tidy_beats(text), "0–5s: @Micha holds her ground. The camera continues its slow push-in. "
+                                                 "5–10s: She smiles. The camera holds a static shot.")
+
+    def test_tidy_beats_drops_the_marks_of_beats_that_repeat_each_other(self):
+        # qwen3.5:9b, AI: split into shots 2026-10-18: the same sentence in both beats
+        beat = "A medium shot of @Micha in a steampunk workshop. The camera holds a static shot."
+        self.assertEqual(share.tidy_beats("0–5s: %s 5–10s: %s" % (beat, beat)), beat)
+
+    def test_tidy_beats_leaves_good_beats_and_plain_text(self):
+        self.assertEqual(share.tidy_beats(BEATS), BEATS)
+        self.assertEqual(share.tidy_beats(WALK), WALK)
+
     def test_one_sentence_stays_whole(self):
         self.assertEqual(share.share("She dances.", 0, 481, 240, 481, 218), "She dances.")
 

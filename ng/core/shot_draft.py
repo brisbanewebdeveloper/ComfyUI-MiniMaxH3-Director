@@ -8,7 +8,7 @@ from .context_build import card_id, widget_text
 from .frames import seconds_to_frames
 from .shot_document import LOCK_FIELDS, MediaBinding, SpokenLine, read_document
 from .shots import parse_shots
-from .shot_share import beat_marks
+from .shot_share import beat_marks, tidy_beats
 
 FORMAT = "h3-director-draft"
 
@@ -44,7 +44,7 @@ def draft_prompt(idea, seconds, meanings, records):
             "A shot with write_as_beats gets its text as exactly those time beats, in that order, each beginning with its mark, "
             "e.g. for '0–5s, 5–10s': '0–5s: A full-body shot of ... The camera holds a static shot. 5–10s: A close-up of ... The "
             "camera pushes in with small amplitude at slow speed.'; each beat begins with its framing and says how the camera "
-            "moves. "
+            "moves, in one camera sentence. Each beat is a new moment: never repeat an earlier beat's sentences. "
             "Include soundscape/music only for a concrete requested change; never copy schema placeholders. "
             "Use existing Shot IDs; never add, delete or reorder Shots. Respect locked_fields. "
             "Patch fields may contain only text, media and spoken; never copy id, draft or locked_fields into fields. "
@@ -101,7 +101,7 @@ def _field_value(key, value, record, seconds, contexts):
         text = fields.read_str({key: value}, key, "draft.fields").strip()
         if not text:
             raise ValueError("A proposed action must not be empty.")
-        return keep_inline_words(plain_mentions(text, contexts)[0], record["text"])
+        return keep_inline_words(tidy_beats(plain_mentions(text, contexts)[0]), record["text"])
     entries = fields.read_list({key: value}, key, "draft.fields")
     parsed = [(MediaBinding if key == "media" else SpokenLine).from_dict(entry).to_dict() for entry in entries]
     existing = [(MediaBinding if key == "media" else SpokenLine).from_dict(entry).to_dict() for entry in record.get(key, [])]

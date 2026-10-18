@@ -10,7 +10,7 @@ from . import fields
 from .context_build import card_id, widget_text
 from .context_options import roles
 from .shot_draft import plain_mentions
-from .shot_share import BEAT_MIN_S
+from .shot_share import BEAT_MIN_S, tidy_beats
 
 DELIVERIES = ("says", "sings", "whispers", "shouts", "murmurs")
 FORMAT = "h3-director-shots"
@@ -29,7 +29,8 @@ BEAT = '{"from_s":%s,"to_s":%s,"action":"...","camera":"..."}'
 BEAT_RULE = ("beats: every shot has beats, in seconds from the shot's own start (0 is where the shot begins), that together cover "
              "its whole length. The number of beats is the shot's length divided by %d, rounded up: a 3 s or 5 s shot has 1 beat, "
              "a 6 s to 10 s shot 2, an 11 s to 15 s shot 3, a 16 s to 20 s shot 4. Each beat begins with its framing, then what "
-             "happens in it; its camera says how the camera moves or that it holds a static shot." % BEAT_MIN_S)
+             "happens in it; its camera says how the camera moves or that it holds a static shot. Each beat is a new moment: never "
+             "repeat an earlier beat's words, and say the camera only in camera, never in action." % BEAT_MIN_S)
 
 
 def shots_example(extra="", line=""):
@@ -114,7 +115,7 @@ def beat_text(raw, seconds):
             return None
         out.append("%s–%ss: %s" % (_seconds(start), _seconds(stop), text))
         start = stop
-    return " ".join(out)
+    return tidy_beats(" ".join(out))
 
 
 def _norm(text):
