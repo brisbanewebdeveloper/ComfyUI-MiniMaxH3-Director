@@ -13,6 +13,7 @@ import { bindTimelineKeys } from "./h3s_keys.js";
 import { updateStudioPage } from "./h3s_focus.js";
 import { sideView } from "./h3s_side.js";
 import { footerView } from "./h3s_footer.js";
+import { settingsView, manualPromptAlert } from "./h3s_settings.js";
 import { drawerView } from "./h3s_prompts.js";
 import { studioAI, basis as aiBasis } from "./h3s_ai.js";
 import { readQuick, changeQuick } from "./h3s_quick.js";
@@ -58,7 +59,7 @@ export function openStudio(node, app, api, host = null) {
   const page = h("div", { class: "h3s-page" });
   root.append(page);
   const S = { node, root, selected: null, ghosts: [], ghostSound: null, suggestions: {}, partDrafts: {}, partEdit: null, plan: null, planError: "", promptOpen: false,
-    sizeOpen: false, furtherOpen: false, busy: "", toast: "", notice: null, suggestionBase: {}, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
+    settingsOpen: false, busy: "", toast: "", notice: null, suggestionBase: {}, aiStarted: 0, aiTimeout: 0, dragged: null, dragging: false, pending: false, thumbs: new Map(), lengths: new Map() };
   load(S);
   let timer = null, serial = 0, toastTimer = null, tick = null, closed = false;
   const status = h("span", { class: "h3s-lbl" });
@@ -413,6 +414,7 @@ export function openStudio(node, app, api, host = null) {
       h("span", { class: "h3s-row", style: { gap: "6px" }, title: "Green when an H3 AI Loader is connected to the Context Connector" },
         h("span", { class: "h3s-swatch", style: { background: S.ai ? "#5BD08A" : "#6B7383", borderRadius: "50%" } }), S.ai ? "AI connected" : "AI off"),
       h("button", { class: "h3s-btn", onclick: () => actions.toggle("promptOpen") }, icon("doc"), S.promptOpen ? "Hide prompts" : "Show prompts"),
+      h("button", { class: "h3s-btn", onclick: () => actions.toggle("settingsOpen"), title: "All settings", "aria-label": "Settings" }, icon("gear")),
       h("button", { class: "h3s-btn go", disabled: !ready || Boolean(S.planError), title: S.planError ? `The plan failed: ${S.planError}` : ready ? "Queues the connected workflow in ComfyUI" :
         "Connect Director Output to H3 Render Sequence or a sampler and a video output", onclick: generate }, icon("play"), "Generate"));
   }
@@ -429,10 +431,11 @@ export function openStudio(node, app, api, host = null) {
     const top = root.scrollTop;
     updateStudioPage(page, [header(),
       S.docError ? h("div", { class: "h3s-toast h3s-warn" }, `The saved shot data is invalid and is left unchanged: ${S.docError}`) : null,
+      manualPromptAlert(S, actions),
       h("div", { class: "h3s-body" },
         h("main", { class: "h3s-main" }, promptView(S, actions), contentView(S, actions), timelineView(S, actions)),
         h("div", { class: "h3s-side" }, sideView(S, actions))),
-      footerView(S, actions), drawerView(S, actions), floating()].filter(Boolean));
+      footerView(S, actions), drawerView(S, actions), settingsView(S, actions), floating()].filter(Boolean));
     clearInterval(tick); tick = S.busy ? setInterval(() => { const clock = root.querySelector(".h3s-ai-clock"); if (clock) clock.textContent = aiClock(); }, 1000) : null;
     root.scrollTop = top;
     restoreTimeline(root, S);

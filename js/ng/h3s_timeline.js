@@ -1,12 +1,14 @@
 // Timeline: picture track with shots, free audio lanes and the render parts the plan produced.
 // During a mouse drag only the dragged block is moved; the project is written once, on release.
-import { h, icon } from "./h3s_dom.js";
+import { h, icon, tip } from "./h3s_dom.js";
 import { dragTo, reorder, sorted, span, fmt, partColor, r1, isKeyframe, keyframeAt, nextClipStart } from "./h3s_model.js";
 import { timeView, tickTimes } from "./h3s_time.js";
 import { timelineNavigation, rememberTimeline } from "./h3s_navigation.js";
 
 const MODE_SHORT = { lock: "locked", copy: "copy", ref: "reference" };
-const DEFAULT_HINT = "Drag = move/reorder · edges = trim · ←/→ = move selected (Shift: 1 s) · Delete = remove · 0.1 s grid";
+const DEFAULT_HINT = "";
+const HOW = "Drag = move/reorder · edges = trim · ←/→ = move selected (Shift: 1 s) · Delete = remove · 0.1 s grid. "
+  + "Audio runs independently of shots. Control clips affect whole render parts: uncovered edges hold their nearest control frame.";
 
 export function timelineView(S, actions) {
   const axis = Math.max(S.duration, S.plan?.total_s || 0);
@@ -212,13 +214,12 @@ export function timelineView(S, actions) {
     S.lanes.map(laneRow), newLaneRow(), controlRow(), partsRow()));
 
   return h("section", { class: "h3s-card h3s-timeline" }, timelineNavigation(S, actions),
-    h("div", { class: "h3s-row" }, info, h("span", { class: "h3s-grow" }),
+    h("div", { class: "h3s-row" }, tip(HOW), info, h("span", { class: "h3s-grow" }),
       h("button", { class: "h3s-btn small", onclick: () => actions.addShot() }, icon("plus"), "Shot"),
       h("button", { class: "h3s-btn small", onclick: () => actions.addLane() }, icon("plus"), "Audio lane")),
     ghostBanner,
     scroller,
-    h("span", { class: "h3s-lbl" }, "Audio runs independently of shots. Control clips affect whole render parts: uncovered edges hold their nearest control frame."),
-    h("div", { class: "h3s-row", style: { marginTop: "4px" } }, h("span", { class: "h3s-lbl" }, "How H3 renders it (planned automatically)"),
+    h("div", { class: "h3s-row", style: { marginTop: "4px" } }, h("span", { class: "h3s-lbl" }, "Render parts"),
       h("span", { class: "h3s-lbl", title: "H3 produces lengths in fixed frame steps (17·k+5 at 24 FPS)." }, summary)),
     );
 }

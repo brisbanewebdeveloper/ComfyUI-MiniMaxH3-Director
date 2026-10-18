@@ -35,6 +35,7 @@ const PATHS = {
   audio: "M4 12h2M8 8v8M12 5v14M16 9v6M20 11v2", text: "M5 6h14M12 6v13M9 19h6",
   dice: "M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3zM9 9h.01M15 15h.01M15 9h.01M9 15h.01",
   expand: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
 };
 
 export function icon(name, size = 16) {
@@ -63,4 +64,9 @@ export function select(options, value, onchange, props = {}) {
   }
   node.value = String(value);
   return node;
+}
+
+// A short explanation that stays out of the way: hover (or focus) the small i to read it.
+export function tip(text) {
+  return h("span", { class: "h3s-tip", title: text, tabindex: "0", role: "note", "aria-label": text }, "i");
 }

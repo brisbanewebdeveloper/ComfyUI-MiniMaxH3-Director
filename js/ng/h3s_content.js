@@ -1,5 +1,5 @@
 // Prompt field and the Content cards that come from the Context nodes in the graph.
-import { h, icon } from "./h3s_dom.js";
+import { h, icon, tip } from "./h3s_dom.js";
 import { quickView } from "./h3s_quick.js";
 import { contextId } from "./ng_widgets.js";
 
@@ -48,20 +48,22 @@ function visual(entry, thumb) {
 
 export function promptView(S, actions) {
   const shots = S.shots.length > 0;
-  return h("section", { class: "h3s-card" }, quickView(S, actions),
+  return h("section", { class: "h3s-card" },
     h("div", { class: "h3s-row" }, h("label", { class: "h3s-strong", for: "h3s-prompt" }, "Prompt"),
-      h("span", { class: "h3s-lbl" }, shots ? "The story. H3 gets the shots made from it, plus the Look." : "Describe what should happen. Nothing else is needed."),
-      h("span", { class: "h3s-grow" }),
-      h("button", { class: "h3s-btn ai", disabled: !S.ai || Boolean(S.busy), onclick: actions.splitPrompt,
-        title: S.ai ? "The AI suggests shots; you accept or discard them." : "Connect an H3 AI Loader to the Connector for this." },
-        icon("spark"), S.busy === "split" ? "AI working …" : "AI: split into shots"),
-      S.busy === "split" ? h("button", { class: "h3s-btn ghost", onclick: actions.cancelAI }, "Cancel") : null,
-      h("button", { class: "h3s-btn", onclick: actions.promptAsShot }, "Whole prompt = one shot")),
+      tip(shots ? "Your story. H3 gets the shots made from it (Timeline), plus the Look. What H3 really receives: Show prompts."
+        : "Describe what should happen. Nothing else is needed.")),
     h("textarea", { class: "h3s-in", id: "h3s-prompt", rows: 3, value: S.values.idea || "", placeholder: "A young woman plays outside with a red ball …",
       oninput: (event) => actions.setWidget("idea", event.target.value, false) }),
-    h("div", { class: "h3s-row" }, h("label", { class: "h3s-lbl", for: "h3s-look", title: "Style, place and light that every render part shares; it opens each part's prompt." }, "Look (every part)"),
+    h("div", { class: "h3s-row" }, h("label", { class: "h3s-lbl", for: "h3s-look" }, "Look"),
       h("input", { class: "h3s-in", id: "h3s-look", value: S.look || "", placeholder: shots ? "Dark gothic hall, cinematic anime style, warm amber rim light …" : "Used once there are shots",
-        style: { flex: "1" }, oninput: (event) => actions.setLook(event.target.value) })));
+        style: { flex: "1" }, oninput: (event) => actions.setLook(event.target.value) }),
+      tip("Style, place and light that every render part shares; it opens each part's prompt.")),
+    h("div", { class: "h3s-row", style: { gap: "8px" } }, ...quickView(S, actions).filter(Boolean), h("span", { class: "h3s-grow" }),
+      h("button", { class: "h3s-btn ai", disabled: !S.ai || Boolean(S.busy), onclick: actions.splitPrompt,
+        title: S.ai ? "The AI suggests shots only; you accept or discard them." : "Connect an H3 AI Loader to the Connector for this." },
+        icon("spark"), S.busy === "split" ? "AI working …" : "AI: split into shots"),
+      S.busy === "split" ? h("button", { class: "h3s-btn ghost", onclick: actions.cancelAI }, "Cancel") : null,
+      h("button", { class: "h3s-btn", onclick: actions.promptAsShot, title: "Your Prompt becomes one shot over the whole video, without AI" }, "Whole prompt = one shot")));
 }
 
 export function contentView(S, actions) {
@@ -85,9 +87,9 @@ export function contentView(S, actions) {
       h("div", { class: "h3s-ctx-text" }, h("span", { class: "h3s-strong", style: { display: "flex", alignItems: "center", gap: "6px" } },
         h("span", { class: "h3s-swatch", style: { background: entry.color } }), entry.name), h("span", { class: "h3s-lbl" }, `${entry.kind} · ${entry.role}`))));
   }
-  cards.push(h("div", { class: "h3s-hint" }, S.contexts.length ? "More Content comes from Context nodes in the graph" : "No Content yet: connect Context nodes to the Context Connector. Text alone works too."));
+  if (!S.contexts.length) cards.push(h("div", { class: "h3s-hint" }, "No Content yet: connect Context nodes to the Context Connector. Text alone works too."));
   return h("section", { class: "h3s-card" },
     h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Content"),
-      h("span", { class: "h3s-lbl" }, "Drag onto the timeline = new shot · drag onto a shot or click = assign · audio onto an audio lane")),
+      tip("Drag a card onto the timeline = new shot · onto a shot, or click = add it to the selected shot · audio onto an audio lane · control videos onto the Control lane. More cards come from Context nodes in the graph.")),
     h("div", { class: "h3s-content" }, cards));
 }

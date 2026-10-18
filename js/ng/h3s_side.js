@@ -1,7 +1,7 @@
 // Right column: how H3 works (FL2VA / Ref2VA, Turbo) and the panel of the selected shot or audio clip.
-import { h, icon, field, select } from "./h3s_dom.js";
-import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding, boundAndLaned, turboProfile } from "./h3s_model.js";
-import { controlSettings, controlPanel } from "./h3s_control.js";
+import { h, icon, field, select, tip } from "./h3s_dom.js";
+import { span, clipParts, sorted, fmt, PICTURE_ROLES, isKeyframe, keyframeAt, keyframeLanding, boundAndLaned } from "./h3s_model.js";
+import { controlPanel } from "./h3s_control.js";
 import { subjectChoices } from "./ng_subjects.js";
 
 const LANGUAGES = ["English", "German", "French", "Spanish", "Italian", "Japanese", "Chinese"].map((name) => [name, name]);
@@ -15,44 +15,27 @@ function modeCard(S, actions) {
   // The node's own mode widget is hidden, so the chosen side clicked again is the way back to Automatic.
   const seg = (value, title, text) => h("button", { class: mode === value ? "h3s-seg on" : "h3s-seg", onclick: () => actions.setWidget("mode", S.values.mode === value ? "auto" : value),
     "aria-pressed": String(mode === value), title: mode === value ? "Click again for Automatic" : "" }, h("span", { class: "h3s-strong" }, title), h("span", { class: "h3s-lbl" }, text));
-  const hint = mode === "fl2va" ? "One picture becomes the first, one the last frame of a render part; sound comes from the audio lanes. Reference pictures keep figures recognizable; video and sound references are not used. Click it again for Automatic."
-    : mode === "ref2va" ? "H3 takes up to 9 images, 3 videos and 3 audio sources as references, e.g. for a character, place, camera and voice. Click it again for Automatic."
+  const hint = mode === "fl2va" ? "One picture becomes the first, one the last frame of a render part; sound comes from the audio lanes. Reference pictures keep figures recognizable; video and sound references are not used."
+    : mode === "ref2va" ? "H3 takes up to 9 images, 3 videos and 3 audio sources as references, e.g. for a character, place, camera and voice."
       : `Automatic: ${decided === "ref2va" ? "References" : "First/last frame"}, depending on the Content. Click one side to fix it.`;
   const turbo = Boolean(S.values.turbo);
-  const resume = S.values.resume !== false, deleteDone = S.values.resume_delete_done !== false;
-  const loras = [];
-  if (turbo) for (const [name, label] of [["turbo_lora_fl2va", "Turbo LoRA first/last frame"], ["turbo_lora_ref2va", "Turbo LoRA references"]]) {
-    if (mode === "fl2va" && name.endsWith("ref2va")) continue;
-    if (mode === "ref2va" && name.endsWith("fl2va")) continue;
-    const options = (S.options[name] || ["none"]).map((value) => [value, value === "none" ? "none" : value]);
-    loras.push(field(label, select(options, S.values[name], (value) => actions.setTurboLora(name, value), { style: { maxWidth: "100%" } })));
-    const known = turboProfile(S.turboProfiles, S.values[name]);
-    if (S.values[name] === "none") loras.push(h("span", { class: "h3s-warn", style: { fontSize: "12px" } },
-      "Without a turbo LoRA, 4 steps give no usable picture. Choose a LoRA or switch Turbo off."));
-    else loras.push(h("span", { class: "h3s-lbl", style: { fontSize: "12px" }, title: known?.source || "" }, known
-      ? `Known LoRA: its parts render with ${known.steps} steps · ${known.sampler_name} · ${known.scheduler}.`
-      : "Unknown LoRA: its parts render with Steps, Sampler and Scheduler below."));
-  }
+  const lora = mode === "ref2va" ? "turbo_lora_ref2va" : mode === "fl2va" ? "turbo_lora_fl2va" : null;
+  const missing = turbo && (lora ? S.values[lora] === "none" : S.values.turbo_lora_fl2va === "none" && S.values.turbo_lora_ref2va === "none");
+  const noPatch = !S.controlConnected && S.contexts.some((entry) => entry.media === "video" && entry.usage.includes("control"));
   return h("section", { class: "h3s-card" },
-    h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Mode"), h("span", { class: "h3s-lbl" }, "The most important choice first")),
+    h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Mode"), tip(hint)),
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "8px" } },
-      seg("fl2va", "First / last frame", "FL2VA · first/last picture + sound"), seg("ref2va", "References", "Ref2VA · character, place, video, voice")),
-    h("span", { style: { fontSize: "13px", color: "#B4BDCC" } }, hint),
+      seg("fl2va", "First / last frame", "FL2VA · pictures + sound"), seg("ref2va", "References", "Ref2VA · character, place, video, voice")),
+    mode === "auto" ? h("span", { class: "h3s-lbl" }, `Automatic → ${decided === "ref2va" ? "References" : "First / last frame"}`) : null,
     ...(S.plan?.issues || []).filter((issue) => issue.code === "reference_disabled").map((issue) => h("span", { class: "h3s-warn", style: { fontSize: "13px" } },
       `${issue.ref} is a video or sound reference, which First / last frame mode does not use. Switch to References to use it.`)),
     h("button", { class: "h3s-toggle", "aria-pressed": String(turbo), onclick: () => actions.setTurbo(!turbo) },
-      h("span", { class: turbo ? "h3s-switch on" : "h3s-switch" }),
-      h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Turbo ${turbo ? "on" : "off"}`),
-        h("span", { class: "h3s-lbl" }, turbo ? "Turbo LoRA, few steps, CFG 1. Fast for trying things out." : `${S.values.steps} steps, CFG 1. Uses the sampler settings below.`))),
-    loras,
-    h("button", { class: "h3s-toggle", "aria-pressed": String(resume), onclick: () => actions.setWidget("resume", !resume) },
-      h("span", { class: resume ? "h3s-switch on" : "h3s-switch" }),
-      h("span", { style: { display: "flex", flexDirection: "column", gap: "2px" } }, h("span", { class: "h3s-strong" }, `Resume ${resume ? "on" : "off"}`),
-        h("span", { class: "h3s-lbl" }, resume ? "Finished parts are kept in output/h3-director-resume; after a crash the same plan renders only what is missing."
-          : "Nothing is kept: a crash renders every part again."))),
-    resume && h("label", { class: "h3s-lbl", style: { display: "flex", gap: "8px", alignItems: "center", cursor: "pointer" } },
-      h("input", { type: "checkbox", checked: deleteDone, onchange: () => actions.setWidget("resume_delete_done", !deleteDone) }),
-      "Delete the kept parts when the video is done (otherwise they stay 14 days)"));
+      h("span", { class: turbo ? "h3s-switch on" : "h3s-switch" }), h("span", { class: "h3s-strong" }, `Turbo ${turbo ? "on" : "off"}`),
+      turbo ? null : h("span", { class: "h3s-lbl" }, `${S.values.steps} steps`),
+      tip(turbo ? "Turbo LoRA, few steps, CFG 1: fast for trying things out. The LoRA is chosen in Settings." : `${S.values.steps} steps, CFG 1, without LoRA.`)),
+    missing ? h("div", { class: "h3s-row h3s-warn", style: { fontSize: "13px" } }, "Turbo needs a turbo LoRA.",
+      h("button", { class: "h3s-btn small", onclick: () => actions.toggle("settingsOpen") }, icon("gear", 14), "Choose")) : null,
+    noPatch ? h("div", { class: "h3s-row h3s-warn", style: { fontSize: "13px" } }, "Control videos need ModelPatchLoader (ControlNet-Union) on the Context Connector's model_patch.") : null);
 }
 
 function speakers(S, current) {
@@ -173,10 +156,10 @@ export function sideView(S, actions) {
   const clip = S.selected?.kind === "clip" && S.audio.find((entry) => entry.id === S.selected.id);
   const control = S.selected?.kind === "control" && S.control.find((entry) => entry.id === S.selected.id);
   const empty = h("div", { style: { display: "flex", flexDirection: "column", gap: "10px", color: "#B4BDCC", lineHeight: 1.5 } },
-    h("span", { class: "h3s-strong", style: { color: "#E6EAF2", fontSize: "15px" } }, "No shot selected"),
-    h("span", {}, "Click a shot to edit text, Content, dialogue and AI suggestion for exactly that shot. Clicking an audio clip shows which part of the file plays in which render part."),
-    h("span", {}, sorted(S.shots).length ? "" : "Without shots the Director simply renders the prompt."));
-  return [modeCard(S, actions), controlSettings(S, actions), h("aside", { class: "h3s-card", style: { gap: "12px" } },
+    h("span", { class: "h3s-row" }, h("span", { class: "h3s-strong", style: { color: "#E6EAF2", fontSize: "15px" } }, "Nothing selected"),
+      tip("A shot: its text, Content, dialogue and AI suggestion. An audio clip: which part of the file plays in which render part.")),
+    h("span", {}, sorted(S.shots).length ? "Click a shot or clip in the Timeline to edit it." : "Without shots the Director simply renders the Prompt."));
+  return [modeCard(S, actions), h("aside", { class: "h3s-card", style: { gap: "12px" } },
     shot ? shotPanel(S, actions, shot) : clip ? clipPanel(S, actions, clip) : control ? controlPanel(S, actions, control) : empty)].filter(Boolean);
 }
 

@@ -6,6 +6,7 @@ installDom();
 const { timelineView } = await import("../../../js/ng/h3s_timeline.js");
 const { sideView } = await import("../../../js/ng/h3s_side.js");
 const { footerView } = await import("../../../js/ng/h3s_footer.js");
+const { settingsView, manualPromptAlert } = await import("../../../js/ng/h3s_settings.js");
 const { drawerView } = await import("../../../js/ng/h3s_prompts.js");
 const { contentView, promptView, contentEntries } = await import("../../../js/ng/h3s_content.js");
 const { issueLine } = await import("../../../js/ng/h3s_issues.js");
@@ -89,8 +90,23 @@ function recorder() {
 {
   const { actions, calls } = recorder();
   let [mode, panel] = sideView(state({ values: { turbo: true, mode: "fl2va" } }), actions);
-  assert.equal(mode.byTag("select").length, 1, "First/last frame shows only its own turbo LoRA");
+  assert.equal(mode.byTag("select").length, 0, "the page keeps only Mode and Turbo on/off; the LoRA is in Settings");
   assert.ok(mode.innerText.includes("Turbo on"));
+  const gear = settingsView(state({ settingsOpen: true, values: { turbo: true, mode: "fl2va" } }), actions);
+  assert.ok(gear.innerText.includes("Turbo LoRA first / last frame") && !gear.innerText.includes("Turbo LoRA references"),
+    "First/last frame shows only its own turbo LoRA");
+  assert.equal(settingsView(state({ settingsOpen: false }), actions), null);
+  // Turbo without a LoRA says so on the page and opens Settings.
+  const [noLora] = sideView(state({ values: { turbo: true, mode: "ref2va", turbo_lora_ref2va: "none" } }), actions);
+  assert.ok(noLora.innerText.includes("Turbo needs a turbo LoRA."), noLora.innerText);
+  noLora.button("Choose").onclick();
+  assert.deepEqual(calls.at(-1), ["toggle", "settingsOpen"]);
+  // A manual prompt is shown on the page and can be cleared there.
+  assert.equal(manualPromptAlert(state(), actions), null);
+  const alert = manualPromptAlert(state({ values: { prompt_override: "my own prompt" } }), actions);
+  assert.ok(alert.innerText.includes("Manual prompt is on"));
+  alert.button("Clear").onclick();
+  assert.deepEqual(calls.at(-1), ["setWidget", "prompt_override", ""]);
   mode.button("References").onclick();
   assert.deepEqual(calls.at(-1), ["setWidget", "mode", "ref2va"]);
   // A video or sound reference is not used in FL2VA: the mode says so, not only the drawer (pictures are used since 2026-10-12).
@@ -210,7 +226,9 @@ function recorder() {
   const actions = new Proxy({}, { get: (_, name) => (...args) => calls.push([name, ...args]) });
   const quick = { direction: "music_video", speech: "none", language: "English" };
   const prompt = promptView(state({ ai: true, quick, values: { idea: "", project_seconds: 20 } }), actions);
-  assert.match(prompt.innerText, /1 picture, no Prompt \(optional with pictures\), 20 s\. Nobody speaks\./);
+  // What goes into the plan is in the i next to the options, not as a line of text on the page.
+  const about = prompt.find((node) => node.classList?.contains("h3s-tip")).map((node) => node.title ?? node.attributes?.title).join(" | ");
+  assert.match(about, /1 picture, no Prompt \(optional with pictures\) and 20 s, then writes every render part's H3 prompt\..*Nobody speaks\./);
   prompt.button("Make H3 prompt").onclick();
   assert.deepEqual(calls.at(-1), ["buildPrompt"]);
   assert.equal(changeQuick(quick, "direction", "song").speech, "singing", "a song sings");
