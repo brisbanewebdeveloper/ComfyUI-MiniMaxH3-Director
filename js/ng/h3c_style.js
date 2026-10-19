@@ -56,6 +56,17 @@ textarea.h3c-in{padding:8px 10px;line-height:1.45;resize:vertical;width:100%}
 .h3c-suggest{border-color:#4B3F78;background:#1B1730}
 .h3c-swatch{width:22px;height:22px;border-radius:6px;border:1px solid #2E3848;flex:0 0 auto;padding:0;cursor:pointer}
 .h3c-editor{font-family:"IBM Plex Mono",Consolas,monospace;font-size:13px;height:calc(190px + var(--h3c-grow,0px));min-height:120px}
+.h3c-btn.on{border-color:#3D7BF0;background:#16233D;color:#CFE0FF}
+.h3e-back{position:fixed;inset:0;z-index:10000;background:rgba(5,8,14,.72);display:flex;align-items:center;justify-content:center}
+.h3e{background:#10151E;border:1px solid #2E3848;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;color:#E6EAF2;
+  font:13px/1.4 "IBM Plex Sans","Segoe UI",system-ui,sans-serif;max-width:min(1320px,96vw);max-height:94vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.h3e-tabs{display:flex;gap:6px}
+.h3e-body{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.h3e-stage{flex:0 0 auto;border-radius:10px;overflow:hidden;background:#0B0F16;line-height:0}
+.h3e-view{display:block;touch-action:none}
+.h3e-tools{flex:1 1 320px;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:420px}
+.h3e-tools input[type=range]{width:120px}
+.h3e-result{max-width:100%;max-height:300px;object-fit:contain;border-radius:8px;background:#0B0F16}
 `;
 
 export function ensureCardStyle() {

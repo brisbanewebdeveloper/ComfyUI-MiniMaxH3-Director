@@ -54,19 +54,23 @@ assert.deepEqual(await qwenSetup(qwen), { model: "qwen_image_2.1_bf16.safetensor
   vae: "qwen_image_2.1_vae_bf16.safetensors" });
 assert.equal((await qwenSetup(qwen, { qwen_image: "my_qwen.safetensors" })).model, "my_qwen.safetensors");
 
-// The gear: on the Video and Audio cards (their jobs use extra models), not on the Image or Text card.
+// The gear: on the Video, Audio and Image cards (their jobs use extra models; the Image card's editor since 2026-10-20).
 function recorder() {
   const calls = [];
   return { calls, actions: new Proxy({}, { get: (_t, name) => (...args) => { calls.push([name, ...args]); } }) };
 }
 const card = (media, extra = {}) => ({ media, values: { name: "x", [media]: "f" }, files: ["f"], analyzed: false, node: { properties: {} }, ...extra });
-for (const [media, has] of [["video", true], ["audio", true], ["image", false]]) {
+for (const [media, has] of [["video", true], ["audio", true], ["image", true]]) {
   const row = parts.topRow(card(media), recorder().actions);
   assert.equal(row.find((node) => node.attributes?.["aria-label"] === "Models").length, has ? 1 : 0, media);
 }
 const { actions, calls } = recorder();
 parts.topRow(card("audio"), actions).find((node) => node.attributes?.["aria-label"] === "Models")[0].onclick();
 assert.deepEqual(calls.at(-1), ["toggleModels"]);
+// the Image card's editor button sits beside it, lit while the card has an edit mask
+const editor = (opts) => parts.topRow(card("image", { opts }), recorder().actions).find((node) => node.attributes?.["aria-label"] === "Edit picture")[0];
+assert.ok(editor({}));
+assert.equal(editor({ edit_mask: "h3-picture-edit/m.png" }).className, "h3c-btn on");
 assert.equal(parts.modelsBox(card("audio"), actions), null, "closed: nothing");
 const open = parts.modelsBox(card("audio", { modelsOpen: true, models: await models.modelState(api, ["whisper"]),
   node: { properties: { ng_models: { whisper: "small.pt" } } } }), actions);

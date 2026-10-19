@@ -27,6 +27,7 @@ import { controlGraph, controlSetup } from "./h3c_control_graph.js";
 import { runJob } from "./h3b_queue.js";
 import { uploadMask } from "./h3c_mask.js";
 import { uploadVideo, videoSource } from "./h3c_upload.js";
+import { openPictureEditor } from "./h3c_editor.js";
 import { cardContentHeight } from "./h3c_measure.js";
 
 const { app } = window.comfyAPI.app;
@@ -190,6 +191,7 @@ function attach(node, media) {
       setOptions(node, { control_kind: kind, control_original: "", control_result: "", control_mask: "" });
     },
     controlEngine(engine) { S.depthEngine = engine; render(); },
+    openEditor() { openPictureEditor(node, api, (text, warn) => { if (text) say(text, warn); else render(); }); },
     setMask(file) { setOptions(node, { control_mask: file, control_result: values(node).video }); },
     async uploadMask(file) {
       if (S.busy) return;

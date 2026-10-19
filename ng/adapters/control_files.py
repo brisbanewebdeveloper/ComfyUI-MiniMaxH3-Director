@@ -25,3 +25,29 @@ def import_video(filename, subfolder):
     with open(source, "rb") as src, open(os.path.join(destination, name), "xb") as dst:
         shutil.copyfileobj(src, dst)
     return os.path.join("h3-control", name)
+
+
+PICTURE_FOLDER = "h3-picture-edit"     # the Image card's editor: masks, structure pictures, character sheets
+PICTURE_KINDS = ("mask", "canny", "pose", "depth", "sheet")
+
+
+def import_picture(filename, subfolder, kind):
+    """A picture the card's editor made (output/h3-picture-edit) copied into input/h3-picture-edit, named by its kind."""
+    if kind not in PICTURE_KINDS:
+        raise ValueError("Unknown picture kind.")
+    if not isinstance(filename, str) or os.path.basename(filename) != filename or any(c in filename for c in ("/", "\\", ":")):
+        raise ValueError("Choose a generated picture filename.")
+    if os.path.splitext(filename)[1].lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+        raise ValueError("The generated result must be a picture.")
+    root = os.path.realpath(folder_paths.get_output_directory())
+    source = os.path.realpath(os.path.join(root, subfolder, filename))
+    own = os.path.realpath(os.path.join(root, PICTURE_FOLDER))
+    if os.path.commonpath((own, source)) != own:
+        raise ValueError("Choose a generated picture inside output/%s." % PICTURE_FOLDER)
+    inputs = os.path.realpath(folder_paths.get_input_directory())
+    destination = os.path.join(inputs, PICTURE_FOLDER)
+    os.makedirs(destination, exist_ok=True)
+    name = "%s_%s%s" % (kind, uuid.uuid4().hex[:12], os.path.splitext(filename)[1].lower())
+    with open(source, "rb") as src, open(os.path.join(destination, name), "xb") as dst:
+        shutil.copyfileobj(src, dst)
+    return os.path.join(PICTURE_FOLDER, name)

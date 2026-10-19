@@ -23,7 +23,14 @@ export function topRow(S, actions) {
   return h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr) auto" } }, name,
     h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, file,
       S.media === "video" ? videoUpload(S, actions) : h("button", { class: "h3c-btn", style: { flex: "0 0 auto" }, onclick: actions.upload }, "Upload")),
-    h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, badge, gear));
+    h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, badge, S.media === "image" ? editButton(S, actions) : null, gear));
+}
+
+// The editor (h3c_editor.js): mask, structure picture, character sheet. Lit while the card has an edit mask.
+function editButton(S, actions) {
+  const masked = Boolean(S.opts?.edit_mask);
+  return h("button", { class: masked ? "h3c-btn on" : "h3c-btn", title: masked ? "Edit: this card has an edit mask" : "Edit: mask, structure, character sheet",
+    "aria-label": "Edit picture", disabled: !S.values.image, onclick: actions.openEditor }, icon("brush", 14));
 }
 
 // The card's Models menu (gear in the top row): which file each extra model of this card is (ng_models.js).

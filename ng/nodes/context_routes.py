@@ -137,6 +137,17 @@ async def import_control(request):
         return web.json_response({"ok": False, "error": str(error)}, status=400)
 
 
+@PromptServer.instance.routes.post("/ng/picture/import")
+async def import_picture(request):
+    """A picture the Image card's editor generated, into the input folder so the card (or a new card) can use it."""
+    try:
+        data = await request.json()
+        source = await asyncio.to_thread(control_files.import_picture, data["filename"], data["subfolder"], data["kind"])
+        return web.json_response({"ok": True, "source": source})
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return web.json_response({"ok": False, "error": str(error)}, status=400)
+
+
 @PromptServer.instance.routes.get("/ng/waveform")
 async def media_waveform(request):
     try:
