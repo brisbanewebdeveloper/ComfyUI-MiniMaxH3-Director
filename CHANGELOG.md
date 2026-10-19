@@ -8,9 +8,12 @@ what was found (*Automatic*: the official names), lets you pick a renamed or own
 and download link. A missing model never stops a render: place pictures stay as rendered, the other tools say what is missing.
 The README lists them all (Extra models).
 
-**Node sizes** (2026-10-19, GUI test): the AI Loader keeps a minimum width (at 210 its Model field was cut off); the Director,
-the Storyboard and the Context cards go back to their content's height after being dragged taller (up to 1100 empty units
-were left). `tests/ng/browser/node_sizes.js` checks placing, widening, heightening and shrinking every NG node in a browser.
+**Node sizes** (2026-10-19): drag a node taller and its preview grows with it — the picture or video keeping its shape
+(Image and Video cards), the waveform (Audio), the note (Text), the timeline's shot lane with more of each shot's text
+(Director); the Storyboard puts sheet and panel above each other at full width. Dragged below its content it goes back to it;
+the size is saved with the workflow. The AI Loader keeps a minimum width. Video card: a playhead over "Part of the file to use"
+follows the preview, the video's own sound is drawn under it, playback stays in the chosen part; Audio card: a playhead you
+can drag, a click on the waveform jumps there. Upload no longer runs into the Not analyzed badge.
 
 **Place like Shot N** (2026-10-18): a shot can take the place of an earlier shot (shot panel, *Place*). While rendering, the
 Director saves a picture of that shot's render (1 s in) and gives it to the later shot as a Place card, so a room H3 invented

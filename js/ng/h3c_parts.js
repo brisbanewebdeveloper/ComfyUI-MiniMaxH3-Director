@@ -14,14 +14,15 @@ export function topRow(S, actions) {
     "aria-label": "Name", oninput: (event) => actions.set("name", event.target.value, false) });
   const badge = h("span", { class: S.analyzed ? "h3c-badge done" : "h3c-badge" }, S.analyzed ? "✦ Analyzed" : "Not analyzed");
   if (S.media === "text") return h("div", { class: "h3c-row" }, h("div", { style: { flex: "1 1 auto", display: "grid" } }, name), badge);
-  const file = h("select", { class: "h3c-in", style: { flex: "1 1 auto" }, "aria-label": "File", onchange: (event) => actions.set(S.media, event.target.value) },
+  // minWidth 0: a select is as wide as its longest file name and pushed Upload over the badge (user 2026-10-19)
+  const file = h("select", { class: "h3c-in", style: { flex: "1 1 auto", minWidth: "0" }, "aria-label": "File", onchange: (event) => actions.set(S.media, event.target.value) },
     S.files.map((value) => h("option", { value }, value)));
   file.value = S.values[S.media] || "";
   const gear = CARD_MODELS[S.media] ? h("button", { class: "h3c-btn", title: "Models this card uses", "aria-label": "Models",
     "aria-pressed": String(Boolean(S.modelsOpen)), onclick: actions.toggleModels }, icon("gear", 14)) : null;
   return h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr) auto" } }, name,
     h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, file,
-      S.media === "video" ? videoUpload(S, actions) : h("button", { class: "h3c-btn", onclick: actions.upload }, "Upload")),
+      S.media === "video" ? videoUpload(S, actions) : h("button", { class: "h3c-btn", style: { flex: "0 0 auto" }, onclick: actions.upload }, "Upload")),
     h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, badge, gear));
 }
 

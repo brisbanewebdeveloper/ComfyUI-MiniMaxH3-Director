@@ -2,6 +2,7 @@
 const CSS = `
 .h3b-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:16px 20px 20px}
 @container (max-width: 980px){.h3b-body{grid-template-columns:minmax(0,1fr)}}
+.h3b-stacked .h3b-body{grid-template-columns:minmax(0,1fr)}
 .h3b .h3s-card{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid #222A37;border-radius:10px;background:#121620;min-width:0}
 .h3b-sheet{width:100%;height:auto;border-radius:8px;cursor:pointer;background:#0B1222}
 .h3b-stage{width:100%;height:auto;border-radius:6px;background:#141B2B;touch-action:none;cursor:grab}

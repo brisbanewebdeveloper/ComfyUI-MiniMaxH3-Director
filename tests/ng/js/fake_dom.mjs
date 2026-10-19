@@ -7,7 +7,7 @@ class FakeText extends FakeNode {
 }
 class FakeElement extends FakeNode {
   constructor(tag) {
-    super(); this.tagName = tag.toUpperCase(); this.children = []; this.style = {}; this.dataset = {}; this.attributes = {};
+    super(); this.tagName = tag.toUpperCase(); this.children = []; this.style = { setProperty(key, value) { this[key] = value; } }; this.dataset = {}; this.attributes = {};
     this.className = ""; this.value = ""; this.disabled = false; this.hidden = false; this.title = "";
     const self = this;
     this.classList = { add: (c) => { if (!self.classList.contains(c)) self.className = `${self.className} ${c}`.trim(); },
@@ -38,6 +38,9 @@ class FakeElement extends FakeNode {
   get innerText() { return this.children.map((child) => child.innerText).join(" ").replace(/\s+/g, " ").trim(); }
   all() { return [this, ...this.children.flatMap((child) => child.all())]; }
   find(predicate) { return this.all().filter((node) => node !== this && predicate(node)); }
+  get parentElement() { return this.parentNode || null; }
+  // class selectors only (".a" or ".a.b"), enough for the cards' own lookups
+  querySelectorAll(selector) { const names = selector.split(".").filter(Boolean); return this.find((node) => names.every((name) => node.classList?.contains(name))); }
   byClass(name) { return this.find((node) => node.classList.contains(name)); }
   byTag(tag) { return this.find((node) => node.tagName === tag.toUpperCase()); }
   button(text) { return this.find((node) => node.tagName === "BUTTON" && node.innerText.startsWith(text))[0]; }

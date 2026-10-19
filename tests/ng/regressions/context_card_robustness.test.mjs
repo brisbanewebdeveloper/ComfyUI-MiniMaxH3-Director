@@ -27,7 +27,7 @@ test("BUG-029: wirePlayback must not set audio.volume to NaN when duration is no
     listen: { volume: 0.8, fade_in: 0, fade_out: 1.0 },
   };
 
-  wirePlayback(S, () => {});
+  wirePlayback(S, () => {}, audio, () => {});
 
   // Simulate ontimeupdate before metadata is loaded
   assert.doesNotThrow(() => {

@@ -113,7 +113,7 @@ export function timelineView(S, actions) {
   }
 
   function shotTrack() {
-    const track = h("div", { class: S.ghosts.length ? "h3s-track ghosting" : "h3s-track", style: { height: "84px" } }, grid());
+    const track = h("div", { class: S.ghosts.length ? "h3s-track ghosting" : "h3s-track", style: { height: "calc(84px + var(--h3s-grow, 0px))" } }, grid());
     dropZone(track, (sec, id) => actions.newShot(sec, id));
     if (!S.shots.length && !S.ghosts.length)
       track.append(h("div", { class: "h3s-empty" }, "No shots yet: drag Content here, use “+ Shot” or “Whole prompt = one shot”. Without shots the prompt carries the whole video."));

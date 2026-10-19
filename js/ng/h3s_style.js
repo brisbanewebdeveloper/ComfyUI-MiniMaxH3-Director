@@ -84,7 +84,7 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s-shot.drag{z-index:3;opacity:.92;cursor:grabbing;box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 0 1px #8FC1FF}
 .h3s-track.ghosting .h3s-shot:not(.ghost){opacity:.35}
 .h3s-shot.ghost{background:transparent;border:1px dashed #9C86F0;cursor:default}
-.h3s-shot-text{font-size:12px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.h3s-shot-text{font-size:12px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:var(--h3s-lines,2);-webkit-box-orient:vertical}
 .h3s-chip{font-size:11px;padding:1px 6px;border-radius:5px;white-space:nowrap}
 .h3s-grip{position:absolute;top:0;bottom:0;width:10px;cursor:ew-resize;touch-action:none}
 .h3s-grip:hover{background:rgba(143,193,255,.25)}

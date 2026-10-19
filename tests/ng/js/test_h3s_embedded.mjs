@@ -62,17 +62,38 @@ assert.equal(host.children.length, 0, "removing the node removes its Studio");
     { text: "Wide shot.", spoken: [{ speaker_id: "mage", text: "Stay." }, { speaker_id: "", text: "Night falls." }, { speaker_id: "mage", text: " " }] }] };
   assert.equal(ownLines(S), "@Mage says: Welcome back.\n@Mage says: Stay.\nNarrator says: Night falls.");
 }
-// A drag that left a content-high node taller is undone 200 ms after the last resize, not during the drag; an earlier
-// onResize keeps working (GUI test 2026-10-19).
+// Dragged taller, a content-high node gives the extra height to its growing part (user 2026-10-19); dragged below its
+// content it goes back to it; its own fit to the content is not taken for a drag; the growth is kept with the node.
 {
-  const { refitAfterResize } = await import("../../../js/ng/ng_layout.js");
-  const calls = [], node = { onResize: () => calls.push("own") };
-  let fits = 0;
-  refitAfterResize(node, () => { fits += 1; });
-  node.onResize([800, 2000]); node.onResize([800, 2100]); node.onResize([800, 2200]);
-  assert.deepEqual(calls, ["own", "own", "own"]);
-  assert.equal(fits, 0, "not while the drag goes on");
-  await new Promise((resolve) => setTimeout(resolve, 260));
-  assert.equal(fits, 1, "once, after the drag");
+  const { followDraggedHeight } = await import("../../../js/ng/ng_layout.js");
+  globalThis.requestAnimationFrame ||= (callback) => setTimeout(callback, 0);
+  const BASE = 1000, calls = [];
+  let grow = 0, fits = 0;
+  // computeSize is the minimum (the content without the grown part); fit sizes the node to minimum + grow
+  const node = { properties: { ng_grow: 0 }, size: [800, BASE], computeSize: () => [800, BASE], onResize: () => calls.push("own") };
+  followDraggedHeight(node, (px) => { grow = px; }, () => { fits += 1; node.size = [800, BASE + grow]; });
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 400));
+  node.size = [800, BASE]; node.onResize(node.size); await settle();
+  assert.equal(node.properties.ng_grow, 0, "the node's own fit is no drag");
+  node.size = [800, 1300]; node.onResize(node.size); node.size = [800, 1400]; node.onResize(node.size);
+  assert.equal(grow, 0, "nothing grows while the drag goes on");
+  await settle();
+  assert.deepEqual([grow, node.properties.ng_grow, node.size[1]], [400, 400, 1400], "the extra 400 go to the growing part");
+  node.size = [800, 600]; node.onResize(node.size); await settle(); await settle();
+  assert.deepEqual([grow, node.size[1]], [0, BASE], "below the content: back to the content");
+  assert.ok(fits >= 1 && calls.length >= 4, "the earlier onResize keeps working");
+  // with ComfyUI's canvas present, only its resize drag counts: code that sizes the node (placing it, an image loading) does not
+  const canvas = { resizing_node: null, pointer: { resizeDirection: null } };
+  globalThis.comfyAPI = { app: { app: { canvas } } };
+  node.size = [800, 1600]; node.onResize(node.size); await settle();
+  assert.equal(grow, 0, "a size set by code is no drag");
+  canvas.pointer.resizeDirection = "SE";
+  node.size = [800, 1300]; node.onResize(node.size); await settle();
+  assert.equal(grow, 300, "the pointer's resize is one");
+  delete globalThis.comfyAPI;
+  const saved = { properties: { ng_grow: 250 }, size: [800, 1250], computeSize: () => [800, 1000] };
+  let restored = -1;
+  followDraggedHeight(saved, (px) => { restored = px; }, () => {});
+  assert.equal(restored, 250, "a saved workflow comes back at its grown size");
 }
 console.log("h3s embedded ok");

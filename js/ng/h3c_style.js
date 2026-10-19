@@ -36,21 +36,26 @@ textarea.h3c-in{padding:8px 10px;line-height:1.45;resize:vertical;width:100%}
 .h3c-segs button.on{background:#3D7BF0;color:#fff}
 .h3c-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;border:1px solid #3A475D;color:#9AA4B5;white-space:nowrap}
 .h3c-badge.done{border-color:#6B5A1E;color:#F2D27A}
-.h3c-preview{position:relative;border-radius:10px;overflow:hidden;background:#0E1117;border:1px solid #262E3B;display:flex;align-items:center;justify-content:center;min-height:180px}
-.h3c-preview img,.h3c-preview video{display:block;max-width:100%;max-height:260px;object-fit:contain}
+.h3c-preview{position:relative;border-radius:10px;overflow:hidden;background:#0E1117;border:1px solid #262E3B;display:flex;align-items:center;justify-content:center;min-height:calc(180px + var(--h3c-grow,0px))}
+.h3c-preview img,.h3c-preview video{display:block;width:100%;height:calc(260px + var(--h3c-grow,0px));object-fit:contain}
 .h3c-cornertag{position:absolute;left:8px;bottom:8px;font-size:12px;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:6px}
-.h3c-wave{position:relative;height:72px;border-radius:8px;background:#0E1117;border:1px solid #262E3B;overflow:hidden;cursor:crosshair;touch-action:none}
+.h3c-wave{position:relative;height:calc(72px + var(--h3c-grow,0px));border-radius:8px;background:#0E1117;border:1px solid #262E3B;overflow:hidden;cursor:crosshair;touch-action:none}
 .h3c-wave canvas{position:absolute;inset:0;width:100%;height:100%}
 .h3c-sel{position:absolute;top:0;bottom:0;background:rgba(143,193,255,.14);border-left:2px solid #8FC1FF;border-right:2px solid #8FC1FF;pointer-events:none}
 .h3c-strip{position:relative;height:28px;border-radius:8px;background:repeating-linear-gradient(90deg,#1A2130 0 18px,#141922 18px 36px);border:1px solid #262E3B;cursor:crosshair;touch-action:none}
 .h3c-strip .h3c-sel{background:rgba(230,190,87,.2);border-color:#E6BE57}
+.h3c-strip.sound{height:48px;background:#0E1117}
+.h3c-strip canvas{position:absolute;inset:0;width:100%;height:100%}
+.h3c-head{position:absolute;top:-4px;bottom:-4px;width:14px;margin-left:-7px;cursor:ew-resize;touch-action:none;z-index:2}
+.h3c-head::after{content:"";position:absolute;left:6px;top:0;bottom:0;width:2px;background:#F5F7FA;box-shadow:0 0 0 1px rgba(0,0,0,.55)}
+.h3c-head::before{content:"";position:absolute;left:2px;top:0;width:10px;height:8px;border-radius:2px;background:#F5F7FA}
 .h3c-ins{min-height:28px;border-radius:8px;border:1px solid;background:transparent;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;padding:0 10px;text-align:left}
 .h3c-ins:hover{filter:brightness(1.25)}
 .h3c-use{display:flex;align-items:center;gap:6px;font-size:12px;color:#B4BDCC;border-top:1px solid #262E3B;padding-top:8px;flex-wrap:wrap}
 .h3c-pill{border:1px solid #3A475D;border-radius:999px;padding:1px 8px;font-size:11px;color:#C9D1DE}
 .h3c-suggest{border-color:#4B3F78;background:#1B1730}
 .h3c-swatch{width:22px;height:22px;border-radius:6px;border:1px solid #2E3848;flex:0 0 auto;padding:0;cursor:pointer}
-.h3c-editor{font-family:"IBM Plex Mono",Consolas,monospace;font-size:13px;min-height:170px}
+.h3c-editor{font-family:"IBM Plex Mono",Consolas,monospace;font-size:13px;height:calc(190px + var(--h3c-grow,0px));min-height:120px}
 `;
 
 export function ensureCardStyle() {

@@ -8,7 +8,7 @@ import { values, applyValues, followNodeWidth } from "./ng_widgets.js";
 import { readContexts } from "./ng_read.js";
 import { renameReferences } from "./ng_references.js";
 import { hideNative } from "./ng_editor_fields.js";
-import { noteGrowth, refitAfterResize } from "./ng_layout.js";
+import { noteGrowth, followDraggedHeight } from "./ng_layout.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -79,7 +79,9 @@ function attach(node) {
   // nodes outside the view; a hidden Studio measures 0, so only a visible one is measured, again whenever it resizes.
   let measured = 900, removed = false;
   dom.computeSize = undefined;
-  dom.computeLayoutSize = () => ({ minHeight: measured, maxHeight: measured, minWidth: MIN_WIDTH - 20 });
+  // the node's minimum is its content without the grown part, so it can be dragged smaller again
+  const grown = () => node.properties.ng_grow || 0;   // the height a drag gave the growing part (ng_layout.followDraggedHeight)
+  dom.computeLayoutSize = () => ({ minHeight: measured - grown(), maxHeight: measured, minWidth: MIN_WIDTH - 20 });
   const studio = openStudio(node, app, api, host);
   function fit() {
     requestAnimationFrame(() => {
@@ -87,14 +89,15 @@ function attach(node) {
       const height = studio.root.scrollHeight;
       if (height < 200) return;
       measured = Math.ceil(height) + 8;
-      const size = node.computeSize?.() || [WIDTH, measured], width = Math.max(node.size?.[0] || 0, MIN_WIDTH);
-      if (!node.size || Math.abs(node.size[1] - size[1]) > 2 || node.size[0] < MIN_WIDTH) node.setSize([width, size[1]]);
+      const target = (node.computeSize?.()[1] ?? measured) + grown(), width = Math.max(node.size?.[0] || 0, MIN_WIDTH);
+      if (!node.size || Math.abs(node.size[1] - target) > 2 || node.size[0] < MIN_WIDTH) node.setSize([width, target]);
       node.setDirtyCanvas?.(true, true);
     });
   }
   const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
   watcher?.observe(studio.root);
-  refitAfterResize(node, fit);
+  // dragged taller, the timeline's shot lane takes the extra height and its shots show more of their text
+  followDraggedHeight(node, (px) => { host.style.setProperty("--h3s-grow", `${px}px`); host.style.setProperty("--h3s-lines", String(2 + Math.floor(px / 16))); }, fit);
   // The Studio writes the widgets itself and hears outside changes on its own; the node keeps @Name mentions in step.
   const follow = () => followRenames(node);
   const refresh = () => { followRenames(node); studio.refresh(); fit(); };

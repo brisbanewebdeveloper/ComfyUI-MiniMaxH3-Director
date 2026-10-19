@@ -5,7 +5,7 @@ import { ensureCardStyle } from "./h3c_style.js";
 import { studioUses, TEMPLATES, usableFields, offerFor } from "./h3c_model.js";
 import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box, modelsBox } from "./h3c_parts.js";
 import { CARD_MODELS, modelState } from "./ng_models.js";
-import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
+import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback, moveHeads } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
 import { lyricsBox, stampLine } from "./h3c_lyrics.js";
 import { values, applyValues, newContextId, ownIdentity, analysisFingerprint, request, followNodeWidth } from "./ng_widgets.js";
@@ -20,7 +20,7 @@ import { FAMILY } from "./ng_context.js";
 import { assetChoices, assetSubjects, restoreAssetWidget } from "./ng_asset_relations.js";
 import { subjectChoices } from "./ng_subjects.js";
 import { followNoteRenames, knownNames } from "./ng_references.js";
-import { noteGrowth, refitAfterResize } from "./ng_layout.js";
+import { noteGrowth, followDraggedHeight } from "./ng_layout.js";
 import { dropTarget } from "./ng_drop.js";
 import { controlBox } from "./h3c_control.js";
 import { controlGraph, controlSetup } from "./h3c_control_graph.js";
@@ -98,7 +98,8 @@ function attach(node, media) {
     S.els.mask = h("video", { controls: true, preload: "metadata", muted: true });
     api.fetchApi("/object_info/DepthAnything_V3").then((r) => r.json()).then((info) => { S.da3 = Boolean(info.DepthAnything_V3); schedule(); }).catch(() => {});
   }
-  if (media === "audio") { S.els.audio = h("audio", { preload: "metadata" }); wirePlayback(S, () => schedule()); }
+  if (media === "audio") { S.els.audio = h("audio", { preload: "metadata" }); wirePlayback(S, () => schedule(), S.els.audio, () => moveHeads(root, S.els.audio)); }
+  if (media === "video") wirePlayback(S, () => {}, S.els.video, () => moveHeads(root, S.els.video));
   let source = null, controller = null, removed = false, timer = null;
 
   const say = (text, warn = false) => { S.status = text; S.statusWarn = warn; render(); };
@@ -144,8 +145,9 @@ function attach(node, media) {
     const url = mediaURL(now, api);
     if (media === "image") S.els.image.src = url;
     if (media === "video") S.els.video.src = url;
-    if (media === "audio") {
-      S.els.audio.src = url;
+    if (media === "audio") S.els.audio.src = url;
+    // the waveform: the song on an Audio card, the video's own sound under the range on a Video card
+    if (media === "audio" || media === "video") {
       request(api, "/ng/waveform?" + new URLSearchParams({ source: now }))
         .then((data) => { if (source === now) { S.envelope = data; schedule(); } })
         .catch((error) => { if (source === now) { S.waveError = error.message; schedule(); } });
@@ -322,25 +324,28 @@ function attach(node, media) {
   // The node is as tall as its card, so the DOM never spills over the nodes below it. ComfyUI hides DOM widgets of
   // nodes outside the view; a hidden card measures 0, so only a visible card is measured, again whenever it resizes.
   let measured = { image: 800, video: 820, audio: 820, text: 740 }[media];
+  const grown = () => node.properties.ng_grow || 0;   // the height a drag gave the growing part (ng_layout.followDraggedHeight)
   function fit() {
     requestAnimationFrame(() => {
       const height = cardContentHeight(root);
       if (removed || !root.isConnected || height < 120) return;
       measured = height;
-      const size = node.computeSize?.() || [WIDTH[media], measured];
+      const target = (node.computeSize?.()[1] ?? measured) + grown();
       const width = Math.max(node.size?.[0] || 0, WIDTH[media]);
-      if (!node.size || Math.abs(node.size[1] - size[1]) > 2 || node.size[0] < WIDTH[media]) node.setSize([width, size[1]]);
+      if (!node.size || Math.abs(node.size[1] - target) > 2 || node.size[0] < WIDTH[media]) node.setSize([width, target]);
       node.setDirtyCanvas?.(true, true);
     });
   }
   const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
   watcher?.observe(root);
-  refitAfterResize(node, fit);
+  // dragged taller, the preview (Image, Video), the waveform (Audio) or the note (Text) takes the extra height
+  followDraggedHeight(node, (px) => root.style.setProperty("--h3c-grow", `${px}px`), fit);
 
   const names = () => (node.widgets || []).filter((widget) => widget !== dom).map((widget) => widget.name);
   const dom = followNodeWidth(node.addDOMWidget("h3c_card", "h3c_card", root, { serialize: false, hideOnZoom: false }));
-  dom.computeSize = () => [WIDTH[media] - 20, measured];
-  dom.computeLayoutSize = () => ({ minHeight: measured, maxHeight: measured, minWidth: WIDTH[media] - 20 });
+  // the node's minimum is its content without the grown part, so it can be dragged smaller again
+  dom.computeSize = () => [WIDTH[media] - 20, measured - grown()];
+  dom.computeLayoutSize = () => ({ minHeight: measured - grown(), maxHeight: measured, minWidth: WIDTH[media] - 20 });
   hideNative(node, names());
   // Upload previews and players arrive after nodeCreated; they are hidden as they come.
   for (const method of ["addWidget", "addCustomWidget"]) {

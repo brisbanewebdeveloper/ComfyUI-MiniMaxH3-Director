@@ -102,4 +102,31 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   assert.equal(button(analyzing, "✦ Analyze"), undefined, "a running analysis shows its own state");
 }
 
+// The playhead (user 2026-10-19): it stands where the player is, follows it, can be dragged and stays inside the chosen part;
+// a click on the strip without a drag moves it there. The Video card's strip shows the video's own sound when it has one.
+{
+  const media = await import("../../../js/ng/h3c_media.js");
+  const video = Object.assign(document.createElement("video"), { duration: 20, currentTime: 5, paused: true });
+  const view = (extra = {}) => media.videoBlock(state({ media: "video", values: { video: "walk.mp4" }, els: { video }, opts: { start_s: 2, end_s: 12 }, ...extra }),
+    { beginPointer() {}, endPointer() {}, setRange() { throw new Error("a click is no range"); } });
+  let block = view();
+  let head = block.querySelectorAll(".h3c-head")[0];
+  assert.equal(head.style.left, "25%");
+  video.currentTime = 10; media.moveHeads(block, video);
+  assert.equal(head.style.left, "50%", "it follows the player");
+  head.onpointerdown({ stopPropagation() {}, preventDefault() {}, pointerId: 1 });
+  head.onpointermove({ clientX: 900 });
+  assert.equal(video.currentTime, 11.95, "dragged past the part's end it stops at the end");
+  head.onpointermove({ clientX: 50 });
+  assert.equal(video.currentTime, 2, "and before its start at the start");
+  head.onpointerup();
+  const strip = block.querySelectorAll(".h3c-strip")[0];
+  strip.onpointerdown({ currentTarget: strip, clientX: 400, pointerId: 2 });
+  strip.onpointerup();
+  assert.equal(video.currentTime, 8, "a click moves the playhead there");
+  assert.equal(strip.querySelectorAll(".sound").length + (strip.classList.contains("sound") ? 1 : 0), 0, "no sound: a plain strip");
+  block = view({ envelope: { peaks: [0.2, 0.5, 0.3], duration_s: 20, sample_rate: 48000, channels: 2 } });
+  assert.ok(block.querySelectorAll(".h3c-strip")[0].classList.contains("sound"), "with sound: its waveform under the range");
+}
+
 console.log("h3c views ok");
