@@ -19,7 +19,7 @@ class PartSettings(unittest.TestCase):
     def test_each_part_takes_the_profile_of_its_own_model(self):
         settings = {**OWN, "turbo": True, "turbo_lora_fl2va": CKPT500, "turbo_lora_ref2va": REF2V}
         self.assertEqual(profiles.part_settings("fl2va", settings)["steps"], 8, "any folder, any case")
-        self.assertEqual(profiles.part_settings("ref2va", settings)["steps"], 4)
+        self.assertEqual(profiles.part_settings("ref2va", settings)["steps"], 6, "4 steps left a white veil (2026-10-19)")
 
     def test_unknown_lora_or_turbo_off_keeps_the_directors_settings(self):
         unknown = {**OWN, "turbo": True, "turbo_lora_fl2va": "my_own_turbo.safetensors"}
