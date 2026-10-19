@@ -65,6 +65,12 @@ without inner scrolling:
 - A **timeline** on a 0.1 s grid: shots you move, resize and reorder by mouse; free **audio lanes** whose clips run across shots
   and render parts (with an offset into the file); and the coloured render parts the planner will run. A shot that runs over
   several parts gives each part only its own share of the action, so nothing is played twice.
+- **Output: Video or Pictures.** With **Pictures** every shot becomes one picture instead of a video: text to image, the
+  cards on the shot as references (a character sheet, clothes, a place, a pose drawing), and a **First frame** picture on a
+  shot is the picture to change - only what the shot asks for changes. With an edit mask on that card only the masked area is
+  made again and the rest stays pixel-exact. The pictures are saved to `input/h3-director-stills`, so every Image card can
+  choose them (for example as the first frame of a video shot later). One H3 latent frame per picture; ComfyUI's own VAE
+  decode (0.41 and newer) decodes it best. Turbo: the Larry v4 turbo LoRA takes 8 steps, the official ref2v turbo 6.
 - **Mode** (First / last frame FL2VA or References Ref2VA) and **Turbo**: you choose the turbo LoRA for each mode. A known LoRA
   (the official ComfyUI LoRAs, Taomate, ckpt500) brings its measured steps, sampler and scheduler, per render part. CFG stays 1.
 - A settings bar with resolution as in the Legacy Director (presets, from first picture, aspect/megapixels, fitting, reference size),

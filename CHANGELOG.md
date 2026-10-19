@@ -2,6 +2,15 @@
 
 ## 1.0.0 (unreleased)
 
+**Pictures** (2026-10-19): the Director's new **Output** switch (Studio, above the mode) makes one picture per shot instead of
+a video. A shot with only text is text to image; cards on it are references (`<Picture N>`), so a character sheet, clothes, a
+place and a pose drawing can be put together into one picture; a First frame picture on a shot is changed as the shot says and
+otherwise kept; an edit mask on its card (`edit_mask`) samples only the masked area and puts the source's own pixels back
+around it. Pictures are saved to `input/h3-director-stills` and appear in every Image card. Measured before building it: one
+H3 latent frame decoded by ComfyUI's own VAE decode is clean (a 5-frame context gave stripes and a veil); H3's Fun ControlNet
+does not steer a single frame, a control picture given as a reference does. Turbo LoRAs carry measured picture values
+(Larry v4 turbo: 8 steps; official ref2v turbo: 6).
+
 **Models menus** (2026-10-19): the extra models NG uses (SAM3, Qwen Image 2.1, background removal, pose, depth, Whisper) are
 listed once in `js/ng/models.json`. A gear on the Video and Audio cards, in the Storyboard and in the Director's settings shows
 what was found (*Automatic*: the official names), lets you pick a renamed or own file, and names a missing one with its folder
