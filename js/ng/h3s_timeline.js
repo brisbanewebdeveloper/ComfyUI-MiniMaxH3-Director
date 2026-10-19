@@ -189,8 +189,8 @@ export function timelineView(S, actions) {
     for (const chunk of S.plan?.chunks || []) {
       const [color, bg] = partColor(chunk.index), hit = chosen && chosen[0] < chunk.end_s && chosen[1] > chunk.start_s;
       track.append(h("div", { class: "h3s-part", style: { left: pct(chunk.start_s), width: pct(chunk.end_s - chunk.start_s), borderColor: color, background: hit ? bg : "#141922" },
-        title: `Part ${chunk.index + 1}: ${chunk.delivered_frames} new frames${chunk.head_frames ? `, with ${chunk.head_frames} preceding frames for continuity` : ""}` },
-        h("span", { class: "h3s-swatch", style: { background: color } }), `Part ${chunk.index + 1} · ${span(chunk.start_s, chunk.end_s)}`));
+        title: chunk.picture ? `Picture ${chunk.index + 1}: this shot as one picture` : `Part ${chunk.index + 1}: ${chunk.delivered_frames} new frames${chunk.head_frames ? `, with ${chunk.head_frames} preceding frames for continuity` : ""}` },
+        h("span", { class: "h3s-swatch", style: { background: color } }), `${chunk.picture ? "Picture" : "Part"} ${chunk.index + 1} · ${span(chunk.start_s, chunk.end_s)}`));
     }
     // A failed plan is said in warning colour: in grey small print it read like "still planning" (2026-10-11).
     if (!S.plan) track.append(S.planError ? h("span", { class: "h3s-warn", role: "alert", style: { fontSize: "13px", padding: "4px 8px" } },

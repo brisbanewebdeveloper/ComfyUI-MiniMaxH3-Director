@@ -33,6 +33,7 @@ class Planning(unittest.TestCase):
         self.assertEqual(result.output, "images")
         self.assertEqual(len(result.plan.chunks), 2)
         self.assertEqual([c.head_frames for c in result.plan.chunks], [0, 0], "no picture is pinned to the one before")
+        self.assertEqual([c.story_start_f for c in result.plan.chunks], [0, 120], "each picture under its shot on the timeline")
         self.assertEqual([s.shot_id for s in result.stills], ["s1", "s2"])
         self.assertIn("lighthouse", result.compiled[0].prompt)
         self.assertNotIn("lighthouse", result.compiled[1].prompt)

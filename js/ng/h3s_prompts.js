@@ -44,7 +44,7 @@ function partView(S, actions, chunk) {
     own ? h("button", { class: "h3s-btn ghost small", onclick: () => actions.resetPart(i), title: "Use the compiled prompt again" }, "Reset") : null];
   return h("div", { class: "h3s-prompt", style: { borderColor: color } },
     h("div", { class: "h3s-prompt-head", style: { background: bg } }, h("span", { class: "h3s-swatch", style: { background: color, width: "10px", height: "10px" } }),
-      h("strong", {}, `Part ${i + 1}`), h("span", { class: "h3s-muted", style: { fontSize: "12px" } }, `${fmt(chunk.start_s)} – ${fmt(chunk.end_s)}`),
+      h("strong", {}, `${chunk.picture ? "Picture" : "Part"} ${i + 1}`), h("span", { class: "h3s-muted", style: { fontSize: "12px" } }, `${fmt(chunk.start_s)} – ${fmt(chunk.end_s)}`),
       h("span", { class: `h3s-chip ${old ? "h3s-warn" : tone}`, title: old ? "The plan changed after this part's own prompt was written; the compiled prompt is used." : "" },
         old ? "own prompt outdated" : label),
       h("span", { class: "h3s-grow" }), ...tools, h("span", { class: "h3s-lbl" }, chunk.mode.toUpperCase())),

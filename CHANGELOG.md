@@ -2,6 +2,12 @@
 
 ## 1.0.0 (unreleased)
 
+**Picture editor** (2026-10-20): the brush icon on an Image card opens a window with three tabs. *Mask*: brush, eraser, grow,
+or SAM 3.1 finding what you name; saved as the card's edit mask for Pictures. *Structure*: a Pose, Canny or Depth picture of
+the card, added as a new guide card with one click. *Character sheet*: H3 circles the figure once (REF2VA, ref2v turbo when
+installed) and six views are put side by side - a sheet from one picture without Qwen. In Pictures a pose or layout card is a
+guide that is not drawn. The Studio shows a picture project's parts as "Picture N" under their shots.
+
 **Pictures** (2026-10-19): the Director's new **Output** switch (Studio, above the mode) makes one picture per shot instead of
 a video. A shot with only text is text to image; cards on it are references (`<Picture N>`), so a character sheet, clothes, a
 place and a pose drawing can be put together into one picture; a First frame picture on a shot is changed as the shot says and

@@ -28,8 +28,8 @@ def _name(context, ref):
     return found.name if found else ref.source
 
 
-def _chunk_view(chunk, compiled, context):
-    return {"index": chunk.index, "start_s": round(frames.frames_to_seconds(chunk.story_start_f), 3),
+def _chunk_view(chunk, compiled, context, picture=False):
+    return {"index": chunk.index, "picture": picture, "start_s": round(frames.frames_to_seconds(chunk.story_start_f), 3),
             "end_s": round(frames.frames_to_seconds(chunk.story_end_f), 3), "delivered_frames": chunk.delivered_frames,
             "story_start_f": chunk.story_start_f, "story_end_f": chunk.story_end_f,
             "sampled_frames": chunk.sampled_frames, "head_frames": chunk.head_frames, "mode": compiled.mode, "prompt": compiled.prompt,
@@ -58,6 +58,7 @@ def plan_preview(payload, probe=None, image_size=None):
         return {"ok": False, "error": str(error)}
     return {"ok": True, "width": project.context.width, "height": project.context.height, "total_s": round(frames.frames_to_seconds(project.plan.total_frames), 3), "total_frames": project.plan.total_frames,
             "fps": FPS, "requested_frames": project.plan.requested_frames,
-            "mode": project.compiled[0].mode if project.compiled else context.mode, "output": project.output, "chunks": [_chunk_view(c, k, project.context) for c, k in zip(project.plan.chunks, project.compiled)],
+            "mode": project.compiled[0].mode if project.compiled else context.mode, "output": project.output, "chunks": [_chunk_view(c, k, project.context, project.output == "images")
+                                                                       for c, k in zip(project.plan.chunks, project.compiled)],
             "director_context": project.context.to_dict(),
             "issues": [i.to_dict() for i in project.issues]}

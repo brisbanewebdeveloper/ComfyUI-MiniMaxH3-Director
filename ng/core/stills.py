@@ -22,7 +22,7 @@ from .context import USAGE_BY_MEDIA
 from .shot_document import has_shots, read_document
 from .shots import auto_shots, parse_shots
 
-STILL_FRAMES = 124          # the planner writes a shot's prompt for a clip; a still uses a short one on H3's grid
+MIN_FRAMES = 5              # the planner writes a shot's prompt for a clip as long as the shot; H3's nodes take 5 frames at least
 FRAME_ROLES = ("first_frame", "last_frame", "keyframe")
 SOURCE_LINE = ("<Picture %d> is the picture to change: keep it exactly as it is - the same people, place, framing, light "
                "and colours - and change only this: ")
@@ -84,10 +84,12 @@ def shot_sources(context):
 
 
 def _chunk(index, shot, last):
-    piece = ChunkShot(shot_index=shot.index, local_start_f=0, local_end_f=STILL_FRAMES, text=shot.text, carried=False,
+    """The shot as a part of its own at its place on the timeline (the Studio draws "Picture N" under the shot)."""
+    length = max(shot.end_f - shot.start_f, MIN_FRAMES)
+    piece = ChunkShot(shot_index=shot.index, local_start_f=0, local_end_f=length, text=shot.text, carried=False,
                       continues=False, shot_id=shot.id, media=shot.media, spoken=(), locked_fields=shot.locked_fields,
-                      shot_start_f=0, shot_end_f=STILL_FRAMES)
-    return Chunk(index=index, story_start_f=0, delivered_frames=STILL_FRAMES, head_frames=0, shots=(piece,), is_last=last)
+                      shot_start_f=shot.start_f, shot_end_f=shot.start_f + length)
+    return Chunk(index=index, story_start_f=shot.start_f, delivered_frames=length, head_frames=0, shots=(piece,), is_last=last)
 
 
 def _with_source(compiled, source_id, override):
@@ -131,5 +133,5 @@ def plan_stills(context, image_size=None) -> ProjectPlan:
         compiled.append(one)
         stills.append(Still(index, shot.id, source_id, item.source if item else "", item.options.edit_mask if item else ""))
         issues.extend(one.issues)
-    plan = SequencePlan(requested_frames=STILL_FRAMES * max(1, len(chunks)), continuity=continuity, chunks=tuple(chunks))
+    plan = SequencePlan(requested_frames=max(1, total), continuity=continuity, chunks=tuple(chunks))
     return ProjectPlan(context=context, plan=plan, compiled=tuple(compiled), issues=_merge(issues, len(chunks)), stills=tuple(stills))

@@ -71,6 +71,11 @@ without inner scrolling:
   made again and the rest stays pixel-exact. The pictures are saved to `input/h3-director-stills`, so every Image card can
   choose them (for example as the first frame of a video shot later). One H3 latent frame per picture; ComfyUI's own VAE
   decode (0.41 and newer) decodes it best. Turbo: the Larry v4 turbo LoRA takes 8 steps, the official ref2v turbo 6.
+- **Picture editor** on every Image card (the brush icon): paint or erase the edit mask, or let **SAM 3.1** find what you name
+  (e.g. "mug"); make a **Pose, Canny or Depth** picture of the card as a new guide card (in Pictures a pose or layout guide
+  that is never drawn itself); or let H3 make a **character sheet** of the figure - it circles it once and keeps front, sides,
+  back, three-quarter and face (about 4 minutes with the ref2v turbo LoRA, with the H3 models of the Context Connector).
+  Results go to `input/h3-picture-edit` and can be added as new cards with one click.
 - **Mode** (First / last frame FL2VA or References Ref2VA) and **Turbo**: you choose the turbo LoRA for each mode. A known LoRA
   (the official ComfyUI LoRAs, Taomate, ckpt500) brings its measured steps, sampler and scheduler, per render part. CFG stays 1.
 - A settings bar with resolution as in the Legacy Director (presets, from first picture, aspect/megapixels, fitting, reference size),
