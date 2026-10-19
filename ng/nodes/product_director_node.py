@@ -55,7 +55,9 @@ class NGH3Director(io.ComfyNode):
                                  io.Float.Input("control_start", default=0.0, min=0.0, max=1.0, step=0.001, optional=True, advanced=True,
                                                 tooltip="Start within denoising, not seconds in the video."),
                                  io.Float.Input("control_end", default=1.0, min=0.0, max=1.0, step=0.001, optional=True, advanced=True,
-                                                tooltip="End within denoising, not seconds in the video.")],
+                                                tooltip="End within denoising, not seconds in the video."),
+                                 io.String.Input("models", default="", optional=True, advanced=True,
+                                                 tooltip="Files the Studio's Models menu chose for place pictures (JSON); empty: the official names.")],
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])
 
     @classmethod

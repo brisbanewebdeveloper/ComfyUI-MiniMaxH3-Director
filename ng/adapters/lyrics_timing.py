@@ -6,6 +6,7 @@ import folder_paths
 import numpy as np
 
 from ..core import lyrics
+from . import model_files
 from .preview_media import require_path
 
 try:
@@ -13,17 +14,12 @@ try:
 except ImportError:
     whisper = None
 
-# Larger models hear sung words better; the first one present is used.
-MODELS = ("large-v3", "large", "medium", "small", "base", "tiny")
-
-
-def model_file():
-    root = os.path.join(folder_paths.models_dir, "whisper")
-    for name in MODELS:
-        path = os.path.join(root, name + ".pt")
-        if os.path.isfile(path):
-            return path
-    raise ValueError("No Whisper model in %s. Put small.pt (or medium.pt) there to time lyrics." % root)
+def model_file(chosen=""):
+    """The Audio card's Models menu choice, else the largest model present: larger ones hear sung words better."""
+    name = model_files.find("whisper", chosen)
+    if name is None:
+        raise ValueError("No Whisper model: " + model_files.missing("whisper"))
+    return os.path.join(folder_paths.models_dir, "whisper", name)
 
 
 def _samples(path):
@@ -39,17 +35,17 @@ def _samples(path):
     return np.concatenate(chunks).astype(np.float32) if chunks else np.zeros(0, np.float32)
 
 
-def time_lyrics(source, text, device):
+def time_lyrics(source, text, device, chosen=""):
     """LRC text for the song: the user's own lines with recognised times, or what Whisper heard when no lines are given.
 
-    `device` is the caller's choice: the GPU only while nothing renders."""
+    `device` is the caller's choice: the GPU only while nothing renders. `chosen`: the card's Whisper file, if any."""
     if whisper is None:
         raise ValueError("Timing lyrics needs the openai-whisper package in ComfyUI's Python.")
     path = require_path(source)
     known = lyrics.plain_lines(text)
     language, _ = lyrics.parse(text)
     samples = _samples(path)
-    model = whisper.load_model(model_file(), device=device)
+    model = whisper.load_model(model_file(chosen), device=device)
     try:
         result = model.transcribe(samples, word_timestamps=True, fp16=str(device) != "cpu",
                                   initial_prompt=" ".join(known) or None, condition_on_previous_text=False)

@@ -324,6 +324,26 @@ Other quantisations on the repo work too: `*_bf16` (66 GB, best quality),
 `*_int8_convrot` (34 GB), `*_pruned_int8_convrot` (21 GB). The text encoder also comes as
 `_bf16` and `_int8_convrot` if `nvfp4_awq` does not run on your GPU.
 
+### Extra models (optional)
+
+Some NG tools use extra models. Nothing needs them to render a video; without one, its tool says what is missing.
+The **gear (Models)** on the node that uses them — the Video and Audio cards, the Storyboard, the H3 Director's settings —
+shows what was found and lets you pick your own file if yours is renamed or another version. *Automatic* takes the
+names below. The list lives in `js/ng/models.json`.
+
+| Model | Folder (`ComfyUI/models/…`) | Used by | Without it |
+|---|---|---|---|
+| [`sam3.1_multiplex_fp16.safetensors`](https://huggingface.co/Comfy-Org/sam3.1/resolve/main/checkpoints/sam3.1_multiplex_fp16.safetensors) (1.8 GB) | `checkpoints` | Video card: mask; Place pictures: finding people | no mask; place picture taken 1 s in |
+| [`qwen_image_2.1_int8_convrot.safetensors`](https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors) (7.3 GB) | `diffusion_models` | Storyboard pictures; place pictures (paint out people, another view) | storyboard drawing off; place picture as rendered |
+| [`qwen3vl_8b_int8_convrot.safetensors`](https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors) (9.4 GB) | `text_encoders` | with Qwen Image 2.1 | as above |
+| [`qwen_image_2.1_vae_bf16.safetensors`](https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors) (0.7 GB) | `vae` | with Qwen Image 2.1 | as above |
+| [`birefnet.safetensors`](https://huggingface.co/Comfy-Org/BiRefNet/resolve/main/background_removal/birefnet.safetensors) (0.4 GB) | `background_removal` | Storyboard: cut out a figure | cut-out off |
+| [`rt_detr_v4-x-hgnet_fp16.safetensors`](https://huggingface.co/Comfy-Org/SDPose/resolve/main/diffusion_models/rt_detr_v4-x-hgnet_fp16.safetensors) (0.1 GB) + [`sdpose_wholebody_fp16.safetensors`](https://huggingface.co/Comfy-Org/SDPose/resolve/main/checkpoints/sdpose_wholebody_fp16.safetensors) (1.9 GB) | `diffusion_models` + `checkpoints` | Video card: pose control video | no pose |
+| [`moge_2_vitl_normal_fp16.safetensors`](https://huggingface.co/Comfy-Org/MoGe/resolve/main/geometry_estimation/moge_2_vitl_normal_fp16.safetensors) (0.7 GB) | `geometry_estimation` | Video card: depth control video | no depth (or Depth Anything 3) |
+| `da3_*.safetensors` via the **ComfyUI-DepthAnythingV3** pack | `depthanything3` | Video card: depth, alternative | MoGe is used |
+| Whisper [`small.pt`](https://openaipublic.azureedge.net/main/whisper/models/9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794/small.pt) (0.5 GB; `medium.pt`, `large-v3.pt` hear sung words better) + the `openai-whisper` package | `whisper` | Audio card: ⟳ Time with Whisper | lyrics are timed by hand (Stamp) |
+| `taeh3.safetensors` (see [Live preview](#live-preview-while-sampling)) | `vae_approx` | live preview | no preview |
+
 ## Quick start
 
 1. **Workflow → Open** → `example_workflows/MiniMax H3 Director.json`

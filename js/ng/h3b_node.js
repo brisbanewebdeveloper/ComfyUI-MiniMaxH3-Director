@@ -3,6 +3,7 @@
 import { h } from "./h3s_dom.js";
 import { ensureStudioStyle } from "./h3s_style.js";
 import { ensureBoardStyle } from "./h3b_style.js";
+import { refitAfterResize } from "./ng_layout.js";
 import { openBoard } from "./h3b_editor.js";
 import { followNodeWidth } from "./ng_widgets.js";
 import { hideNative } from "./ng_editor_fields.js";
@@ -35,6 +36,7 @@ function attach(node) {
   }
   const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
   watcher?.observe(editor.root);
+  refitAfterResize(node, fit);
   const rendered = node.widgets?.find((w) => w.name === "rendered");
   if (rendered) {
     // ComfyUI awaits this while it builds the prompt: the files are drawn and uploaded before the job is queued.

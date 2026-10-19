@@ -12,6 +12,7 @@ import { boardJobs } from "./h3b_jobs.js";
 import { boardAssets } from "./h3b_assets.js";
 import { SUBFOLDER, comboOptions, canvasOf } from "./h3b_queue.js";
 import { dropTarget, viewSource } from "./ng_drop.js";
+import { STORYBOARD_MODELS, modelState, modelsMenu } from "./ng_models.js";
 
 function srcOf(name, type = "input") {
   const clean = String(name || "").replace(/ \[(input|output)\]$/, "").replace(/\\/g, "/");
@@ -206,7 +207,7 @@ export function openBoard(node, app, api, host) {
 
   const { cutOut, useInDirector, pullFromDirector, sendToDirector, redrawPanels } = boardJobs({ S, node, app, api, pictures, change, render, flash,
     renderFiles, upload, connector, contexts });
-  const assets = boardAssets({ S, api, change, render, contexts });
+  const assets = boardAssets({ S, api, change, render, contexts, chosenModels: () => node.properties.ng_models || {} });
   // A layer copied onto every other panel at the same place: a background (the bottom layer) goes under, anything else on top.
   function everywhere(item) {
     change((board) => {
@@ -273,6 +274,8 @@ export function openBoard(node, app, api, host) {
       field("Panels", select([...Array(MAX_PANELS)].map((_, i) => [String(i + 1), String(i + 1)]), String(S.board.panels.length),
         (value) => change((board) => Object.assign(board, setPanelCount(board, Number(value)))))),
       field("Panel format", select(Object.keys(ASPECTS).map((a) => [a, a]), S.board.aspect, (value) => change((board) => { board.aspect = value; }))),
+      h("button", { class: "h3s-btn ghost small", title: "Models: Qwen Image 2.1 and background removal", "aria-label": "Models",
+        "aria-pressed": String(Boolean(S.modelsOpen)), onclick: toggleModels }, icon("gear")),
       h("button", { class: "h3s-btn ghost small", title: "Undo", disabled: !S.history.length, onclick: () => undo(true) }, "Undo"),
       h("button", { class: "h3s-btn ghost small", title: "Redo", disabled: !S.future.length, onclick: () => undo(false) }, "Redo"),
       h("button", { class: "h3s-btn", disabled: Boolean(S.busy), title: "Draws the sheet into input/h3-storyboard and adds a Context card with it (usage Storyboard)",
@@ -413,6 +416,12 @@ export function openBoard(node, app, api, host) {
       field("Shot text for H3 (framing, action, camera; time beats for a long panel)", area(item.shot, quietText((v) => { item.shot = v; }), { rows: 4, onfocus: remember })));
   }
 
+  async function toggleModels() {
+    S.modelsOpen = !S.modelsOpen; render();
+    if (S.modelsOpen) { S.models = await modelState(api, STORYBOARD_MODELS).catch(() => ({})); render(); }
+  }
+  function setModel(purpose, file) { node.properties.ng_models = { ...node.properties.ng_models, [purpose]: file || undefined }; node.graph?.change?.(); render(); }
+
   function render() {
     if (!S.board) load();
     const scroll = root.scrollTop;
@@ -420,6 +429,8 @@ export function openBoard(node, app, api, host) {
       S.error ? h("div", { class: "h3s-banner" }, S.error) : null,
       S.notice ? h("div", { class: S.notice.error ? "h3s-banner" : "h3s-hint", style: { margin: "8px 20px 0" } }, S.notice.text,
         h("button", { class: "h3s-btn ghost small", onclick: () => { S.notice = null; render(); } }, "OK")) : null,
+      S.modelsOpen ? h("div", { class: "h3s-card", style: { margin: "8px 20px 0", gap: "10px" } }, h("span", { class: "h3s-strong" }, "Models"),
+        ...modelsMenu(S.models, node.properties.ng_models || {}, setModel, "h3s")) : null,
       h("div", { class: "h3b-body" }, sheetCard(), panelCard())));
     root.scrollTop = scroll;
     draw();

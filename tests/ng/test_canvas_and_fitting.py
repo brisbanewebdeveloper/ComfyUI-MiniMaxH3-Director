@@ -84,7 +84,8 @@ class Settings(unittest.TestCase):
         self.assertEqual((inputs["resize_method"], inputs["ref_image_size"]), ("crop", "match"))
         names = [item.id for item in self.nodes["NGH3Director"].GET_SCHEMA().inputs]
         # new inputs go last, so older workflows keep their saved widget order
-        self.assertEqual(names[-7:], ["resize_method", "ref_image_size", "resume", "resume_delete_done", "control_strength", "control_start", "control_end"])
+        self.assertEqual(names[-8:], ["resize_method", "ref_image_size", "resume", "resume_delete_done", "control_strength", "control_start", "control_end",
+                                      "models"])
 
     def test_resume_is_on_by_default_and_can_be_switched_off(self):
         types = lambda result: {v["class_type"] for v in self.nodes["NGProjectRender"].execute(sequence=result).expand.values()}

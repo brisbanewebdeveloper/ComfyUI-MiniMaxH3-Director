@@ -1,6 +1,8 @@
 // The Storyboard's jobs go through ComfyUI's own queue with ComfyUI's own nodes: a small prompt is queued, its saved picture
 // comes back as a layer source. Qwen Image 2.1 is built as its templates build it (UNETLoader -> QwenImage21Cache, CLIPLoader
 // qwen3vl_8b type qwen_image, TextEncodeQwenImage21 with the pictures as <image1>, <image2> ..., KSampler 25 steps Euler CFG 1).
+import { missingText, modelState, resolveModel } from "./ng_models.js";
+
 export const SUBFOLDER = "h3-storyboard";
 
 export async function comboOptions(api, nodeClass, input) {
@@ -41,16 +43,13 @@ export async function runJob(api, prompt, save, seconds = 1800) {
   throw new Error("The job took too long.");
 }
 
-// The Qwen Image 2.1 files, or an error that names what is missing.
-export async function qwenSetup(api) {
-  const [unets, clips, vaes] = await Promise.all([comboOptions(api, "UNETLoader", "unet_name"), comboOptions(api, "CLIPLoader", "clip_name"),
-    comboOptions(api, "VAELoader", "vae_name")]);
-  const setup = { model: unets.find((n) => /qwen_image_2\.1_int8/i.test(n)) || unets.find((n) => /qwen_image_2\.1/i.test(n)),
-    encoder: clips.find((n) => /qwen3vl_8b_int8/i.test(n)) || clips.find((n) => /qwen3vl_8b/i.test(n)),
-    vae: vaes.find((n) => /qwen_image_2\.1_vae/i.test(n)) };
-  if (!setup.model || !setup.encoder || !setup.vae)
-    throw new Error("Qwen Image 2.1 needs qwen_image_2.1 (diffusion_models), qwen3vl_8b (text_encoders) and qwen_image_2.1_vae (vae).");
-  return setup;
+// The Qwen Image 2.1 files (the Storyboard's Models menu choice, else the official names), or an error that names what is missing.
+export async function qwenSetup(api, chosen = {}) {
+  const purposes = ["qwen_image", "qwen_encoder", "qwen_vae"], state = await modelState(api, purposes);
+  const [model, encoder, vae] = purposes.map((purpose) => resolveModel(state, purpose, chosen[purpose]));
+  const lacking = purposes.filter((purpose) => !resolveModel(state, purpose, chosen[purpose])).map((purpose) => missingText(state[purpose]));
+  if (lacking.length) throw new Error(lacking.join(" "));
+  return { model, encoder, vae };
 }
 
 // A Qwen Image 2.1 prompt saving to output/h3-storyboard/<prefix>; its save node is "s". images: input names, <image1> first

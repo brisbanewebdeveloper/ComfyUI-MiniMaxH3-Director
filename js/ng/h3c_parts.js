@@ -1,7 +1,8 @@
 // The pieces every Context card is made of. Each takes the card state S and the card's actions and returns elements;
 // the card (h3c_card.js) owns the state and redraws on change.
-import { h } from "./h3s_dom.js";
+import { h, icon } from "./h3s_dom.js";
 import { CONTENT, USAGE, KEEP, KEEP_LEVELS, roleHint } from "./h3c_model.js";
+import { CARD_MODELS, modelsMenu } from "./ng_models.js";
 import { videoUpload } from "./h3c_upload.js";
 
 export const box = (caption, ...children) => h("div", { class: "h3c-box" }, caption ? h("div", { class: "h3c-cap" }, caption) : null, ...children);
@@ -16,9 +17,17 @@ export function topRow(S, actions) {
   const file = h("select", { class: "h3c-in", style: { flex: "1 1 auto" }, "aria-label": "File", onchange: (event) => actions.set(S.media, event.target.value) },
     S.files.map((value) => h("option", { value }, value)));
   file.value = S.values[S.media] || "";
+  const gear = CARD_MODELS[S.media] ? h("button", { class: "h3c-btn", title: "Models this card uses", "aria-label": "Models",
+    "aria-pressed": String(Boolean(S.modelsOpen)), onclick: actions.toggleModels }, icon("gear", 14)) : null;
   return h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr) auto" } }, name,
     h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, file,
-      S.media === "video" ? videoUpload(S, actions) : h("button", { class: "h3c-btn", onclick: actions.upload }, "Upload")), badge);
+      S.media === "video" ? videoUpload(S, actions) : h("button", { class: "h3c-btn", onclick: actions.upload }, "Upload")),
+    h("div", { class: "h3c-row", style: { flexWrap: "nowrap" } }, badge, gear));
+}
+
+// The card's Models menu (gear in the top row): which file each extra model of this card is (ng_models.js).
+export function modelsBox(S, actions) {
+  return S.modelsOpen ? box("Models", ...modelsMenu(S.models, S.node.properties.ng_models || {}, actions.setModel)) : null;
 }
 
 // Analyze and, while it runs, Cancel. On media cards it sits on "What is in it"; the Text card has it on "Use as".

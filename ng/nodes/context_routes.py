@@ -6,7 +6,7 @@ from server import PromptServer
 
 import comfy.model_management
 
-from ..adapters import control_files, keys, lyrics_timing, models, presets, preview_media, waveform
+from ..adapters import control_files, keys, lyrics_timing, model_files, models, presets, preview_media, waveform
 from ..core import providers
 from ..core.context_build import item_from_widgets
 from ..core.presets import ContextPreset, widget_values
@@ -146,6 +146,14 @@ async def media_waveform(request):
         return web.json_response({"ok": False, "error": str(error)}, status=400)
 
 
+@PromptServer.instance.routes.get("/ng/models")
+async def model_choices(request):
+    """For a card's Models menu: per purpose its entry in js/ng/models.json, the files of its folder and the automatic choice."""
+    wanted = [name for name in request.query.get("purposes", "").split(",") if name in model_files.MODELS]
+    return web.json_response({name: {**model_files.MODELS[name], "files": model_files.names(name), "auto": model_files.find(name)}
+                              for name in wanted})
+
+
 @PromptServer.instance.routes.post("/ng/lyrics")
 async def time_lyrics(request):
     """Time a song card's lyrics with Whisper. While a render runs it stays off the GPU (CPU is slower, not in the way)."""
@@ -153,7 +161,8 @@ async def time_lyrics(request):
         data = await request.json()
         busy = PromptServer.instance.prompt_queue.get_tasks_remaining() > 0
         device = "cpu" if busy else comfy.model_management.get_torch_device()
-        result = await asyncio.to_thread(lyrics_timing.time_lyrics, data["source"], data.get("lyrics", ""), device)
+        result = await asyncio.to_thread(lyrics_timing.time_lyrics, data["source"], data.get("lyrics", ""), device,
+                                         data.get("model", ""))
         comfy.model_management.soft_empty_cache()
         return web.json_response({"ok": True, "device": str(device), **result})
     except (OSError, ValueError, KeyError, TypeError) as error:

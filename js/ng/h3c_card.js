@@ -3,7 +3,8 @@
 import { h, keepKeys } from "./h3s_dom.js";
 import { ensureCardStyle } from "./h3c_style.js";
 import { studioUses, TEMPLATES, usableFields, offerFor } from "./h3c_model.js";
-import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box } from "./h3c_parts.js";
+import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box, modelsBox } from "./h3c_parts.js";
+import { CARD_MODELS, modelState } from "./ng_models.js";
 import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
 import { lyricsBox, stampLine } from "./h3c_lyrics.js";
@@ -19,7 +20,7 @@ import { FAMILY } from "./ng_context.js";
 import { assetChoices, assetSubjects, restoreAssetWidget } from "./ng_asset_relations.js";
 import { subjectChoices } from "./ng_subjects.js";
 import { followNoteRenames, knownNames } from "./ng_references.js";
-import { noteGrowth } from "./ng_layout.js";
+import { noteGrowth, refitAfterResize } from "./ng_layout.js";
 import { dropTarget } from "./ng_drop.js";
 import { controlBox } from "./h3c_control.js";
 import { controlGraph, controlSetup } from "./h3c_control_graph.js";
@@ -57,7 +58,7 @@ function speakerBox(S, actions) {
 
 function layout(S, actions) {
   const two = (...children) => h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" } }, ...children);
-  const parts = [topRow(S, actions)];
+  const parts = [topRow(S, actions), modelsBox(S, actions)];
   if (S.media === "image") parts.push(h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1.15fr) minmax(0,1fr)" } }, imageBlock(S), contentBox(S, actions)),
     suggestionBox(S, actions), h("div", { class: "h3c-grid", style: { gridTemplateColumns: "minmax(0,1fr) minmax(0,1.25fr)" } }, usageBox(S, actions), keepBox(S, actions)),
     two(ownerBox(S, actions, `Independent: this picture is a figure of its own; write @${S.values.name || "Name"} in the Studio.`), descriptionBox(S, actions)));
@@ -204,7 +205,7 @@ function attach(node, media) {
       const before = JSON.stringify(values(node)), opts = contextOptions(node);
       const source = (opts.control_result === values(node).video && opts.control_original) || values(node).video, kind = opts.control_kind || "canny";
       try {
-        const setup = await controlSetup(api, kind, S.depthEngine || "moge2");
+        const setup = await controlSetup(api, kind, S.depthEngine || "moge2", node.properties.ng_models || {});
         const prefix = globalThis.crypto.randomUUID();
         const saved = await runJob(api, controlGraph(kind, source, { ...setup, prompt: opts.mask_prompt ?? "person" }, prefix), "save");
         if (removed || JSON.stringify(values(node)) !== before) { say("The card changed during generation. Its saved result was left in output/h3-control; the card was not replaced.", true); return; }
@@ -265,12 +266,18 @@ function attach(node, media) {
       node.graph?.change?.(); say("Accepted the AI suggestion.");
     },
     discard() { S.suggestion = null; render(); },
+    async toggleModels() {
+      S.modelsOpen = !S.modelsOpen; render();
+      if (S.modelsOpen) { S.models = await modelState(api, CARD_MODELS[media]).catch(() => ({})); render(); }
+    },
+    setModel(purpose, file) { node.properties.ng_models = { ...node.properties.ng_models, [purpose]: file || undefined }; node.graph?.change?.(); render(); },
     // Lyrics: Whisper times the lines that are there (or writes down what it hears); the words stay the user's.
     async timeLyrics() {
       if (S.busy) return;
       S.busy = "lyrics"; say("");
       try {
-        const data = await request(api, "/ng/lyrics", { source: values(node).audio, lyrics: S.els.lyrics?.value ?? contextOptions(node).lyrics ?? "" });
+        const data = await request(api, "/ng/lyrics", { source: values(node).audio, lyrics: S.els.lyrics?.value ?? contextOptions(node).lyrics ?? "",
+          model: node.properties.ng_models?.whisper || "" });
         setOptions(node, { lyrics: data.lrc });
         say(`Timed ${data.lines} line(s) (${data.language}, ${data.device.startsWith("cpu") ? "CPU while a render runs" : "GPU"}). Check them while the song plays.`);
       } catch (error) { say(`Lyrics: ${error.message}`, true); }
@@ -328,6 +335,7 @@ function attach(node, media) {
   }
   const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
   watcher?.observe(root);
+  refitAfterResize(node, fit);
 
   const names = () => (node.widgets || []).filter((widget) => widget !== dom).map((widget) => widget.name);
   const dom = followNodeWidth(node.addDOMWidget("h3c_card", "h3c_card", root, { serialize: false, hideOnZoom: false }));

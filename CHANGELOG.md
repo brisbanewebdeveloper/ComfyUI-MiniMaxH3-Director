@@ -2,6 +2,16 @@
 
 ## 1.0.0 (unreleased)
 
+**Models menus** (2026-10-19): the extra models NG uses (SAM3, Qwen Image 2.1, background removal, pose, depth, Whisper) are
+listed once in `js/ng/models.json`. A gear on the Video and Audio cards, in the Storyboard and in the Director's settings shows
+what was found (*Automatic*: the official names), lets you pick a renamed or own file, and names a missing one with its folder
+and download link. A missing model never stops a render: place pictures stay as rendered, the other tools say what is missing.
+The README lists them all (Extra models).
+
+**Node sizes** (2026-10-19, GUI test): the AI Loader keeps a minimum width (at 210 its Model field was cut off); the Director,
+the Storyboard and the Context cards go back to their content's height after being dragged taller (up to 1100 empty units
+were left). `tests/ng/browser/node_sizes.js` checks placing, widening, heightening and shrinking every NG node in a browser.
+
 **Place like Shot N** (2026-10-18): a shot can take the place of an earlier shot (shot panel, *Place*). While rendering, the
 Director saves a picture of that shot's render (1 s in) and gives it to the later shot as a Place card, so a room H3 invented
 comes back the same after a cut; it shows as "Place of Shot N" under Made from. The later shot opens a render part of its own

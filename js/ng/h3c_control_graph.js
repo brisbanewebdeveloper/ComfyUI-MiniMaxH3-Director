@@ -1,32 +1,18 @@
 // Small queued preprocessing graphs using the installed ComfyUI nodes. Keep their original frame rate.
-import { comboOptions } from "./h3b_queue.js";
+import { missingText, modelState, resolveModel } from "./ng_models.js";
 
-export async function controlSetup(api, kind, engine = "moge2") {
+// The files of each kind: the card's Models menu choice, else the official name (ng_models.js / js/ng/models.json).
+export async function controlSetup(api, kind, engine = "moge2", chosen = {}) {
   if (kind === "canny") return {};
-  if (kind === "mask") {
-    const models = await comboOptions(api, "CheckpointLoaderSimple", "ckpt_name");
-    const checkpoint = models.find((n) => /sam3\.1_multiplex_fp16\.safetensors$/i.test(n)) || models.find((n) => /sam3.*\.safetensors$/i.test(n));
-    if (!checkpoint) throw new Error("Mask generation needs a SAM3 checkpoint, e.g. sam3.1_multiplex_fp16.safetensors (checkpoints), and ComfyUI's SAM3 Detect nodes.");
-    return { checkpoint };
-  }
-  if (kind === "pose") {
-    const [models, checkpoints] = await Promise.all([comboOptions(api, "UNETLoader", "unet_name"), comboOptions(api, "CheckpointLoaderSimple", "ckpt_name")]);
-    const detector = models.find((n) => /rt_detr_v4-x-hgnet_fp16\.safetensors$/i.test(n));
-    const pose = checkpoints.find((n) => /sdpose_wholebody_fp16\.safetensors$/i.test(n));
-    if (!detector || !pose) throw new Error("Pose needs rt_detr_v4-x-hgnet_fp16.safetensors (diffusion_models) and sdpose_wholebody_fp16.safetensors (checkpoints).");
-    return { detector, pose };
-  }
-  if (kind === "depth" && engine === "da3") {
-    const models = await comboOptions(api, "DownloadAndLoadDepthAnythingV3Model", "model");
-    const depth = models.find((n) => n === "da3_base.safetensors") || models.find((n) => /^da3.*\.safetensors$/.test(n));
-    if (!depth) throw new Error("Depth Anything 3 needs the ComfyUI-DepthAnythingV3 nodes and a DA3 model.");
-    return { depth, engine };
-  }
-  if (kind !== "depth") throw new Error("Choose Canny, Pose or Depth.");
-  const models = await comboOptions(api, "LoadMoGeModel", "model_name");
-  const depth = models.find((n) => /moge_2_vitl_normal_fp16\.safetensors$/i.test(n));
-  if (!depth) throw new Error("Depth needs moge_2_vitl_normal_fp16.safetensors for ComfyUI's LoadMoGeModel, or choose installed Depth Anything 3.");
-  return { depth, engine: "moge2" };
+  const purposes = kind === "mask" ? ["sam3"] : kind === "pose" ? ["pose_detector", "pose"] : kind === "depth" ? [engine === "da3" ? "da3" : "moge"] : null;
+  if (!purposes) throw new Error("Choose Canny, Pose or Depth.");
+  const state = await modelState(api, purposes);
+  const files = purposes.map((purpose) => resolveModel(state, purpose, chosen[purpose]));
+  const lacking = purposes.filter((_, n) => !files[n]).map((purpose) => missingText(state[purpose]));
+  if (lacking.length) throw new Error(`${lacking.join(" ")}${kind === "depth" && engine !== "da3" ? " Or choose installed Depth Anything 3." : ""}`);
+  if (kind === "mask") return { checkpoint: files[0] };
+  if (kind === "pose") return { detector: files[0], pose: files[1] };
+  return { depth: files[0], engine: engine === "da3" ? "da3" : "moge2" };
 }
 
 export function controlGraph(kind, source, setup, prefix) {

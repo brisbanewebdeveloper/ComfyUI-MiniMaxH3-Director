@@ -5,6 +5,15 @@ const pending = new Map(); // node -> its saved [width, height]
 
 export function noteGrowth(node, before) { pending.set(node, before); }
 
+// Cards, the Studio and the Storyboard are as tall as their content. A drag that left one taller is undone once the drag
+// stops: the content did not change size, so their ResizeObserver never fired (GUI test 2026-10-19: 690 empty units under
+// the Director, 850-1100 under the Audio and Text cards). Waiting for the drag to end keeps it from fighting the pointer.
+export function refitAfterResize(node, fit) {
+  let settling = 0;
+  const resized = node.onResize;
+  node.onResize = function (...args) { const result = resized?.apply(this, args); clearTimeout(settling); settling = setTimeout(fit, 200); return result; };
+}
+
 // grown: [[node, [savedWidth, savedHeight]], ...] with each node already at its new size.
 export function makeRoom(graph, grown) {
   const nodes = graph._nodes || graph.nodes || [], groups = graph._groups || graph.groups || [], all = [...nodes, ...groups];

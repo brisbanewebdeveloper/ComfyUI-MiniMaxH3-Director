@@ -8,7 +8,7 @@ import { values, applyValues, followNodeWidth } from "./ng_widgets.js";
 import { readContexts } from "./ng_read.js";
 import { renameReferences } from "./ng_references.js";
 import { hideNative } from "./ng_editor_fields.js";
-import { noteGrowth } from "./ng_layout.js";
+import { noteGrowth, refitAfterResize } from "./ng_layout.js";
 
 const { app } = window.comfyAPI.app;
 const { api } = window.comfyAPI.api;
@@ -22,7 +22,7 @@ const LATER = { turbo: false, turbo_lora_fl2va: "none", turbo_lora_ref2va: "none
 // Widgets inserted among the saved ones, oldest first. ComfyUI restores widget values by position, so a workflow saved before
 // "resume" gave it the value of the widget after it (prompt_override's text while resume was required, now the Studio's own
 // entry). A list short by k lacks the k newest: those get their defaults, every other widget its saved value in order.
-const INSERTED = [["resume", true], ["resume_delete_done", true], ["control_strength", 1], ["control_start", 0], ["control_end", 1]];
+const INSERTED = [["resume", true], ["resume_delete_done", true], ["control_strength", 1], ["control_start", 0], ["control_end", 1], ["models", ""]];
 export function repairInsertedWidgets(node, saved, named) {
   const widgets = node.widgets || [];
   const inserted = INSERTED.filter(([name]) => widgets.some((widget) => widget.name === name));
@@ -94,6 +94,7 @@ function attach(node) {
   }
   const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
   watcher?.observe(studio.root);
+  refitAfterResize(node, fit);
   // The Studio writes the widgets itself and hears outside changes on its own; the node keeps @Name mentions in step.
   const follow = () => followRenames(node);
   const refresh = () => { followRenames(node); studio.refresh(); fit(); };

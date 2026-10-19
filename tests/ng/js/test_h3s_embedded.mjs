@@ -62,4 +62,17 @@ assert.equal(host.children.length, 0, "removing the node removes its Studio");
     { text: "Wide shot.", spoken: [{ speaker_id: "mage", text: "Stay." }, { speaker_id: "", text: "Night falls." }, { speaker_id: "mage", text: " " }] }] };
   assert.equal(ownLines(S), "@Mage says: Welcome back.\n@Mage says: Stay.\nNarrator says: Night falls.");
 }
+// A drag that left a content-high node taller is undone 200 ms after the last resize, not during the drag; an earlier
+// onResize keeps working (GUI test 2026-10-19).
+{
+  const { refitAfterResize } = await import("../../../js/ng/ng_layout.js");
+  const calls = [], node = { onResize: () => calls.push("own") };
+  let fits = 0;
+  refitAfterResize(node, () => { fits += 1; });
+  node.onResize([800, 2000]); node.onResize([800, 2100]); node.onResize([800, 2200]);
+  assert.deepEqual(calls, ["own", "own", "own"]);
+  assert.equal(fits, 0, "not while the drag goes on");
+  await new Promise((resolve) => setTimeout(resolve, 260));
+  assert.equal(fits, 1, "once, after the drag");
+}
 console.log("h3s embedded ok");

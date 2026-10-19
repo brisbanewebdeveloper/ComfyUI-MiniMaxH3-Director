@@ -116,13 +116,17 @@ class Window(unittest.TestCase):
         self.assertEqual(index, 40 - 17)
 
 
+NO_QWEN = {"image": None, "encoder": None, "vae": None}
+QWEN = {"image": "qwen_image.safetensors", "encoder": "qwen3vl_8b.safetensors", "vae": "qwen_vae.safetensors"}
+
+
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
 class Writing(unittest.TestCase):
     """The models are mocked: SAM3's person share per candidate, Qwen's edit."""
     def setUp(self):
         self.adapter, self.pin = module("ng.adapters.places"), module("ng.core.pin")
 
-    def written(self, result, shares=None, qwen=None, edit=None):
+    def written(self, result, shares=None, qwen=NO_QWEN, edit=None):
         import torch
         from comfy.nested_tensor import NestedTensor
         from PIL import Image
@@ -134,7 +138,10 @@ class Writing(unittest.TestCase):
             count = self.pin.pixel_frames(video.shape[2])
             return torch.arange(count).float().div(1000).view(count, 1, 1, 1).expand(count, 4, 4, 3)
 
-        with tempfile.TemporaryDirectory() as root, mock.patch("folder_paths.get_input_directory", return_value=root),                 mock.patch.object(self.adapter, "person_shares", return_value=shares),                 mock.patch.object(self.adapter, "qwen_files", return_value=qwen),                 mock.patch.object(self.adapter, "qwen_edit", side_effect=edit) as edits:
+        with tempfile.TemporaryDirectory() as root, mock.patch("folder_paths.get_input_directory", return_value=root), \
+                mock.patch.object(self.adapter, "person_shares", return_value=shares), \
+                mock.patch.object(self.adapter, "qwen_files", return_value=qwen), \
+                mock.patch.object(self.adapter, "qwen_edit", side_effect=edit) as edits:
             (path, how), = self.adapter.write(job, latent, decode)
             self.assertTrue(path.startswith(os.path.join(root, places.FOLDER)))
             with Image.open(path) as picture:
@@ -157,7 +164,7 @@ class Writing(unittest.TestCase):
     def test_a_person_in_every_candidate_is_painted_out(self):
         import torch
         painted = lambda files, picture, prompt, seed: torch.full_like(picture, 0.5)
-        value, how, edits = self.written(plan(), shares=[0.2, 0.1, 0.3, 0.3, 0.3, 0.4], qwen={"model": "q"}, edit=painted)
+        value, how, edits = self.written(plan(), shares=[0.2, 0.1, 0.3, 0.3, 0.3, 0.4], qwen=QWEN, edit=painted)
         self.assertEqual(value, round(0.5 * 255))
         self.assertEqual(len(edits), 1)
         self.assertIn("Remove every person", edits[0].args[2])
@@ -174,7 +181,7 @@ class Writing(unittest.TestCase):
         import torch
         painted = lambda files, picture, prompt, seed: torch.full_like(picture, 0.25)
         _, how, edits = self.written(plan(place_picture="view", place_view="from the bar toward the door"), shares=[0.0] * 6,
-                                     qwen={"model": "q"}, edit=painted)
+                                     qwen=QWEN, edit=painted)
         self.assertEqual(len(edits), 1, "nobody to paint out, one edit for the view")
         self.assertIn("from the bar toward the door", edits[0].args[2])
         self.assertIn("new view", how)

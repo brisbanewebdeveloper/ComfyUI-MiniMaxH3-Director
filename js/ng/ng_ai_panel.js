@@ -464,7 +464,9 @@ export function buildPanel(node, root, header, widget) {
                      "min_p", "frequency_penalty", "presence_penalty", "seed", "fixed_seed",
                      "local_model", "local_type"]);
 
-  const MIN_HEIGHT = 240;
+  // Below this width the three source tiles and the provider / model pair no longer fit: at 210 the Model field was cut
+  // off with a scrollbar under it (GUI test 2026-10-19). The Context cards and the Director snap back to theirs the same way.
+  const MIN_HEIGHT = 240, MIN_WIDTH = 440;
   function panelHeight() {
     const content=Array.from(body.children).filter((child)=>!child.hidden).reduce((height,child)=>{
       const style=getComputedStyle(child);
@@ -477,12 +479,12 @@ export function buildPanel(node, root, header, widget) {
   // that only defines computeLayoutSize is measured against the free space instead, so the panel
   // follows the drag. minHeight keeps the content from being cut off when the node is too small.
   widget.computeSize = undefined;
-  widget.computeLayoutSize = () => ({ minHeight: panelHeight(), maxHeight: Number.MAX_SAFE_INTEGER, minWidth: 0 });
+  widget.computeLayoutSize = () => ({ minHeight: panelHeight(), maxHeight: Number.MAX_SAFE_INTEGER, minWidth: MIN_WIDTH - 20 });
   // Grow when the content needs room, but only shrink when the panel itself changed shape. Shrinking
   // unconditionally would fight the user's drag and snap the node back while they resize it.
   function fit(allowShrink = false) {
-    const wanted = panelHeight();
-    if (wanted > node.size[1] || (allowShrink && wanted < node.size[1] - 2)) node.setSize([node.size[0], wanted]);
+    const width = Math.max(node.size[0], MIN_WIDTH), wanted = panelHeight();
+    if (width !== node.size[0] || wanted > node.size[1] || (allowShrink && wanted < node.size[1] - 2)) node.setSize([width, Math.max(wanted, allowShrink ? 0 : node.size[1])]);
     node.setDirtyCanvas?.(true, true);
   }
   advanced.addEventListener("toggle", () => fit(true));

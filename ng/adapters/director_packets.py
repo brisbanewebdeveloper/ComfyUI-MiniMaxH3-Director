@@ -45,6 +45,7 @@ class RenderSettings:
     control_strength: float = 1.0
     control_start: float = 0.0
     control_end: float = 1.0
+    models: str = ""            # {purpose: file} from the Studio's Models menu (adapters/model_files.py)
 
     def values(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}

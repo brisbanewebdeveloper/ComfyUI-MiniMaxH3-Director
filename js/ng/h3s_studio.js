@@ -13,7 +13,7 @@ import { bindTimelineKeys } from "./h3s_keys.js";
 import { updateStudioPage } from "./h3s_focus.js";
 import { sideView } from "./h3s_side.js";
 import { footerView } from "./h3s_footer.js";
-import { settingsView, manualPromptAlert } from "./h3s_settings.js";
+import { settingsView, manualPromptAlert, loadPlaceModels } from "./h3s_settings.js";
 import { drawerView } from "./h3s_prompts.js";
 import { studioAI, basis as aiBasis } from "./h3s_ai.js";
 import { readQuick, changeQuick } from "./h3s_quick.js";
@@ -65,7 +65,7 @@ export function openStudio(node, app, api, host = null) {
   const status = h("span", { class: "h3s-lbl" });
   const progress = attachProgress(node, api, status, () => projectRenderIds(node));
   const ai = studioAI(S, app, api, () => render());
-  profilesLoaded.then(() => { if (!closed) { S.turboProfiles = turboProfiles; render(); } });
+  profilesLoaded.then(() => { if (!closed) { S.turboProfiles = turboProfiles; render(); } }); loadPlaceModels(api).then((state) => { if (!closed) { S.placeModels = state; render(); } });
 
   let echo = false;
   function write(changes) { echo = true; try { applyValues(node, changes); } finally { echo = false; } }

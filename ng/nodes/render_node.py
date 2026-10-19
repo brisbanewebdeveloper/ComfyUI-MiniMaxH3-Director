@@ -6,7 +6,7 @@ from comfy_extras.nodes_custom_sampler import BasicScheduler, KSamplerSelect, Ra
 import json
 import logging
 
-from ..adapters import lora_fit, places, resume
+from ..adapters import lora_fit, model_files, places, resume
 from ..core.turbo_profiles import part_settings
 from ..adapters.render_graph import render_sequence
 from .chunk_node import _decode_video
@@ -121,13 +121,14 @@ class NGPlaceStill(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="NGPlaceStill", display_name="NG Place Still", category=CATEGORY + "/Technical", is_dev_only=True,
-                         inputs=[NGChunk.Input("chunk"), io.Latent.Input("sampled"), io.Vae.Input("vae")],
+                         inputs=[NGChunk.Input("chunk"), io.Latent.Input("sampled"), io.Vae.Input("vae"),
+                                 io.String.Input("models", default="", optional=True)],
                          outputs=[io.Latent.Output()])
 
     @classmethod
-    def execute(cls, chunk, sampled, vae):
+    def execute(cls, chunk, sampled, vae, models=""):
         job = chunk[0] if isinstance(chunk, list) else chunk
-        for path, how in places.write(job, sampled, lambda video: _decode_video(vae, video)):
+        for path, how in places.write(job, sampled, lambda video: _decode_video(vae, video), model_files.chosen(models)):
             logging.info("[H3 Director] render part %d: place picture %s (%s)", job.index + 1, path, how)
         return io.NodeOutput(sampled)
 

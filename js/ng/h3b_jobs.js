@@ -4,15 +4,16 @@
 import { ASPECTS, newLayer, newId, panelTimes, fmtSeconds, pictureSize, loadName, srcUrl, redrawPrompt, mergeDirectorShots, syncFromDirector } from "./h3b_model.js";
 import { drawPicture } from "./h3b_draw.js";
 import { SUBFOLDER, comboOptions, canvasOf, runJob, qwenSetup, qwenGraph } from "./h3b_queue.js";
+import { missingText, modelState, resolveModel } from "./ng_models.js";
 import { isContextNode, upstreamNode } from "./ng_read.js";
 import { applyValues, ownIdentity, values } from "./ng_widgets.js";
 
 export function boardJobs({ S, node, app, api, pictures, change, render, flash, renderFiles, upload, connector, contexts }) {
   // ComfyUI's Remove Background on the picture: a new PNG with the figure on a transparent background, in output/h3-storyboard.
   async function cutOut(item) {
-    const models = await comboOptions(api, "LoadBackgroundRemovalModel", "bg_removal_name");
-    if (!models.length) { flash("No background removal model found: put one (e.g. birefnet.safetensors) into models/background_removal.", true); return; }
-    const model = models.find((name) => /birefnet/i.test(name)) || models[0];
+    const state = await modelState(api, ["background_removal"]);
+    const model = resolveModel(state, "background_removal", node.properties.ng_models?.background_removal);
+    if (!model) { flash(missingText(state.background_removal), true); return; }
     const prompt = {
       "1": { class_type: "LoadImage", inputs: { image: loadName(item.src) } },
       "2": { class_type: "LoadBackgroundRemovalModel", inputs: { bg_removal_name: model } },
@@ -163,7 +164,7 @@ export function boardJobs({ S, node, app, api, pictures, change, render, flash, 
   async function redraw(index) {
     const item = S.board.panels[index];
     if (!item.layers.some((l) => !l.hidden && !l.redrawn)) return `panel ${index + 1} has nothing to redraw yet (place pictures on it first)`;
-    const [setup, present] = await Promise.all([qwenSetup(api), comboOptions(api, "NGContextImage", "image")]);
+    const [setup, present] = await Promise.all([qwenSetup(api, node.properties.ng_models || {}), comboOptions(api, "NGContextImage", "image")]);
     await pictures.ready(S.board);
     const [w, h] = pictureSize(S.board.aspect), collage = canvasOf(w, h);
     drawPicture(collage.getContext("2d"), { ...item, layers: item.layers.filter((l) => !l.redrawn) }, { x: 0, y: 0, w, h }, pictures);

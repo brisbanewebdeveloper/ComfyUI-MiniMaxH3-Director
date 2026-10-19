@@ -12,7 +12,7 @@ function natural(src) {
   return new Promise((resolve) => { const i = new Image(); i.onload = () => resolve([i.naturalWidth, i.naturalHeight]); i.onerror = () => resolve(null); i.src = srcUrl(src); });
 }
 
-export function boardAssets({ S, api, change, render, contexts }) {
+export function boardAssets({ S, api, change, render, contexts, chosenModels }) {
   // Panel-relative size of a new layer: a figure as large as fits, a background covering the panel.
   async function place(src, name, kind) {
     const size = await natural(src);
@@ -33,7 +33,7 @@ export function boardAssets({ S, api, change, render, contexts }) {
     if (kind === "background" && !String(S.makePlace || "").trim()) { S.notice = { text: "Describe the place first.", error: true }; render(); return; }
     S.busy = kind; S.notice = { text: `Qwen Image 2.1 is drawing the ${kind}…`, error: false }; render();
     try {
-      const setup = await qwenSetup(api);
+      const setup = await qwenSetup(api, chosenModels());
       let src, name;
       if (kind === "figure") {
         const file = String(card.widgets.image).replace(/ \[input\]$/, "");

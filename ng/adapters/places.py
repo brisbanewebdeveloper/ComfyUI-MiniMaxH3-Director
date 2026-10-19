@@ -7,11 +7,11 @@ before, so the window starts one clip early (as collect.delivered_pictures does 
 
 "clean" and "view" pictures use ComfyUI's own nodes: SAM3 Detect ("person") picks the candidate with the least person in it,
 Qwen Image 2.1 (as the Storyboard builds it, js/ng/h3b_queue.js) paints a person out or paints the new view. Each model is
-loaded only when it is needed; without SAM3 the frame 1 s in is used, without Qwen the picture stays as rendered."""
+loaded only when it is needed; without SAM3 the frame 1 s in is used, without Qwen the picture stays as rendered. Which files:
+the Director's Models menu, else the official names (adapters/model_files.py)."""
 import hashlib
 import logging
 import os
-import re
 
 import numpy as np
 import torch
@@ -24,6 +24,7 @@ from comfy_extras.nodes_sam3 import SAM3_Detect
 
 from ..core import pin
 from ..core.places import in_chunk
+from . import model_files
 from .collect import VAE_CLIP_FRAMES, VAE_CLIP_STEPS
 from .latents import split_av
 
@@ -59,14 +60,9 @@ def candidate_pictures(video, local_frames, decode_video):
     return decoded[[f - offset for f in local_frames]]
 
 
-def _file(folder, *patterns):
-    names = folder_paths.get_filename_list(folder)
-    return next((name for pattern in patterns for name in names if re.search(pattern, name, re.I)), None)
-
-
-def person_shares(images):
+def person_shares(images, models):
     """The share of each picture SAM3 sees a person in, or None without a SAM3 checkpoint."""
-    checkpoint = _file("checkpoints", r"sam3\.1_multiplex_fp16\.safetensors$", r"sam3.*\.safetensors$")
+    checkpoint = model_files.find("sam3", models.get("sam3"))
     if checkpoint is None:
         return None
     model, clip, _ = nodes.CheckpointLoaderSimple().load_checkpoint(checkpoint)[:3]
@@ -76,15 +72,14 @@ def person_shares(images):
     return [float(mask.float().mean()) for mask in masks]
 
 
-def qwen_files():
-    files = dict(model=_file("diffusion_models", r"qwen_image_2\.1_int8", r"qwen_image_2\.1"),
-                 encoder=_file("text_encoders", r"qwen3vl_8b_int8", r"qwen3vl_8b"), vae=_file("vae", r"qwen_image_2\.1_vae"))
-    return files if all(files.values()) else None
+def qwen_files(models):
+    """{image, encoder, vae: file or None}."""
+    return {key: model_files.find("qwen_" + key, models.get("qwen_" + key)) for key in ("image", "encoder", "vae")}
 
 
 def qwen_edit(files, picture, prompt, seed):
     """Qwen Image 2.1 with `picture` as <image1>, at its shape, 25 steps Euler CFG 1 like the official template."""
-    model = QwenImage21Cache.execute(model=nodes.UNETLoader().load_unet(files["model"], "default")[0], device="auto", dtype="default").args[0]
+    model = QwenImage21Cache.execute(model=nodes.UNETLoader().load_unet(files["image"], "default")[0], device="auto", dtype="default").args[0]
     clip = nodes.CLIPLoader().load_clip(files["encoder"], type="qwen_image")[0]
     vae = nodes.VAELoader().load_vae(files["vae"])[0]
     positive, negative, latent = TextEncodeQwenImage21.execute(clip=clip, prompt=prompt, negative_prompt="", vae=vae, resolution=1024,
@@ -93,20 +88,20 @@ def qwen_edit(files, picture, prompt, seed):
     return nodes.VAEDecode().decode(vae, sampled)[0][:, :, :, :3]
 
 
-def picture(place, images):
+def picture(place, images, models):
     """The picture of one place from its candidate frames (the frame 1 s in comes first), and what was done to it."""
     if place.kind == "raw":
         return images[:1], "as rendered"
-    shares = person_shares(images)
+    shares = person_shares(images, models)
     best = 0 if shares is None else min(range(len(shares)), key=lambda n: (shares[n] >= PERSON_SHARE, shares[n], n))
     chosen, steps = images[best:best + 1], ["frame %d of %d" % (best + 1, len(images))]
     needs_removal = shares is not None and shares[best] >= PERSON_SHARE
     if not needs_removal and place.kind != "view":
         return chosen, ", ".join(steps + ["nobody in it" if shares is not None else "no SAM3, not checked"])
-    files = qwen_files()
-    if files is None:
-        logging.warning("[H3 Director] the place picture needs Qwen Image 2.1 (qwen_image_2.1, qwen3vl_8b, qwen_image_2.1_vae) "
-                        "to paint out a person or paint a new view; it is used as rendered.")
+    files = qwen_files(models)
+    lacking = [model_files.missing("qwen_" + key) for key, name in files.items() if name is None]
+    if lacking:
+        logging.warning("[H3 Director] the place picture is used as rendered: %s", " ".join(lacking))
         return chosen, ", ".join(steps + ["no Qwen Image 2.1"])
     seed = int(hashlib.sha1(place.source.encode()).hexdigest()[:8], 16)
     if needs_removal:
@@ -118,15 +113,15 @@ def picture(place, images):
     return chosen, ", ".join(steps)
 
 
-def write(job, latent, decode_video):
-    """Save every Place picture this part shows. Returns [(path, what was done)]."""
+def write(job, latent, decode_video, models=None):
+    """Save every Place picture this part shows. Returns [(path, what was done)]. `models`: {purpose: file} chosen by the user."""
     wanted = in_chunk(job.project.places, job.chunk)
     if not wanted:
         return []
     video, _ = split_av(latent)
     written = []
     for place, local_frames in wanted:
-        made, how = picture(place, candidate_pictures(video, local_frames, decode_video))
+        made, how = picture(place, candidate_pictures(video, local_frames, decode_video), models or {})
         target = path_of(place)
         os.makedirs(os.path.dirname(target), exist_ok=True)
         pixels = (made[0].float().clamp(0, 1) * 255).round().to(torch.uint8).cpu().numpy()

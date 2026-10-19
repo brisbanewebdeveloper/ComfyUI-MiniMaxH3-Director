@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readProject, writeProject, renamedDirector, dragTo, placeAt, trimToDuration } from "../../../js/ng/h3s_model.js";
 import { controlGraph, controlSetup } from "../../../js/ng/h3c_control_graph.js";
 import { runJob } from "../../../js/ng/h3b_queue.js";
+import { modelsApi } from "./fake_models.mjs";
 
 const control = [{ schema_version: 1, id: "pose", context_id: "motion", lane: "control", start: 1, end: 4, offset: 2 }];
 const text = writeProject({ shots: [], audio: [], lanes: [], control });
@@ -29,7 +30,7 @@ for (const kind of ["canny", "pose", "depth"]) {
 const da3 = controlGraph("depth", "walk.mp4", { depth: "da3_base.safetensors", engine: "da3" }, "id");
 assert.equal(da3.infer.class_type, "DepthAnything_V3");
 assert.equal(da3.depth.class_type, "DownloadAndLoadDepthAnythingV3Model");
-const api = { fetchApi: async () => ({ json: async () => ({}) }) };
+const api = modelsApi();
 await assert.rejects(controlSetup(api, "pose"), /sdpose_wholebody/);
 await assert.rejects(controlSetup(api, "depth"), /moge_2/);
 await assert.rejects(controlSetup(api, "invalid"), /Choose/);
