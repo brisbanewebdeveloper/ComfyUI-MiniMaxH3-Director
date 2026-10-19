@@ -46,6 +46,9 @@ function provider(node) {
   const defaults={...values(node),...node.constructor.ng_provider_defaults};
   const { root, header, widget } = shell(node, "H3 AI LOADER", "#a77cff", [660, 300],
     { icon: "box", subtitle: "Load LLM / AI Model" });
+  // the Context cards' look and width (ng_studio_style.js, .ng-ai); it was placed at 270 wide before
+  root.classList.add("ng-ai");
+  node.setSize([660, node.size?.[1] || 300]);
   const panel = buildPanel(node, root, header, widget);
   const removed=node.onRemoved;node.onRemoved=function(...args){panel.dispose();return removed?.apply(this,args);};
   const configured = node.onConfigure; node.onConfigure = function (...args) { const result = configured?.apply(this, args);

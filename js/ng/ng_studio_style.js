@@ -333,6 +333,44 @@ img.ng-source-preview { cursor:zoom-in; }
 .ng-spoken-line { margin:8px 0; padding:8px; border:1px solid #344457; border-radius:6px; }
 .ng-lock-field { display:flex; gap:6px; align-items:center; margin:4px 0; }
 .ng-lock-field input { width:auto; }
+/* The AI Loader in the Context cards' look (user 2026-10-19: "it does not look like our nodes yet; it was built first"):
+   the cards' colours, boxes, captions, fields and buttons (h3c_style.js), its height its content, no inner scrollbar. */
+.ng-product-node.ng-ai { background:transparent; border:0; border-radius:0; box-shadow:none; padding:2px 2px 6px; overflow:visible;
+  color:#E6EAF2; font:13px/1.4 "IBM Plex Sans","Segoe UI",system-ui,sans-serif; }
+.ng-product-node.ng-ai .ng-header { background:none; border:0; padding:2px 2px 8px; }
+.ng-product-node.ng-ai .ng-brand-mark { width:26px; height:26px; padding:4px; border-radius:8px; background:#1F1A33; border:1px solid #4B3F78;
+  box-shadow:none; color:#D6C8FF; }
+.ng-product-node.ng-ai .ng-brand-title { font-size:15px; font-weight:650; }
+.ng-product-node.ng-ai .ng-brand-accent { background:none; color:#D6C8FF; -webkit-text-fill-color:#D6C8FF; }
+.ng-product-node.ng-ai .ng-brand-sub { font-size:12px; color:#9AA4B5; }
+.ng-product-node.ng-ai .ng-ai-badge { border-radius:999px; padding:2px 10px; font-size:12px; }
+.ng-product-node.ng-ai .ng-section { border:1px solid #262E3B; border-radius:10px; background:#161B24; padding:10px 12px; margin:0 0 10px; }
+.ng-product-node.ng-ai .ng-section-head { margin:0 0 8px; }
+.ng-product-node.ng-ai .ng-section-title { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9AA4B5; }
+.ng-product-node.ng-ai .ng-section-icon, .ng-product-node.ng-ai .ng-field-icon { color:#7F8A9C; width:14px; height:14px; }
+.ng-product-node.ng-ai .ng-section-help, .ng-product-node.ng-ai .ng-field-help { border-color:#344055; background:#1E2633; color:#9AA4B5; }
+.ng-product-node.ng-ai .ng-muted, .ng-product-node.ng-ai .ng-field-status { font-size:12px; color:#8E98AA; }
+.ng-product-node.ng-ai .ng-field-tile { padding:0; border:0; background:transparent; box-shadow:none; gap:4px; }
+.ng-product-node.ng-ai .ng-field-tile:focus-within { box-shadow:none; }
+.ng-product-node.ng-ai .ng-field-tile .ng-field-label { font-size:12px; color:#9AA4B5; }
+.ng-product-node.ng-ai .ng-field-tile:has(input[type=checkbox]) { padding:4px 0; }
+.ng-product-node.ng-ai input:not([type=checkbox]):not([type=range]), .ng-product-node.ng-ai select {
+  background:#0E1117; border:1px solid #2E3848; border-radius:8px; min-height:30px; padding:0 8px; color:#E6EAF2; }
+.ng-product-node.ng-ai input:focus, .ng-product-node.ng-ai select:focus { outline:2px solid #8FC1FF; outline-offset:1px; }
+.ng-product-node.ng-ai input[type=checkbox] { accent-color:#3D7BF0; }
+.ng-product-node.ng-ai .ng-action { min-height:30px; padding:0 10px; border-radius:8px; border:1px solid #344055; background:#1E2633;
+  color:#E6EAF2; font-size:12px; }
+.ng-product-node.ng-ai .ng-action:hover:not(:disabled) { background:#273142; border-color:#46546C; }
+.ng-product-node.ng-ai .ng-action-primary { border-color:#4B3F78; background:#1F1A33; color:#D6C8FF; }
+.ng-product-node.ng-ai .ng-source-card { border:1px solid #2E3848; border-radius:8px; background:#0E1117; color:#E6EAF2; padding:9px 10px; }
+.ng-product-node.ng-ai .ng-source-card:hover { background:#1C2330; border-color:#46546C; }
+.ng-product-node.ng-ai .ng-source-card[aria-pressed=true] { border-color:#3D7BF0; background:#16233D; box-shadow:none; }
+.ng-product-node.ng-ai .ng-source-icon, .ng-product-node.ng-ai .ng-source-card[aria-pressed=true] .ng-source-icon { color:#8FC1FF; }
+.ng-product-node.ng-ai .ng-source-text small { color:#9AA4B5; }
+.ng-product-node.ng-ai .ng-advanced { border:1px solid #262E3B; border-radius:10px; background:#161B24; padding:0 12px; margin:0; }
+.ng-product-node.ng-ai .ng-advanced-title { font-size:11px; font-weight:600; letter-spacing:.06em; color:#9AA4B5; }
+.ng-product-node.ng-ai .ng-advanced-icon { color:#7F8A9C; }
+.ng-product-node.ng-ai .ng-field-fact { border:1px solid #262E3B; background:#0E1117; border-radius:8px; }
 `;
 
 export function ensureStudioStyle() {

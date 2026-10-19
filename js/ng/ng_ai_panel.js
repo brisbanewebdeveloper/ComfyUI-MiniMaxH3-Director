@@ -1,4 +1,5 @@
 // Each AI source has a real execution path; native sources use ComfyUI's queue and loaders.
+import { draggedByUser } from "./ng_layout.js";
 import { element, values, applyValues, request, nativeAIFingerprint, clearedAddress } from "./ng_widgets.js";
 import { control, hideNative, section, actionButton, secretControl } from "./ng_editor_fields.js";
 import { icon } from "./ng_icons.js";
@@ -474,12 +475,10 @@ export function buildPanel(node, root, header, widget) {
     },0);
     return Math.max(MIN_HEIGHT,Math.ceil(content+header.offsetHeight)+32);
   }
-  // LiteGraph gives a widget that defines computeSize a fixed height and never hands it the space
-  // the node gained, which is why dragging the node down left the content at its old size. A widget
-  // that only defines computeLayoutSize is measured against the free space instead, so the panel
-  // follows the drag. minHeight keeps the content from being cut off when the node is too small.
+  // The Loader is as tall as its panel, like the Context cards: nothing in it can use more height, and a taller node only
+  // showed an empty area under the panel (user 2026-10-19: "wrong sizes, height and width").
   widget.computeSize = undefined;
-  widget.computeLayoutSize = () => ({ minHeight: panelHeight(), maxHeight: Number.MAX_SAFE_INTEGER, minWidth: MIN_WIDTH - 20 });
+  widget.computeLayoutSize = () => ({ minHeight: panelHeight(), maxHeight: panelHeight(), minWidth: MIN_WIDTH - 20 });
   // Grow when the content needs room, but only shrink when the panel itself changed shape. Shrinking
   // unconditionally would fight the user's drag and snap the node back while they resize it.
   function fit(allowShrink = false) {
@@ -488,9 +487,10 @@ export function buildPanel(node, root, header, widget) {
     node.setDirtyCanvas?.(true, true);
   }
   advanced.addEventListener("toggle", () => fit(true));
-  // The node grew under the pointer, so the panel has to re-read its own height after the drag ends.
+  // After a drag the node goes back to the panel's height; during it, it follows the pointer.
+  let settling = 0;
   const resized = node.onResize; node.onResize = function (...args) { const result = resized?.apply(this, args);
-    queueMicrotask(() => fit()); return result; };
+    clearTimeout(settling); settling = setTimeout(() => fit(true), draggedByUser(node) ? 200 : 0); return result; };
   const observer=new ResizeObserver(() => fit());observer.observe(body);
   const changed=node.onConnectionsChange;node.onConnectionsChange=function(...args){const result=changed?.apply(this,args);queueMicrotask(sync);return result;};
   const tested=()=>sync();document.addEventListener("ng-ai-tested",tested);

@@ -14,6 +14,8 @@ The README lists them all (Extra models).
 the size is saved with the workflow. The AI Loader keeps a minimum width. Video card: a playhead over "Part of the file to use"
 follows the preview, the video's own sound is drawn under it, playback stays in the chosen part; Audio card: a playhead you
 can drag, a click on the waveform jumps there. Upload no longer runs into the Not analyzed badge.
+**AI Loader** in the Context cards' look (boxes, captions, fields, buttons, blue choice), 660 wide like the cards, exactly as tall
+as its panel (no inner scrollbar, no empty area under it; a taller drag goes back after the drag).
 
 **Place like Shot N** (2026-10-18): a shot can take the place of an earlier shot (shot panel, *Place*). While rendering, the
 Director saves a picture of that shot's render (1 s in) and gives it to the later shot as a Place card, so a room H3 invented
