@@ -11,6 +11,7 @@ from .chunks import Chunk, ContinuityPlan
 from .context import DirectorContext, check_item
 from .issues import Issue
 from .legacy_bridge import build_timeline, decide_mode
+from .shot_share import lines_here
 from .media_labels import resolve_media_mentions, resolve_guide_mentions, resolve_lock_mentions, prompt_labels, read_prompt_labels
 from .asset_prompt import apply_asset_relations
 from .shot_bindings import scoped_context
@@ -84,7 +85,8 @@ def _media_refs(result, mapping, context):
 
 def _issues(context, chunk, result, continuity):
     # a continued chunk deliberately has no spoken line for a shot that began earlier (see legacy_bridge._shot_text)
-    resumed = any(s.carried for s in chunk.shots)
+    # ... nor a shot that starts too late in it: the next part says its lines (legacy_bridge.lines_here)
+    resumed = any(s.carried or not lines_here(s, chunk) for s in chunk.shots)
     out = [Issue("planner", text, "chunk %d" % (chunk.index + 1)) for text in result["ref_warnings"]
            if not (resumed and "has no spoken line" in text)]
     placed = {b.context_id for shot in chunk.shots for b in shot.media}     # a Keyframe on a shot has its time there

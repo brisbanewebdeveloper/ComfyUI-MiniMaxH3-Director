@@ -285,9 +285,8 @@ def _without_camera_moves(text):
 
 
 def _shot_text(shot, substitute, automatic=False, context=None, chunk=None):
-    """A shot that began in an earlier chunk keeps its action but not its spoken lines: those belong to where the shot starts.
-
-    Nor its camera move: the part before already made it, and each part read "the camera pushes in" as a new push, so a
+    """A shot that began in an earlier chunk keeps its action but not its spoken lines: those belong to where the shot starts
+    (or to the next part when it starts in a part's last two seconds, shot_share.lines_here). Nor its camera move: the part before already made it, and each part read "the camera pushes in" as a new push, so a
     20 s shot over three parts pushed in three times and lost its look (AUDIT-010, measured 2026-10-11).
 
     A shot over several parts gives each part only the action of its own share of the shot's time (ng.core.shot_share)."""
@@ -300,8 +299,9 @@ def _shot_text(shot, substitute, automatic=False, context=None, chunk=None):
         if shared == shot_share.HEAD_ONLY:
             return shared
         text = "\n".join([shared] + spoken)
-    if shot.carried:
+    if not shot_share.lines_here(shot, chunk):
         text = "\n".join(line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip()))
+    if shot.carried:
         if not automatic:
             text = _without_camera_moves(text)
         if text.strip():

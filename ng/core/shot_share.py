@@ -126,3 +126,19 @@ def share(text, shot_start_f, shot_end_f, new_start_f, new_end_f, local_base_f):
             kept.append(piece)
         best = max(best, (overlap, piece), key=lambda entry: entry[0])
     return " ".join(kept) or best[1]
+
+
+SPEAK_MIN_FRAMES = 48       # two seconds: less of a shot at the end of a part is no room for what it says
+
+
+def lines_here(shot, chunk):
+    """Whether this part carries the shot's spoken lines. They belong to where the shot starts - unless the shot starts in
+    the last two seconds of a part: then the next part says them (night test 2026-10-20: the line of a shot starting 0.3 s
+    before the part's end was spoken from 1.3 s on, over the shot before)."""
+    if chunk is None or shot.shot_start_f < 0:
+        return not shot.carried
+    if shot.carried:
+        return chunk.story_start_f - shot.shot_start_f < SPEAK_MIN_FRAMES
+    if shot.continues:
+        return chunk.story_end_f - shot.shot_start_f >= SPEAK_MIN_FRAMES
+    return True
