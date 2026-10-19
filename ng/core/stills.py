@@ -27,6 +27,9 @@ FRAME_ROLES = ("first_frame", "last_frame", "keyframe")
 SOURCE_LINE = ("<Picture %d> is the picture to change: keep it exactly as it is - the same people, place, framing, light "
                "and colours - and change only this: ")
 DESCRIPTION = "detailed_description: "
+# A pose card is a guide: described like any card, H3 drew its skeleton into the picture (2026-10-19, Director test shot 6)
+POSE_GUIDE = ("a pose guide (%s). Only the body pose is taken from it; the drawing itself - its lines, colours and "
+              "background - never appears in the picture")
 
 
 @dataclass(frozen=True)
@@ -47,6 +50,8 @@ def still_context(context):
         if item.media in ("audio", "video"):
             issues.append(Issue("still_unused", "Pictures use no %s cards; this one is left out." % item.media, item.name))
             continue
+        if item.media == "image" and "pose" in item.content:
+            item = replace(item, description=POSE_GUIDE % (item.description.strip().rstrip(".") or "a figure's pose"))
         if item.media == "image":
             frame_roles = [r for r in item.effective_usage if r in FRAME_ROLES]
             if "first_frame" in frame_roles:

@@ -71,6 +71,12 @@ class Planning(unittest.TestCase):
         self.assertIn("still_unused", [i.code for i in result.issues])
         self.assertNotIn("song", [r.ctx_id for r in result.compiled[0].refs])
 
+    def test_a_pose_card_is_a_guide_that_is_not_drawn(self):
+        pose = ctx.ContextItem("pose", "Pose", "image", "pose.png", usage=("reference",), content=("pose",), description="Arms raised.")
+        binding = {"schema_version": 1, "context_id": "pose", "role": "context"}
+        result = plan(doc(shot(1, "A woman jumps in the pose of @Pose.", [binding])), [pose])
+        self.assertIn("never appears in the picture", result.compiled[0].prompt)
+
     def test_nothing_written_is_no_picture(self):
         result = plan()
         self.assertEqual(result.stills, ())
