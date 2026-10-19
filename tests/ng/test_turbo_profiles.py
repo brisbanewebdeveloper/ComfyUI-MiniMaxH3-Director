@@ -27,6 +27,10 @@ class PartSettings(unittest.TestCase):
         off = {**OWN, "turbo": False, "turbo_lora_ref2va": REF2V}
         self.assertEqual(profiles.part_settings("ref2va", off), off)
 
+    def test_a_text_only_part_takes_the_fl2va_loras_values(self):
+        settings = {**OWN, "turbo": True, "turbo_lora_fl2va": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"}
+        self.assertEqual(profiles.part_settings("t2va", settings)["steps"], 4)
+
     def test_every_profile_names_a_real_sampler_and_scheduler(self):
         from comfy.samplers import KSampler
         for name, entry in profiles.PROFILES.items():
