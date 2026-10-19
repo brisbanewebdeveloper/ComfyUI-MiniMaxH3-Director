@@ -8,7 +8,7 @@ from .ai_provider import NativeAIProvider
 from ..core.project import ChunkJob, jobs
 from ..core.turbo_profiles import part_settings
 from ..core import control_timing
-from .render_graph import render_sequence, turbo_models
+from .render_graph import render_sequence, still_sequence, turbo_models
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,7 @@ class RenderSettings:
     control_start: float = 0.0
     control_end: float = 1.0
     models: str = ""            # {purpose: file} from the Studio's Models menu (adapters/model_files.py)
+    output: str = "video"       # video | images: one picture per shot (core/stills.py)
 
     def values(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}
@@ -103,5 +104,6 @@ def render_project(result):
         inputs["preview_vae"] = result.inputs.preview_vae
     if result.inputs.model_patch is not None:
         inputs["model_patch"] = result.inputs.model_patch
-    expanded, outputs = render_sequence(inputs, result.settings.values())
+    sequence = still_sequence if result.project.output == "images" else render_sequence
+    expanded, outputs = sequence(inputs, result.settings.values())
     return {**graph.finalize(), **expanded}, outputs

@@ -19,7 +19,7 @@ def turbo_models(graph, inputs, settings):
 
 
 # Everything in the render settings that changes the sampled latent.
-RESUME_SETTINGS = ("seed", "steps", "sampler_name", "scheduler", "shift_video", "shift_audio", "turbo", "turbo_lora_fl2va",
+RESUME_SETTINGS = ("output", "seed", "steps", "sampler_name", "scheduler", "shift_video", "shift_audio", "turbo", "turbo_lora_fl2va",
                    "turbo_lora_ref2va", "ref_image_size", "resize_method", "control_strength", "control_start", "control_end")
 
 
@@ -67,6 +67,38 @@ def render_sequence(inputs, settings):
     video = graph.node("CreateVideo", "video", images=collect.out(0), audio=collect.out(1), fps=24.0)
     expanded = graph.finalize()
     # Expanded graphs do not pass through the top-level loop validator again.
+    validate_loops(expanded, [video.id, collect.id], expanded.keys(), [start.id], [end.id])
+    return expanded, (video.out(0), collect.out(0), collect.out(1), collect.out(2))
+
+
+def still_sequence(inputs, settings):
+    """The Director's Pictures output: the same loop, conditioning, turbo LoRA, sampling and resume as a video, but one
+    latent frame per shot (NG Still Latent) and the pictures decoded and saved after it (NG Still Collect)."""
+    graph = GraphBuilder()
+    inputs = turbo_models(graph, inputs, settings)
+    start = graph.node("StartLoop", "start", mode="List", **{"mode.list": inputs["chunks"]}, cache_iterations=False)
+    conditioning = graph.node("NGChunkConditioning", "conditioning", chunk=start.out(3), clip=inputs["clip"], vae=inputs["vae"],
+                              shift_video=settings["shift_video"], shift_audio=settings["shift_audio"],
+                              ref_image_size=settings.get("ref_image_size", "match"), resize_method=settings.get("resize_method", "crop"))
+    for name in ("model_fl2va", "model_ref2va"):
+        if inputs.get(name) is not None:
+            conditioning.set_input(name, inputs[name])
+    model = conditioning.out(0)
+    latent = graph.node("NGStillLatent", "still", chunk=start.out(3), latent=conditioning.out(2), vae=inputs["vae"])
+    noise = graph.node("NGChunkNoise", "noise", chunk=start.out(3), seed=settings["seed"])
+    sampled_with = json.dumps({key: settings.get(key) for key in RESUME_SETTINGS}, sort_keys=True)
+    sampling = graph.node("NGChunkSampling", "sampling", chunk=start.out(3), model=model, settings=sampled_with)
+    guider = graph.node("BasicGuider", "guider", model=model, conditioning=conditioning.out(1))
+    sample = graph.node("SamplerCustomAdvanced", "sample", noise=noise.out(0), guider=guider.out(0),
+                        sampler=sampling.out(0), sigmas=sampling.out(1), latent_image=latent.out(0))
+    part = sample.out(0)
+    if settings.get("resume", True):
+        part = graph.node("NGResumeChunk", "resume", chunk=start.out(3), sampled=part, settings=sampled_with).out(0)
+    end = graph.node("EndLoop", "end", output_value=part, next_iteration_value=part, accumulate=True)
+    collect = graph.node("NGStillCollect", "collect", latents=end.out(0), chunks=inputs["chunks"], vae=inputs["vae"])
+    # one second per picture, so a Save Video after H3 Render Sequence keeps working
+    video = graph.node("CreateVideo", "video", images=collect.out(0), fps=1.0)
+    expanded = graph.finalize()
     validate_loops(expanded, [video.id, collect.id], expanded.keys(), [start.id], [end.id])
     return expanded, (video.out(0), collect.out(0), collect.out(1), collect.out(2))
 

@@ -62,7 +62,9 @@ function turboSection(S, actions) {
   for (const [name, label] of [["turbo_lora_fl2va", "Turbo LoRA first / last frame"], ["turbo_lora_ref2va", "Turbo LoRA references"]]) {
     if ((mode === "fl2va" && name.endsWith("ref2va")) || (mode === "ref2va" && name.endsWith("fl2va"))) continue;
     const options = (S.options[name] || ["none"]).map((value) => [value, value]);
-    const known = turboProfile(S.turboProfiles, S.values[name]);
+    // pictures take a LoRA's "still" values where it has them (core/turbo_profiles.py)
+    const profile = turboProfile(S.turboProfiles, S.values[name]);
+    const known = (S.values.output === "images" && profile?.still) || (profile?.steps ? profile : null);
     rows.push(field(label, select(options, S.values[name], (value) => actions.setTurboLora(name, value), { style: { maxWidth: "380px" } })),
       h("span", { class: S.values[name] === "none" ? "h3s-warn" : "h3s-lbl", style: { fontSize: "12px", flex: "1 1 220px" }, title: known?.source || "" },
         S.values[name] === "none" ? "No LoRA: Turbo gives no usable picture." : known

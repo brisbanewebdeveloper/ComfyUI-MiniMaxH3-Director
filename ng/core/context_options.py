@@ -24,6 +24,7 @@ class ContextOptions:
     mask_prompt: str = "person"
     mask_shape: str = "box"
     mask_grow: int = 16
+    edit_mask: str = ""         # image: white = the part a picture of the Director's Pictures output changes
     SCHEMA_VERSION = 1
 
     def to_dict(self):
@@ -35,13 +36,15 @@ class ContextOptions:
             data.update(control_kind=self.control_kind, control_original=self.control_original, control_result=self.control_result)
         if self.control_kind == "mask" or self.control_mask:
             data.update(control_mask=self.control_mask, mask_prompt=self.mask_prompt, mask_shape=self.mask_shape, mask_grow=self.mask_grow)
+        if self.edit_mask:
+            data["edit_mask"] = self.edit_mask
         return data
 
     @classmethod
     def from_dict(cls, data, path="context.options"):
         fields.need_dict(data, path)
         fields.check_version(data, path, cls.SCHEMA_VERSION)
-        if set(data) - set(cls(lyrics="-", control_original="-", control_kind="mask").to_dict()):
+        if set(data) - set(cls(lyrics="-", control_original="-", control_kind="mask", edit_mask="-").to_dict()):
             raise ValueError("Unknown context option; use supported role, retention and source timing controls.")
         preserve = fields.need_dict(data.get("preserve", {}), path + ".preserve")
         if set(preserve) - set(PROPERTIES) or any(value not in STRENGTHS for value in preserve.values()):
@@ -60,7 +63,7 @@ class ContextOptions:
                    fields.read_str(data, "control_original", path, ""), fields.read_str(data, "control_result", path, ""),
                    fields.read_str(data, "control_mask", path, ""), fields.read_str(data, "mask_prompt", path, "person"),
                    fields.read_choice(data, "mask_shape", path, ("box", "outline"), "box"),
-                   int(grow))
+                   int(grow), fields.read_str(data, "edit_mask", path, ""))
 
     @classmethod
     def from_json(cls, text):

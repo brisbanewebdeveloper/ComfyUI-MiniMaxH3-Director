@@ -20,6 +20,9 @@ def profile(lora_name):
 
 
 def part_settings(mode, settings):
-    """The settings one render part samples with; mode is the part's H3 model ("fl2va" or "ref2va")."""
+    """The settings one render part samples with; mode is the part's H3 model ("fl2va" or "ref2va"). A picture (output
+    "images") takes the LoRA's "still" values where it has them, measured on single frames."""
     known = profile(settings.get("turbo_lora_" + mode, "none")) if settings.get("turbo") else None
-    return {**settings, **{name: known[name] for name in FIELDS}} if known else settings
+    if known and settings.get("output") == "images":
+        known = known.get("still", known)
+    return {**settings, **{name: known[name] for name in FIELDS}} if known and all(name in known for name in FIELDS) else settings

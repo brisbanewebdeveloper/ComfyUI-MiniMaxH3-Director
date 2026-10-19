@@ -87,6 +87,11 @@ class ProjectPlan:
     compiled: tuple
     issues: tuple
     places: tuple = ()          # core/places.Place: pictures of earlier shots the render loop writes for later shots
+    stills: tuple = ()          # core/stills.Still per part when the Director makes pictures instead of a video
+
+    @property
+    def output(self):
+        return "images" if self.stills else "video"
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,11 @@
 {
   "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16": {"steps": 6, "sampler_name": "res_multistep", "scheduler": "simple",
-    "source": "measured 2026-10-19 (official ref2va model): 4 steps leave a white veil (black level 0.024), 6 steps none (0.002), clean sound; the user's verdict: clean"},
+    "source": "measured 2026-10-19 (official ref2va model): 4 steps leave a white veil (black level 0.024), 6 steps none (0.002), clean sound; the user's verdict: clean",
+    "still": {"steps": 6, "sampler_name": "res_multistep", "scheduler": "simple",
+              "source": "measured 2026-10-19 on pictures: four references put together as well as 20 steps without LoRA, 42 s instead of 132 s"}},
+  "minimax_h3_turbo_v4_step600_ema": {
+    "still": {"steps": 8, "sampler_name": "res_multistep", "scheduler": "simple",
+              "source": "measured 2026-10-19 on pictures (FL2VA, 3 MP): strength 1.0 and 8 steps 33 s, close to 20 steps without LoRA; the 0.38 / 20 steps of other packs saves no time"}},
   "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16": {"steps": 4, "sampler_name": "res_multistep", "scheduler": "simple",
     "source": "measured 2026-10-14: 4 steps look like 6 and 8 (the template's), in about half the time"},
   "minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16": {"steps": 4, "sampler_name": "res_multistep", "scheduler": "simple",

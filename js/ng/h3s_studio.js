@@ -70,7 +70,7 @@ export function openStudio(node, app, api, host = null) {
   let echo = false;
   function write(changes) { echo = true; try { applyValues(node, changes); } finally { echo = false; } }
   function profileFields(lora) {
-    const known = turboProfile(S.turboProfiles, lora);
+    const profile = turboProfile(S.turboProfiles, lora), known = (values(node).output === "images" && profile?.still) || (profile?.steps ? profile : null);
     return known ? { steps: known.steps, sampler_name: known.sampler_name, scheduler: known.scheduler } : {};
   }
   const labels = () => new Map(sorted(S.shots).map((shot, index) => [shot.id, `Shot ${index + 1}`]));

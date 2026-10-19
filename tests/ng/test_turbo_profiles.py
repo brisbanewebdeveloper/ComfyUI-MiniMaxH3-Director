@@ -29,10 +29,14 @@ class PartSettings(unittest.TestCase):
 
     def test_every_profile_names_a_real_sampler_and_scheduler(self):
         from comfy.samplers import KSampler
-        for name, profile in profiles.PROFILES.items():
-            self.assertIn(profile["sampler_name"], KSampler.SAMPLERS, name)
-            self.assertIn(profile["scheduler"], KSampler.SCHEDULERS, name)
-            self.assertTrue(profile["source"], name)
+        for name, entry in profiles.PROFILES.items():
+            # video values, picture values ("still"), or both
+            measured = [one for one in (entry, entry.get("still")) if one and "steps" in one]
+            self.assertTrue(measured, name)
+            for profile in measured:
+                self.assertIn(profile["sampler_name"], KSampler.SAMPLERS, name)
+                self.assertIn(profile["scheduler"], KSampler.SCHEDULERS, name)
+                self.assertTrue(profile["source"], name)
 
     def test_chunk_sampling_uses_the_part_profile(self):
         stub_prompt_server()

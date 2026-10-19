@@ -12,6 +12,8 @@ const PLACE_HINT = "H3 gets a picture from that shot's render as this shot's pla
 const PLACE_PICTURES = [["clean", "Without people"], ["raw", "As rendered (1 s in)"], ["view", "From another view …"]];
 const PICTURE_HINT = "Without people: the frame with the least person in it (SAM3); if someone is still there, Qwen Image 2.1 paints "
   + "them out, otherwise the figure can show up twice. From another view: Qwen paints the place from the camera you describe.";
+const PICTURES_HINT = "Pictures: every shot becomes one picture, from its text and the cards on it. A First frame picture on a shot "
+  + "is changed as the shot says, the rest stays. The pictures are saved to input/h3-director-stills, so every Image card can choose them.";
 const CLIP_MODES = [["lock", "Lock exactly (the sound stays fixed)"], ["copy", "Copy as closely as possible (H3 may vary)"],
   ["ref", "Reference only (mood, voice, style)"]];
 
@@ -27,7 +29,14 @@ function modeCard(S, actions) {
   const lora = mode === "ref2va" ? "turbo_lora_ref2va" : mode === "fl2va" ? "turbo_lora_fl2va" : null;
   const missing = turbo && (lora ? S.values[lora] === "none" : S.values.turbo_lora_fl2va === "none" && S.values.turbo_lora_ref2va === "none");
   const noPatch = !S.controlConnected && S.contexts.some((entry) => entry.media === "video" && entry.usage.includes("control"));
+  // Output stands above the mode: a video, or one picture per shot (core/stills.py)
+  const output = S.values.output === "images" ? "images" : "video";
+  const out = (value, title, text) => h("button", { class: output === value ? "h3s-seg on" : "h3s-seg", "aria-pressed": String(output === value),
+    onclick: () => actions.setWidget("output", value) }, h("span", { class: "h3s-strong" }, title), h("span", { class: "h3s-lbl" }, text));
   return h("section", { class: "h3s-card" },
+    h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Output"), tip(PICTURES_HINT)),
+    h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "8px" } },
+      out("video", "Video", "shots become one video"), out("images", "Pictures", "one picture per shot")),
     h("div", { class: "h3s-row" }, h("span", { class: "h3s-strong" }, "Mode"), tip(hint)),
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "8px" } },
       seg("fl2va", "First / last frame", "FL2VA · pictures + sound"), seg("ref2va", "References", "Ref2VA · character, place, video, voice")),

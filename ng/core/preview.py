@@ -6,9 +6,10 @@ from .context_build import distinct, item_from_widgets
 from .issues import SchemaError
 from .limits import DEFAULT_SOUNDSCAPE, PIN_AUDIO_DEFAULT, FPS
 from .project import plan_project
+from .stills import plan_stills
 
 DIRECTOR_DEFAULTS = {"idea": "", "shots": "", "project_seconds": 10.0, "chunk_seconds": 0.0, "width": 768, "height": 1152, "mode": "auto",
-                     "continuity": "video_audio", "pin_frames": "22", "soundscape": DEFAULT_SOUNDSCAPE, "music": "", "prepend_text": ""}
+                     "continuity": "video_audio", "pin_frames": "22", "soundscape": DEFAULT_SOUNDSCAPE, "music": "", "prepend_text": "", "output": "video"}
 
 
 def _items(contexts, probe):
@@ -49,11 +50,14 @@ def plan_preview(payload, probe=None, image_size=None):
                                   music=values["music"], prepend_text=values["prepend_text"], items=_items(payload.get("contexts"), probe),
                                   style=values.get("style", ""), prompt_override=values.get("prompt_override", ""))
         continuity = ContinuityPlan(mode=values["continuity"], video_frames=int(values["pin_frames"]), audio_frames=PIN_AUDIO_DEFAULT)
-        project = plan_project(context, float(values["chunk_seconds"]), continuity, image_size)
+        if values.get("output") == "images":
+            project = plan_stills(context, image_size)
+        else:
+            project = plan_project(context, float(values["chunk_seconds"]), continuity, image_size)
     except (SchemaError, KeyError, ValueError, TypeError, OverflowError) as error:
         return {"ok": False, "error": str(error)}
     return {"ok": True, "width": project.context.width, "height": project.context.height, "total_s": round(frames.frames_to_seconds(project.plan.total_frames), 3), "total_frames": project.plan.total_frames,
             "fps": FPS, "requested_frames": project.plan.requested_frames,
-            "mode": project.compiled[0].mode, "chunks": [_chunk_view(c, k, project.context) for c, k in zip(project.plan.chunks, project.compiled)],
+            "mode": project.compiled[0].mode if project.compiled else context.mode, "output": project.output, "chunks": [_chunk_view(c, k, project.context) for c, k in zip(project.plan.chunks, project.compiled)],
             "director_context": project.context.to_dict(),
             "issues": [i.to_dict() for i in project.issues]}

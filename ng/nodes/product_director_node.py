@@ -9,6 +9,7 @@ from ..core.limits import PIN_AUDIO_DEFAULT
 from ..adapters.probe import image_size
 from ..core.limits import RESIZE_METHODS
 from ..core.project import jobs, plan_project
+from ..core.stills import plan_stills
 from .connector_node import NGInputs
 from .context_nodes import CATEGORY
 from .director_node import NGChunk, NGDirector
@@ -57,7 +58,9 @@ class NGH3Director(io.ComfyNode):
                                  io.Float.Input("control_end", default=1.0, min=0.0, max=1.0, step=0.001, optional=True, advanced=True,
                                                 tooltip="End within denoising, not seconds in the video."),
                                  io.String.Input("models", default="", optional=True, advanced=True,
-                                                 tooltip="Files the Studio's Models menu chose for place pictures (JSON); empty: the official names.")],
+                                                 tooltip="Files the Studio's Models menu chose for place pictures (JSON); empty: the official names."),
+                                 io.Combo.Input("output", options=["video", "images"], default="video", optional=True,
+                                                tooltip="Video, or one picture per shot (text to image, or a First frame picture changed as the shot says).")],
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])
 
     @classmethod
@@ -69,7 +72,12 @@ class NGH3Director(io.ComfyNode):
                                    shots_text=values["shots"], soundscape=values["soundscape"], music=values["music"],
                                    items=context.contexts, style=values.get("style", ""), **text_inputs)
         continuity = ContinuityPlan(mode=values["continuity"], video_frames=int(values["pin_frames"]), audio_frames=PIN_AUDIO_DEFAULT)
-        project = plan_project(director, values["chunk_seconds"], continuity, image_size)
+        if values.get("output") == "images":
+            project = plan_stills(director, image_size)
+            if not project.stills:
+                raise ValueError("Pictures: write an idea or a shot; each shot becomes one picture.")
+        else:
+            project = plan_project(director, values["chunk_seconds"], continuity, image_size)
         settings = RenderSettings(**{name: values[name] for name in RenderSettings.__dataclass_fields__ if name in values})
         return io.NodeOutput(DirectorResult(context, project, settings), jobs(project))
 

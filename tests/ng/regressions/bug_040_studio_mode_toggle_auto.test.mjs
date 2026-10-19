@@ -21,7 +21,7 @@ test("BUG-040: clicking the active mode segment in the Studio must toggle back t
   assert.equal(getMode(), "auto", "initial mode should be 'auto'");
 
   // User clicks "First / last frame" to fix the mode
-  const [fl2vaBtn, ref2vaBtn] = s.root.byClass("h3s-seg");
+  const [fl2vaBtn, ref2vaBtn] = s.root.byClass("h3s-seg").slice(2, 4);     // the Output switch (Video | Pictures) comes first
   fl2vaBtn.onclick();
   assert.equal(getMode(), "fl2va", "mode should be 'fl2va' after clicking First/last frame");
 
@@ -34,10 +34,20 @@ test("control: clicking the other mode segment switches between fl2va and ref2va
   const s = studio(t, { mode: "fl2va" });
   const getMode = () => s.node.widgets.find((w) => w.name === "mode").value;
 
-  const [fl2vaBtn, ref2vaBtn] = s.root.byClass("h3s-seg");
+  const [fl2vaBtn, ref2vaBtn] = s.root.byClass("h3s-seg").slice(2, 4);     // the Output switch (Video | Pictures) comes first
   assert.equal(getMode(), "fl2va");
 
   // Switching from fl2va to ref2va
   ref2vaBtn.onclick();
   assert.equal(getMode(), "ref2va");
+});
+
+test("control: the Output switch above the mode chooses video or pictures", (t) => {
+  const s = studio(t, { mode: "auto" });
+  const output = () => s.node.widgets.find((w) => w.name === "output")?.value;
+  const [video, pictures] = s.root.byClass("h3s-seg");
+  pictures.onclick();
+  assert.equal(output(), "images");
+  video.onclick();
+  assert.equal(output(), "video");
 });
