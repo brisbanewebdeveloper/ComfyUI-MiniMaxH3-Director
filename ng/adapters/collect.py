@@ -12,6 +12,7 @@ from fractions import Fraction
 
 import av
 import torch
+from av.video.reformatter import ColorPrimaries, ColorRange, ColorTrc, Colorspace
 
 from ..core import pin
 from ..core.issues import Issue
@@ -19,6 +20,21 @@ from ..core.limits import AUDIO_HZ, FPS
 from . import latents
 
 VAE_CLIP_STEPS, VAE_CLIP_FRAMES = 5, 17
+
+
+def _bt709(target):
+    """Tag a stream or frame as BT.709, the matrix every browser and player assumes for HD video. Untagged BT.601 (PyAV's
+    default) showed green 160 as 143 in the browser (color_test.py, 2026-10-20)."""
+    target.colorspace, target.color_primaries = Colorspace.ITU709, ColorPrimaries.BT709
+    target.color_trc, target.color_range = ColorTrc.BT709, ColorRange.MPEG
+
+
+def video_frame(image):
+    """One picture (H, W, 3 in 0..1) as a BT.709 yuv420p frame."""
+    frame = av.VideoFrame.from_ndarray((image * 255).clamp(0, 255).byte().cpu().numpy(), format="rgb24")
+    frame = frame.reformat(format="yuv420p", dst_colorspace=Colorspace.ITU709, dst_color_range=ColorRange.MPEG)
+    _bt709(frame)
+    return frame
 
 
 def _pad_to(wave, samples):
@@ -125,10 +141,10 @@ def write_video(path, chunk_latents, plan, decode_video, decode_audio, crf=17, *
                 video_stream.width, video_stream.height = frames.shape[2], frames.shape[1]
                 video_stream.pix_fmt = "yuv420p"
                 video_stream.options = {"crf": str(crf)}
+                _bt709(video_stream.codec_context)
                 audio_stream = output.add_stream("aac", rate=rate, layout=layout)
             for image in frames:
-                frame = av.VideoFrame.from_ndarray((image * 255).clamp(0, 255).byte().cpu().numpy(), format="rgb24")
-                output.mux(video_stream.encode(frame.reformat(format="yuv420p")))
+                output.mux(video_stream.encode(video_frame(image)))
             sound = av.AudioFrame.from_ndarray(wave[0].float().cpu().contiguous().numpy(), format="fltp", layout=layout)
             sound.sample_rate, sound.pts = rate, sample
             sample += wave.shape[-1]
