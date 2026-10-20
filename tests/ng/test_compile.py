@@ -171,7 +171,8 @@ class AgainstLegacy(unittest.TestCase):
                   "subjects": [{"images": [{"name": "refs/alice.png"}], "description": "a young woman in a red coat", "shortName": "Alice",
                                 "kind": "person", "retention": "fully_preserved", "retentionNote": "",
                                 "voice": {"audioFile": "refs/alice.wav", "fileName": "AliceVoice"}}],
-                  "subjectSlotCount": 1, "audioSegments": [], "overall_soundscape": "", "non_diegetic_music": ""}
+                  "subjectSlotCount": 1, "audioSegments": [], "overall_soundscape": "", "non_diegetic_music": "",
+                  "summary": "@ref1 walks in."}         # NG writes the part's first sentence as its summary (2026-10-20)
         want = plan_mod.plan_timeline(legacy, 0, plan.chunks[0].sampled_frames, 24.0, use_custom_audio=True)
         self.assertEqual(out[0].prompt, want["prompt"])
 

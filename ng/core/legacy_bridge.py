@@ -382,6 +382,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
              "segments": segments, "subjects": [_slot(group.root, voices, group.images) for group in groups] if ref_on else [],
              "subjectSlotCount": max(len(subjects), 1), "audioSegments": _audio_segments(context, chunk, voices),
              "motionSegments": _motion_segments(context) if ref_on else [], "overall_soundscape": context.soundscape, "opening_in_shot": True,
+             "summary": shot_share.summary_sentence([s["prompt"] for s in texts], CONTINUE_SCENE, plan.DIALOGUE_RE) if ref_on else "",
              "non_diegetic_music": context.music}
     by_source = {}
     for item in context.items:

@@ -154,7 +154,7 @@ def lines_here(shot, chunk):
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 _CAMERA_MOVE = re.compile(r"\bcamera\b.*\b(push|pull|dolly|dollies|zoom|pan|tilt|orbit|track|crane|move|moving|rise|rising|"
                           r"lower|circle|circling|drift|approach|follow|sweep|swing|arc)", re.IGNORECASE)
-KEEP_FRAMING = "The camera keeps the framing of the preceding video."
+KEEP_FRAMING = "The camera holds a static shot, keeping the framing of the preceding video."
 
 
 def without_camera_moves(text, dialogue):
@@ -170,3 +170,18 @@ def without_camera_moves(text, dialogue):
     if not any(_CAMERA.search(s.strip()) for n in prose for s in _SENTENCE.split(lines[n])):
         lines[prose[-1]] = (lines[prose[-1]].rstrip() + " " + KEEP_FRAMING).strip()
     return "\n".join(lines)
+
+
+def summary_sentence(texts, continued, dialogue):
+    """A summary for a References part without the AI: the first sentence of what it shows. The guide's summary had only
+    the task type ("[reference generation]"); a sentence of the part's own action is what the AI writer is asked for too.
+    `continued` is the lead-in a continued shot starts with; it, camera sentences and spoken lines (`dialogue`) are skipped."""
+    for text in texts:
+        for line in text.splitlines():
+            line = line.replace(continued.strip(), "").strip()
+            if not line or dialogue.match(line) or "<d>" in line or line == HEAD_ONLY:
+                continue
+            for sentence in _SENTENCE.split(line):
+                if sentence and not _CAMERA.search(sentence) and not sentence.startswith("At ") and sentence[-1:] in ".!?":
+                    return sentence[:1].upper() + sentence[1:]
+    return ""
