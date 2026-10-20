@@ -107,6 +107,14 @@ def _extra_rules(head, reference, guidance, pictures):
     return rules
 
 
+# H3 community findings, checked against our parts (comparison 2026-10-20): a still pose froze the face, a push-in that ran
+# over a seam was pushed again by the next part, and these skin words gave oily, retouched faces. An effect is the user's.
+CRAFT = ("Write movement and expression as a change from one state to another (for example easing out of a smile into a "
+         "searching look); never call a figure completely still. A camera move starts and ends inside this part: no push-in, "
+         "pull-out or arc that would go on past its end. Never describe skin as flawless, glowing, shimmering or wet. Keep every "
+         "embedding:... word of the draft exactly as written, after the same sentence: it is an effect the user chose.")
+
+
 def request(compiled, mode, seconds, story="", figures="", continues=False, part=(1, 1), guidance="", pictures=()):
     """The user turn for the writer: rules, the compiled draft, and the story and figures as material for detail only.
 
@@ -141,12 +149,7 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
         "overall_soundscape: one to three English sentences of ambience and physical sounds; no speech, no singing.",
         "non_diegetic_music: the score only the audience hears (instruments, tempo, dynamics), or N/A.",
         "The story and the figures below are material for detail only; they never change times, cuts or words.",
-        # H3 community findings, checked against our parts (comparison 2026-10-20): a still pose froze the face, a push-in
-        # that ran over a seam was pushed again by the next part, and these skin words gave oily, retouched faces.
-        "Write movement and expression as a change from one state to another (for example easing out of a smile into a "
-        "searching look); never call a figure completely still. A camera move starts and ends inside this part: no push-in, "
-        "pull-out or arc that would go on past its end. Never describe skin as flawless, glowing, shimmering or wet. Keep every "
-        "embedding:... word of the draft exactly as written, after the same sentence: it is an effect the user chose.",
+        CRAFT,
     ]
     if BEAT_RE.search(body):
         # shot_share.py gives a part the time beats of its own share of a shot; dropped, the part plays the whole action again
