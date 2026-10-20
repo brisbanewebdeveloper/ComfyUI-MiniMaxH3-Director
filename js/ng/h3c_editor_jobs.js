@@ -16,6 +16,15 @@ export const SHEET_PROMPT = "<Picture 1> A turnaround of the character from Pict
   + "full body: front view at 0 seconds, their left side at 1 second, their back at 2 seconds, their right side at 3 seconds, a "
   + "three-quarter front view at 4 seconds, then it stops on the face in a close-up at 5 seconds. Even soft studio light. Silence.";
 
+// A place sheet (2026-10-21, tavern test): REF2VA keeps the room frozen and empty while the camera turns once on the spot in
+// 10 s and ends where it began; these frames are six views around the room, laid out as two rows of three.
+export const PLACE_FRAMES = [2, 40, 80, 120, 160, 200];
+export const PLACE_PROMPT = "<Picture 1> The place from Picture 1, completely empty and frozen in time: nothing moves, no people. The same "
+  + "room, furniture, materials and light as in Picture 1. The camera stands still in the middle of the place at eye height and pans "
+  + "right in one slow, even full circle, showing each side in turn, and ends where it began. Silence.";
+const SHEETS = { figure: { prompt: SHEET_PROMPT, width: 704, height: 1216, length: 124, frames: SHEET_FRAMES, perRow: 6, name: "sheet" },
+  place: { prompt: PLACE_PROMPT, width: 1280, height: 704, length: 243, frames: PLACE_FRAMES, perRow: 3, name: "place_sheet" } };
+
 export function maskGraph(image, prompt, checkpoint, prefix) {
   return {
     load: node("LoadImage", { image }), sam: node("CheckpointLoaderSimple", { ckpt_name: checkpoint }),
@@ -77,9 +86,10 @@ export function connectedH3(card) {
   return { model, clip, vae, ref2va: Boolean(ref2va) };
 }
 
-// One H3 run circling the figure, six frames side by side. With the official ref2v turbo LoRA installed: 6 steps (~4 min at
-// 704x1216 on a 16 GB card), without it 20.
-export async function sheetGraph(api, image, files, prefix) {
+// One H3 run circling the figure (or turning in the place), six frames side by side. With the official ref2v turbo LoRA
+// installed: 6 steps (~4 min at 704x1216 on a 16 GB card; a place ~9 min), without it 20.
+export async function sheetGraph(api, image, files, prefix, kind = "figure") {
+  const sheet = SHEETS[kind];
   const loras = await comboOptions(api, "LoraLoaderModelOnly", "lora_name");
   const turbo = files.ref2va ? loras.find((name) => /ref2v_turbo/i.test(name)) : null;
   const graph = {
@@ -87,7 +97,7 @@ export async function sheetGraph(api, image, files, prefix) {
     clip: node("CLIPLoader", { clip_name: files.clip, type: "minimax", device: "default" }),
     vae: node("VAELoader", { vae_name: files.vae }),
     load: node("LoadImage", { image }),
-    cond: node("MiniMaxH3ReferenceToVideo", { clip: ["clip", 0], vae: ["vae", 0], prompt: SHEET_PROMPT, width: 704, height: 1216, length: 124,
+    cond: node("MiniMaxH3ReferenceToVideo", { clip: ["clip", 0], vae: ["vae", 0], prompt: sheet.prompt, width: sheet.width, height: sheet.height, length: sheet.length,
       ref_image_size: "match", "ref_images.ref_image_0": ["load", 0] }),
     noise: node("RandomNoise", { noise_seed: Math.floor(Math.random() * 2 ** 32) }),
     sampler: node("KSamplerSelect", { sampler_name: "res_multistep" }),
@@ -99,14 +109,20 @@ export async function sheetGraph(api, image, files, prefix) {
   graph.sigmas = node("BasicScheduler", { model, scheduler: "simple", steps: turbo ? 6 : 20, denoise: 1.0 });
   graph.sample = node("SamplerCustomAdvanced", { noise: ["noise", 0], guider: ["guider", 0], sampler: ["sampler", 0], sigmas: ["sigmas", 0],
     latent_image: ["cond", 1] });
-  let row = null;
-  SHEET_FRAMES.forEach((frame, index) => {
+  const stitch = (key, first, second, direction) => {
+    graph[key] = node("ImageStitch", { image1: first, image2: second, direction, match_image_size: true, spacing_width: 8, spacing_color: "white" });
+    return [key, 0];
+  };
+  let sheetImage = null, row = null;
+  sheet.frames.forEach((frame, index) => {
     graph[`v${index}`] = node("ImageFromBatch", { image: ["decode", 0], batch_index: frame, length: 1 });
-    if (row) graph[`s${index}`] = node("ImageStitch", { image1: row, image2: [`v${index}`, 0], direction: "right", match_image_size: true,
-      spacing_width: 8, spacing_color: "white" });
-    row = row ? [`s${index}`, 0] : [`v${index}`, 0];
+    row = row ? stitch(`s${index}`, row, [`v${index}`, 0], "right") : [`v${index}`, 0];
+    if ((index + 1) % sheet.perRow === 0 || index === sheet.frames.length - 1) {
+      sheetImage = sheetImage ? stitch(`r${index}`, sheetImage, row, "down") : row;
+      row = null;
+    }
   });
-  graph.save = node("SaveImage", { images: row, filename_prefix: `${FOLDER}/${prefix}_sheet` });
+  graph.save = node("SaveImage", { images: sheetImage, filename_prefix: `${FOLDER}/${prefix}_${sheet.name}` });
   return graph;
 }
 

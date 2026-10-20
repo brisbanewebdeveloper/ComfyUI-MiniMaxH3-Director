@@ -52,6 +52,14 @@ assert.equal(sheet.save.inputs.filename_prefix, "h3-picture-edit/p_sheet");
 const noTurbo = { fetchApi: async () => ({ json: async () => ({ LoraLoaderModelOnly: { input: { required: { lora_name: [["other.safetensors"]] } } } }) }) };
 const plain = await jobs.sheetGraph(noTurbo, "luna.png", jobs.connectedH3(graphWith()), "p");
 assert.equal(plain.lora, undefined); assert.equal(plain.sigmas.inputs.steps, 20);
+// The place sheet: the room turning once (10 s, landscape), six views in two rows of three.
+const place = await jobs.sheetGraph(api, "tavern.png", jobs.connectedH3(graphWith()), "p", "place");
+assert.deepEqual([place.cond.inputs.width, place.cond.inputs.height, place.cond.inputs.length], [1280, 704, 243]);
+assert.deepEqual(Object.values(place).filter((n) => n.class_type === "ImageFromBatch").map((n) => n.inputs.batch_index), jobs.PLACE_FRAMES);
+assert.deepEqual(Object.values(place).filter((n) => n.class_type === "ImageStitch").map((n) => n.inputs.direction).sort(),
+  ["down", "right", "right", "right", "right"]);
+assert.equal(place.save.inputs.filename_prefix, "h3-picture-edit/p_place_sheet");
+assert.match(place.cond.inputs.prompt, /frozen/);
 
 // SAM on a picture, and a pose picture: the card's own file in, one picture saved under h3-picture-edit.
 const mask = jobs.maskGraph("room.png", "mug", "sam3.1.safetensors", "q");

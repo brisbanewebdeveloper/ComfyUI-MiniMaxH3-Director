@@ -103,7 +103,7 @@ export function openPictureEditor(card, api, done) {
     try { await run(); } catch (error) { say(error.message); } finally { E.busy = ""; render(); }
   }
 
-  const tabs = () => h("div", { class: "h3e-tabs" }, [["mask", "Mask"], ["structure", "Structure"], ["sheet", "Character sheet"]].map(([key, text]) =>
+  const tabs = () => h("div", { class: "h3e-tabs" }, [["mask", "Mask"], ["structure", "Structure"], ["sheet", "Sheet"]].map(([key, text]) =>
     h("button", { class: E.tab === key ? "h3c-btn on" : "h3c-btn", onclick: () => { E.tab = key; E.result = null; render(); } }, text)));
   function maskTools() {
     const find = h("input", { class: "h3c-in", value: E.find, placeholder: "What to change, e.g. mug, person, sky", "aria-label": "Find with SAM 3.1",
@@ -149,14 +149,19 @@ export function openPictureEditor(card, api, done) {
     ...resultTools(E.kind, chosen[2], `${own} ${chosen[1].split(" ")[0].toLowerCase()}`, chosen[3])];
   }
   function sheetTools() {
-    const own = values(card).name || "Figure";
-    return [h("span", { class: "h3c-hint" }, "H3 circles this figure once and keeps six views: front, left, back, right, three-quarter and the face. "
+    const own = values(card).name || "Figure", place = E.sheetKind === "place";
+    return [h("div", { class: "h3c-row" }, [["figure", "Figure"], ["place", "Place"]].map(([key, text]) => h("button", {
+      class: (E.sheetKind || "figure") === key ? "h3c-btn on" : "h3c-btn", onclick: () => { E.sheetKind = key; E.result = null; render(); } }, text))),
+    h("span", { class: "h3c-hint" }, place ? "H3 turns once in this place, frozen and empty, and keeps six views all around. About 9 minutes "
+      + "with the ref2v turbo LoRA." : "H3 circles this figure once and keeps six views: front, left, back, right, three-quarter and the face. "
       + "About 4 minutes with the ref2v turbo LoRA; uses the H3 models of the Context Connector."),
     h("button", { class: "h3c-btn ai", disabled: Boolean(E.busy), onclick: () => job("sheet", async () => {
       const files = connectedH3(card);
-      E.result = await runPictureJob(api, await sheetGraph(api, source, files, globalThis.crypto.randomUUID()), "sheet", 3600); say("");
-    }) }, E.busy === "sheet" ? "Making the sheet …" : "Make character sheet"),
-    ...resultTools("sheet", "character", `${own} sheet`, `Character sheet of ${own}: front, sides, back and face.`)];
+      E.result = await runPictureJob(api, await sheetGraph(api, source, files, globalThis.crypto.randomUUID(), place ? "place" : "figure"), "sheet", 3600);
+      say("");
+    }) }, E.busy === "sheet" ? "Making the sheet …" : place ? "Make place sheet" : "Make character sheet"),
+    ...(place ? resultTools("sheet", "location", `${own} views`, `Views all around ${own}, the same place from six sides.`)
+      : resultTools("sheet", "character", `${own} sheet`, `Character sheet of ${own}: front, sides, back and face.`))];
   }
   function render() {
     const tools = E.tab === "mask" ? maskTools() : E.tab === "structure" ? structureTools() : sheetTools();
