@@ -13,9 +13,10 @@ STEP = limits.GRID_STEP
 
 
 def _candidates(boundary, shot_start):
-    """Boundary shifts that fix a shot starting `shot_start - boundary` frames after it: earlier, or later, in whole steps."""
+    """Boundary shifts that fix a shot starting `shot_start - boundary` frames after it: earlier, or later, in whole steps.
+    Either way the shot gets the held stretch's 2.5 s: after the new edge, or before it in the part that shows the cut."""
     earlier = -(-(boundary - (shot_start - limits.LATE_CHANGE_FRAMES)) // STEP) * STEP
-    later = -(-((shot_start + END_LEAD) - boundary) // STEP) * STEP
+    later = -(-((shot_start + limits.LATE_CHANGE_FRAMES) - boundary) // STEP) * STEP
     return sorted((-earlier, later), key=abs)
 
 

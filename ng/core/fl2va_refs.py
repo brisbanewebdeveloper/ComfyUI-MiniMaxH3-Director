@@ -29,13 +29,14 @@ def reference_items(context, refs):
 
 
 def opening_pictures(context, chunk, refs):
-    """The First frame pictures of the shots this part continues, when the part shows none of them as a frame."""
-    if chunk is None or any(ref.kind == "first_frame" for ref in refs):
+    """The First frame pictures of the shots this part continues, when the part has no frame picture of its own (a part
+    ending on a Last frame or Keyframe picture has its look there)."""
+    if chunk is None or any(ref.kind in ("first_frame", "last_frame", "keyframe") for ref in refs):
         return []
     out = []
     for shot in chunk.shots:
-        if not shot.carried:
-            continue
+        if not shot.carried or shot.local_end_f <= chunk.head_frames:
+            continue                    # a shot that ended in the pinned head is over
         for binding in shot.media:
             item = context.item(binding.context_id)
             roles = (binding.role,) if binding.role in FRAME_ROLES else item.effective_usage if item else ()

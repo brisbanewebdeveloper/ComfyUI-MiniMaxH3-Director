@@ -78,11 +78,12 @@ class Share(unittest.TestCase):
 
 
 class Compiled(unittest.TestCase):
-    def plan(self, records, seconds, part_seconds, mode="ref2va"):
+    def plan(self, records, seconds, part_seconds, mode="ref2va", whole=False):
         document = json.dumps({"format": "h3-director-shots", "schema_version": 1, "shots": records})
         items = (ctx.ContextItem("hero", "Hero", "image", "hero.png", usage=("reference",)),)
-        return project.plan_project(ctx.DirectorContext(shots_text=document, items=items, project_seconds=seconds, mode=mode),
-                                    part_seconds, chunks.ContinuityPlan("video_audio")).compiled
+        result = project.plan_project(ctx.DirectorContext(shots_text=document, items=items, project_seconds=seconds, mode=mode),
+                                      part_seconds, chunks.ContinuityPlan("video_audio"))
+        return result if whole else result.compiled
 
     def test_a_long_shot_is_not_played_again_in_its_second_part(self):
         compiled = self.plan([{"id": "s", "start": 0, "end": 20, "text": WALK.replace("Aurelia", "@Hero"), "media": []}], 20, 10)
@@ -95,11 +96,12 @@ class Compiled(unittest.TestCase):
         # 6 shots of 5 s in 10 s parts: the head of part 2 still holds the end of shot 2 (the user's 30 s storyboard).
         records = [{"id": "p%d" % n, "start": 5 * (n - 1), "end": 5 * n, "text": "Action number %d happens." % n, "media": []}
                    for n in range(1, 7)]
-        compiled = self.plan(records, 30, 10)
-        for part in compiled[1:]:
+        result = self.plan(records, 30, 10, whole=True)
+        for chunk, part in list(zip(result.plan.chunks, result.compiled))[1:]:
             replayed = [n for n in range(1, 7) if "Action number %d happens." % n in part.prompt]
-            self.assertTrue(all(n * 5 > 10 * part.index for n in replayed), (part.index, replayed))
-        # since 2026-10-20 the part edge moves off a shot start (core/boundaries.py), so here no shot lives in a head only
+            self.assertTrue(all(n * 120 > chunk.story_start_f for n in replayed), (part.index, replayed))
+        # since 2026-10-20 a part edge moves off a shot start (core/boundaries.py: shot 3 began 0.04 s before the edge at
+        # 10.12 s), so in this storyboard no shot lives in a head only any more
         self.assertEqual(share.share("Action. More.", 0, 120, 130, 130, 108), share.HEAD_ONLY)
 
 

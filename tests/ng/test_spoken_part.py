@@ -24,12 +24,14 @@ def plan(second_start):
 
 
 class SpokenPart(unittest.TestCase):
-    def test_a_shot_starting_late_in_a_part_moves_the_part_edge_and_speaks_there(self):
+    def test_a_shot_starting_late_in_a_part_moves_the_part_edge_and_speaks_where_it_starts(self):
         result = plan(7)                     # 7.0 s lay 0.3 s before the edge of a 7.29 s first part
         self.assertEqual(len(result.plan.chunks), 2)
-        self.assertGreaterEqual(result.plan.chunks[0].story_end_f - 7 * 24, 48, "the shot has two seconds in the first part")
-        self.assertIn("bright tonight", result.compiled[0].prompt)
-        self.assertNotIn("bright tonight", result.compiled[1].prompt)
+        offset = 7 * 24 - result.plan.chunks[0].story_end_f
+        self.assertTrue(offset <= -48 or offset >= 60, "the shot starts 2 s before the edge or 2.5 s after it, not at it")
+        speaking = 0 if offset < 0 else 1
+        self.assertIn("bright tonight", result.compiled[speaking].prompt)
+        self.assertNotIn("bright tonight", result.compiled[1 - speaking].prompt)
         self.assertNotIn("has no spoken line", " ".join(i.text for i in result.issues))
 
     def test_a_line_of_a_shot_starting_late_in_a_part_moves_to_the_next(self):
