@@ -11,7 +11,7 @@ from .chunks import Chunk, ContinuityPlan
 from .context import DirectorContext, check_item
 from .issues import Issue
 from .legacy_bridge import build_timeline, decide_mode
-from .shot_share import lines_here
+from .shot_share import effect_tokens, keep_effects, lines_here
 from .media_labels import resolve_media_mentions, resolve_guide_mentions, resolve_lock_mentions, prompt_labels, read_prompt_labels
 from .asset_prompt import apply_asset_relations
 from .shot_bindings import scoped_context
@@ -127,7 +127,7 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
                                 prepend_text=context.prepend_text, prompt_format="minimax")
     refs = _media_refs(result, mapping, context) + list(guides)
     related_prompt, relation_issues = apply_asset_relations(result, mapping, context, refs)
-    prompt = resolve_media_mentions(related_prompt, context, refs)
+    prompt = resolve_media_mentions(effect_tokens(related_prompt), context, refs)
     if mode == "fl2va" and context.prompt_override.strip() == "":
         prompt, refs = add_references(prompt, context, refs, chunk)
     labels = prompt_labels(result, mapping, context, refs)
@@ -150,7 +150,7 @@ def _own_prompt(context, chunk, compiled):
         return compiled, "compiled", ()
     key, text, by = own
     if key == prompt_key(compiled) and text.strip():
-        return text.strip(), by, ()
+        return keep_effects(compiled, text.strip()), by, ()
     return compiled, "compiled", (Issue("part_prompt_outdated", "The plan changed after this part's own prompt was written, so the "
                                         "compiled prompt is used. Rewrite or edit it in Prompts per render part.", "chunk %d" % (chunk.index + 1)),)
 

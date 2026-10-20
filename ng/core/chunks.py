@@ -64,6 +64,7 @@ class ChunkShot:
     locked_fields: tuple = ()
     shot_start_f: int = -1  # the whole shot on the story timeline; -1 = unknown (data from before 2026-10-13)
     shot_end_f: int = -1
+    effect: str = ""
     SCHEMA_VERSION = 1
 
     def to_dict(self):
@@ -71,7 +72,7 @@ class ChunkShot:
                 "local_end_f": self.local_end_f, "text": self.text, "carried": self.carried, "continues": self.continues,
                 "shot_id": self.shot_id, "media": [b.to_dict() for b in self.media],
                 "spoken": [s.to_dict() for s in self.spoken], "locked_fields": list(self.locked_fields),
-                "shot_start_f": self.shot_start_f, "shot_end_f": self.shot_end_f}
+                "shot_start_f": self.shot_start_f, "shot_end_f": self.shot_end_f, "effect": self.effect}
 
     @classmethod
     def from_dict(cls, data, path="chunk_shot"):
@@ -84,7 +85,8 @@ class ChunkShot:
                    media=tuple(MediaBinding.from_dict(b) for b in fields.read_list(data, "media", path)),
                    spoken=tuple(SpokenLine.from_dict(s) for s in fields.read_list(data, "spoken", path)),
                    locked_fields=fields.read_texts(data, "locked_fields", path),
-                   shot_start_f=int(data.get("shot_start_f", -1)), shot_end_f=int(data.get("shot_end_f", -1)))
+                   shot_start_f=int(data.get("shot_start_f", -1)), shot_end_f=int(data.get("shot_end_f", -1)),
+                   effect=str(data.get("effect", "")))
 
 
 @dataclass(frozen=True)
@@ -205,7 +207,7 @@ def _shots_for_chunk(shots, story_start, story_end, head, external=False):
                              local_end_f=min(shot.end_f, story_end) - sample_start, text=shot.text,
                              carried=shot.start_f < story_start, continues=shot.end_f > story_end,
                              shot_id=shot.id, media=shot.media, spoken=shot.spoken, locked_fields=shot.locked_fields,
-                             shot_start_f=shot.start_f, shot_end_f=shot.end_f))
+                             shot_start_f=shot.start_f, shot_end_f=shot.end_f, effect=shot.effect))
     return tuple(out)
 
 

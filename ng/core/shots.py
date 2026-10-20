@@ -30,6 +30,7 @@ class Shot:
     media: tuple = ()
     spoken: tuple = ()
     locked_fields: tuple = ()
+    effect: str = ""            # an effect embedding added to the shot's text where it starts (shot_document.effect_name)
 
     @property
     def frames(self):

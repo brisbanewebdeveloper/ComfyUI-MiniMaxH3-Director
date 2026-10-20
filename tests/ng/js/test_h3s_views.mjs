@@ -121,6 +121,15 @@ function recorder() {
   assert.ok(panel.innerText.includes("In: Render part 1, Render part 2"));
   assert.ok(panel.innerText.includes("Mage"));
   assert.equal(panel.button("AI: improve text").disabled, true, "no AI suggestion without a loader");
+  // Effect: the official embeddings found on the server; none found and none chosen, no field
+  const effectOf = (node) => node.byTag("select").find((one) => one.getAttribute("aria-label") === "Effect of this shot");
+  assert.equal(effectOf(panel), undefined);
+  let [, fx] = sideView({ ...state({ selected: { kind: "shot", id: "a" } }), effects: ["minimaxh3_bullet_time"] }, actions);
+  assert.deepEqual(effectOf(fx).children.map((option) => option.innerText), ["None", "Bullet time"]);
+  effectOf(fx).onchange({ target: { value: "minimaxh3_bullet_time" } });
+  assert.deepEqual(calls.at(-1), ["setShot", "a", { effect: "minimaxh3_bullet_time" }]);
+  effectOf(fx).onchange({ target: { value: "" } });
+  assert.deepEqual(calls.at(-1), ["setShot", "a", { effect: undefined }]);
   // "Place like Shot N" (core/places.py): only a later shot offers it, and only earlier shots as its source.
   const placeOf = (node) => node.byTag("select").find((one) => one.getAttribute("aria-label") === "Place of this shot");
   assert.equal(placeOf(panel), undefined, "the first shot has no earlier place");
@@ -128,7 +137,7 @@ function recorder() {
   const place = placeOf(panel);
   assert.deepEqual(place.children.map((option) => option.innerText), ["Its own place", "Like Shot 1"]);
   place.onchange({ target: { value: "a" } });
-  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_from: "a" }]);
+  assert.deepEqual(calls.at(-1), ["setShot", "b", { place_from: "a" }]);
   assert.equal(panel.byTag("select").find((one) => one.getAttribute("aria-label") === "Place picture of this shot"), undefined,
     "no picture choice before a place is chosen");
   const placed = state({ selected: { kind: "shot", id: "b" } });
@@ -138,15 +147,15 @@ function recorder() {
   assert.deepEqual(kind.children.map((option) => option.innerText), ["Without people", "As rendered (1 s in)", "From another view …"]);
   assert.equal(panel.byTag("input").some((one) => one.getAttribute("aria-label") === "Camera of the place picture"), false);
   kind.onchange({ target: { value: "view" } });
-  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_picture: "view" }]);
+  assert.deepEqual(calls.at(-1), ["setShot", "b", { place_picture: "view" }]);
   kind.onchange({ target: { value: "clean" } });
-  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_picture: undefined }], "the default is not stored");
+  assert.deepEqual(calls.at(-1), ["setShot", "b", { place_picture: undefined }], "the default is not stored");
   placed.shots = placed.shots.map((one) => one.id === "b" ? { ...one, place_picture: "view", place_view: "from the door" } : one);
   [, panel] = sideView(placed, actions);
   const camera = panel.byTag("input").find((one) => one.getAttribute("aria-label") === "Camera of the place picture");
   assert.equal(camera.value, "from the door");
   camera.oninput({ target: { value: "from the bar" } });
-  assert.deepEqual(calls.at(-1), ["setPlace", "b", { place_view: "from the bar" }, false]);
+  assert.deepEqual(calls.at(-1), ["setShot", "b", { place_view: "from the bar" }, false]);
   const gone = state({ selected: { kind: "shot", id: "b" } });
   gone.shots = gone.shots.map((one) => one.id === "b" ? { ...one, place_from: "deleted" } : one);
   [, panel] = sideView(gone, actions);

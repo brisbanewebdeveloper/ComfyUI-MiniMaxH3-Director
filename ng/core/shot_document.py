@@ -4,6 +4,7 @@ IDs identify story units, never their current array index or chunk position. Dra
 and locks are editing metadata; only active text, media and spoken lines compile.
 """
 import json
+import re
 from dataclasses import dataclass
 
 from . import fields
@@ -170,6 +171,15 @@ def read_document(text):
     return records
 
 
+_EFFECT = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
+
+
+def effect_name(value):
+    """A shot's effect embedding as the prompt names it ("minimaxh3_bullet_time"); "" for none or an unusable name."""
+    name = str(value or "").strip().removeprefix("embedding:").removesuffix(".safetensors")
+    return name if _EFFECT.match(name) else ""
+
+
 def metadata(record, path="shot"):
     media = tuple(MediaBinding.from_dict(b, "%s.media[%d]" % (path, i))
                   for i, b in enumerate(fields.read_list(record, "media", path)))
@@ -178,7 +188,7 @@ def metadata(record, path="shot"):
     locks = fields.read_texts(record, "locked_fields", path)
     if any(value not in LOCK_FIELDS for value in locks):
         raise SchemaError(path + ".locked_fields", "expected timing, text, media or spoken")
-    return {"id": record["id"], "media": media, "spoken": spoken, "locked_fields": locks}
+    return {"id": record["id"], "media": media, "spoken": spoken, "locked_fields": locks, "effect": effect_name(record.get("effect"))}
 
 
 def bound_media_ids(text):

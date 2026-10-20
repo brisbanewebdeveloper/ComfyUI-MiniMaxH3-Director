@@ -115,14 +115,31 @@ function placeField(S, actions, shot) {
   const kind = shot.place_picture || "clean";
   return h("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
     h("div", { class: "h3s-row" }, h("span", { class: "h3s-lbl" }, "Place"), tip(PLACE_HINT)),
-    select(options, shot.place_from || "", (value) => actions.setPlace(shot.id, { place_from: value || undefined }), { "aria-label": "Place of this shot" }),
+    select(options, shot.place_from || "", (value) => actions.setShot(shot.id, { place_from: value || undefined }), { "aria-label": "Place of this shot" }),
     lost ? h("span", { class: "h3s-warn", style: { fontSize: "12px" } }, "That shot is gone or no longer comes first; choose another or Its own place.") : null,
     shot.place_from ? h("div", { class: "h3s-row" }, h("span", { class: "h3s-lbl" }, "Picture"), tip(PICTURE_HINT)) : null,
-    shot.place_from ? select(PLACE_PICTURES, kind, (value) => actions.setPlace(shot.id, { place_picture: value === "clean" ? undefined : value }),
+    shot.place_from ? select(PLACE_PICTURES, kind, (value) => actions.setShot(shot.id, { place_picture: value === "clean" ? undefined : value }),
       { "aria-label": "Place picture of this shot" }) : null,
     shot.place_from && kind === "view" ? h("input", { class: "h3s-in", type: "text", value: shot.place_view || "",
       placeholder: "Camera, e.g. from the bar toward the door", "aria-label": "Camera of the place picture",
-      oninput: (event) => actions.setPlace(shot.id, { place_view: event.target.value }, false) }) : null);
+      oninput: (event) => actions.setShot(shot.id, { place_view: event.target.value }, false) }) : null);
+}
+
+// The official H3 effect embeddings found in models/embeddings (minimaxh3_*). Measured 2026-10-20 (M12): an effect takes
+// over the camera; it is written after the shot's action where the shot starts (core/shot_share.with_effect).
+const EFFECT_HINT = "An official MiniMax H3 effect such as Bullet time. It takes over the camera of this shot, in the render part where the shot starts.";
+export const loadEffects = (api) => api.fetchApi("/embeddings").then((response) => response.json())
+  .then((names) => names.filter((name) => /^minimaxh3_/i.test(name)).sort()).catch(() => []);
+const effectLabel = (name) => name.replace(/^minimaxh3_/i, "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+function effectField(S, actions, shot) {
+  const names = S.effects || [];
+  if (!names.length && !shot.effect) return null;
+  const options = [["", "None"], ...names.map((name) => [name, effectLabel(name)])];
+  if (shot.effect && !names.includes(shot.effect)) options.push([shot.effect, `${effectLabel(shot.effect)} (file missing)`]);
+  return h("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
+    h("div", { class: "h3s-row" }, h("span", { class: "h3s-lbl" }, "Effect"), tip(EFFECT_HINT)),
+    select(options, shot.effect || "", (value) => actions.setShot(shot.id, { effect: value || undefined }), { "aria-label": "Effect of this shot" }));
 }
 
 function shotPanel(S, actions, shot) {
@@ -155,6 +172,7 @@ function shotPanel(S, actions, shot) {
       media.length ? null : h("span", { class: "h3s-muted", style: { fontSize: "13px" } }, "None: a text-only shot. Click Content above or drag it onto the shot."),
       media.map(([binding, entry]) => bindingRow(S, actions, shot, binding, entry))),
     placeField(S, actions, shot),
+    effectField(S, actions, shot),
     h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, h("span", { class: "h3s-lbl" }, "Spoken (optional, used word for word, in this order)"),
       spokenLines(S, actions, shot, showAdd),
       S.values.mode === "fl2va" ? h("span", { class: "h3s-lbl" }, "First / last frame mode does not use voice references. Reference pictures still guide appearance; "

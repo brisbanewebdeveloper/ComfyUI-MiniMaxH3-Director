@@ -185,3 +185,36 @@ def summary_sentence(texts, continued, dialogue):
                 if sentence and not _CAMERA.search(sentence) and not sentence.startswith("At ") and sentence[-1:] in ".!?":
                     return sentence[:1].upper() + sentence[1:]
     return ""
+
+
+_EFFECT_MARK = re.compile(r"FXEMBED_([A-Za-z0-9_.-]+?)_FXEND\.?(\s?)")
+
+
+def with_effect(text, effect, dialogue):
+    """The shot's text with its effect embedding after its last sentence of action (as measured: the official embeddings
+    took over the camera, comparison 2026-10-20, M12). Only where the shot starts: a later part would start the effect again.
+    It is written as a mark the legacy compiler leaves alone (it read "embedding:x" as a speaker "embedding" saying "x");
+    effect_tokens() turns the mark into ComfyUI's token after compiling."""
+    if not effect:
+        return text
+    lines = text.splitlines() or [""]
+    prose = [n for n, line in enumerate(lines) if not dialogue.match(line.strip())] or [0]
+    if dialogue.match(lines[0].strip()) and prose == [0]:
+        lines.insert(0, "")
+    lines[prose[-1]] = (lines[prose[-1]].rstrip() + " FXEMBED_%s_FXEND" % effect).strip()
+    return "\n".join(lines)
+
+
+def effect_tokens(prompt):
+    """ComfyUI's token for each effect mark, followed by a space: "embedding:x." would look for a file named "x."."""
+    return _EFFECT_MARK.sub(lambda m: "embedding:%s%s" % (m.group(1), m.group(2) or " "), prompt)
+
+
+def keep_effects(compiled, own):
+    """A part's own prompt (AI or user) with the effect tokens of its compiled prompt: an effect is chosen per shot, not
+    written, so a rewrite that lost one gets it back at the end of the description."""
+    missing = [token for token in re.findall(r"embedding:[A-Za-z0-9_.-]+", compiled) if token not in own]
+    if not missing:
+        return own
+    head, sep, tail = own.partition("\n\noverall_soundscape:")
+    return head.rstrip() + " " + " ".join(missing) + " " + sep + tail if sep else own.rstrip() + " " + " ".join(missing)

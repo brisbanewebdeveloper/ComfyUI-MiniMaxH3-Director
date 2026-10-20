@@ -294,6 +294,8 @@ def _shot_text(shot, substitute, automatic=False, context=None, chunk=None):
         text = "\n".join([shared] + spoken)
     if not shot_share.lines_here(shot, chunk):
         text = "\n".join(line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip()))
+    if not shot.carried:
+        text = shot_share.with_effect(text, shot.effect, plan.DIALOGUE_RE)
     if shot.carried:
         if not automatic:
             text = shot_share.without_camera_moves(text, plan.DIALOGUE_RE)

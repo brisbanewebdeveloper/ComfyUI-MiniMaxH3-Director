@@ -11,7 +11,7 @@ import { timeView } from "./h3s_time.js";
 import { timelineEditor } from "./h3s_edits.js";
 import { bindTimelineKeys } from "./h3s_keys.js";
 import { updateStudioPage } from "./h3s_focus.js";
-import { sideView } from "./h3s_side.js";
+import { sideView, loadEffects } from "./h3s_side.js";
 import { footerView } from "./h3s_footer.js";
 import { settingsView, manualPromptAlert, loadPlaceModels } from "./h3s_settings.js";
 import { drawerView } from "./h3s_prompts.js";
@@ -65,7 +65,7 @@ export function openStudio(node, app, api, host = null) {
   const status = h("span", { class: "h3s-lbl" });
   const progress = attachProgress(node, api, status, () => projectRenderIds(node));
   const ai = studioAI(S, app, api, () => render());
-  profilesLoaded.then(() => { if (!closed) { S.turboProfiles = turboProfiles; render(); } }); loadPlaceModels(api).then((state) => { if (!closed) { S.placeModels = state; render(); } });
+  profilesLoaded.then(() => { if (!closed) { S.turboProfiles = turboProfiles; render(); } }); loadPlaceModels(api).then((state) => { if (!closed) { S.placeModels = state; render(); } }); loadEffects(api).then((names) => { if (!closed) { S.effects = names; render(); } });
 
   let echo = false;
   function write(changes) { echo = true; try { applyValues(node, changes); } finally { echo = false; } }
@@ -216,7 +216,7 @@ export function openStudio(node, app, api, host = null) {
     unassign(shotId, id) {
       patchShot(shotId, { media: S.shots.find((entry) => entry.id === shotId).media.filter((binding) => binding.context_id !== id) });
     },
-    setPlace(shotId, change, rerender = true) { patchShot(shotId, change, rerender); },     // core/places.py
+    setShot(shotId, change, rerender = true) { patchShot(shotId, change, rerender); },     // place (core/places.py), effect
     toggleBinding(id) {
       if (S.byId.get(id)?.usage.includes("control")) { actions.newControl(0, id); return; }
       const shot = S.selected?.kind === "shot" && S.shots.find((entry) => entry.id === S.selected.id);

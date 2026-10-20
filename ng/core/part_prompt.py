@@ -145,7 +145,8 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
         # that ran over a seam was pushed again by the next part, and these skin words gave oily, retouched faces.
         "Write movement and expression as a change from one state to another (for example easing out of a smile into a "
         "searching look); never call a figure completely still. A camera move starts and ends inside this part: no push-in, "
-        "pull-out or arc that would go on past its end. Never describe skin as flawless, glowing, shimmering or wet.",
+        "pull-out or arc that would go on past its end. Never describe skin as flawless, glowing, shimmering or wet. Keep every "
+        "embedding:... word of the draft exactly as written, after the same sentence: it is an effect the user chose.",
     ]
     if BEAT_RE.search(body):
         # shot_share.py gives a part the time beats of its own share of a shot; dropped, the part plays the whole action again
