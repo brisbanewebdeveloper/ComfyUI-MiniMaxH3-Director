@@ -129,7 +129,7 @@ def compile_chunk(context: DirectorContext, chunk: Chunk, continuity: Continuity
     related_prompt, relation_issues = apply_asset_relations(result, mapping, context, refs)
     prompt = resolve_media_mentions(related_prompt, context, refs)
     if mode == "fl2va" and context.prompt_override.strip() == "":
-        prompt, refs = add_references(prompt, context, refs)
+        prompt, refs = add_references(prompt, context, refs, chunk)
     labels = prompt_labels(result, mapping, context, refs)
     prompt, guide_issues = (prompt, ()) if context.prompt_override.strip() else resolve_guide_mentions(prompt, context, refs, labels)
     prompt, lock_issues = (prompt, ()) if context.prompt_override.strip() else resolve_lock_mentions(prompt, context, refs)

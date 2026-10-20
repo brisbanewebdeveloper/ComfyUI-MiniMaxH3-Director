@@ -58,6 +58,8 @@ def _stamp(value):
 
 
 _CAMERA_SENTENCE = re.compile(r"[^.!?]*\bcamera\b[^.!?]*[.!?]", re.IGNORECASE)
+# a sentence about the camera itself ("The camera holds ...", "Meanwhile the handheld camera drifts ..."), not "walks toward the camera"
+_CAMERA = re.compile(r"^(?:[^,]*,\s*)?(?:the\s+)?(?:[\w-]+\s+)?camera\b", re.IGNORECASE)
 _STATIC = re.compile(r"\bholds? a static shot\b", re.IGNORECASE)
 
 
@@ -118,14 +120,19 @@ def share(text, shot_start_f, shot_end_f, new_start_f, new_end_f, local_base_f):
     pieces = [p.strip() for p in _PIECE.split(text.strip()) if p.strip()]
     if len(pieces) < 2:
         return text
-    total, at, kept, best = float(sum(len(p) for p in pieces)), 0.0, [], (0.0, pieces[-1])
-    for piece in pieces:
+    # A camera sentence is how the whole shot is filmed, not one step of it: shared by length, "The camera holds a stable side
+    # view" went to the second part only, and the first pushed in to the face (FL2VA minute 2026-10-20). Every part keeps it;
+    # a continued part then drops its moves (without_camera_moves).
+    actions = [p for p in pieces if not _CAMERA.search(p)] or pieces
+    total, at, kept, best = float(sum(len(p) for p in actions)), 0.0, [], (0.0, actions[-1])
+    for piece in actions:
         start, at = at, at + len(piece) / total
         overlap = min(at, hi) - max(start, lo)
         if overlap > max(eps, MIN_PIECE_SHARE * (at - start)):
             kept.append(piece)
         best = max(best, (overlap, piece), key=lambda entry: entry[0])
-    return " ".join(kept) or best[1]
+    kept = kept or [best[1]]
+    return " ".join(p for p in pieces if p in kept or (p not in actions))
 
 
 SPEAK_MIN_FRAMES = 48       # two seconds: less of a shot at the end of a part is no room for what it says
@@ -142,3 +149,24 @@ def lines_here(shot, chunk):
     if shot.continues:
         return chunk.story_end_f - shot.shot_start_f >= SPEAK_MIN_FRAMES
     return True
+
+
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+_CAMERA_MOVE = re.compile(r"\bcamera\b.*\b(push|pull|dolly|dollies|zoom|pan|tilt|orbit|track|crane|move|moving|rise|rising|"
+                          r"lower|circle|circling|drift|approach|follow|sweep|swing|arc)", re.IGNORECASE)
+KEEP_FRAMING = "The camera keeps the framing of the preceding video."
+
+
+def without_camera_moves(text, dialogue):
+    """A continued shot's text without its camera moves (AUDIT-010: each part read "the camera pushes in" as a new push), and
+    with a camera line when none is left: a continued part without one went on pushing in or cut away by itself (open-h3-ir
+    rule P5 in 8 of 15 parts; FL2VA minute 2026-10-20: push-in to the face, cut at 10.9 s). `dialogue` matches spoken lines."""
+    lines = [" ".join(s for s in _SENTENCE.split(line) if not _CAMERA_MOVE.search(s)) for line in text.splitlines()]
+    prose = [n for n, line in enumerate(lines) if not dialogue.match(line.strip())] or [0]
+    if not lines:
+        lines = [""]                    # the part's whole share was the move: it still says what the camera does
+    elif not prose[0] and dialogue.match(lines[0].strip()):
+        lines.insert(0, "")
+    if not any(_CAMERA.search(s.strip()) for n in prose for s in _SENTENCE.split(lines[n])):
+        lines[prose[-1]] = (lines[prose[-1]].rstrip() + " " + KEEP_FRAMING).strip()
+    return "\n".join(lines)

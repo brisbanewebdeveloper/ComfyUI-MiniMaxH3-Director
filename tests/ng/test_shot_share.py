@@ -99,7 +99,8 @@ class Compiled(unittest.TestCase):
         for part in compiled[1:]:
             replayed = [n for n in range(1, 7) if "Action number %d happens." % n in part.prompt]
             self.assertTrue(all(n * 5 > 10 * part.index for n in replayed), (part.index, replayed))
-        self.assertIn(share.HEAD_ONLY, compiled[1].prompt)
+        # since 2026-10-20 the part edge moves off a shot start (core/boundaries.py), so here no shot lives in a head only
+        self.assertEqual(share.share("Action. More.", 0, 120, 130, 130, 108), share.HEAD_ONLY)
 
 
 if __name__ == "__main__":

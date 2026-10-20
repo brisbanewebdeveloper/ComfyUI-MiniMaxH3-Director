@@ -275,13 +275,6 @@ def _motion_segments(context):
 
 
 CONTINUE_SCENE = "Continue the same scene and action from the preceding video, preserving the subject and setting. "
-_SENTENCE = re.compile(r"(?<=[.!?])\s+")
-_CAMERA_MOVE = re.compile(r"\bcamera\b.*\b(push|pull|dolly|dollies|zoom|pan|tilt|orbit|track|crane|move|moving|rise|rising|"
-                          r"lower|circle|circling|drift|approach|follow|sweep|swing|arc)", re.IGNORECASE)
-
-
-def _without_camera_moves(text):
-    return "\n".join(" ".join(s for s in _SENTENCE.split(line) if not _CAMERA_MOVE.search(s)) for line in text.splitlines())
 
 
 def _shot_text(shot, substitute, automatic=False, context=None, chunk=None):
@@ -303,7 +296,7 @@ def _shot_text(shot, substitute, automatic=False, context=None, chunk=None):
         text = "\n".join(line for line in text.splitlines() if not plan.DIALOGUE_RE.match(line.strip()))
     if shot.carried:
         if not automatic:
-            text = _without_camera_moves(text)
+            text = shot_share.without_camera_moves(text, plan.DIALOGUE_RE)
         if text.strip():
             text = CONTINUE_SCENE + text
     return text
