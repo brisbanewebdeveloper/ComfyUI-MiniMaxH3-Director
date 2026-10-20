@@ -23,6 +23,15 @@ class Align(unittest.TestCase):
         self.assertGreaterEqual(288 - plan.chunks[1].story_start_f, limits.LATE_CHANGE_FRAMES)
         self.assertNotIn("late_change", [i.code for i in plan.issues])
 
+    def test_a_shot_in_a_parts_last_two_seconds_moves_the_boundary(self):
+        # Ref2VA minute 2026-10-20: shot 2 at 20.0 s, part edge at 20.04 s -> H3 cut at 18.38 s and the next part cut again
+        story = parse("0-20: a\n20-40: b", 40)
+        plan = chunks.plan_chunks(960, 240, VIDEO, story)
+        for chunk in plan.chunks[:-1]:
+            offset = 480 - chunk.story_end_f
+            self.assertFalse(-boundaries.END_LEAD < offset < limits.LATE_CHANGE_FRAMES, [c.story_end_f for c in plan.chunks])
+        self.assertEqual(plan.total_frames, chunks.plan_chunks(960, 240, VIDEO).total_frames)
+
     def test_total_length_and_the_grid_do_not_change(self):
         story = parse("0-12: a\n12-24: b\n24-30: c", 30)
         plain = chunks.plan_chunks(720, 240, VIDEO)
