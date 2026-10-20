@@ -2,6 +2,16 @@
 
 ## 1.0.0 (unreleased)
 
+**Minute fixes and comparison findings** (2026-10-20): from a comparison with 19 other H3 projects and two one-minute test
+videos. A shot change in a part's last two seconds moves the part edge (Ref2VA cut twice for one shot change). A part that
+continues a shot opened on its own First frame picture gets that picture as a reference (FL2VA made a different dress after
+a push-in). A shot's camera sentence goes to every part of the shot; a continued part without one holds a static shot. Two
+independent character pictures described alike are flagged ("Same figure twice?", set *Belongs to*). References parts get a
+summary sentence without the AI. NG Collect Video writes tagged BT.709 (colours were off in browsers). The footer shows the
+turbo profile's steps; the gear warns of res_multistep + beta. **Effect** in the shot panel adds an official
+`minimaxh3_*` effect embedding. The AI part writer gets rules for movement, camera moves at seams and skin words.
+README: measured model, VAE and low-VRAM tips.
+
 **Picture editor** (2026-10-20): the brush icon on an Image card opens a window with three tabs. *Mask*: brush, eraser, grow,
 or SAM 3.1 finding what you name; saved as the card's edit mask for Pictures. *Structure*: a Pose, Canny or Depth picture of
 the card, added as a new guide card with one click. *Character sheet*: H3 circles the figure once (REF2VA, ref2v turbo when

@@ -335,6 +335,25 @@ Other quantisations on the repo work too: `*_bf16` (66 GB, best quality),
 `*_int8_convrot` (34 GB), `*_pruned_int8_convrot` (21 GB). The text encoder also comes as
 `_bf16` and `_int8_convrot` if `nvfp4_awq` does not run on your GPU.
 
+### Measured tips (2026-10-20)
+
+Our own A/B renders, same seed and prompt (details in the NG notes):
+
+* **One model for every mode:** the community
+  [hybrid fl2va+ref2va b25-49](https://huggingface.co/smhfacct/Minimax-H3-fl2va-ref2va-hybrid-models) behaved like `fl2va`
+  on text-only parts and kept references well, with people even a bit more natural than `ref2va`. Connect it to both model
+  inputs of the Context Connector (one input is enough); then no part switches models.
+* **People in References mode:** [Singularity v1.3](https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity) gave the most
+  natural skin; the official `ref2va` stays the most faithful to the reference picture.
+* **Video VAE:** [`minimax_h3_video_vae_int8_convrot`](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_int8_convrot.safetensors)
+  decodes the same picture (PSNR 39.7 dB against fp16) 12 % faster with half the memory.
+* **Little VRAM:** use 5 s render parts (gear → Render part), the int8 video VAE and a `pruned_int8` or `w4a8` model.
+  The Director already renders in parts, so a block swap is not needed.
+* **Effects:** the official [effect embeddings](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/embeddings)
+  (`minimaxh3_*`, into `models/embeddings`) appear as **Effect** in the shot panel. They take over the camera of that shot
+  (bullet time circles and rolls around the figure).
+* **Sampler:** `res_multistep` + `simple` is the tested pair; `res_multistep` + `beta` overexposed. The gear warns.
+
 ### Extra models (optional)
 
 Some NG tools use extra models. Nothing needs them to render a video; without one, its tool says what is missing.
