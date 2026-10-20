@@ -12,6 +12,10 @@ const CONTINUITY = [["video_audio", "Continue picture and sound"], ["video", "Co
 // dpmpp_2m_sde + karras is reported to leave noise (H3 community notes, not measured here).
 const BAD_PAIRS = { "res_multistep|beta": "res_multistep with beta overexposes and oversharpens H3 (measured). Use simple.",
   "dpmpp_2m_sde|karras": "dpmpp_2m_sde with karras is reported to leave noise in H3. res_multistep + simple is the tested pair." };
+// Spectrum is the user's own install (xmarre/ComfyUI-Spectrum-MiniMax-H3); the switch shows only when ComfyUI knows its node.
+const spectrumInstalled = () => Boolean(globalThis.LiteGraph?.registered_node_types?.SpectrumApplyMiniMaxH3);
+const SPECTRUM_HINT = "Forecasts some sampling steps instead of computing them: about a third faster at 20 steps, same quality "
+  + "in our test. Only with Turbo off.";
 const STYLES = [["None", "No style"], ["Cinematic", "Cinematic"], ["Anime", "Anime"], ["Documentary", "Documentary"], ["Photorealistic", "Photorealistic"]];
 
 function withCurrent(options, value, label) {
@@ -59,6 +63,8 @@ function samplingSection(S, actions) {
     field("Scheduler", select(scheduler, v.scheduler, set("scheduler"))),
     BAD_PAIRS[`${v.sampler_name}|${v.scheduler}`] ? h("span", { class: "h3s-warn", style: { flex: "1 1 260px", fontSize: "13px" } },
       BAD_PAIRS[`${v.sampler_name}|${v.scheduler}`]) : null,
+    spectrumInstalled() || v.spectrum ? switchRow(v.spectrum === true, `Spectrum ${v.spectrum ? "on" : "off"}${v.turbo ? " (Turbo is on: not used)" : ""}`,
+      SPECTRUM_HINT, () => actions.setWidget("spectrum", v.spectrum !== true)) : null,
     field("Shift video", number(v.shift_video, set("shift_video"), { step: "0.1", style: { width: "88px" } })),
     field("Shift audio", number(v.shift_audio, set("shift_audio"), { step: "0.1", style: { width: "88px" } })));
 }

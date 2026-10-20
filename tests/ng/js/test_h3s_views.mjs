@@ -207,7 +207,7 @@ function recorder() {
 
 // Footer and drawer.
 {
-  const { actions } = recorder();
+  const { actions, calls: gearCalls } = recorder();
   const base = state();
   const footer = footerView(state({ values: { width: 0, height: 0 } }), actions);
   assert.equal(footer.byTag("select").find((node) => node.value === "auto")?.value, "auto");
@@ -216,6 +216,14 @@ function recorder() {
   const bad = settingsView({ ...base, values: { ...base.values, scheduler: "beta" }, settingsOpen: true }, actions);
   assert.ok(bad.innerText.includes("overexposes"), bad.innerText);
   assert.ok(!settingsView({ ...base, settingsOpen: true }, actions).innerText.includes("overexposes"));
+  // Spectrum: a switch only when its pack is installed
+  assert.ok(!settingsView({ ...base, settingsOpen: true }, actions).innerText.includes("Spectrum"));
+  globalThis.LiteGraph = { registered_node_types: { SpectrumApplyMiniMaxH3: {} } };
+  const spec = settingsView({ ...base, settingsOpen: true }, actions);
+  assert.ok(spec.innerText.includes("Spectrum off"), spec.innerText);
+  spec.button("Spectrum off").onclick();
+  assert.deepEqual(gearCalls.at(-1), ["setWidget", "spectrum", true]);
+  delete globalThis.LiteGraph;
   // Turbo: the steps of the parts' own LoRA profile, not the widget's 4 (Ref2VA parts here: ref.safetensors -> 6)
   assert.ok(footerView(base, actions).innerText.includes("Ref2VA · 20 steps"));
   const turbo = footerView({ ...base, values: { ...base.values, turbo: true, steps: 4, turbo_lora_ref2va: "ref.safetensors" },

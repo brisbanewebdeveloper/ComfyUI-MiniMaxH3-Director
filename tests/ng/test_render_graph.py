@@ -68,6 +68,20 @@ class RenderGraph(unittest.TestCase):
             self.assertEqual("NGResumeChunk" in types_, kept, extra)
             self.assertEqual("resume_settings" in collect["inputs"], deleted, extra)
 
+    def test_spectrum_wraps_the_sampled_model_with_turbo_off_only(self):
+        render_sequence = module("ng.adapters.render_graph").render_sequence
+        inputs = dict(chunks=["plan", 0], clip=["clip", 0], vae=["v", 0], audio_vae=["a", 0], model_fl2va=["fl2va", 0])
+        settings = dict(seed=1, steps=20, sampler_name="res_multistep", scheduler="simple", shift_video=12.0, shift_audio=3.0)
+        for extra, used in (({}, False), ({"spectrum": True}, True), ({"spectrum": True, "turbo": True}, False)):
+            graph = render_sequence(inputs, {**settings, **extra})[0]
+            spectrum = [key for key, node in graph.items() if node["class_type"] == "SpectrumApplyMiniMaxH3"]
+            self.assertEqual(bool(spectrum), used, extra)
+            if used:
+                guider = next(node for node in graph.values() if node["class_type"] == "BasicGuider")
+                self.assertEqual(guider["inputs"]["model"][0], spectrum[0])
+                sampling = next(node for node in graph.values() if node["class_type"] == "NGChunkSampling")
+                self.assertIn('"spectrum": true', sampling["inputs"]["settings"], "a part sampled with Spectrum is not reused without it")
+
     def test_missing_optional_model_is_not_added_as_an_invalid_null_link(self):
         values = self.values()
         del values["model_ref2va"]

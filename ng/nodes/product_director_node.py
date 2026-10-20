@@ -60,7 +60,10 @@ class NGH3Director(io.ComfyNode):
                                  io.String.Input("models", default="", optional=True, advanced=True,
                                                  tooltip="Files the Studio's Models menu chose for place pictures (JSON); empty: the official names."),
                                  io.Combo.Input("output", options=["video", "images"], default="video", optional=True,
-                                                tooltip="Video, or one picture per shot (text to image, or a First frame picture changed as the shot says).")],
+                                                tooltip="Video, or one picture per shot (text to image, or a First frame picture changed as the shot says)."),
+                                 io.Boolean.Input("spectrum", default=False, optional=True, advanced=True,
+                                                  tooltip="With Turbo off: the Spectrum pack forecasts some sampling steps (about a third "
+                                                          "faster at 20 steps). Needs ComfyUI-Spectrum-MiniMax-H3 installed.")],
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])
 
     @classmethod

@@ -47,6 +47,7 @@ class RenderSettings:
     control_end: float = 1.0
     models: str = ""            # {purpose: file} from the Studio's Models menu (adapters/model_files.py)
     output: str = "video"       # video | images: one picture per shot (core/stills.py)
+    spectrum: bool = False      # Spectrum's step forecast on the sampled model, Turbo off only (adapters/render_graph.py)
 
     def values(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}

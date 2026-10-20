@@ -20,7 +20,11 @@ def turbo_models(graph, inputs, settings):
 
 # Everything in the render settings that changes the sampled latent.
 RESUME_SETTINGS = ("output", "seed", "steps", "sampler_name", "scheduler", "shift_video", "shift_audio", "turbo", "turbo_lora_fl2va",
-                   "turbo_lora_ref2va", "ref_image_size", "resize_method", "control_strength", "control_start", "control_end")
+                   "turbo_lora_ref2va", "ref_image_size", "resize_method", "control_strength", "control_start", "control_end", "spectrum")
+# Spectrum (xmarre/ComfyUI-Spectrum-MiniMax-H3, installed by the user) with the values of our A/B: 20 steps took 353 s instead
+# of 526 s at equal quality (comparison 2026-10-20, M11). Not with Turbo: a few-step LoRA leaves no steps to forecast.
+SPECTRUM = dict(enabled=True, blend_weight=0.5, degree=1, ridge_lambda=0.1, window_size=2.0, flex_window=0.75, warmup_steps=1,
+                tail_actual_steps=1, max_history=64, debug=False)
 
 
 def render_sequence(inputs, settings):
@@ -39,6 +43,8 @@ def render_sequence(inputs, settings):
         model = graph.node("NGControlChunk", "control", model=model, chunk=start.out(3), vae=inputs["vae"],
                            model_patch=inputs["model_patch"], strength=settings.get("control_strength", 1.0),
                            start_percent=settings.get("control_start", 0.0), end_percent=settings.get("control_end", 1.0)).out(0)
+    if settings.get("spectrum") and not settings.get("turbo"):
+        model = graph.node("SpectrumApplyMiniMaxH3", "spectrum", model=model, **SPECTRUM).out(0)    # inside the loop: fresh per part
     if inputs.get("preview_vae") is not None or inputs.get("preview"):
         # H3 Render Sequence previews each part with the Context Connector's preview VAE or the installed taeh3 decoder
         preview = graph.node("NGH3Preview", "preview", model=model, max_resolution=768, preview_fps=24.0,
