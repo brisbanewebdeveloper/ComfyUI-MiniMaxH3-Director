@@ -199,9 +199,19 @@ function recorder() {
 // Footer and drawer.
 {
   const { actions } = recorder();
+  const base = state();
   const footer = footerView(state({ values: { width: 0, height: 0 } }), actions);
   assert.equal(footer.byTag("select").find((node) => node.value === "auto")?.value, "auto");
   assert.ok(footer.innerText.includes("1344×768 from picture"));
+  // the gear warns of a sampler pair that spoils H3 pictures (M16: res_multistep + beta overexposed)
+  const bad = settingsView({ ...base, values: { ...base.values, scheduler: "beta" }, settingsOpen: true }, actions);
+  assert.ok(bad.innerText.includes("overexposes"), bad.innerText);
+  assert.ok(!settingsView({ ...base, settingsOpen: true }, actions).innerText.includes("overexposes"));
+  // Turbo: the steps of the parts' own LoRA profile, not the widget's 4 (Ref2VA parts here: ref.safetensors -> 6)
+  assert.ok(footerView(base, actions).innerText.includes("Ref2VA · 20 steps"));
+  const turbo = footerView({ ...base, values: { ...base.values, turbo: true, steps: 4, turbo_lora_ref2va: "ref.safetensors" },
+    turboProfiles: { ref: { steps: 6, sampler_name: "res_multistep", scheduler: "simple" } } }, actions);
+  assert.ok(turbo.innerText.includes("Turbo · 6 steps"), turbo.innerText);
   const drawer = drawerView(state({ promptOpen: true }), actions);
   assert.ok(drawer.innerText.includes("first prompt") && drawer.innerText.includes("second prompt"));
   assert.ok(drawer.innerText.includes("Images 1/9 · Video 0/3 · Audio 0/3"));

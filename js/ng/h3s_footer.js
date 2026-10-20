@@ -1,7 +1,21 @@
 // The fixed bar under the Studio: duration, resolution and the way to the settings.
 import { h, icon, field, select } from "./h3s_dom.js";
-import { DURATIONS, fmt } from "./h3s_model.js";
+import { DURATIONS, fmt, turboProfile } from "./h3s_model.js";
 import { PRESET_GROUPS, PICTURE_TIERS, presetValue, pictureSize, isAuto, nearestAspect } from "./h3s_canvas.js";
+
+// The steps the parts really sample with: with Turbo, each part takes its model's LoRA profile (core/turbo_profiles.py);
+// the footer said "4 steps" while the parts ran with 6 (Ref2VA) or 8 (FL2VA).
+function stepsText(S) {
+  const v = S.values;
+  if (!v.turbo) return `${v.steps} steps`;
+  const models = new Set((S.plan?.chunks || []).map((chunk) => (chunk.mode === "ref2va" ? "ref2va" : "fl2va")));
+  if (!models.size) models.add(v.mode === "ref2va" ? "ref2va" : "fl2va");
+  const steps = [...models].map((model) => {
+    const profile = turboProfile(S.turboProfiles, v[`turbo_lora_${model}`]);
+    return ((v.output === "images" && profile?.still) || (profile?.steps ? profile : null))?.steps ?? v.steps;
+  });
+  return `${[...new Set(steps)].join(" / ")} steps`;
+}
 
 function number(value, onchange, props = {}) {
   return h("input", { class: "h3s-in", type: "number", value, onchange: (event) => onchange(Number(event.target.value)), ...props });
@@ -41,5 +55,5 @@ export function footerView(S, actions) {
       icon("gear"), "Settings"),
     h("span", { class: "h3s-grow" }),
     h("span", { class: "h3s-strong" }, `${fmt(v.project_seconds)} · ${S.shots.length} shot${S.shots.length === 1 ? "" : "s"} · ${parts} render part${parts === 1 ? "" : "s"} · ${size}`),
-    h("span", { class: "h3s-lbl" }, `${v.mode === "fl2va" ? "FL2VA" : v.mode === "ref2va" ? "Ref2VA" : "Auto"}${v.turbo ? " Turbo" : ""} · ${v.steps} steps`)));
+    h("span", { class: "h3s-lbl" }, `${v.mode === "fl2va" ? "FL2VA" : v.mode === "ref2va" ? "Ref2VA" : "Auto"}${v.turbo ? " Turbo" : ""} · ${stepsText(S)}`)));
 }

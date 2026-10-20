@@ -8,6 +8,10 @@ import { controlSettings } from "./h3s_control.js";
 import { PLACE_MODELS, chosenModels, modelState, modelsMenu } from "./ng_models.js";
 
 const CONTINUITY = [["video_audio", "Continue picture and sound"], ["video", "Continue picture only"], ["none", "Hard cuts"]];
+// Sampler + scheduler pairs that spoil H3 pictures: res_multistep + beta overexposed and oversharpened (own A/B, 2026-10-20, M16);
+// dpmpp_2m_sde + karras is reported to leave noise (H3 community notes, not measured here).
+const BAD_PAIRS = { "res_multistep|beta": "res_multistep with beta overexposes and oversharpens H3 (measured). Use simple.",
+  "dpmpp_2m_sde|karras": "dpmpp_2m_sde with karras is reported to leave noise in H3. res_multistep + simple is the tested pair." };
 const STYLES = [["None", "No style"], ["Cinematic", "Cinematic"], ["Anime", "Anime"], ["Documentary", "Documentary"], ["Photorealistic", "Photorealistic"]];
 
 function withCurrent(options, value, label) {
@@ -53,6 +57,8 @@ function samplingSection(S, actions) {
     field("Steps", number(v.steps, (value) => actions.setWidget("steps", Math.max(1, Math.min(100, Math.round(value) || 1))), { min: "1", max: "100", style: { width: "80px" } })),
     field("Sampler", select(sampler, v.sampler_name, set("sampler_name"))),
     field("Scheduler", select(scheduler, v.scheduler, set("scheduler"))),
+    BAD_PAIRS[`${v.sampler_name}|${v.scheduler}`] ? h("span", { class: "h3s-warn", style: { flex: "1 1 260px", fontSize: "13px" } },
+      BAD_PAIRS[`${v.sampler_name}|${v.scheduler}`]) : null,
     field("Shift video", number(v.shift_video, set("shift_video"), { step: "0.1", style: { width: "88px" } })),
     field("Shift audio", number(v.shift_audio, set("shift_audio"), { step: "0.1", style: { width: "88px" } })));
 }
