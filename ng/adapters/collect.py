@@ -20,6 +20,10 @@ from ..core.limits import AUDIO_HZ, FPS
 from . import latents
 
 VAE_CLIP_STEPS, VAE_CLIP_FRAMES = 5, 17
+# Sound at a pinned join is crossfaded over this long, from the earlier part into the later part's own take of the same
+# moment (its head). Butted together, the waves jumped at every join: 2-4x the largest sample step elsewhere (night videos
+# V1, V2, V4, 2026-10-20); obvpm's timeline de-clicks its seams over 5 ms.
+JOIN_FADE_S = 0.01
 
 
 def _bt709(target):
@@ -35,6 +39,20 @@ def video_frame(image):
     frame = frame.reformat(format="yuv420p", dst_colorspace=Colorspace.ITU709, dst_color_range=ColorRange.MPEG)
     _bt709(frame)
     return frame
+
+
+def _crossfade(held, wave, whole, head, chunk, rate, last):
+    """(wave to write, samples held back for the next part). The earlier part's last JOIN_FADE_S are held back and written
+    with the next part, faded into the next part's head over the same moment; an unpinned part (a cut) just follows them."""
+    if held is not None:
+        if chunk.head_frames and not chunk.continuation_id and head >= held.shape[-1] and whole.shape[1] == held.shape[1]:
+            ramp = torch.linspace(0.0, 1.0, held.shape[-1], dtype=held.dtype, device=held.device)
+            held = held * (1 - ramp) + whole[..., head - held.shape[-1]:head].to(held) * ramp
+        wave = torch.cat([held.to(wave), wave], -1)
+    if last:
+        return wave, None
+    count = min(int(rate * JOIN_FADE_S), wave.shape[-1])
+    return wave[..., :wave.shape[-1] - count], wave[..., wave.shape[-1] - count:]
 
 
 def _pad_to(wave, samples):
@@ -103,10 +121,12 @@ def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *,
     streams = [latents.validate_chunk(latent, chunk.sampled_frames, "Chunk %d" % (chunk.index + 1))
                for latent, chunk in zip(chunk_latents, plan.chunks)]
     pictures = delivered_pictures([video for video, _ in streams], plan, decode_video, restore_picture=restore_picture)
+    held = None
     for (_, audio), chunk, frames in zip(streams, plan.chunks, pictures):
         decoded = decode_audio(audio)
-        wave, rate = decoded["waveform"].clone(), int(decoded["sample_rate"])
-        wave = wave[..., int(round(chunk.head_frames / float(FPS) * rate)):]
+        whole, rate = decoded["waveform"].clone(), int(decoded["sample_rate"])
+        head = int(round(chunk.head_frames / float(FPS) * rate))
+        wave = whole[..., head:]
         wave = wave[..., :int(round(chunk.delivered_frames / float(FPS) * rate))]
         # Use absolute story boundaries so fractional samples do not accumulate at the joins.
         samples = round(chunk.story_end_f / float(FPS) * rate) - round(chunk.story_start_f / float(FPS) * rate)
@@ -116,6 +136,9 @@ def delivered_chunks(chunk_latents, plan, decode_video, decode_audio, issues, *,
         # up to one audio step (25 ms) short is the grid's normal rounding (E11: 266 samples at 32 kHz = 8 ms), not worth a warning
         if padded > rate / float(AUDIO_HZ):
             issues.append(Issue("audio_short", "the decoded sound of chunk %d was %d samples short." % (chunk.index + 1, padded)))
+        # a locked song is put back from its file in every part (restore_audio): it has no join to smooth
+        if restore_audio is None:
+            wave, held = _crossfade(held, wave, whole, head, chunk, rate, chunk.index == plan.chunks[-1].index)
         yield frames, wave, rate
 
 
