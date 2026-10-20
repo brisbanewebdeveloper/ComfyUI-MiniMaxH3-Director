@@ -141,13 +141,19 @@ def request(compiled, mode, seconds, story="", figures="", continues=False, part
         "overall_soundscape: one to three English sentences of ambience and physical sounds; no speech, no singing.",
         "non_diegetic_music: the score only the audience hears (instruments, tempo, dynamics), or N/A.",
         "The story and the figures below are material for detail only; they never change times, cuts or words.",
+        # H3 community findings, checked against our parts (comparison 2026-10-20): a still pose froze the face, a push-in
+        # that ran over a seam was pushed again by the next part, and these skin words gave oily, retouched faces.
+        "Write movement and expression as a change from one state to another (for example easing out of a smile into a "
+        "searching look); never call a figure completely still. A camera move starts and ends inside this part: no push-in, "
+        "pull-out or arc that would go on past its end. Never describe skin as flawless, glowing, shimmering or wet.",
     ]
     if BEAT_RE.search(body):
         # shot_share.py gives a part the time beats of its own share of a shot; dropped, the part plays the whole action again
         rules.append("Keep each time beat of the draft (such as 0–2.5s:) at the start of its own sentences, in the same order and "
                      "with the same times, and describe only what the draft puts into that beat.")
     if continues:
-        rules.append("This part continues the previous part: open by continuing the same action, do not introduce the scene again.")
+        rules.append("This part continues the previous part: open in the middle of the same action, do not introduce the scene "
+                     "again, and keep the camera's framing unless the draft names a new move.")
     if reference:
         rules.insert(1, _summary_rule(sections))
     rules += _extra_rules(head, reference, guidance, pictures)

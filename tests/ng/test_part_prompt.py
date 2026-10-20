@@ -89,6 +89,9 @@ class Check(unittest.TestCase):
         self.assertIn("Story:\nShe sings a sad song.", text)
         self.assertIn("continues the previous part", text)
         self.assertIn("holds a static shot", text)
+        # comparison 2026-10-20: movement as a change, no camera move over a seam, no oily skin words
+        for rule in ("easing out of", "go on past its end", "flawless", "keep the camera's framing"):
+            self.assertIn(rule, text)
         self.assertNotIn("time beat", text, "no beats in the draft, no beat rule")
         beats = BASE.replace("[Shot 1] Gothic hall.", "[Shot 1] 0–2.5s: Gothic hall, a wide shot. 2.5–4.5s: She turns.")
         self.assertIn("Keep each time beat of the draft", part.request(beats, "fl2va", 8.7))
