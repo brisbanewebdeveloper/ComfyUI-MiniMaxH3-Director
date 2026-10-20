@@ -2,7 +2,7 @@
 const TITLES = {
   anchor_multiple: "Several first/last frames", voice_unbound: "Voice without character", voice_extra_take: "Extra voice take",
   usage_unknown: "Unknown use", usage_pending: "Time missing", text_empty: "Empty text card",
-  subject_target_invalid: "Invalid assignment", speaker_unknown: "Unknown speaker", source_shared: "File used several times",
+  subject_target_invalid: "Invalid assignment", subject_look_alike: "Same figure twice?", speaker_unknown: "Unknown speaker", source_shared: "File used several times",
   source_missing: "File missing", shots_preamble: "Text without time", shot_speaker_unknown: "Speaker not connected",
   shot_speaker_unbound: "Speaker without picture", shot_role_unknown: "Role does not fit", shot_overlap: "Shots overlap",
   shot_gap: "Gap between shots", shot_empty_range: "Shot without length", shot_context_unknown: "Content not connected",

@@ -1,7 +1,29 @@
 """Cross-item diagnostics before legacy compilation; never hide ambiguous or discarded inputs."""
+import re
+
 from .issues import Issue
 from . import frames
 from .shot_document import bound_media_ids
+
+
+_COMMON = set("with and the a an of in on her his their its wearing holding shown from into".split())
+
+
+def _words(text):
+    return {w for w in re.findall(r"[a-z]+", text.lower()) if len(w) > 2 and w not in _COMMON}
+
+
+def look_alikes(subjects):
+    """Pairs of independent Subject pictures whose descriptions are mostly the same words: probably one figure. As two
+    Subjects H3 switched between the pictures (Ref2VA minute 2026-10-20: three views of one elf, three Subjects)."""
+    out, named = [], set()
+    for n, first in enumerate(subjects):
+        for second in subjects[n + 1:]:
+            a, b = _words(first.description), _words(second.description)
+            if second.id not in named and first.id not in named and len(a) >= 4 and len(b) >= 4 and len(a & b) >= 0.6 * min(len(a), len(b)):
+                out.append((first, second))
+                named.add(second.id)        # each picture is named once, with the first figure it resembles
+    return out
 
 
 def check_context(context):
@@ -16,6 +38,11 @@ def check_context(context):
             issues.append(Issue("anchor_multiple", "Only one %s is sent to the model; '%s' is used and these are "
                                 "ignored: %s. Remove the unused ones or keep them as Reference."
                                 % (role.replace("_", " "), items[0].name, ", ".join(i.name for i in items[1:]))))
+    roots = [i for i in context.by_media("image") if i.id in subjects and "character" in i.content]
+    for first, second in look_alikes(roots):
+        issues.append(Issue("subject_look_alike", "'%s' and '%s' look like the same figure. If they are, set 'Belongs to: %s' on "
+                            "'%s'; as two figures H3 switches between them." % (first.name, second.name, first.name, second.name),
+                            second.name))
     sources = {}
     for item in context.items:
         if item.media != "text" and item.source:
