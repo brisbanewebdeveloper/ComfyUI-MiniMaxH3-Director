@@ -48,6 +48,7 @@ def delivered_candidates(target, head, lo, hi):
     return sorted(values, key=lambda v: (abs(v - target), v))
 
 
-def delivered_bounds(head):
-    """Shortest and longest delivered length whose sampled clip (head included) is inside H3's trained range."""
-    return max(SAMPLED_MIN_FRAMES - head, 1), SAMPLED_MAX_FRAMES - head
+def delivered_bounds(head, maximum=SAMPLED_MAX_FRAMES):
+    """Shortest and longest delivered length whose sampled clip (head included) is inside H3's trained range (or the
+    canvas' own longest clip, limits.max_frames)."""
+    return max(SAMPLED_MIN_FRAMES - head, 1), maximum - head

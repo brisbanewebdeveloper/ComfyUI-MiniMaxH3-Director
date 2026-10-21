@@ -161,10 +161,10 @@ class SequencePlan:
                    issues=tuple(Issue.from_dict(d) for d in fields.read_list(data, "issues", path)))
 
 
-def _delivered_options(head, minimum=limits.SAMPLED_MIN_FRAMES):
+def _delivered_options(head, minimum=limits.SAMPLED_MIN_FRAMES, maximum=limits.SAMPLED_MAX_FRAMES):
     """Every delivered length whose sampled clip is inside H3's trained range, for a chunk with this head."""
     lo = max(minimum - head, 1)
-    hi = limits.SAMPLED_MAX_FRAMES - head
+    hi = maximum - head
     return frames.delivered_candidates(0, head, lo, hi)
 
 
@@ -172,11 +172,11 @@ def _pick(options, ideal):
     return min(options, key=lambda v: (abs(v - ideal), v))
 
 
-def plan_lengths(total_frames, chunk_target_frames, head, first_head=0, minimum=limits.SAMPLED_MIN_FRAMES):
+def plan_lengths(total_frames, chunk_target_frames, head, first_head=0, minimum=limits.SAMPLED_MIN_FRAMES, maximum=limits.SAMPLED_MAX_FRAMES):
     """Delivered frames per chunk. Error diffusion: each chunk takes the grid length nearest to what is still needed per chunk.
 
     `first_head` is the first chunk's own pin: 0 at the start of the video or of an unpinned part, `head` after a join."""
-    first_options, next_options = _delivered_options(first_head, minimum), _delivered_options(head, minimum)
+    first_options, next_options = _delivered_options(first_head, minimum, maximum), _delivered_options(head, minimum, maximum)
     longest = max(next_options)
     # One grid step over the target is no reason for another part: a keyframe at 10 s with 10 s parts ends its part on
     # H3's grid at 10.08 s, and 243 of 240 frames made two parts of 5 s instead of one (2026-10-11).
@@ -236,12 +236,13 @@ def _late_changes(shots, chunks):
     return issues
 
 
-def plan_chunks(project_frames, chunk_target_frames, continuity, shots=(), cuts=(), joins=()):
+def plan_chunks(project_frames, chunk_target_frames, continuity, shots=(), cuts=(), joins=(), max_frames=limits.SAMPLED_MAX_FRAMES):
     """Split `project_frames` into chunks. Returns a SequencePlan; corrections are in plan.issues.
 
     `cuts` are story frames where a chunk starts without a pinned head, like the first one: a shot that opens on a First
     frame picture of its own. `joins` are story frames where a chunk must start but keeps its pin: the chunk before ends
-    on a Keyframe picture. Each edge must leave whole grid lengths before it (see project._part_edges)."""
+    on a Keyframe picture. Each edge must leave whole grid lengths before it (see project._part_edges). `max_frames` is
+    the longest sampled clip for the canvas (limits.max_frames)."""
     if project_frames < 1:
         raise ValueError("the project needs at least one frame")
     head = continuity.head
@@ -253,9 +254,10 @@ def plan_chunks(project_frames, chunk_target_frames, continuity, shots=(), cuts=
         opening = openings.get(start, ChunkOpening(head if start in joins else 0))
         first_head = opening.head_frames
         minimum = limits.GRID_OFFSET if external else limits.SAMPLED_MIN_FRAMES
-        part = plan_lengths(end - start, max(chunk_target_frames, 1), head, first_head, minimum)
+        part = plan_lengths(end - start, max(chunk_target_frames, 1), head, first_head, minimum, max_frames)
         if head and shots:
-            part = align_to_shots(part, head, [replace(s, start_f=s.start_f - start) for s in shots if start < s.start_f < end], first_head)
+            part = align_to_shots(part, head, [replace(s, start_f=s.start_f - start) for s in shots if start < s.start_f < end], first_head,
+                                  max_frames)
         lengths += part
         heads += [first_head] + [head] * (len(part) - 1)
         sources += [opening.context_id] + [""] * (len(part) - 1)

@@ -20,13 +20,13 @@ def _candidates(boundary, shot_start):
     return sorted((-earlier, later), key=abs)
 
 
-def _fits(lengths, k, delta, head, first_head=0):
-    low_a, high_a = frames.delivered_bounds(first_head if k == 0 else head)
-    low_b, high_b = frames.delivered_bounds(head)
+def _fits(lengths, k, delta, head, first_head=0, maximum=limits.SAMPLED_MAX_FRAMES):
+    low_a, high_a = frames.delivered_bounds(first_head if k == 0 else head, maximum)
+    low_b, high_b = frames.delivered_bounds(head, maximum)
     return low_a <= lengths[k] + delta <= high_a and low_b <= lengths[k + 1] - delta <= high_b
 
 
-def align_to_shots(lengths, head, shots, first_head=0):
+def align_to_shots(lengths, head, shots, first_head=0, maximum=limits.SAMPLED_MAX_FRAMES):
     """Returns new delivered lengths with the same total. Boundaries that are fine are left alone."""
     lengths = list(lengths)
     starts = [s.start_f for s in shots if s.start_f > 0]
@@ -36,7 +36,7 @@ def align_to_shots(lengths, head, shots, first_head=0):
         if not late:
             continue
         for delta in _candidates(boundary, late[0]):
-            if _fits(lengths, k, delta, head, first_head):
+            if _fits(lengths, k, delta, head, first_head, maximum):
                 lengths[k] += delta
                 lengths[k + 1] -= delta
                 break

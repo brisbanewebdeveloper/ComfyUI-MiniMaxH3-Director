@@ -26,6 +26,19 @@ MAX_REF_AUDIOS = _plan.MAX_REF_AUDIOS
 MAX_REF_FILES = _plan.MAX_REF_FILES
 
 DEFAULT_CHUNK_SECONDS = 10.0
+# A part's length is bounded by frames x picture area, not by frames alone: one clip of 30 s at 640x352 held without drift,
+# with motion and with references (comparison 2026-10-20/21, M13 and M19); from 45 s on H3 repeated lines and actions.
+# So a part may have as many frames as fit the area of the trained maximum at 1280x704, and 30 s at most.
+FRAME_BUDGET = SAMPLED_MAX_FRAMES * 1280 * 704
+LONG_PART_FRAMES = 719      # 17 * 42 + 5: 29.96 s
+LONG_PART_SECONDS = 30.0
+
+
+def max_frames(width, height):
+    """The longest sampled clip for this canvas: the trained maximum, more for a small picture (up to 30 s)."""
+    fit = FRAME_BUDGET // max(width * height, 1) if width > 0 and height > 0 else SAMPLED_MAX_FRAMES
+    # sizes close to 1280x704 keep the trained maximum: one grid step more is no reason to change their parts
+    return SAMPLED_MAX_FRAMES if fit < SAMPLED_MAX_FRAMES + GRID_STEP else min(LONG_PART_FRAMES, fit)
 # Fitting a first/last frame picture to the canvas; every method returns the full canvas, which the latent needs.
 RESIZE_METHODS = ("crop", "stretch to fit", "pad", "pad green")
 # A new action asked for right after a join starts late: the pinned head holds the old action for about this long (E7: 2.4 s).

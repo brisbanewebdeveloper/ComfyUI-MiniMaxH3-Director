@@ -330,7 +330,12 @@ def plan_project(context: DirectorContext, chunk_seconds, continuity: Continuity
         initial = continuation.initial_opening(context, shots)
         cuts = {0: initial} if initial else ()
     chunk_frames = frames.seconds_to_frames(chunk_seconds or limits.DEFAULT_CHUNK_SECONDS)
-    plan = plan_chunks(total, chunk_frames, continuity, shots, cuts, joins)
+    longest = limits.max_frames(context.width, context.height)
+    plan = plan_chunks(total, chunk_frames, continuity, shots, cuts, joins, longest)
+    if chunk_frames > longest - continuity.head and longest < limits.LONG_PART_FRAMES:      # shortened by the size, not by 30 s
+        issues = list(issues) + [Issue("part_capped", "Render parts are at most %.1f s at %dx%d; a smaller size allows longer ones "
+                                       "(up to 30 s at 640x352)." % (frames.frames_to_seconds(longest - continuity.head), context.width,
+                                                                     context.height))]
     # A song locked over the whole video is put back into every part from its file, so a long chain does not dull it
     # (elf song: 0.97-0.98 against the song in every part). A last second past the song's end is no chain.
     if covers(locked_spans(context), plan.total_frames, limits.FPS):

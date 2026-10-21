@@ -38,7 +38,7 @@ function switchRow(on, label, hint, onclick) {
 function videoSection(S, actions) {
   const v = S.values, [info, tone] = canvasInfo(v.width, v.height);
   const mp = (isAuto(v.width, v.height) ? NATIVE_MP : v.width * v.height / 1e6).toFixed(2);
-  const parts = withCurrent([["0", "Auto"], ["5", "5 s"], ["8", "8 s"], ["10", "10 s"]], v.chunk_seconds, (d) => fmt(Number(d)));
+  const parts = withCurrent([["0", "Auto"], ["5", "5 s"], ["8", "8 s"], ["10", "10 s"], ["15", "15 s"], ["30", "30 s (small sizes)"]], v.chunk_seconds, (d) => fmt(Number(d)));
   return section("Video", "H3 renders the video in parts of up to about 10 s that continue into each other.",
     field("Render part", select(parts, String(v.chunk_seconds), (value) => actions.setWidget("chunk_seconds", Number(value)))),
     field("Width", number(isAuto(v.width, v.height) ? "" : v.width, (value) => actions.setSize("width", value), { step: "32", min: "0", placeholder: "auto", style: { width: "88px" } })),
