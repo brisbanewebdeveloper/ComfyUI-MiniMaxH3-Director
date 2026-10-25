@@ -12,7 +12,7 @@ Every picture, video, sound and note is a **card**: an H3 Context node connected
 - **Use as (default)**: the card's role, unless a shot in the Studio gives it another one. The hint below warns when a
   role does nothing in the Director's mode.
 - **Description**: one sentence of what is seen or heard. H3 reads it with the medium.
-- **In the Studio** (bottom): where the card is used. A card that no shot uses is part of every render part.
+- Where a card is used shows in the Director's shots and lanes. A card that no shot uses is part of every render part.
 - **Preset** (save and load the card's settings) and **Color**.
 
 ## Image

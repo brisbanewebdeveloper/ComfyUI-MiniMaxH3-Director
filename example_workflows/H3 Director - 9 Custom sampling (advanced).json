@@ -50,9 +50,9 @@
    ],
    "title": "Model: First / last frame (fl2va)",
    "properties": {
-    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
@@ -81,7 +81,7 @@
    ],
    "size": [
     490,
-    89.99999516474902
+    90
    ],
    "flags": {},
    "order": 1,
@@ -118,9 +118,9 @@
    ],
    "title": "Model: References (ref2va)",
    "properties": {
-    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
@@ -149,7 +149,7 @@
    ],
    "size": [
     490,
-    117.99998125160903
+    120
    ],
    "flags": {},
    "order": 2,
@@ -197,9 +197,9 @@
    ],
    "title": "Text encoder",
    "properties": {
-    "Node name for S&R": "CLIPLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "CLIPLoader",
     "models": [
      {
       "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
@@ -230,7 +230,7 @@
    ],
    "size": [
     490,
-    62.00000907788899
+    70
    ],
    "flags": {},
    "order": 3,
@@ -259,9 +259,9 @@
    ],
    "title": "Video VAE",
    "properties": {
-    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_video_vae_fp16.safetensors",
@@ -288,7 +288,7 @@
    ],
    "size": [
     490,
-    61.99999081372506
+    70
    ],
    "flags": {},
    "order": 4,
@@ -317,9 +317,9 @@
    ],
    "title": "Audio VAE",
    "properties": {
-    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_audio_vae_fp32.safetensors",
@@ -349,7 +349,7 @@
     380
    ],
    "flags": {},
-   "order": 11,
+   "order": 8,
    "mode": 0,
    "inputs": [
     {
@@ -449,9 +449,9 @@
     }
    ],
    "properties": {
-    "Node name for S&R": "NGContextConnector",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGContextConnector"
    },
    "widgets_values": [
     ""
@@ -471,10 +471,10 @@
    ],
    "size": [
     1410,
-    1049
+    1050
    ],
    "flags": {},
-   "order": 12,
+   "order": 9,
    "mode": 0,
    "inputs": [
     {
@@ -513,9 +513,9 @@
    ],
    "properties": {
     "ng_context_names": {},
-    "Node name for S&R": "NGH3Director",
     "cnr_id": "minimaxh3-director",
     "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGH3Director",
     "models": [
      {
       "name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
@@ -621,9 +621,9 @@
    "inputs": [],
    "outputs": [],
    "properties": {
-    "Node name for S&R": "NGGuide",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGGuide"
    },
    "widgets_values": [
     "wf9-advanced",
@@ -643,7 +643,7 @@
    ],
    "size": [
     490,
-    61.99999081372506
+    70
    ],
    "flags": {},
    "order": 6,
@@ -671,9 +671,9 @@
    ],
    "title": "Preview VAE",
    "properties": {
-    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "taeh3.safetensors",
@@ -703,7 +703,7 @@
     667
    ],
    "flags": {},
-   "order": 10,
+   "order": 7,
    "mode": 0,
    "inputs": [
     {
@@ -725,9 +725,9 @@
     }
    ],
    "properties": {
-    "Node name for S&R": "NGAIProvider",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGAIProvider"
    },
    "widgets_values": [
     "local",
@@ -782,15 +782,15 @@
    "id": 14,
    "type": "StartLoop",
    "pos": [
-    2980,
+    2900,
     0
    ],
    "size": [
-    360,
-    162
+    440,
+    169.99999309919517
    ],
    "flags": {},
-   "order": 13,
+   "order": 10,
    "mode": 0,
    "inputs": [
     {
@@ -854,7 +854,7 @@
     {
      "localized_name": "list_item",
      "name": "list_item",
-     "type": "NG_CHUNK",
+     "type": "*",
      "links": [
       14
      ]
@@ -869,6 +869,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "StartLoop"
    },
    "widgets_values": [
@@ -878,21 +880,23 @@
    "widgets_values_named": {
     "mode": "List",
     "cache_iterations": false
-   }
+   },
+   "color": "#223",
+   "bgcolor": "#335"
   },
   {
    "id": 15,
    "type": "NGDirectorOutput",
    "pos": [
-    2980,
-    240
+    2900,
+    290
    ],
    "size": [
     440,
     560
    ],
    "flags": {},
-   "order": 14,
+   "order": 11,
    "mode": 0,
    "inputs": [
     {
@@ -1046,6 +1050,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "minimaxh3-director",
+    "ver": "500b0f44fba5a39f632a2e02b34256213343d277",
     "Node name for S&R": "NGDirectorOutput"
    },
    "widgets_values": [
@@ -1065,15 +1071,15 @@
    "id": 16,
    "type": "NGH3Preview",
    "pos": [
-    3500,
+    3360,
     0
    ],
    "size": [
     420,
-    300
+    520
    ],
    "flags": {},
-   "order": 16,
+   "order": 13,
    "mode": 0,
    "inputs": [
     {
@@ -1155,6 +1161,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "minimaxh3-director",
+    "ver": "500b0f44fba5a39f632a2e02b34256213343d277",
     "Node name for S&R": "NGH3Preview"
    },
    "widgets_values": [
@@ -1180,15 +1188,15 @@
    "id": 17,
    "type": "RandomNoise",
    "pos": [
-    3500,
-    360
+    3360,
+    650
    ],
    "size": [
-    420,
-    110
+    430,
+    58.00002284851011
    ],
    "flags": {},
-   "order": 15,
+   "order": 12,
    "mode": 0,
    "inputs": [
     {
@@ -1212,6 +1220,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "RandomNoise"
    },
    "widgets_values": [
@@ -1221,21 +1231,23 @@
    "widgets_values_named": {
     "noise_seed": 0,
     "control_after_generate": "randomize"
-   }
+   },
+   "color": "#233",
+   "bgcolor": "#355"
   },
   {
    "id": 18,
    "type": "CFGGuider",
    "pos": [
-    3500,
-    530
+    3360,
+    780
    ],
    "size": [
-    420,
-    140
+    430,
+    98.00001549146907
    ],
    "flags": {},
-   "order": 17,
+   "order": 14,
    "mode": 0,
    "inputs": [
     {
@@ -1277,6 +1289,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "CFGGuider"
    },
    "widgets_values": [
@@ -1284,21 +1298,23 @@
    ],
    "widgets_values_named": {
     "cfg": 8
-   }
+   },
+   "color": "#233",
+   "bgcolor": "#355"
   },
   {
    "id": 19,
    "type": "SamplerCustomAdvanced",
    "pos": [
-    4000,
+    3800,
     0
    ],
    "size": [
-    420,
-    330
+    430,
+    114.00002121042982
    ],
    "flags": {},
-   "order": 18,
+   "order": 15,
    "mode": 0,
    "inputs": [
     {
@@ -1350,22 +1366,26 @@
     }
    ],
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "SamplerCustomAdvanced"
-   }
+   },
+   "color": "#323",
+   "bgcolor": "#535"
   },
   {
    "id": 20,
    "type": "EndLoop",
    "pos": [
-    4000,
-    400
+    3810,
+    750
    ],
    "size": [
     420,
-    140
+    101.99999418310827
    ],
    "flags": {},
-   "order": 19,
+   "order": 16,
    "mode": 0,
    "inputs": [
     {
@@ -1411,6 +1431,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "EndLoop"
    },
    "widgets_values": [
@@ -1418,13 +1440,15 @@
    ],
    "widgets_values_named": {
     "accumulate": true
-   }
+   },
+   "color": "#323",
+   "bgcolor": "#535"
   },
   {
    "id": 21,
    "type": "NGCollect",
    "pos": [
-    4520,
+    4290,
     0
    ],
    "size": [
@@ -1432,7 +1456,7 @@
     200
    ],
    "flags": {},
-   "order": 7,
+   "order": 17,
    "mode": 0,
    "inputs": [
     {
@@ -1513,6 +1537,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "minimaxh3-director",
+    "ver": "500b0f44fba5a39f632a2e02b34256213343d277",
     "Node name for S&R": "NGCollect"
    },
    "widgets_values": [
@@ -1530,15 +1556,15 @@
    "id": 22,
    "type": "CreateVideo",
    "pos": [
-    4520,
-    280
+    4290,
+    250
    ],
    "size": [
     440,
     160
    ],
    "flags": {},
-   "order": 8,
+   "order": 18,
    "mode": 0,
    "inputs": [
     {
@@ -1605,6 +1631,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "CreateVideo"
    },
    "widgets_values": [
@@ -1618,21 +1646,23 @@
     "bit_depth": "auto",
     "color_space": "sRGB",
     "codec": "none"
-   }
+   },
+   "color": "#223",
+   "bgcolor": "#335"
   },
   {
    "id": 23,
    "type": "SaveVideo",
    "pos": [
-    5040,
-    -50
+    4750,
+    0
    ],
    "size": [
     1050,
     1180
    ],
    "flags": {},
-   "order": 9,
+   "order": 19,
    "mode": 0,
    "inputs": [
     {
@@ -1651,20 +1681,20 @@
      "link": null
     },
     {
-     "localized_name": "codec",
-     "name": "format.codec",
-     "type": "COMFY_DYNAMICCOMBO_V3",
-     "widget": {
-      "name": "format.codec"
-     },
-     "link": null
-    },
-    {
      "localized_name": "format",
      "name": "format",
      "type": "COMFY_DYNAMICCOMBO_V3",
      "widget": {
       "name": "format"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "codec",
+     "name": "format.codec",
+     "type": "COMFY_DYNAMICCOMBO_V3",
+     "widget": {
+      "name": "format.codec"
      },
      "link": null
     },
@@ -1687,7 +1717,11 @@
      "links": null
     }
    ],
-   "properties": {},
+   "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
+    "Node name for S&R": "SaveVideo"
+   },
    "widgets_values": [
     "H3/custom_sampling",
     "auto",
@@ -1778,14 +1812,6 @@
    "NG_AI_PROVIDER"
   ],
   [
-   12,
-   7,
-   1,
-   14,
-   3,
-   "NG_CHUNK"
-  ],
-  [
    13,
    7,
    0,
@@ -1808,22 +1834,6 @@
    15,
    1,
    "LATENT"
-  ],
-  [
-   16,
-   15,
-   0,
-   16,
-   0,
-   "MODEL"
-  ],
-  [
-   17,
-   15,
-   16,
-   16,
-   1,
-   "VAE"
   ],
   [
    18,
@@ -1978,6 +1988,30 @@
    "FLOAT"
   ],
   [
+   12,
+   7,
+   1,
+   14,
+   3,
+   "NG_CHUNK"
+  ],
+  [
+   16,
+   15,
+   0,
+   16,
+   0,
+   "MODEL"
+  ],
+  [
+   17,
+   15,
+   16,
+   16,
+   1,
+   "VAE"
+  ],
+  [
    37,
    22,
    0,
@@ -2017,8 +2051,8 @@
    "bounding": [
     720,
     -80,
-    2150,
-    1207
+    2140,
+    1240
    ],
    "color": "#2a2f4a",
    "flags": {}
@@ -2027,10 +2061,10 @@
    "id": 4,
    "title": "🔁 3 · Your own sampler: one pass per render part",
    "bounding": [
-    2950,
+    2880,
     -80,
-    1500,
-    910
+    1370,
+    960
    ],
    "color": "#3a2f4a",
    "flags": {}
@@ -2039,10 +2073,10 @@
    "id": 5,
    "title": "💾 4 · Output: put the parts together and save",
    "bounding": [
-    4490,
-    -130,
-    1630,
-    1290
+    4270,
+    -80,
+    1550,
+    1280
    ],
    "color": "#2c3e48",
    "flags": {}
@@ -2051,10 +2085,10 @@
  "config": {},
  "extra": {
   "ds": {
-   "scale": 0.8574355240000058,
+   "scale": 1.8379891945429208,
    "offset": [
-    -1724.3782083235822,
-    231.20743355055438
+    -3586.1644068077903,
+    286.29441259996145
    ]
   }
  },

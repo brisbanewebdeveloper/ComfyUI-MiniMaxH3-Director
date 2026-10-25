@@ -1,6 +1,5 @@
-// The Context cards' rules without a DOM: what each medium offers, what a role means in the Director's mode,
-// and where the Studio uses a card. Checked with node in tests/ng/js/test_h3c_model.mjs.
-import { readProject, sorted } from "./h3s_model.js";
+// The Context cards' rules without a DOM: what each medium offers and what a role means in the Director's mode.
+// Checked with node in tests/ng/js/test_h3c_model.mjs.
 
 // Keys are the values ng/core/context.py accepts (CONTENT_BY_MEDIA / USAGE_BY_MEDIA); labels are what the card shows.
 export const CONTENT = {
@@ -71,34 +70,6 @@ export function roleHint(media, role, mode) {
     return { text: "Added to every render part as it is, and the AI plans the shots to fit it.", warn: false };
   }
   return { text: "", warn: false };
-}
-
-const mentions = (text, name) => Boolean(name) && new RegExp(`@${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}_])`, "u").test(text || "");
-const fmt = (s) => `${Math.round(s * 10) / 10}`;
-
-// Where the Studio of each connected Director uses this card. A card bound nowhere is part of every render part.
-export function studioUses(id, name, directors, usage = "") {
-  if (!directors.length) return ["Not connected to a Director"];
-  const out = [];
-  for (const director of directors) {
-    const project = readProject(director.shots || ""), order = sorted(project.shots);
-    let bound = false;
-    order.forEach((shot, index) => {
-      const label = `Shot ${index + 1}`;
-      if (shot.media.some((binding) => binding.context_id === id)) { out.push(label); bound = true; }
-      if (shot.spoken.some((line) => line.speaker_id === id)) { out.push(`${label} (speaks)`); bound = true; }
-    });
-    for (const clip of project.audio.filter((entry) => entry.context_id === id)) {
-      out.push(`Audio lane ${project.lanes.indexOf(clip.lane) + 1} · ${fmt(clip.start)}–${fmt(clip.end)} s · ${{ lock: "locked", copy: "copy", ref: "reference" }[clip.mode]}`);
-      bound = true;
-    }
-    for (const clip of project.control.filter((entry) => entry.context_id === id)) {
-      out.push(`Control lane · ${fmt(clip.start)}–${fmt(clip.end)} s`); bound = true;
-    }
-    if (mentions(director.idea, name) || order.some((shot) => mentions(shot.text, name))) out.push(`@${name} in the text`);
-    if (!bound) out.push(usage === "control" ? "Not on the Control lane" : "Whole project (no shot binding)");
-  }
-  return [...new Set(out)];
 }
 
 // Templates for the Text card: plain editable text with the same bracket kinds Quick insert writes.

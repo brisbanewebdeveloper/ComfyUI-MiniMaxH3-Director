@@ -61,7 +61,6 @@ The **H3 Context Image** card holds one picture and says what it is for.
 - **Belongs to**: leave *Independent* for a figure of its own. A second picture of the same figure (a side view, the back)
   belongs to the first one, otherwise H3 treats them as two people and switches between them.
 - **Description**: one sentence of what the picture shows. H3 reads it together with the picture.
-- **In the Studio** (bottom): where the card is used, here in shot 1, shot 2 and as the speaker in shot 2.
 
 ## 2 · Content: the Audio card
 

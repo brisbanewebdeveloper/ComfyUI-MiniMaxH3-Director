@@ -34,20 +34,6 @@ import * as model from "../../../js/ng/h3c_model.js";
   assert.equal(model.roleHint("audio", "copy", "auto").warn, false);
 }
 
-// "In the Studio" names shots, spoken lines, lane clips and mentions; an unbound card is part of every render part.
-{
-  const shot = (id, start, end, extra = {}) => ({ id, start, end, text: "", media: [], spoken: [], locked_fields: [], draft: null, ...extra });
-  const doc = JSON.stringify({ format: "h3-director-shots", schema_version: 1,
-    shots: [shot("b", 4, 8, { text: "@Mage waves." }), shot("a", 0, 4, { media: [{ schema_version: 1, context_id: "m", role: "context" }],
-      spoken: [{ schema_version: 1, text: "Hi.", speaker_id: "m" }] })],
-    audio: [{ schema_version: 1, id: "c", context_id: "song", start: 0, end: 8, offset: 0, mode: "lock", lane: "l1" }], audio_lanes: ["l1"] });
-  assert.deepEqual(model.studioUses("m", "Mage", [{ shots: doc, idea: "" }]), ["Shot 1", "Shot 1 (speaks)", "@Mage in the text"]);
-  assert.deepEqual(model.studioUses("song", "Song", [{ shots: doc, idea: "" }]), ["Audio lane 1 · 0–8 s · locked"]);
-  assert.deepEqual(model.studioUses("x", "Camera", [{ shots: "", idea: "slow" }]), ["Whole project (no shot binding)"]);
-  assert.deepEqual(model.studioUses("x", "Camera", []), ["Not connected to a Director"]);
-  assert.deepEqual(model.studioUses("m", "Ma", [{ shots: doc, idea: "" }]).includes("@Ma in the text"), false, "@Mage is not a mention of Ma");
-}
-
 // AI Loader: an address that is no HTTP(S) URL is dropped when the source card changes (user workflow had "custom").
 {
   const { clearedAddress } = await import("../../../js/ng/ng_widgets.js");

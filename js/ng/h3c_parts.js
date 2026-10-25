@@ -124,7 +124,6 @@ export function presetRow(S, actions) {
     h("button", { class: "h3c-btn", onclick: actions.autoColor, title: "Pick the colour automatically" }, "Auto"));
 }
 
-export function usesLine(S) {
-  return h("div", { class: "h3c-use" }, h("span", {}, "In the Studio:"), S.uses.map((use) => h("span", { class: "h3c-pill" }, use)),
-    S.status ? h("span", { class: S.statusWarn ? "h3c-hint h3c-warn" : "h3c-hint", style: { flexBasis: "100%" } }, S.status) : null);
+export function statusLine(S) {
+  return S.status ? h("div", { class: "h3c-use" }, h("span", { class: S.statusWarn ? "h3c-hint h3c-warn" : "h3c-hint" }, S.status)) : null;
 }

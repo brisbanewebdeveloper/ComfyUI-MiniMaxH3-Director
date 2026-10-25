@@ -13,7 +13,7 @@
    ],
    "size": [
     660,
-    393
+    480
    ],
    "flags": {},
    "order": 11,
@@ -132,9 +132,9 @@
     }
    ],
    "properties": {
-    "Node name for S&R": "NGContextConnector",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGContextConnector"
    },
    "widgets_values": [
     ""
@@ -184,9 +184,9 @@
      "fade_in": 0,
      "fade_out": 0
     },
-    "Node name for S&R": "NGContextImage",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGContextImage"
    },
    "widgets_values": [
     "",
@@ -274,9 +274,9 @@
      "ctx_hero": "Hero",
      "ctx_motion": "Motion"
     },
-    "Node name for S&R": "NGH3Director",
     "cnr_id": "minimaxh3-director",
     "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGH3Director",
     "models": [
      {
       "name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
@@ -416,9 +416,9 @@
     }
    ],
    "properties": {
-    "Node name for S&R": "NGProjectRender",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGProjectRender"
    },
    "widgets_values": [
     ""
@@ -533,9 +533,9 @@
    "inputs": [],
    "outputs": [],
    "properties": {
-    "Node name for S&R": "NGGuide",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGGuide"
    },
    "widgets_values": [
     "wf7-control",
@@ -592,9 +592,9 @@
    ],
    "title": "Model: First / last frame (fl2va)",
    "properties": {
-    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
@@ -660,9 +660,9 @@
    ],
    "title": "Model: References (ref2va)",
    "properties": {
-    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
@@ -739,9 +739,9 @@
    ],
    "title": "Text encoder",
    "properties": {
-    "Node name for S&R": "CLIPLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "CLIPLoader",
     "models": [
      {
       "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
@@ -800,9 +800,9 @@
    ],
    "title": "Video VAE",
    "properties": {
-    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_video_vae_fp16.safetensors",
@@ -857,9 +857,9 @@
    ],
    "title": "Audio VAE",
    "properties": {
-    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_audio_vae_fp32.safetensors",
@@ -914,9 +914,9 @@
    ],
    "title": "Preview VAE",
    "properties": {
-    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
+    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "taeh3.safetensors",
@@ -939,7 +939,7 @@
    "type": "NGAIProvider",
    "pos": [
     1270,
-    470
+    550
    ],
    "size": [
     660,
@@ -970,9 +970,9 @@
     }
    ],
    "properties": {
-    "Node name for S&R": "NGAIProvider",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGAIProvider"
    },
    "widgets_values": [
     "local",
@@ -1062,6 +1062,8 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "cnr_id": "minimaxh3-director",
+    "ver": "500b0f44fba5a39f632a2e02b34256213343d277",
     "Node name for S&R": "NGContextVideo"
    },
    "widgets_values": [
@@ -1136,6 +1138,8 @@
    ],
    "title": "ControlNet (model patch)",
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "ModelPatchLoader",
     "models": [
      {
@@ -1189,20 +1193,20 @@
    "CLIP"
   ],
   [
-   10,
-   10,
-   0,
-   11,
-   0,
-   "VIDEO"
-  ],
-  [
    22,
    19,
    0,
    20,
    0,
    "NG_AI_PROVIDER"
+  ],
+  [
+   10,
+   10,
+   0,
+   11,
+   0,
+   "VIDEO"
   ],
   [
    13,
@@ -1317,7 +1321,7 @@
     1250,
     -80,
     2640,
-    1280
+    1390
    ],
    "color": "#2a2f4a",
    "flags": {}
@@ -1340,8 +1344,8 @@
   "ds": {
    "scale": 0.330578512396698,
    "offset": [
-    1859.1747925051568,
-    409.2113698286712
+    2077.9640291142177,
+    829.0119302688266
    ]
   }
  },

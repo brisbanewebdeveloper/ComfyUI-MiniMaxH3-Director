@@ -323,8 +323,7 @@ its card, so cards never overlap their neighbours.
   **Accept / Discard** and changes nothing until accepted.
 - **Use as (default):** the role the card has unless a shot or lane clip in the Studio says otherwise. The hint under it
   knows the Director's mode and warns when a role does nothing there (e.g. a reference picture in First / last frame mode).
-- **In the Studio:** where the connected Director uses the card (shots, spoken lines, audio lanes, `@Name` in the text);
-  a card bound to no shot is part of every render part.
+- Where a card is used shows in the Studio's shots and lanes; a card bound to no shot is part of every render part.
 - **Preset** (save / load) and **Color** at the bottom.
 
 **Image:** preview, **Keep in the video** (identity, outfit, pose, background — guidance for H3, not pixel-exact),

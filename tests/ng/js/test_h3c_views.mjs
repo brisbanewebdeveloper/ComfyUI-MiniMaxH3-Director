@@ -13,7 +13,7 @@ function recorder() {
 const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image: "alice.png", description: "", preserve: "high", text: "", ...extra.values },
   opts: { preserve: { identity: "high", pose: "low" }, start_s: 0, end_s: 0, video_audio: "ignore" }, content: ["character", "face"], usage: "reference",
   ai: true, busy: false, analyzed: false, mode: "ref2va", files: ["alice.png", "robot.png"], owners: { current: [], choices: [{ id: "bob", name: "Bob" }] },
-  suggestion: null, presets: ["Alice_Default"], presetName: "", accent: "#6AA6F8", uses: ["Shot 1"], status: "", els: {},
+  suggestion: null, presets: ["Alice_Default"], presetName: "", accent: "#6AA6F8", status: "", els: {},
   textMode: "note", hasAiText: false, build: { block: "global", seconds: 8 }, ...extra });
 
 // What is in it: ticks show the stored roles, a click toggles one; Analyze needs a connected AI.
@@ -74,7 +74,8 @@ const state = (extra = {}) => ({ media: "image", values: { name: "Alice", image:
   assert.ok(suggestion.innerText.includes("Description: A mage."));
   suggestion.button("Accept").onclick();
   assert.deepEqual(calls.at(-1), ["accept"]);
-  assert.ok(parts.usesLine(state()).innerText.includes("In the Studio: Shot 1"));
+  assert.equal(parts.statusLine(state()), null, "no message, no line");
+  assert.ok(parts.statusLine(state({ status: "Saved." })).innerText.includes("Saved."));
   assert.equal(parts.presetRow(state(), actions).button("Save").disabled, true, "a preset needs a name");
 }
 

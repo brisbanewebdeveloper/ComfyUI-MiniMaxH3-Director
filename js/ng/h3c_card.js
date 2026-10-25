@@ -2,8 +2,8 @@
 // the saved values; the card draws them, redraws on change and grows the node to its content so cards never overlap.
 import { h, keepKeys } from "./h3s_dom.js";
 import { ensureCardStyle } from "./h3c_style.js";
-import { studioUses, TEMPLATES, usableFields, offerFor } from "./h3c_model.js";
-import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, usesLine, box, modelsBox } from "./h3c_parts.js";
+import { TEMPLATES, usableFields, offerFor } from "./h3c_model.js";
+import { topRow, contentBox, usageBox, keepBox, ownerBox, descriptionBox, suggestionBox, presetRow, statusLine, box, modelsBox } from "./h3c_parts.js";
 import { CARD_MODELS, modelState } from "./ng_models.js";
 import { mediaURL, imageBlock, videoBlock, videoSoundBox, audioBlock, listenBox, wirePlayback, moveHeads } from "./h3c_media.js";
 import { textBody } from "./h3c_text.js";
@@ -68,7 +68,7 @@ function layout(S, actions) {
   if (S.media === "audio") parts.push(audioBlock(S, actions), two(contentBox(S, actions), usageBox(S, actions)), suggestionBox(S, actions),
     two(speakerBox(S, actions), listenBox(S, actions)), lyricsBox(S, actions), descriptionBox(S, actions));
   if (S.media === "text") parts.push(...textBody(S, actions));
-  parts.push(presetRow(S, actions), usesLine(S));
+  parts.push(presetRow(S, actions), statusLine(S));
   return parts.filter(Boolean);
 }
 
@@ -125,9 +125,7 @@ function attach(node, media) {
     S.ai = Boolean(contextProvider(node));
     S.analyzed = node.properties.ng_analysis?.fingerprint === analysisFingerprint(media, S.values);
     if (media === "text") node.properties.ng_context_names = knownNames(node.properties.ng_context_names, relatedContexts(node));
-    const linked = directors();
-    S.mode = linked.find((entry) => entry.mode && entry.mode !== "auto")?.mode || "auto";
-    S.uses = studioUses(S.values.context_id || "", S.values.name || "", linked, S.usage);
+    S.mode = directors().find((entry) => entry.mode && entry.mode !== "auto")?.mode || "auto";
     const entries = relatedContexts(node), current = assetSubjects({ widgets: S.values });
     S.owners = { current, choices: assetChoices(entries, current, S.values.context_id) };
     S.speakers = subjectChoices(entries, S.values.speaker || "");
@@ -396,6 +394,9 @@ function attach(node, media) {
   if (media !== "text") dropTarget(root, async (event) => {
     if (!(node.onDragOver?.(event) && await node.onDragDrop?.(event))) say(`Drop a ${media} file here.`, true);
   });
+  // The card shows its own picture or video. ComfyUI's preview of the upload widget would come below it, and in Vue mode
+  // (measured 2026-10-25: 228 px) outside the node's size, over the node below.
+  node.hideOutputImages = true;
   node.setSize([WIDTH[media], node.size?.[1] || 600]);
   refreshPresets(); render();
 }
