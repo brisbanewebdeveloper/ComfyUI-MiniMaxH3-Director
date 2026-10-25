@@ -23,4 +23,5 @@ assert.match(html, /src="https:\/\/example\.test\/extensions\/pack\/guide\/image
 assert.match(html, /href="https:\/\/huggingface\.co\/x"/);
 assert.match(html, /<a href="#"[^>]*>bad<\/a>/, "only http(s) links");
 assert.ok(!html.includes("<script>"), "HTML in a chapter is shown as text");
+assert.match(render("- a *long\n  item* goes on\n- next", base), /<li>a <i>long item<\/i> goes on<\/li>\n<li>next<\/li>/, "a wrapped item stays one item");
 console.log("h3 guide: ok");

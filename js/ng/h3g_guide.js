@@ -84,7 +84,10 @@ export function render(markdown, base) {
       flush();
       const kind = /\d/.test(item[1]) ? "ol" : "ul";
       if (list !== kind) { close(); html.push(`<${kind}>`); list = kind; }
-      html.push(`<li>${inline(item[2], base)}</li>`);
+      // an item wrapped onto indented lines stays one item
+      const text = [item[2]];
+      for (; n + 1 < lines.length && /^\s+\S/.test(lines[n + 1]) && !/^\s*([-*]|\d+\.)\s+/.test(lines[n + 1]); n += 1) text.push(lines[n + 1].trim());
+      html.push(`<li>${inline(text.join(" "), base)}</li>`);
       continue;
     }
     close();
