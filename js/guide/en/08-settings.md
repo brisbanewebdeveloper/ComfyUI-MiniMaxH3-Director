@@ -150,6 +150,8 @@ Shown when a Video card is a control video.
 
 ### Models
 
+![Every model file with its download](../images/wf2-studio-models.jpg)
+
 Every file H3 Director uses, grouped (H3, Turbo, Control, Pictures, Sound): found with its file name, or missing, and
 always with its download link and size. Below it the files for place pictures (SAM3, Qwen Image 2.1) can be chosen when
 yours are renamed. All links are also in chapter 2.

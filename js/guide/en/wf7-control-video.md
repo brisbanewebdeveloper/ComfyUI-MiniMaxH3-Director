@@ -6,6 +6,7 @@ movement through the official H3 ControlNet; your Image card decides who is seen
 ![The whole workflow](../images/wf7-overview.jpg)
 
 **What you need:** a picture of your character and a video with the movement (a person walking, dancing …).
+The example opens with `h3-example-hero.jpg`, the walk `h3-example-walk.mp4` and its pose video `h3-example-walk-pose.mp4`, so it renders without converting first.
 
 **The steps in short**
 

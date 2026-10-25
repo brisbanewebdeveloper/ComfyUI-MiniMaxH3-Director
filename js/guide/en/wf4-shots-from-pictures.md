@@ -6,6 +6,7 @@ Every shot starts exactly on one of your pictures and comes to life from there. 
 ![The whole workflow](../images/wf4-overview.jpg)
 
 **What you need:** one picture per shot, ideally in the video's format (here 1280×704, landscape).
+The example opens with three views of the same figure (`h3-example-hero-side/front/back.jpg`).
 
 **The steps in short**
 

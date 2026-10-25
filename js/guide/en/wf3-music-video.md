@@ -6,6 +6,7 @@ the lip movement to it. The example has three shots of ten seconds.
 ![The whole workflow](../images/wf3-overview.jpg)
 
 **What you need:** a picture of the singer and the song as an audio file (mp3, wav, flac).
+The example opens with `h3-example-hero.jpg` and the song `h3-example-song.mp3`; choose your own files in the cards.
 
 **The steps in short**
 

@@ -1,11 +1,12 @@
 # Workflow 8 · Inpaint: replace a figure
 
-A person in your footage is replaced by your character; the rest of the video (street, light, camera) stays. A **mask
+A person in your footage is replaced by your character; the rest of the video (the place, the light, the camera) stays. A **mask
 video** marks the area to redraw: white is regenerated, black is taken from the footage.
 
 ![The whole workflow](../images/wf8-overview.jpg)
 
 **What you need:** a picture of your character and the footage with the person to replace.
+The example opens with `h3-example-hero.jpg`, the footage `h3-example-walk.mp4` and its mask `h3-example-walk-mask.mp4`.
 
 **The steps in short**
 
@@ -45,8 +46,8 @@ you press *Generate mask*; rendering does not load it.
 
 - **Mode: References** — your character's picture is the reference for the new figure.
 - The **Control** lane holds the clip *Footage · mask · 0–10 s*.
-- The shot names the character: *@Hero walks along the street exactly where the person in the footage walks …*. Describe
-  the scene as it is in the footage, so the new figure fits into it.
+- The shot names the character: *@Hero turns around and walks away deep into the dark stone hall, exactly where the
+  person in the footage walks …*. Describe the scene as it is in the footage, so the new figure fits into it.
 
 ## Tips
 

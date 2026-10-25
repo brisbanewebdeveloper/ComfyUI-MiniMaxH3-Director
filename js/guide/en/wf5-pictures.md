@@ -7,7 +7,7 @@ different places, for first frames of a later video, or to try a scene quickly.
 
 **The steps in short**
 
-1. Put your character into the **Image** card (*Use as: Reference*).
+1. Put your character into the **Image** card (*Use as: Reference*; the example opens with `h3-example-hero.jpg`).
 2. Write one shot per picture in the Director.
 3. Press **Generate**. The pictures are saved by **Save Image**.
 

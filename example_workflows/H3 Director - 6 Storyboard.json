@@ -302,7 +302,7 @@
    },
    "widgets_values": [
     "@Luna and @Inferna meet in a candle-lit gothic hall, show each other their magic and seal a pact.",
-    "{\"format\":\"h3-director-shots\",\"schema_version\":1,\"shots\":[{\"id\":\"sb-p1\",\"start\":0,\"end\":5,\"text\":\"Wide shot of a candle-lit gothic hall: @Luna stands on the left, @Inferna on the right, facing each other across the shining floor. The camera slowly pushes in.\",\"media\":[{\"schema_version\":1,\"context_id\":\"ctx_d90f3d5f13d2ef9721220a62d86b624e\",\"role\":\"storyboard\"}],\"spoken\":[],\"locked_fields\":[],\"draft\":null},{\"id\":\"sb-p2\",\"start\":5,\"end\":10,\"text\":\"Medium two-shot: @Luna on the left and @Inferna on the right step closer and look at each other with calm, curious expressions. Static camera.\",\"media\":[{\"schema_version\":1,\"context_id\":\"ctx_d90f3d5f13d2ef9721220a62d86b624e\",\"role\":\"storyboard\"}],\"spoken\":[],\"locked_fields\":[],\"draft\":null},{\"id\":\"sb-p3\",\"start\":10,\"end\":15,\"text\":\"Medium shot: @Luna raises her hand and a violet spell glows above it; @Inferna opens her hand and a small flame rises from it. The camera slowly orbits to the right.\",\"media\":[{\"schema_version\":1,\"context_id\":\"ctx_d90f3d5f13d2ef9721220a62d86b624e\",\"role\":\"storyboard\"}],\"spoken\":[],\"locked_fields\":[],\"draft\":null},{\"id\":\"sb-p4\",\"start\":15,\"end\":20,\"text\":\"Medium close-up: @Luna and @Inferna shake hands and smile at each other, sealing their pact. Slow push-in, then hold.\",\"media\":[{\"schema_version\":1,\"context_id\":\"ctx_d90f3d5f13d2ef9721220a62d86b624e\",\"role\":\"storyboard\"}],\"spoken\":[],\"locked_fields\":[],\"draft\":null}],\"audio\":[],\"audio_lanes\":[],\"look\":\"Cinematic live action, natural colours, soft light, gentle film grain.\"}",
+    "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"sb-p1\", \"start\": 0, \"end\": 5, \"text\": \"Wide shot of a candle-lit gothic hall: @Luna stands on the left, @Inferna on the right, facing each other across the shining floor. The camera slowly pushes in.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_d90f3d5f13d2ef9721220a62d86b624e\", \"role\": \"storyboard\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}, {\"id\": \"sb-p2\", \"start\": 5, \"end\": 10, \"text\": \"Medium two-shot: @Luna on the left and @Inferna on the right step closer and look at each other with calm, curious expressions. Static camera.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_d90f3d5f13d2ef9721220a62d86b624e\", \"role\": \"storyboard\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}, {\"id\": \"sb-p3\", \"start\": 10, \"end\": 15, \"text\": \"Medium shot: @Luna raises her hand and a violet spell glows above it; @Inferna opens her hand and a small flame rises from it. The camera slowly orbits to the right.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_d90f3d5f13d2ef9721220a62d86b624e\", \"role\": \"storyboard\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}, {\"id\": \"sb-p4\", \"start\": 15, \"end\": 20, \"text\": \"Medium close-up: @Luna and @Inferna shake hands and smile at each other, sealing their pact. Slow push-in, then hold.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_d90f3d5f13d2ef9721220a62d86b624e\", \"role\": \"storyboard\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Dark gothic fantasy in a polished anime style, warm candle light, glowing violet and red magic, smooth natural motion.\"}",
     20,
     0,
     1280,
@@ -1210,7 +1210,7 @@
     "Node name for S&R": "NGContextImage"
    },
    "widgets_values": [
-    "h3-example-storyboard.jpg",
+    "h3-example-storyboard.png",
     "Storyboard",
     "Storyboard of 4 panels with times and captions.",
     "composition",
@@ -1226,7 +1226,7 @@
     ""
    ],
    "widgets_values_named": {
-    "image": "h3-example-storyboard.jpg",
+    "image": "h3-example-storyboard.png",
     "name": "Storyboard",
     "description": "Storyboard of 4 panels with times and captions.",
     "content": "composition",

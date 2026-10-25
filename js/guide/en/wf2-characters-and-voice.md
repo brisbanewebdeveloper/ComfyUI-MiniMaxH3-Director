@@ -7,6 +7,7 @@ shows every node the H3 Director uses for that, from left to right.
 
 **What you need:** a picture of your character (any size, the figure clearly visible) and a short sound file of the voice
 (3–10 seconds of clear speech, no music).
+The example opens with `h3-example-hero.jpg` and `h3-example-voice.wav`; choose your own files in the cards.
 
 **The steps in short**
 
