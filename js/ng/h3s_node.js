@@ -53,7 +53,10 @@ export function repairLaterWidgets(node) {
   }
   for (const widget of node.widgets || []) {
     if (!(widget.name in LATER)) continue;
-    const valid = widget.name === "turbo" ? typeof widget.value === "boolean" : (widget.options?.values || []).includes(widget.value);
+    // A LoRA file that is not installed (yet) keeps its name: ComfyUI's missing-model check offers its download, and the
+    // Studio says it is missing. Only a value that is no file name at all was shifted into this widget.
+    const missingFile = widget.name.startsWith("turbo_lora") && /\.safetensors$/i.test(String(widget.value));
+    const valid = widget.name === "turbo" ? typeof widget.value === "boolean" : missingFile || (widget.options?.values || []).includes(widget.value);
     if (!valid) widget.value = LATER[widget.name];
   }
 }

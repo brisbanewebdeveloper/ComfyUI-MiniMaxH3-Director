@@ -360,9 +360,10 @@ function recorder() {
   const { repairLaterWidgets } = await import("../../../js/ng/h3s_node.js");
   const widget = (name, value, values) => ({ name, value, options: values ? { values } : {} });
   const node = { widgets: [widget("turbo", ""), widget("turbo_lora_fl2va", "gone.safetensors", ["none", "fl.safetensors"]),
-    widget("turbo_lora_ref2va", "none", ["none"]), widget("resize_method", "pad", ["crop", "pad"]), widget("seed", "")] };
+    widget("turbo_lora_ref2va", 1.5, ["none"]), widget("resize_method", "pad", ["crop", "pad"]), widget("seed", "")] };
   repairLaterWidgets(node);
-  assert.deepEqual(node.widgets.map((w) => w.value), [false, "none", "none", "pad", ""], "only the later widgets are repaired, valid values stay");
+  assert.deepEqual(node.widgets.map((w) => w.value), [false, "gone.safetensors", "none", "pad", ""],
+    "only the later widgets are repaired; a LoRA that is not installed keeps its name for the download offer");
   // A workflow saved before "resume": its prompt_override text stays with prompt_override, resume is on.
   const { repairInsertedWidgets } = await import("../../../js/ng/h3s_node.js");
   const fresh = () => ({ widgets: [widget("ref_image_size", "?"), widget("resume", "?"), widget("resume_delete_done", "?"),

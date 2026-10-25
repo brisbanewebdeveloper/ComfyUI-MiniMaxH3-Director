@@ -73,7 +73,7 @@ function turboSection(S, actions) {
   const mode = S.values.mode, rows = [];
   for (const [name, label] of [["turbo_lora_fl2va", "Turbo LoRA first / last frame"], ["turbo_lora_ref2va", "Turbo LoRA references"]]) {
     if ((mode === "fl2va" && name.endsWith("ref2va")) || (mode === "ref2va" && name.endsWith("fl2va"))) continue;
-    const options = (S.options[name] || ["none"]).map((value) => [value, value]);
+    const options = withCurrent((S.options[name] || ["none"]).map((value) => [value, value]), S.values[name], (file) => `${file} (not installed)`);
     // pictures take a LoRA's "still" values where it has them (core/turbo_profiles.py)
     const profile = turboProfile(S.turboProfiles, S.values[name]);
     const known = (S.values.output === "images" && profile?.still) || (profile?.steps ? profile : null);
