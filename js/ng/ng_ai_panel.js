@@ -111,7 +111,7 @@ export function buildPanel(node, root, header, widget) {
   root.append(body);
 
   const sourceSection = section("1. Source", "", { icon: "link",
-    help: "Where the AI runs. Every source has a real execution path; only Analyze and Auto Direct ever call it." });
+    help: "Where the AI runs. It only runs when you press an AI button (Analyze, Make H3 prompt, AI: split into shots, Write with AI)." });
   const cards = element("div", "ng-source-cards");
   const address = element("small", "ng-muted");
   const note = element("small", "ng-muted");
@@ -212,7 +212,7 @@ export function buildPanel(node, root, header, widget) {
   samplingRow.append(...samplingFields.map(([, field]) => field.label));
   advanced.append(samplingRow);
   advanced.append(element("small", "ng-muted",
-    "No request runs on connect. Analyze and Auto Direct are the only actions that call the provider, and only when you click them."));
+    "Connecting sends nothing. The AI only runs when you press one of its buttons."));
   body.append(advanced);
 
   // vision and audio are synced here rather than through the shared list: they belong to the CLIP

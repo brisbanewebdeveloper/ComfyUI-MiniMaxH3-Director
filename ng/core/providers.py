@@ -129,53 +129,51 @@ PROVIDERS = {
         models_path="/api/tags", auth="none", supports=("text", "vision"),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature",
                 "top_p", "top_k", "min_p", "keep_alive"),
-        verified=True, verified_note="Four H3 GPU runs with file-loaded contexts.",
+        verified=True, verified_note="Tested: qwen3.5:9b writes shots and prompts and describes pictures.",
         sample_model="qwen2.5vl:7b"),
     "lmstudio": Provider(
         "lmstudio", "LM Studio", "local", "http://127.0.0.1:1234/v1", supports=("text", "vision"),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature", "top_p",
                 "frequency_penalty", "presence_penalty"),
-        verified_note="Reuses the existing address; no run yet."),
+        verified_note="Not tested yet. Start LM Studio's local server first."),
     "llamacpp": Provider(
         "llamacpp", "llama.cpp server", "local", "http://127.0.0.1:8080/v1", supports=("text",),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature", "top_p",
                 "frequency_penalty", "presence_penalty"),
-        verified_note="Reuses the existing address; no run yet."),
+        verified_note="Not tested yet. Start llama.cpp's server first."),
     "custom": Provider(
         "custom", "Custom URL", "local", "", supports=("text",),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature", "top_p",
                 "frequency_penalty", "presence_penalty"),
-        verified_note="Covered by the emulator test, not by a real server."),
+        verified_note="Any OpenAI-compatible server at the address you type."),
     "openai": Provider(
         "openai", "OpenAI / ChatGPT", "api", "https://api.openai.com/v1", auth="bearer",
         supports=("text", "vision"),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature", "top_p",
                 "frequency_penalty", "presence_penalty"),
-        verified_note="Public API. No key has been used yet."),
+        verified_note="Online, needs your API key. Not tested yet."),
     "anthropic": Provider(
         "anthropic", "Claude", "api", "https://api.anthropic.com/v1", auth="x-api-key",
         supports=("text", "vision"),
         # No top_p next to a temperature: Claude rejects the combination. No seed: the API has none.
         fields=("max_tokens", "fixed_seed", "timeout_seconds", "temperature",
                 "frequency_penalty", "presence_penalty"),
-        verified_note="Public API. Untested; top_p and seed are deliberately not offered."),
+        verified_note="Online, needs your API key. Not tested yet."),
     "gemini": Provider(
         "gemini", "Google AI Studio", "api",
         "https://generativelanguage.googleapis.com/v1beta/openai", auth="bearer",
         supports=("text", "vision"),
         fields=("max_tokens", "fixed_seed", "timeout_seconds", "temperature", "top_p"),
-        verified_note="Public API, OpenAI-compatible endpoint. Untested."),
+        verified_note="Online, needs your API key. Not tested yet."),
     "openrouter": Provider(
         "openrouter", "OpenRouter", "api", "https://openrouter.ai/api/v1", auth="bearer",
         supports=("text", "vision"),
         fields=("max_tokens", "seed", "fixed_seed", "timeout_seconds", "temperature", "top_p",
                 "frequency_penalty", "presence_penalty"),
         verified=True,
-        verified_note="Live run: /models answers 466 names with or without a key (OpenRouter "
-                      "leaves that list public and only rejects a wrong key on the chat call), "
-                      "so a listing proves the address, not the key. A vision chat on "
-                      "google/gemma-4-26b-a4b-it:free succeeded for cost 0. Needs ~2000 max tokens: "
-                      "it spends them reasoning first.",
+        # Live run: /models answers with or without a key, so a listing proves the address, not the key; a vision chat on
+        # google/gemma-4-26b-a4b-it:free succeeded for cost 0 and needed ~2000 max tokens (it reasons first).
+        verified_note="Online, needs your API key. Tested with a free vision model; give it about 2000 max tokens.",
         sample_model="google/gemma-4-26b-a4b-it:free"),
 }
 
