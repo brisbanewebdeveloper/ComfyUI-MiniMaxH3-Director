@@ -15,7 +15,7 @@ const CSS = `
 .h3g-bar select{flex:1 1 220px;min-height:32px;background:#0E1117;border:1px solid #2E3848;border-radius:8px;color:#E6EAF2;padding:0 8px;font:inherit}
 .h3g-btn{min-height:32px;padding:0 12px;border-radius:8px;border:1px solid #344055;background:#1E2633;color:#E6EAF2;cursor:pointer;font:13px "IBM Plex Sans","Segoe UI",sans-serif}
 .h3g-btn:hover{background:#273142}
-.h3g-page{flex:1 1 auto;overflow:auto;background:#121720;border:1px solid #262E3B;border-radius:10px;padding:14px 18px;user-select:text}
+.h3g-page{flex:1 1 auto;min-height:0;overflow:auto;background:#121720;border:1px solid #262E3B;border-radius:10px;padding:14px 18px;user-select:text}
 .h3g-page h1{font-size:22px;margin:0 0 10px}.h3g-page h2{font-size:17px;margin:18px 0 6px;color:#CFE1FF}.h3g-page h3{font-size:15px;margin:14px 0 4px}
 .h3g-page p{margin:6px 0}.h3g-page ul,.h3g-page ol{margin:6px 0;padding-left:22px}.h3g-page li{margin:3px 0}
 .h3g-page code{background:#0B0E13;border:1px solid #262E3B;border-radius:5px;padding:0 4px;font:12.5px Consolas,monospace}
@@ -173,11 +173,17 @@ function attach(node) {
     document.body.append(over);
     large.show();
   });
+  // The page scrolls inside a fixed height that follows the node: with ComfyUI's Vue nodes the widget otherwise took the
+  // whole chapter's height (a node 11,000 px tall, user 2026-10-25).
+  // (the Vue node gives its widgets flex: 1 with an automatic minimum height, which outweighs a plain height)
+  const fit = () => { inner.style.flex = "none"; inner.style.height = Math.max(300, (node.size?.[1] ?? 900) - 70) + "px"; };
   followNodeWidth(node.addDOMWidget("h3_guide", "h3_guide", inner, { serialize: false, hideOnZoom: false,
     getMinHeight: () => 300 }));
-  const configure = node.onConfigure;
-  node.onConfigure = function (...args) { const out = configure?.apply(this, args); inner.show(); return out; };
+  const configure = node.onConfigure, resized = node.onResize;
+  node.onConfigure = function (...args) { const out = configure?.apply(this, args); fit(); inner.show(); return out; };
+  node.onResize = function (...args) { const out = resized?.apply(this, args); fit(); return out; };
   if ((node.size?.[0] ?? 0) < 620) node.size = [620, 760];
+  fit();
   inner.show();
 }
 

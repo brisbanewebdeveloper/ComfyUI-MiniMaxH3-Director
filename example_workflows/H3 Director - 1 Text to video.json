@@ -1,19 +1,19 @@
 {
  "id": "51ff3f8e-b312-43d6-9515-8b1be6c03923",
  "revision": 0,
- "last_node_id": 10,
- "last_link_id": 8,
+ "last_node_id": 13,
+ "last_link_id": 11,
  "nodes": [
   {
    "id": 1,
    "type": "UNETLoader",
    "pos": [
-    0,
+    190,
     0
    ],
    "size": [
-    420,
-    82
+    490,
+    90
    ],
    "flags": {},
    "order": 0,
@@ -50,6 +50,8 @@
    ],
    "title": "Model: First / last frame (fl2va)",
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "UNETLoader",
     "models": [
      {
@@ -66,18 +68,20 @@
    "widgets_values_named": {
     "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
     "weight_dtype": "default"
-   }
+   },
+   "color": "#223",
+   "bgcolor": "#335"
   },
   {
    "id": 2,
    "type": "UNETLoader",
    "pos": [
-    0,
-    122
+    190,
+    140
    ],
    "size": [
-    420,
-    82
+    490,
+    89.99999516474902
    ],
    "flags": {},
    "order": 1,
@@ -114,6 +118,8 @@
    ],
    "title": "Model: References (ref2va)",
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "UNETLoader",
     "models": [
      {
@@ -130,18 +136,20 @@
    "widgets_values_named": {
     "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
     "weight_dtype": "default"
-   }
+   },
+   "color": "#223",
+   "bgcolor": "#335"
   },
   {
    "id": 3,
    "type": "CLIPLoader",
    "pos": [
-    0,
-    244
+    190,
+    280
    ],
    "size": [
-    420,
-    106
+    490,
+    117.99998125160903
    ],
    "flags": {},
    "order": 2,
@@ -182,12 +190,15 @@
      "name": "CLIP",
      "type": "CLIP",
      "links": [
-      1
+      1,
+      10
      ]
     }
    ],
    "title": "Text encoder",
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "CLIPLoader",
     "models": [
      {
@@ -206,18 +217,20 @@
     "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
     "type": "minimax",
     "device": "default"
-   }
+   },
+   "color": "#432",
+   "bgcolor": "#653"
   },
   {
    "id": 4,
    "type": "VAELoader",
    "pos": [
-    0,
-    390
+    190,
+    450
    ],
    "size": [
-    420,
-    58
+    490,
+    62.00000907788899
    ],
    "flags": {},
    "order": 3,
@@ -245,6 +258,8 @@
    ],
    "title": "Video VAE",
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "VAELoader",
     "models": [
      {
@@ -259,18 +274,20 @@
    ],
    "widgets_values_named": {
     "vae_name": "minimax_h3_video_vae_fp16.safetensors"
-   }
+   },
+   "color": "#322",
+   "bgcolor": "#533"
   },
   {
    "id": 5,
    "type": "VAELoader",
    "pos": [
-    0,
-    488
+    190,
+    570
    ],
    "size": [
-    420,
-    58
+    490,
+    61.99999081372506
    ],
    "flags": {},
    "order": 4,
@@ -298,6 +315,8 @@
    ],
    "title": "Audio VAE",
    "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
     "Node name for S&R": "VAELoader",
     "models": [
      {
@@ -312,21 +331,23 @@
    ],
    "widgets_values_named": {
     "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
-   }
+   },
+   "color": "#332922",
+   "bgcolor": "#593930"
   },
   {
    "id": 6,
    "type": "NGContextConnector",
    "pos": [
-    760,
+    750,
     0
    ],
    "size": [
-    560,
+    660,
     380
    ],
    "flags": {},
-   "order": 6,
+   "order": 8,
    "mode": 0,
    "inputs": [
     {
@@ -366,7 +387,7 @@
      "name": "ai_provider",
      "shape": 7,
      "type": "NG_AI_PROVIDER",
-     "link": null
+     "link": 11
     },
     {
      "label": "context text 1",
@@ -405,7 +426,7 @@
      "name": "preview_vae",
      "shape": 7,
      "type": "VAE",
-     "link": null
+     "link": 9
     },
     {
      "localized_name": "model_patch",
@@ -426,6 +447,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "minimaxh3-director",
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
     "Node name for S&R": "NGContextConnector"
    },
    "widgets_values": [
@@ -441,15 +464,15 @@
    "id": 7,
    "type": "NGH3Director",
    "pos": [
-    1320,
+    1430,
     0
    ],
    "size": [
-    1400,
-    1097
+    1410,
+    1065.0468251079944
    ],
    "flags": {},
-   "order": 7,
+   "order": 9,
    "mode": 0,
    "inputs": [
     {
@@ -485,6 +508,8 @@
    ],
    "properties": {
     "ng_context_names": {},
+    "cnr_id": "minimaxh3-director",
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
     "Node name for S&R": "NGH3Director",
     "models": [
      {
@@ -501,7 +526,7 @@
    },
    "widgets_values": [
     "An old lighthouse keeper lights the lamp before a storm.",
-    "{\"format\":\"h3-director-shots\",\"schema_version\":1,\"shots\":[{\"id\":\"s1\",\"start\":0,\"end\":5,\"text\":\"Wide shot: an old lighthouse on a rocky cliff at dusk, waves crash below. The camera slowly pushes in.\",\"media\":[],\"spoken\":[],\"locked_fields\":[],\"draft\":null},{\"id\":\"s2\",\"start\":5,\"end\":10,\"text\":\"Medium shot: an old lighthouse keeper with a grey beard climbs the spiral stairs with a lantern.\",\"media\":[],\"spoken\":[{\"schema_version\":1,\"text\":\"Another storm tonight. The light must not go out.\",\"speaker_id\":\"\",\"voice\":\"a calm voice\",\"language\":\"English\",\"delivery\":\"says\"}],\"locked_fields\":[],\"draft\":null},{\"id\":\"s3\",\"start\":10,\"end\":15,\"text\":\"Close-up: the great lamp at the top of the lighthouse turns on and sweeps across the dark sea.\",\"media\":[],\"spoken\":[],\"locked_fields\":[],\"draft\":null}],\"audio\":[],\"audio_lanes\":[],\"look\":\"Cinematic live action, natural colours, soft light, gentle film grain.\"}",
+    "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 5, \"text\": \"Wide shot: an old lighthouse on a rocky cliff at dusk, waves crash below. The camera slowly pushes in.\", \"media\": [], \"spoken\": [], \"locked_fields\": [], \"draft\": null}, {\"id\": \"s2\", \"start\": 5, \"end\": 10, \"text\": \"Medium shot from below: an old lighthouse keeper with a grey beard climbs up the spiral stairs step by step, facing the steps ahead of him, a lantern in his right hand. The camera follows him upward.\", \"media\": [], \"spoken\": [{\"schema_version\": 1, \"text\": \"Another storm tonight. The light must not go out.\", \"speaker_id\": \"\", \"voice\": \"a calm voice\", \"language\": \"English\", \"delivery\": \"says\"}], \"locked_fields\": [], \"draft\": null}, {\"id\": \"s3\", \"start\": 10, \"end\": 15, \"text\": \"Close-up: the great lamp at the top of the lighthouse turns on and sweeps across the dark sea.\", \"media\": [], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Cinematic live action, natural colours, soft light, gentle film grain.\"}",
     15,
     0,
     1280,
@@ -578,15 +603,15 @@
    "id": 8,
    "type": "NGProjectRender",
    "pos": [
-    2800,
+    2860,
     0
    ],
    "size": [
     480,
-    245
+    520
    ],
    "flags": {},
-   "order": 8,
+   "order": 10,
    "mode": 0,
    "inputs": [
     {
@@ -625,6 +650,8 @@
     }
    ],
    "properties": {
+    "cnr_id": "minimaxh3-director",
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
     "Node name for S&R": "NGProjectRender"
    },
    "widgets_values": [
@@ -640,15 +667,15 @@
    "id": 9,
    "type": "SaveVideo",
    "pos": [
-    2800,
-    305
+    3400,
+    -50
    ],
    "size": [
-    640,
-    600
+    1090,
+    1220
    ],
    "flags": {},
-   "order": 9,
+   "order": 11,
    "mode": 0,
    "inputs": [
     {
@@ -667,20 +694,20 @@
      "link": null
     },
     {
-     "localized_name": "codec",
-     "name": "format.codec",
-     "type": "COMFY_DYNAMICCOMBO_V3",
-     "widget": {
-      "name": "format.codec"
-     },
-     "link": null
-    },
-    {
      "localized_name": "format",
      "name": "format",
      "type": "COMFY_DYNAMICCOMBO_V3",
      "widget": {
       "name": "format"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "codec",
+     "name": "format.codec",
+     "type": "COMFY_DYNAMICCOMBO_V3",
+     "widget": {
+      "name": "format.codec"
      },
      "link": null
     },
@@ -703,7 +730,11 @@
      "links": null
     }
    ],
-   "properties": {},
+   "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
+    "Node name for S&R": "SaveVideo"
+   },
    "widgets_values": [
     "H3/text_to_video",
     "auto",
@@ -715,13 +746,15 @@
     "format": "auto",
     "format.codec": "auto",
     "codec": "auto"
-   }
+   },
+   "color": "#223",
+   "bgcolor": "#335"
   },
   {
    "id": 10,
    "type": "NGGuide",
    "pos": [
-    -800,
+    -590,
     0
    ],
    "size": [
@@ -734,16 +767,162 @@
    "inputs": [],
    "outputs": [],
    "properties": {
+    "cnr_id": "minimaxh3-director",
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
     "Node name for S&R": "NGGuide"
    },
    "widgets_values": [
-    "first-video",
+    "wf1-text",
     ""
    ],
    "widgets_values_named": {
-    "chapter": "first-video",
+    "chapter": "start",
     "h3_guide": ""
    }
+  },
+  {
+   "id": 11,
+   "type": "VAELoader",
+   "pos": [
+    190,
+    680
+   ],
+   "size": [
+    490,
+    61.99999081372506
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "vae_name",
+     "name": "vae_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "vae_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "VAE",
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      9
+     ]
+    }
+   ],
+   "title": "Preview VAE",
+   "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.42.0",
+    "Node name for S&R": "VAELoader",
+    "models": [
+     {
+      "name": "taeh3.safetensors",
+      "url": "https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors",
+      "directory": "vae_approx"
+     }
+    ]
+   },
+   "widgets_values": [
+    "taeh3.safetensors"
+   ],
+   "widgets_values_named": {
+    "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+   },
+   "color": "#323",
+   "bgcolor": "#535"
+  },
+  {
+   "id": 13,
+   "type": "NGAIProvider",
+   "pos": [
+    750,
+    430
+   ],
+   "size": [
+    660,
+    667
+   ],
+   "flags": {},
+   "order": 7,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "CLIP",
+     "name": "clip",
+     "shape": 7,
+     "type": "CLIP",
+     "link": 10
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "AI provider",
+     "name": "AI provider",
+     "type": "NG_AI_PROVIDER",
+     "links": [
+      11
+     ]
+    }
+   ],
+   "properties": {
+    "cnr_id": "minimaxh3-director",
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
+    "Node name for S&R": "NGAIProvider"
+   },
+   "widgets_values": [
+    "local",
+    "ollama",
+    "",
+    "",
+    "",
+    true,
+    false,
+    120,
+    512,
+    0,
+    0.3,
+    0.9,
+    40,
+    0,
+    0,
+    0,
+    0,
+    false,
+    "",
+    "stable_diffusion",
+    ""
+   ],
+   "widgets_values_named": {
+    "source": "local",
+    "provider": "ollama",
+    "base_url": "",
+    "model": "",
+    "api_key_env": "",
+    "vision": true,
+    "audio": false,
+    "timeout_seconds": 120,
+    "max_tokens": 512,
+    "keep_alive": 0,
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "top_k": 40,
+    "min_p": 0,
+    "frequency_penalty": 0,
+    "presence_penalty": 0,
+    "seed": 0,
+    "fixed_seed": false,
+    "local_model": "",
+    "local_type": "stable_diffusion",
+    "ng_product": ""
+   },
+   "color": "#162b45",
+   "bgcolor": "#101a2c"
   }
  ],
  "links": [
@@ -810,14 +989,38 @@
    9,
    0,
    "VIDEO"
+  ],
+  [
+   9,
+   11,
+   0,
+   6,
+   10,
+   "VAE"
+  ],
+  [
+   10,
+   3,
+   0,
+   13,
+   0,
+   "CLIP"
+  ],
+  [
+   11,
+   13,
+   0,
+   6,
+   5,
+   "NG_AI_PROVIDER"
   ]
  ],
  "groups": [
   {
    "id": 1,
-   "title": "Guide: read me first",
+   "title": "📖 Guide: read me first",
    "bounding": [
-    -830,
+    -620,
     -80,
     760,
     1010
@@ -827,24 +1030,24 @@
   },
   {
    "id": 2,
-   "title": "1 · Models (load once)",
+   "title": "🧩 1 · Models (load once)",
    "bounding": [
-    -30,
+    170,
     -80,
-    480,
-    656
+    530,
+    850
    ],
    "color": "#2c3e48",
    "flags": {}
   },
   {
    "id": 3,
-   "title": "3 · Director: shots, timeline and Run",
+   "title": "🎬 2 · Director: shots, timeline and Run",
    "bounding": [
     730,
     -80,
-    2740,
-    1207
+    2640,
+    1250
    ],
    "color": "#2a2f4a",
    "flags": {}
@@ -853,10 +1056,10 @@
  "config": {},
  "extra": {
   "ds": {
-   "scale": 0.4,
+   "scale": 0.8574355240000058,
    "offset": [
-    265,
-    -205.3125
+    -1724.3782083235822,
+    231.20743355055438
    ]
   }
  },

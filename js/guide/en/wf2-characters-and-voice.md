@@ -26,7 +26,8 @@ This node is the guide you are reading. It does nothing when the workflow runs. 
 
 ![The model loaders](../images/wf2-models.jpg)
 
-Five ComfyUI loaders, each loads one file. They are loaded once and stay the same for every workflow.
+Six ComfyUI loaders, each loads one file. They are the same in every workflow; the colours tell them apart (blue: the two
+H3 models, yellow: the text encoder, red: the VAEs, purple: the preview VAE).
 
 | Node | File | Folder |
 |---|---|---|
@@ -35,6 +36,7 @@ Five ComfyUI loaders, each loads one file. They are loaded once and stay the sam
 | Text encoder | `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` (type `minimax`) | `models/text_encoders` |
 | Video VAE | `minimax_h3_video_vae_fp16.safetensors` | `models/vae` |
 | Audio VAE | `minimax_h3_audio_vae_fp32.safetensors` | `models/vae` |
+| Preview VAE | `taeh3.safetensors` (small, for the live preview) | `models/vae_approx` |
 
 If a file is missing, ComfyUI offers to download it: the workflow carries the links. Your files can have other names or
 lie in a subfolder; then pick them in the loader. Only the model a render part needs is loaded: a project in References
@@ -53,7 +55,7 @@ The **H3 Context Image** card holds one picture and says what it is for.
   character sheet), the gear the card's settings.
 - **What is in it**: what the picture shows. Here *Character*.
 - **Use as**: *Reference* keeps this figure recognizable wherever a shot uses it. *First frame* / *Last frame* make the
-  picture the first or last frame of a shot instead (chapter 6).
+  picture the first or last frame of a shot instead (chapter *References or first frames*).
 - **Keep in the video**: how strictly H3 keeps identity, outfit and pose of the picture. *Background: Ignore* lets the
   shot put the figure into its own place.
 - **Belongs to**: leave *Independent* for a figure of its own. A second picture of the same figure (a side view, the back)
@@ -77,11 +79,21 @@ The **H3 Context Audio** card holds one sound file. Play it with ▶; the marked
 
 ![H3 Context Connector](../images/wf2-connector.jpg)
 
-The Connector collects everything the Director needs: the models, the text encoder, both VAEs and the content cards.
-Connect a new card to the last empty *context* input; a new empty input appears. Optional inputs:
+The Connector collects everything the Director needs: the models, the text encoder, the VAEs and the content cards.
+Connect a new card to the last empty *context* input; a new empty input appears. The **preview VAE** shows every render
+part while it is being made; without it the render works the same, only without the live picture.
 
-- **AI provider**: an *H3 AI Loader* for writing prompts with an AI (Workflow 6).
-- **preview VAE**: a small preview decoder, so you see each render part while it is made.
+## 3 · H3 AI Loader (optional)
+
+![H3 AI Loader](../images/wf2-ai-loader.jpg)
+
+The AI Loader lets an AI write for you: shot texts, the prompts of the render parts, descriptions of your pictures
+(**Analyze** on a card). Nothing needs it — every workflow runs without AI.
+
+- **Source**: *Local* (a model on your own machine, for example with Ollama), *API* (an online provider) or *CLIP /
+  Encoder* (only reads, does not write).
+- **Provider / Model**: for Ollama choose the model with **Load models**, e.g. a Qwen vision model.
+- It is connected to the Connector and to every card; the Director shows **AI connected** at the top when it is ready.
 
 ## 3 · H3 Director: the Studio
 

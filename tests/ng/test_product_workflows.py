@@ -2,6 +2,7 @@
 and one custom sampling loop that closes its body."""
 import json
 from pathlib import Path
+import re
 import unittest
 
 from _pack import REPO, comfy_available
@@ -11,7 +12,7 @@ if comfy_available():
 
 FOLDER = Path(REPO) / "example_workflows"
 GUIDE = json.loads((Path(REPO) / "js" / "guide" / "guide.json").read_text(encoding="utf8"))
-ADVANCED = "H3 Director - 8 Custom sampling (advanced)"
+ADVANCED = "H3 Director - 9 Custom sampling (advanced)"
 
 
 class ProductWorkflows(unittest.TestCase):
@@ -21,7 +22,7 @@ class ProductWorkflows(unittest.TestCase):
 
     def test_the_numbered_set_is_shipped(self):
         names = [label for label, _ in self.examples()]
-        self.assertEqual(len(names), 8)
+        self.assertEqual(len(names), 9)
         self.assertIn(ADVANCED, names)
         self.assertTrue((FOLDER / "MiniMax H3 Director (Legacy).json").exists())
 
@@ -51,6 +52,13 @@ class ProductWorkflows(unittest.TestCase):
                 self.assertIn("NGProjectRender", types, label)
                 self.assertTrue({"SaveVideo", "SaveImage"} & set(types), label)
 
+    def test_every_chapter_and_its_pictures_exist(self):
+        guide = Path(REPO) / "js" / "guide"
+        for chapter in GUIDE["chapters"]:
+            page = guide / chapter["file"]
+            for picture in re.findall(r"!\[[^\]]*\]\(([^)\s]+)\)", page.read_text(encoding="utf8")):
+                self.assertTrue((page.parent / picture).exists(), "%s: %s" % (chapter["id"], picture))
+
     def test_models_carry_official_names_and_download_links(self):
         for label, workflow in self.examples():
             for node in workflow["nodes"]:
@@ -61,46 +69,55 @@ class ProductWorkflows(unittest.TestCase):
                 self.assertNotIn("/", file, label)
                 links = node["properties"]["models"]
                 self.assertEqual(links[0]["name"], file, label)
-                self.assertTrue(links[0]["url"].startswith("https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/"), label)
+                self.assertTrue(links[0]["url"].startswith(("https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/",
+                                                            "https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/")), label)
             text = json.dumps(workflow)
             self.assertNotIn("ng_lab", text, label)
 
-    def test_the_custom_loop_closes_its_body_and_returns_the_last_sampler(self):
+    def loop(self):
         workflow = dict(self.examples())[ADVANCED]
         nodes = {n["id"]: n for n in workflow["nodes"]}
         links = {link[0]: link for link in workflow["links"]}
+        one = lambda kind: next(n["id"] for n in nodes.values() if n["type"] == kind)
 
         def source(identifier, name):
             port = next(p for p in nodes[identifier]["inputs"] if p["name"] == name)
             return links[port["link"]][1:3]
-        self.assertEqual(source(20, "mode.list"), [6, 1], "chunks must originate at Director outside the loop")
-        self.assertEqual(source(7, "result"), [6, 0])
-        self.assertEqual(source(7, "loop_chunk"), [20, 3])
-        self.assertEqual(source(7, "previous"), [20, 4])
-        self.assertEqual(source(14, "latents"), [21, 0])
-        self.assertEqual(source(14, "chunks"), [6, 1])
+        return workflow, nodes, links, one, source
+
+    def test_the_custom_loop_closes_its_body_and_returns_the_last_sampler(self):
+        _, nodes, _, one, source = self.loop()
+        director, start, output, end = one("NGH3Director"), one("StartLoop"), one("NGDirectorOutput"), one("EndLoop")
+        sampler, collect = one("SamplerCustomAdvanced"), one("NGCollect")
+        self.assertEqual(source(start, "mode.list"), [director, 1], "chunks must originate at Director outside the loop")
+        self.assertEqual(source(output, "result"), [director, 0])
+        self.assertEqual(source(output, "loop_chunk"), [start, 3])
+        self.assertEqual(source(output, "previous"), [start, 4])
+        self.assertEqual(source(collect, "latents"), [end, 0])
+        self.assertEqual(source(collect, "chunks"), [director, 1])
         for name in ("output_value", "next_iteration_value"):
-            self.assertEqual(source(21, name), [12, 0])
-        self.assertEqual(source(12, "latent_image"), [7, 3])
+            self.assertEqual(source(end, name), [sampler, 0])
+        self.assertEqual(source(sampler, "latent_image")[0], output)
+        self.assertEqual(source(sampler, "sigmas")[0], output, "the part's own turbo profile reaches the sampler")
 
     @unittest.skipUnless(comfy_available(), "ComfyUI is not importable")
-    def test_native_validation_keeps_noise_inside_the_loop(self):
-        workflow = dict(self.examples())[ADVANCED]
-        links = {link[0]: link for link in workflow["links"]}
+    def test_native_validation_keeps_the_sampler_inside_the_loop(self):
+        workflow, nodes, links, one, _ = self.loop()
         graph = {}
         for node in workflow["nodes"]:
             if node["type"] == "NGGuide":
                 continue                    # a virtual node never reaches the server
-            inputs = dict(node.get("widgets_values_named", {}))
+            inputs = {}
             for port in node["inputs"]:
                 if port["link"] is not None:
                     _, origin, slot, *_ = links[port["link"]]
                     inputs[port["name"]] = [str(origin), slot]
             graph[str(node["id"])] = dict(class_type=node["type"], inputs=inputs)
-        validate_loops(graph, ["16"], graph.keys(), ["20"], ["21"])
-        body = set(graph["20"]["_loop_body"])
-        self.assertTrue({"7", "13", "12"} <= body)
-        self.assertFalse({"6", "14", "15", "16"} & body)
+        save = str(one("SaveVideo"))
+        validate_loops(graph, [save], graph.keys(), [str(one("StartLoop"))], [str(one("EndLoop"))])
+        body = set(graph[str(one("StartLoop"))]["_loop_body"])
+        self.assertTrue({str(one(k)) for k in ("NGDirectorOutput", "SamplerCustomAdvanced", "RandomNoise")} <= body)
+        self.assertFalse({str(one(k)) for k in ("NGH3Director", "NGCollect", "SaveVideo")} & body)
 
 
 if __name__ == "__main__":

@@ -11,9 +11,9 @@
       "file": "en/02-models.md"
     },
     {
-      "id": "first-video",
-      "title": "3 · Your first video",
-      "file": "en/03-first-video.md"
+      "id": "wf1-text",
+      "title": "Workflow 1 · Text to video",
+      "file": "en/wf1-text-to-video.md"
     },
     {
       "id": "wf-characters",
@@ -21,59 +21,89 @@
       "file": "en/wf2-characters-and-voice.md"
     },
     {
+      "id": "wf3-music",
+      "title": "Workflow 3 · Music video",
+      "file": "en/wf3-music-video.md"
+    },
+    {
+      "id": "wf4-pictures-as-shots",
+      "title": "Workflow 4 · Shots from pictures",
+      "file": "en/wf4-shots-from-pictures.md"
+    },
+    {
+      "id": "wf5-pictures",
+      "title": "Workflow 5 · Pictures",
+      "file": "en/wf5-pictures.md"
+    },
+    {
+      "id": "wf6-storyboard",
+      "title": "Workflow 6 · Storyboard",
+      "file": "en/wf6-storyboard.md"
+    },
+    {
+      "id": "wf7-control",
+      "title": "Workflow 7 · Control video (pose, canny, depth)",
+      "file": "en/wf7-control-video.md"
+    },
+    {
+      "id": "wf8-inpaint",
+      "title": "Workflow 8 · Inpaint: replace a figure",
+      "file": "en/wf8-inpaint.md"
+    },
+    {
+      "id": "wf9-advanced",
+      "title": "Workflow 9 · Custom sampling (advanced)",
+      "file": "en/14-advanced.md"
+    },
+    {
       "id": "studio",
-      "title": "4 · The Studio: shots and timeline",
+      "title": "The Studio: shots and timeline",
       "file": "en/04-studio.md"
     },
     {
       "id": "content",
-      "title": "5 · Content cards",
+      "title": "Content cards",
       "file": "en/05-content.md"
     },
     {
       "id": "modes",
-      "title": "6 · References or first frames",
+      "title": "References or first frames",
       "file": "en/06-modes.md"
     },
     {
       "id": "sound",
-      "title": "7 · Voices, dialogue and songs",
+      "title": "Voices, dialogue and songs",
       "file": "en/07-sound.md"
     },
     {
       "id": "settings",
-      "title": "8 · Settings (gear)",
+      "title": "Settings (gear)",
       "file": "en/08-settings.md"
     },
     {
       "id": "ai",
-      "title": "9 · Writing with the AI",
+      "title": "Writing with the AI",
       "file": "en/09-ai.md"
     },
     {
       "id": "pictures",
-      "title": "10 · Pictures and the picture editor",
+      "title": "Pictures and the picture editor",
       "file": "en/10-pictures.md"
     },
     {
       "id": "storyboard",
-      "title": "11 · Storyboard",
+      "title": "Storyboard",
       "file": "en/11-storyboard.md"
     },
     {
       "id": "control",
-      "title": "12 · Control video (experimental)",
+      "title": "Control video (experimental)",
       "file": "en/12-control.md"
     },
     {
       "id": "tips",
-      "title": "13 · Tips and problems",
+      "title": "Tips and problems",
       "file": "en/13-tips.md"
-    },
-    {
-      "id": "advanced",
-      "title": "14 · Custom sampling (advanced)",
-      "file": "en/14-advanced.md"
     }
   ]
 }
