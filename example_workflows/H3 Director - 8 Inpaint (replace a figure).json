@@ -328,7 +328,7 @@
    ],
    "widgets_values_named": {
     "idea": "Hero takes the place of the person in the footage.",
-    "shots": "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 10, \"text\": \"@Hero walks along the street exactly where the person in the footage walks; the street, the light and the camera stay as they are.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_hero\", \"role\": \"context\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Cinematic live action, natural colours, soft light, gentle film grain.\", \"control\": [{\"schema_version\": 1, \"id\": \"c1\", \"context_id\": \"ctx_footage\", \"start\": 0, \"end\": 10, \"offset\": 0, \"lane\": \"control\"}], \"control_lanes\": [\"control\"]}",
+    "shots": "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 10, \"text\": \"@Hero turns around and walks away deep into the dark stone hall, exactly where the person in the footage walks; the hall, the candle light and the camera stay as they are.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_hero\", \"role\": \"context\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Dark fantasy in a cinematic anime style, warm candle light in a stone hall, smooth natural motion.\", \"control\": [{\"schema_version\": 1, \"id\": \"c1\", \"context_id\": \"ctx_footage\", \"start\": 0, \"end\": 10, \"offset\": 0, \"lane\": \"control\"}], \"control_lanes\": [\"control\"]}",
     "project_seconds": 15,
     "chunk_seconds": 0,
     "width": 1280,

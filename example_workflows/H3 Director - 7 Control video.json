@@ -327,8 +327,8 @@
     ""
    ],
    "widgets_values_named": {
-    "idea": "Hero follows the movement of the control video.",
-    "shots": "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 10, \"text\": \"@Hero walks through a quiet old town street in the evening light, moving exactly like the person in the control video. The camera tracks beside her.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_hero\", \"role\": \"context\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Cinematic live action, natural colours, soft light, gentle film grain.\", \"control\": [{\"schema_version\": 1, \"id\": \"c1\", \"context_id\": \"ctx_motion\", \"start\": 0, \"end\": 10, \"offset\": 0, \"lane\": \"control\"}], \"control_lanes\": [\"control\"]}",
+    "idea": "Hero moves like the person in the control video.",
+    "shots": "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 10, \"text\": \"@Hero walks away from the camera down a dark stone hall lit by candles, moving exactly like the person in the control video. Static camera.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_hero\", \"role\": \"context\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Dark fantasy in a cinematic anime style, warm candle light in a stone hall, smooth natural motion.\", \"control\": [{\"schema_version\": 1, \"id\": \"c1\", \"context_id\": \"ctx_motion\", \"start\": 0, \"end\": 10, \"offset\": 0, \"lane\": \"control\"}], \"control_lanes\": [\"control\"]}",
     "project_seconds": 15,
     "chunk_seconds": 0,
     "width": 1280,

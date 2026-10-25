@@ -4,12 +4,12 @@ NG is the second-generation Director in this pack: videos of any length, rendere
 that continue into each other. It separates reusable media (Context nodes), model connections (Context
 Connector), story editing (the **Studio**) and rendering (native ComfyUI sampling).
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
-The local 1.0.0 development version is unreleased; the published version remains 0.3.2.
+Version 1.0.0 is published as a pre-release (1.0.0-beta.1); the Registry still serves 0.3.2.
 
 
 ## Start with a connected workflow
 
-Use **example_workflows / H3 Director NG - text studio.json** for a complete text-to-video graph.
+Use **example_workflows / H3 Director - 1 Text to video.json** for a complete text-to-video graph.
 Choose your installed H3 FL2VA model, CLIP of type `minimax`, video VAE and audio VAE. The examples use development filenames;
 replace model selections if your installation differs. No models or reference media are bundled.
 
@@ -26,7 +26,7 @@ H3 AI Loader (optional) ─────────────┘          ↓
                                           SaveVideo
 ```
 
-For a character and voice, open **H3 Director NG - image and voice.json**, select your own picture and voice in their Context nodes,
+For a character and voice, open **H3 Director - 2 Characters and voice.json**, select your own picture and voice in their Context nodes,
 and connect the H3 Ref2VA model. Give each context a distinct name; `@Mage` refers to the image named Mage.
 
 ## The Director node
@@ -213,7 +213,7 @@ This is the compiler's real output, refreshed live while you edit.
   then previews every part itself (its player appears on the node with the first frames). With your own sampler, put
   **🎯 Preview Override (live)** between Director Output's MODEL and your guider and connect Director Output's `preview VAE` to it. Both players buffer, with pause,
   scrubbing and independent playback/update status. At 24 FPS they retain
-  every decoded frame and the clip's full duration. See [decoder setup and controls](../README.md#live-preview-while-sampling).
+  every decoded frame and the clip's full duration. See [decoder setup and controls](legacy-director.md#live-preview-while-sampling).
 - **References**: every path calls ComfyUI's own H3 nodes and never patches them. Before the call the Director brings pictures
   and reference video frames to the Qwen size of H3's released processor and cuts a reference video's soundtrack to the frames
   the stock node keeps (`minimax_refprep.py`).

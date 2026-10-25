@@ -81,7 +81,7 @@
    ],
    "size": [
     490,
-    89.99999516474902
+    90
    ],
    "flags": {},
    "order": 1,
@@ -149,7 +149,7 @@
    ],
    "size": [
     490,
-    117.99998125160903
+    120
    ],
    "flags": {},
    "order": 2,
@@ -230,7 +230,7 @@
    ],
    "size": [
     490,
-    62.00000907788899
+    70
    ],
    "flags": {},
    "order": 3,
@@ -287,7 +287,7 @@
    ],
    "size": [
     490,
-    61.99999081372506
+    70
    ],
    "flags": {},
    "order": 4,
@@ -469,7 +469,7 @@
    ],
    "size": [
     1410,
-    1065.0468251079944
+    1050
    ],
    "flags": {},
    "order": 9,
@@ -562,7 +562,7 @@
    ],
    "widgets_values_named": {
     "idea": "An old lighthouse keeper lights the lamp before a storm.",
-    "shots": "{\"format\":\"h3-director-shots\",\"schema_version\":1,\"shots\":[{\"id\":\"s1\",\"start\":0,\"end\":5,\"text\":\"Wide shot: an old lighthouse on a rocky cliff at dusk, waves crash below. The camera slowly pushes in.\",\"media\":[],\"spoken\":[],\"locked_fields\":[],\"draft\":null},{\"id\":\"s2\",\"start\":5,\"end\":10,\"text\":\"Medium shot: an old lighthouse keeper with a grey beard climbs the spiral stairs with a lantern.\",\"media\":[],\"spoken\":[{\"schema_version\":1,\"text\":\"Another storm tonight. The light must not go out.\",\"speaker_id\":\"\",\"voice\":\"a calm voice\",\"language\":\"English\",\"delivery\":\"says\"}],\"locked_fields\":[],\"draft\":null},{\"id\":\"s3\",\"start\":10,\"end\":15,\"text\":\"Close-up: the great lamp at the top of the lighthouse turns on and sweeps across the dark sea.\",\"media\":[],\"spoken\":[],\"locked_fields\":[],\"draft\":null}],\"audio\":[],\"audio_lanes\":[],\"look\":\"Cinematic live action, natural colours, soft light, gentle film grain.\"}",
+    "shots": "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 5, \"text\": \"Wide shot: an old lighthouse on a rocky cliff at dusk, waves crash below. The camera slowly pushes in.\", \"media\": [], \"spoken\": [], \"locked_fields\": [], \"draft\": null}, {\"id\": \"s2\", \"start\": 5, \"end\": 10, \"text\": \"Medium shot from below: an old lighthouse keeper with a grey beard climbs up the spiral stairs step by step, facing the steps ahead of him, a lantern in his right hand. The camera follows him upward.\", \"media\": [], \"spoken\": [{\"schema_version\": 1, \"text\": \"Another storm tonight. The light must not go out.\", \"speaker_id\": \"\", \"voice\": \"a calm voice\", \"language\": \"English\", \"delivery\": \"says\"}], \"locked_fields\": [], \"draft\": null}, {\"id\": \"s3\", \"start\": 10, \"end\": 15, \"text\": \"Close-up: the great lamp at the top of the lighthouse turns on and sweeps across the dark sea.\", \"media\": [], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Cinematic live action, natural colours, soft light, gentle film grain.\"}",
     "project_seconds": 15,
     "chunk_seconds": 0,
     "width": 1280,
@@ -776,7 +776,7 @@
     ""
    ],
    "widgets_values_named": {
-    "chapter": "start",
+    "chapter": "wf1-text",
     "h3_guide": ""
    }
   },
@@ -789,7 +789,7 @@
    ],
    "size": [
     490,
-    61.99999081372506
+    70
    ],
    "flags": {},
    "order": 6,
@@ -832,7 +832,7 @@
     "taeh3.safetensors"
    ],
    "widgets_values_named": {
-    "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    "vae_name": "taeh3.safetensors"
    },
    "color": "#323",
    "bgcolor": "#535"
@@ -983,14 +983,6 @@
    "NG_DIRECTOR_RESULT"
   ],
   [
-   8,
-   8,
-   0,
-   9,
-   0,
-   "VIDEO"
-  ],
-  [
    9,
    11,
    0,
@@ -1013,6 +1005,14 @@
    6,
    5,
    "NG_AI_PROVIDER"
+  ],
+  [
+   8,
+   8,
+   0,
+   9,
+   0,
+   "VIDEO"
   ]
  ],
  "groups": [
@@ -1056,10 +1056,10 @@
  "config": {},
  "extra": {
   "ds": {
-   "scale": 0.8574355240000058,
+   "scale": 0.7794868400000053,
    "offset": [
-    -1724.3782083235822,
-    231.20743355055438
+    1201.47655413245,
+    169.79855459997907
    ]
   }
  },

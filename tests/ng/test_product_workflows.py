@@ -52,6 +52,14 @@ class ProductWorkflows(unittest.TestCase):
                 self.assertIn("NGProjectRender", types, label)
                 self.assertTrue({"SaveVideo", "SaveImage"} & set(types), label)
 
+    def test_values_saved_by_name_match_the_values(self):
+        # the frontend saves widget values twice; an older copy by name once kept the lighthouse keeper's old shot text
+        for label, workflow in self.examples():
+            for node in workflow["nodes"]:
+                named, values = node.get("widgets_values_named"), node.get("widgets_values")
+                if isinstance(named, dict) and isinstance(values, list) and len(named) == len(values):
+                    self.assertEqual(list(named.values()), values, "%s: %s" % (label, node["type"]))
+
     def test_every_chapter_and_its_pictures_exist(self):
         guide = Path(REPO) / "js" / "guide"
         for chapter in GUIDE["chapters"]:
