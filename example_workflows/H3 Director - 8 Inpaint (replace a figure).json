@@ -132,9 +132,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGContextConnector",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextConnector"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     ""
@@ -154,7 +154,7 @@
    ],
    "size": [
     660,
-    800
+    780
    ],
    "flags": {},
    "order": 9,
@@ -184,14 +184,14 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "Node name for S&R": "NGContextImage",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextImage"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
-    "",
+    "h3-example-hero.jpg",
     "Hero",
-    "Describe your picture: who it is, hair, clothes, props.",
+    "A young elf mage with long white hair, golden eyes, pointed ears, a black off-shoulder dress and a staff with glowing amber gems.",
     "character",
     "reference",
     "high",
@@ -205,9 +205,9 @@
     ""
    ],
    "widgets_values_named": {
-    "image": "",
+    "image": "h3-example-hero.jpg",
     "name": "Hero",
-    "description": "Describe your picture: who it is, hair, clothes, props.",
+    "description": "A young elf mage with long white hair, golden eyes, pointed ears, a black off-shoulder dress and a staff with glowing amber gems.",
     "content": "character",
     "usage": "reference",
     "preserve": "high",
@@ -274,9 +274,9 @@
      "ctx_hero": "Hero",
      "ctx_footage": "Footage"
     },
+    "Node name for S&R": "NGH3Director",
     "cnr_id": "minimaxh3-director",
     "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGH3Director",
     "models": [
      {
       "name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
@@ -416,9 +416,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGProjectRender",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGProjectRender"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     ""
@@ -533,9 +533,9 @@
    "inputs": [],
    "outputs": [],
    "properties": {
+    "Node name for S&R": "NGGuide",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGGuide"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     "wf8-inpaint",
@@ -592,9 +592,9 @@
    ],
    "title": "Model: First / last frame (fl2va)",
    "properties": {
+    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
@@ -660,9 +660,9 @@
    ],
    "title": "Model: References (ref2va)",
    "properties": {
+    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
@@ -739,9 +739,9 @@
    ],
    "title": "Text encoder",
    "properties": {
+    "Node name for S&R": "CLIPLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "CLIPLoader",
     "models": [
      {
       "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
@@ -800,9 +800,9 @@
    ],
    "title": "Video VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_video_vae_fp16.safetensors",
@@ -857,9 +857,9 @@
    ],
    "title": "Audio VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_audio_vae_fp32.safetensors",
@@ -914,9 +914,9 @@
    ],
    "title": "Preview VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "taeh3.safetensors",
@@ -970,9 +970,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGAIProvider",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGAIProvider"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     "local",
@@ -1028,11 +1028,11 @@
    "type": "NGContextVideo",
    "pos": [
     500,
-    870
+    888
    ],
    "size": [
     660,
-    1289
+    1597
    ],
    "flags": {},
    "order": 10,
@@ -1062,12 +1062,12 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "Node name for S&R": "NGContextVideo",
     "cnr_id": "minimaxh3-director",
-    "ver": "500b0f44fba5a39f632a2e02b34256213343d277",
-    "Node name for S&R": "NGContextVideo"
+    "ver": "500b0f44fba5a39f632a2e02b34256213343d277"
    },
    "widgets_values": [
-    "",
+    "h3-example-walk.mp4",
     "Footage",
     "The video in which a person is replaced.",
     "control",
@@ -1077,13 +1077,13 @@
     "#d8c277",
     "",
     "",
-    "{\"schema_version\": 1, \"control_kind\": \"mask\", \"mask_prompt\": \"person\"}",
+    "{\"schema_version\":1,\"control_kind\":\"mask\",\"mask_prompt\":\"person\",\"control_mask\":\"h3-example-walk-mask.mp4\"}",
     "",
     "image",
     ""
    ],
    "widgets_values_named": {
-    "video": "",
+    "video": "h3-example-walk.mp4",
     "name": "Footage",
     "description": "The video in which a person is replaced.",
     "content": "control",
@@ -1093,7 +1093,7 @@
     "color": "#d8c277",
     "content_roles": "",
     "usage_roles": "",
-    "context_options": "{\"schema_version\": 1, \"control_kind\": \"mask\", \"mask_prompt\": \"person\"}",
+    "context_options": "{\"schema_version\":1,\"control_kind\":\"mask\",\"mask_prompt\":\"person\",\"control_mask\":\"h3-example-walk-mask.mp4\"}",
     "subject_ids": "",
     "upload": "image",
     "h3c_card": ""
@@ -1138,9 +1138,9 @@
    ],
    "title": "ControlNet (model patch)",
    "properties": {
+    "Node name for S&R": "ModelPatchLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "ModelPatchLoader",
     "models": [
      {
       "name": "minimax_h3_fun_controlnet_union_2.0_pruned_int8_convrot.safetensors",
@@ -1309,7 +1309,7 @@
     470,
     -80,
     720,
-    2269
+    2986
    ],
    "color": "#2c3e48",
    "flags": {}

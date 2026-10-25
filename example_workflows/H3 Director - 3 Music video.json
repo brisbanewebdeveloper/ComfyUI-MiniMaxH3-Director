@@ -140,9 +140,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGContextConnector",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextConnector"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     ""
@@ -162,7 +162,7 @@
    ],
    "size": [
     660,
-    800
+    780
    ],
    "flags": {},
    "order": 8,
@@ -192,14 +192,14 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "Node name for S&R": "NGContextImage",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextImage"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
-    "",
+    "h3-example-hero.jpg",
     "Singer",
-    "Describe the singer: face, hair, outfit.",
+    "A young elf mage with long white hair, golden eyes, pointed ears, a black off-shoulder dress and a staff with glowing amber gems.",
     "character",
     "reference",
     "high",
@@ -213,9 +213,9 @@
     ""
    ],
    "widgets_values_named": {
-    "image": "",
+    "image": "h3-example-hero.jpg",
     "name": "Singer",
-    "description": "Describe the singer: face, hair, outfit.",
+    "description": "A young elf mage with long white hair, golden eyes, pointed ears, a black off-shoulder dress and a staff with glowing amber gems.",
     "content": "character",
     "usage": "reference",
     "preserve": "high",
@@ -236,11 +236,11 @@
    "type": "NGContextAudio",
    "pos": [
     530,
-    860
+    878
    ],
    "size": [
     700,
-    942
+    1018
    ],
    "flags": {},
    "order": 9,
@@ -270,12 +270,12 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "Node name for S&R": "NGContextAudio",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextAudio"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
-    "",
+    "h3-example-song.mp3",
     "Song",
     "",
     "music",
@@ -291,7 +291,7 @@
     ""
    ],
    "widgets_values_named": {
-    "audio": "",
+    "audio": "h3-example-song.mp3",
     "name": "Song",
     "description": "",
     "content": "music",
@@ -314,11 +314,11 @@
    "type": "NGContextText",
    "pos": [
     530,
-    1860
+    2051
    ],
    "size": [
     780,
-    784
+    745
    ],
    "flags": {},
    "order": 10,
@@ -353,9 +353,9 @@
      "ctx_singer": "Singer",
      "ctx_song": "Song"
     },
+    "Node name for S&R": "NGContextText",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextText"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     "Dark fantasy, cinematic anime style, warm rim light, floating embers.",
@@ -442,9 +442,9 @@
      "ctx_singer": "Singer",
      "ctx_song": "Song"
     },
+    "Node name for S&R": "NGH3Director",
     "cnr_id": "minimaxh3-director",
     "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGH3Director",
     "models": [
      {
       "name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
@@ -584,9 +584,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGProjectRender",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGProjectRender"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     ""
@@ -701,16 +701,16 @@
    "inputs": [],
    "outputs": [],
    "properties": {
+    "Node name for S&R": "NGGuide",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGGuide"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     "wf3-music",
     ""
    ],
    "widgets_values_named": {
-    "chapter": "sound",
+    "chapter": "wf3-music",
     "h3_guide": ""
    }
   },
@@ -760,9 +760,9 @@
    ],
    "title": "Model: First / last frame (fl2va)",
    "properties": {
+    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
@@ -828,9 +828,9 @@
    ],
    "title": "Model: References (ref2va)",
    "properties": {
+    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
@@ -907,9 +907,9 @@
    ],
    "title": "Text encoder",
    "properties": {
+    "Node name for S&R": "CLIPLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "CLIPLoader",
     "models": [
      {
       "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
@@ -968,9 +968,9 @@
    ],
    "title": "Video VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_video_vae_fp16.safetensors",
@@ -1025,9 +1025,9 @@
    ],
    "title": "Audio VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_audio_vae_fp32.safetensors",
@@ -1082,9 +1082,9 @@
    ],
    "title": "Preview VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "taeh3.safetensors",
@@ -1097,7 +1097,7 @@
     "taeh3.safetensors"
    ],
    "widgets_values_named": {
-    "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    "vae_name": "taeh3.safetensors"
    },
    "color": "#323",
    "bgcolor": "#535"
@@ -1139,9 +1139,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGAIProvider",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGAIProvider"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     "local",
@@ -1351,7 +1351,7 @@
     500,
     -80,
     840,
-    2756
+    2947
    ],
    "color": "#2c3e48",
    "flags": {}
@@ -1384,10 +1384,10 @@
  "config": {},
  "extra": {
   "ds": {
-   "scale": 1.3809084857572484,
+   "scale": 0.44000000000000256,
    "offset": [
-    -3246.7676293681234,
-    333.8531356796043
+    180.01053187337672,
+    856.2661087368971
    ]
   }
  },

@@ -122,9 +122,7 @@
     },
     {
      "label": "context image 4",
-     "localized_name": "image_3",
      "name": "context_image.image_3",
-     "shape": 7,
      "type": "NG_CONTEXT",
      "link": null
     }
@@ -140,9 +138,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGContextConnector",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextConnector"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     ""
@@ -162,10 +160,10 @@
    ],
    "size": [
     660,
-    800
+    780
    ],
    "flags": {},
-   "order": 0,
+   "order": 8,
    "mode": 0,
    "inputs": [
     {
@@ -192,12 +190,12 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "Node name for S&R": "NGContextImage",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextImage"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
-    "",
+    "h3-example-hero-side.jpg",
     "Opening 1",
     "The first frame of shot 1.",
     "composition",
@@ -213,7 +211,7 @@
     ""
    ],
    "widgets_values_named": {
-    "image": "",
+    "image": "h3-example-hero-side.jpg",
     "name": "Opening 1",
     "description": "The first frame of shot 1.",
     "content": "composition",
@@ -236,14 +234,14 @@
    "type": "NGContextImage",
    "pos": [
     560,
-    870
+    888
    ],
    "size": [
     660,
-    800
+    780
    ],
    "flags": {},
-   "order": 1,
+   "order": 9,
    "mode": 0,
    "inputs": [
     {
@@ -270,12 +268,12 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "Node name for S&R": "NGContextImage",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextImage"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
-    "",
+    "h3-example-hero-front.jpg",
     "Opening 2",
     "The first frame of shot 2.",
     "composition",
@@ -291,7 +289,7 @@
     ""
    ],
    "widgets_values_named": {
-    "image": "",
+    "image": "h3-example-hero-front.jpg",
     "name": "Opening 2",
     "description": "The first frame of shot 2.",
     "content": "composition",
@@ -314,14 +312,14 @@
    "type": "NGContextImage",
    "pos": [
     560,
-    1730
+    1766
    ],
    "size": [
     660,
-    800
+    780
    ],
    "flags": {},
-   "order": 2,
+   "order": 10,
    "mode": 0,
    "inputs": [
     {
@@ -348,12 +346,12 @@
      "fade_in": 0,
      "fade_out": 0
     },
+    "Node name for S&R": "NGContextImage",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGContextImage"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
-    "",
+    "h3-example-hero-back.jpg",
     "Opening 3",
     "The first frame of shot 3.",
     "composition",
@@ -369,7 +367,7 @@
     ""
    ],
    "widgets_values_named": {
-    "image": "",
+    "image": "h3-example-hero-back.jpg",
     "name": "Opening 3",
     "description": "The first frame of shot 3.",
     "content": "composition",
@@ -396,7 +394,7 @@
    ],
    "size": [
     1400,
-    1029
+    1030
    ],
    "flags": {},
    "order": 12,
@@ -439,9 +437,9 @@
      "ctx_open2": "Opening 2",
      "ctx_open3": "Opening 3"
     },
+    "Node name for S&R": "NGH3Director",
     "cnr_id": "minimaxh3-director",
     "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGH3Director",
     "models": [
      {
       "name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
@@ -581,9 +579,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGProjectRender",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGProjectRender"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     ""
@@ -693,21 +691,21 @@
     900
    ],
    "flags": {},
-   "order": 3,
+   "order": 0,
    "mode": 0,
    "inputs": [],
    "outputs": [],
    "properties": {
+    "Node name for S&R": "NGGuide",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGGuide"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     "wf4-pictures-as-shots",
     ""
    ],
    "widgets_values_named": {
-    "chapter": "modes",
+    "chapter": "wf4-pictures-as-shots",
     "h3_guide": ""
    }
   },
@@ -723,7 +721,7 @@
     90
    ],
    "flags": {},
-   "order": 4,
+   "order": 1,
    "mode": 0,
    "inputs": [
     {
@@ -757,9 +755,9 @@
    ],
    "title": "Model: First / last frame (fl2va)",
    "properties": {
+    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
@@ -791,7 +789,7 @@
     90
    ],
    "flags": {},
-   "order": 5,
+   "order": 2,
    "mode": 0,
    "inputs": [
     {
@@ -825,9 +823,9 @@
    ],
    "title": "Model: References (ref2va)",
    "properties": {
+    "Node name for S&R": "UNETLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "UNETLoader",
     "models": [
      {
       "name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
@@ -859,7 +857,7 @@
     120
    ],
    "flags": {},
-   "order": 6,
+   "order": 3,
    "mode": 0,
    "inputs": [
     {
@@ -904,9 +902,9 @@
    ],
    "title": "Text encoder",
    "properties": {
+    "Node name for S&R": "CLIPLoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "CLIPLoader",
     "models": [
      {
       "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
@@ -940,7 +938,7 @@
     70
    ],
    "flags": {},
-   "order": 7,
+   "order": 4,
    "mode": 0,
    "inputs": [
     {
@@ -965,9 +963,9 @@
    ],
    "title": "Video VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_video_vae_fp16.safetensors",
@@ -997,7 +995,7 @@
     70
    ],
    "flags": {},
-   "order": 8,
+   "order": 5,
    "mode": 0,
    "inputs": [
     {
@@ -1022,9 +1020,9 @@
    ],
    "title": "Audio VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "minimax_h3_audio_vae_fp32.safetensors",
@@ -1054,7 +1052,7 @@
     70
    ],
    "flags": {},
-   "order": 9,
+   "order": 6,
    "mode": 0,
    "inputs": [
     {
@@ -1079,9 +1077,9 @@
    ],
    "title": "Preview VAE",
    "properties": {
+    "Node name for S&R": "VAELoader",
     "cnr_id": "comfy-core",
     "ver": "0.42.0",
-    "Node name for S&R": "VAELoader",
     "models": [
      {
       "name": "taeh3.safetensors",
@@ -1094,7 +1092,7 @@
     "taeh3.safetensors"
    ],
    "widgets_values_named": {
-    "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    "vae_name": "taeh3.safetensors"
    },
    "color": "#323",
    "bgcolor": "#535"
@@ -1136,9 +1134,9 @@
     }
    ],
    "properties": {
+    "Node name for S&R": "NGAIProvider",
     "cnr_id": "minimaxh3-director",
-    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31",
-    "Node name for S&R": "NGAIProvider"
+    "ver": "90325669a6f447855b75a4da2a6b01e127b62e31"
    },
    "widgets_values": [
     "local",
@@ -1208,6 +1206,38 @@
    "NG_DIRECTOR_RESULT"
   ],
   [
+   18,
+   16,
+   0,
+   20,
+   0,
+   "CLIP"
+  ],
+  [
+   20,
+   20,
+   0,
+   7,
+   0,
+   "NG_AI_PROVIDER"
+  ],
+  [
+   21,
+   20,
+   0,
+   8,
+   0,
+   "NG_AI_PROVIDER"
+  ],
+  [
+   22,
+   20,
+   0,
+   9,
+   0,
+   "NG_AI_PROVIDER"
+  ],
+  [
    11,
    11,
    0,
@@ -1256,6 +1286,14 @@
    "MODEL"
   ],
   [
+   19,
+   20,
+   0,
+   6,
+   5,
+   "NG_AI_PROVIDER"
+  ],
+  [
    6,
    7,
    0,
@@ -1286,46 +1324,6 @@
    6,
    12,
    "VAE"
-  ],
-  [
-   18,
-   16,
-   0,
-   20,
-   0,
-   "CLIP"
-  ],
-  [
-   19,
-   20,
-   0,
-   6,
-   5,
-   "NG_AI_PROVIDER"
-  ],
-  [
-   20,
-   20,
-   0,
-   7,
-   0,
-   "NG_AI_PROVIDER"
-  ],
-  [
-   21,
-   20,
-   0,
-   8,
-   0,
-   "NG_AI_PROVIDER"
-  ],
-  [
-   22,
-   20,
-   0,
-   9,
-   0,
-   "NG_AI_PROVIDER"
   ]
  ],
  "groups": [
@@ -1348,7 +1346,7 @@
     530,
     -70,
     720,
-    2630
+    2684
    ],
    "color": "#2c3e48",
    "flags": {}
@@ -1381,10 +1379,10 @@
  "config": {},
  "extra": {
   "ds": {
-   "scale": 1.0374969840400066,
+   "scale": 0.24836852922366354,
    "offset": [
-    -3093.1708686713564,
-    332.09229636603925
+    2964.486200717559,
+    1176.6051402618564
    ]
   }
  },
