@@ -42,8 +42,10 @@ def clips(context):
     previous = None
     for clip in out:
         item = context.item(clip.context_id)
-        if item is None or item.media != "video" or "control" not in item.effective_usage or not item.source:
+        if item is None or item.media != "video" or "control" not in item.effective_usage:
             raise SchemaError("shots.control", "'%s' needs a connected Video card with Use as: Control video" % clip.context_id)
+        if not item.source:
+            raise SchemaError("shots.control", "'%s' has no video yet: choose or upload one on its card" % item.name)
         if item.options.control_kind == "mask" and not item.options.control_mask:
             raise SchemaError("shots.control", "'%s': generate or choose a mask video on the Inpaint card" % item.name)
         if item.options.control_kind == "mask" and item.options.control_result and item.options.control_result != item.source:

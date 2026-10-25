@@ -92,6 +92,11 @@ class Timing(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "selected source range"):
             plan([clip(offset=0)], [selected])
 
+    def test_a_card_without_its_video_says_so(self):
+        # the shipped Control workflow has its card empty until the user picks a video (2026-10-25)
+        with self.assertRaisesRegex(ValueError, "'pose' has no video yet"):
+            plan([clip()], [replace(card(), source="")])
+
     def test_partial_coverage_and_short_source_are_visible(self):
         p = plan([clip(start=1, end=2)])
         self.assertIn("control_hold", {i.code for i in p.issues})
