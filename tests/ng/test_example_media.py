@@ -9,7 +9,7 @@ from unittest import mock
 from _pack import REPO, module, comfy_available
 
 HAVE_COMFY = comfy_available()
-SOURCE = Path(REPO) / "examples" / "input"
+SOURCE = Path(REPO) / "example_media"
 
 
 @unittest.skipUnless(HAVE_COMFY, "needs ComfyUI's folder_paths")

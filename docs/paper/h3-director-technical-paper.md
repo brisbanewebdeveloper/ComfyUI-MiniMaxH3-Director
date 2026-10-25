@@ -395,7 +395,7 @@ characters, voices and locked songs inside an ordinary ComfyUI graph.
 ## 11 · Reproducing
 
 The unit tests run with `python tests/ng/run_all.py` in ComfyUI's Python (about 1,100 tests, no GPU). The example
-workflows and their input files ship with the pack (`example_workflows`, `examples/input`); the render paths of all
+workflows and their input files ship with the pack (`example_workflows`, `example_media`); the render paths of all
 measurements are the same as in those workflows. The measurement scripts are tied to one machine and are not part of the
 repository; the metrics are defined in §8.1.
 

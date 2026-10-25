@@ -63,7 +63,7 @@ better.
 
 ## Example files
 
-The pictures, voice, song and videos of the example workflows come with the node pack (`examples/input`). They are copied
+The pictures, voice, song and videos of the example workflows come with the node pack (`example_media`). They are copied
 into ComfyUI's `input` folder on start, named `h3-example-…`; a file of the same name that is already there is kept.
 
 ## Little VRAM?

@@ -1,14 +1,15 @@
-"""The example workflows' pictures, voice, song and videos ship in examples/input and are copied into ComfyUI's input folder
-once, so a workflow opens ready to run. They sit at the input folder's top level (h3-example-*): a subfolder name would be
-spelled with "\\" on Windows and "/" elsewhere, and a workflow saved on one would not find the file on the other.
-A file that is already there is never overwritten."""
+"""The example workflows' pictures, voice, song and videos ship in example_media and are copied into ComfyUI's input
+folder once, so a workflow opens ready to run. (Not "examples": ComfyUI serves a folder of that name as workflow templates.)
+They sit at the input folder's top level (h3-example-*): a subfolder name would be spelled with "\\" on Windows and "/"
+elsewhere, and a workflow saved on one would not find the file on the other. A file that is already there is never
+overwritten."""
 import logging
 import os
 import shutil
 
 import folder_paths
 
-SOURCE = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "input")
+SOURCE = os.path.join(os.path.dirname(__file__), "..", "..", "example_media")
 
 
 def install():
