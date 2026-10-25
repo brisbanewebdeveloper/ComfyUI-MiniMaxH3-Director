@@ -34,6 +34,15 @@ class Turbo(unittest.TestCase):
         combo = self.nodes["NGH3Director"].GET_SCHEMA().inputs[start + 2]
         self.assertEqual(combo.options[0], "none")
 
+    def test_the_lora_of_the_other_model_is_not_checked_against_the_folder(self):
+        # ComfyUI skips its list check for inputs named in validate_inputs; an absent LoRA fails only where it is loaded
+        import inspect
+        director = self.nodes["NGH3Director"]
+        self.assertTrue({"turbo_lora_fl2va", "turbo_lora_ref2va"} <= set(inspect.getfullargspec(director.validate_inputs).args))
+        self.assertIs(director.validate_inputs(turbo_lora_fl2va="not_here.safetensors"), True)
+        with self.assertRaisesRegex(FileNotFoundError, "Turbo LoRA not installed: not_here.safetensors"):
+            self.nodes["NGTurboLora"].execute(model=None, lora_name="not_here.safetensors", strength=1.0)
+
     def test_no_turbo_lora_is_preset_the_user_chooses(self):
         from unittest.mock import patch
         product = __import__("mmxd_pack.ng.nodes.product_director_node", fromlist=["turbo_inputs"])

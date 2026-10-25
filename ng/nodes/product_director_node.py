@@ -67,6 +67,13 @@ class NGH3Director(io.ComfyNode):
                          outputs=[NGResult.Output(display_name="result"), NGChunk.Output(display_name="chunks", is_output_list=True)])
 
     @classmethod
+    def validate_inputs(cls, turbo_lora_fl2va="none", turbo_lora_ref2va="none"):
+        # A project uses one H3 model, so one turbo LoRA. Listed here, ComfyUI does not check these two against the loras
+        # folder: a References project was refused because the First / last frame LoRA was not installed (GUI test
+        # 2026-10-25). The LoRA a render part loads is checked when it loads it (render_node.NGTurboLora).
+        return True
+
+    @classmethod
     def execute(cls, context, **values):
         text_inputs = {name: "" if values.get(name) is None else values[name]
                        for name in ("prepend_text", "prompt_override")}

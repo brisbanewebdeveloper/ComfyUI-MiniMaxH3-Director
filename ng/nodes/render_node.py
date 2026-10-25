@@ -146,7 +146,11 @@ class NGTurboLora(io.ComfyNode):
     def execute(cls, model, lora_name, strength):
         import comfy.utils
         import folder_paths
-        lora = comfy.utils.load_torch_file(folder_paths.get_full_path_or_raise("loras", lora_name), safe_load=True)
+        path = folder_paths.get_full_path("loras", lora_name)
+        if path is None:
+            raise FileNotFoundError("Turbo LoRA not installed: %s. Download it (Director → Settings → Models) or choose another one "
+                                    "in Settings → Turbo." % lora_name)
+        lora = comfy.utils.load_torch_file(path, safe_load=True)
         patched, left_out = lora_fit.apply(model, lora, strength)
         if left_out:
             logging.warning("[H3 Director] turbo LoRA '%s': %d piece(s) do not fit this model and were left out (%s, ...). "
