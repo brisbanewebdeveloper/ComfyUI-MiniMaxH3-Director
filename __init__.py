@@ -8,10 +8,6 @@ from .minimax_preview import MiniMaxH3PreviewOverride
 from .minimax_retake import MiniMaxH3RetakeStitch
 from .ng.nodes import NODES as NG_NODES
 
-# MiniMaxH3DirectorChain is deliberately NOT registered — see minimax_chain.py.
-# The backend works; there is no usable way to give it a timeline, so it is withdrawn
-# rather than shipped as a feature nobody can operate.
-
 
 class MiniMaxH3DirectorExtension(ComfyExtension):
     @override

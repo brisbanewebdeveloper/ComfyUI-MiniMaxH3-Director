@@ -1,0 +1,79 @@
+{
+  "chapters": [
+    {
+      "id": "start",
+      "title": "1 · Start here",
+      "file": "en/01-start.md"
+    },
+    {
+      "id": "models",
+      "title": "2 · Models and files",
+      "file": "en/02-models.md"
+    },
+    {
+      "id": "first-video",
+      "title": "3 · Your first video",
+      "file": "en/03-first-video.md"
+    },
+    {
+      "id": "wf-characters",
+      "title": "Workflow 2 · Characters and voice",
+      "file": "en/wf2-characters-and-voice.md"
+    },
+    {
+      "id": "studio",
+      "title": "4 · The Studio: shots and timeline",
+      "file": "en/04-studio.md"
+    },
+    {
+      "id": "content",
+      "title": "5 · Content cards",
+      "file": "en/05-content.md"
+    },
+    {
+      "id": "modes",
+      "title": "6 · References or first frames",
+      "file": "en/06-modes.md"
+    },
+    {
+      "id": "sound",
+      "title": "7 · Voices, dialogue and songs",
+      "file": "en/07-sound.md"
+    },
+    {
+      "id": "settings",
+      "title": "8 · Settings (gear)",
+      "file": "en/08-settings.md"
+    },
+    {
+      "id": "ai",
+      "title": "9 · Writing with the AI",
+      "file": "en/09-ai.md"
+    },
+    {
+      "id": "pictures",
+      "title": "10 · Pictures and the picture editor",
+      "file": "en/10-pictures.md"
+    },
+    {
+      "id": "storyboard",
+      "title": "11 · Storyboard",
+      "file": "en/11-storyboard.md"
+    },
+    {
+      "id": "control",
+      "title": "12 · Control video (experimental)",
+      "file": "en/12-control.md"
+    },
+    {
+      "id": "tips",
+      "title": "13 · Tips and problems",
+      "file": "en/13-tips.md"
+    },
+    {
+      "id": "advanced",
+      "title": "14 · Custom sampling (advanced)",
+      "file": "en/14-advanced.md"
+    }
+  ]
+}

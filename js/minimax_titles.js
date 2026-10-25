@@ -15,7 +15,6 @@ const RENAMED = {
   MiniMaxH3DirectorCS: "MiniMax H3 Director",
   MiniMaxH3PreviewOverrideCS: "MiniMax H3 Preview Override",
   MiniMaxH3RetakeStitchCS: "MiniMax H3 Retake Stitch",
-  MiniMaxH3DirectorChainCS: "MiniMax H3 Director Chain",
 };
 
 const LEGACY_LABEL = {

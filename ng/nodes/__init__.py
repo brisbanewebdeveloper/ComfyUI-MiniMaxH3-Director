@@ -16,5 +16,6 @@ from .ai_nodes import NODES as _AI
 from .control_node import NODES as _CONTROL
 from .storyboard_node import NODES as _STORYBOARD
 from .still_node import NODES as _STILL
+from .guide_node import NODES as _GUIDE
 
-NODES = _CONTEXT + _DIRECTOR + _CHUNK + _RENDER + _STUDIO + _PROVIDER + _CONNECTOR + _PRODUCT + _OUTPUT + _PREVIEW + _AI + _CONTROL + _STORYBOARD + _STILL
+NODES = _CONTEXT + _DIRECTOR + _CHUNK + _RENDER + _STUDIO + _PROVIDER + _CONNECTOR + _PRODUCT + _OUTPUT + _PREVIEW + _AI + _CONTROL + _STORYBOARD + _STILL + _GUIDE
