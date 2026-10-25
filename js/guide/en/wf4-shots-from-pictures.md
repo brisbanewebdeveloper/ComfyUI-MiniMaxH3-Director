@@ -5,7 +5,8 @@ Every shot starts exactly on one of your pictures and comes to life from there. 
 
 ![The whole workflow](../images/wf4-overview.jpg)
 
-**What you need:** one picture per shot, ideally in the video's format (here 1280×704, landscape).
+**What you need:** one picture per shot, all in the same format. The example's Resolution is *From first picture*: the
+video takes the pictures' shape (here portrait, 768×1152).
 The example opens with three views of the same figure (`h3-example-hero-side/front/back.jpg`).
 
 **The steps in short**
@@ -25,7 +26,8 @@ The same six loaders as in every workflow. This mode uses the **First / last fra
 ![An opening picture](../images/wf4-card-image.jpg)
 
 Each card is set to **Use as: First frame**. A picture that does not fit the video's format is fitted by **Fit
-pictures** in the Settings (*Crop* by default).
+pictures** in the Settings (*Crop* by default). Crop cuts from the middle: a portrait picture in a landscape video loses
+its top and bottom — the head may be cut off. Keep pictures and video in the same shape, or choose *Pad*.
 
 ## 3 · H3 Director
 
