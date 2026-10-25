@@ -1,7 +1,7 @@
 [project]
 name = "minimaxh3-director"
 description = "NG project planning and native loop rendering for MiniMax H3, reusable media contexts and optional analysis, alongside the Legacy timeline Director."
-version = "1.0.0"
+version = "1.0.0-beta.1"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = ["opencv-python>=4.8"]

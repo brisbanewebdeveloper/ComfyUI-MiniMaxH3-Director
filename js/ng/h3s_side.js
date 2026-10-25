@@ -29,7 +29,8 @@ function modeCard(S, actions) {
   const lora = mode === "ref2va" ? "turbo_lora_ref2va" : mode === "fl2va" ? "turbo_lora_fl2va" : null;
   const missing = turbo && (lora ? S.values[lora] === "none" : S.values.turbo_lora_fl2va === "none" && S.values.turbo_lora_ref2va === "none");
   // a LoRA the workflow names but this machine lacks: its name and, for the official ones, the download (js/ng/models.json)
-  const absent = (turbo ? (lora ? [lora] : ["turbo_lora_fl2va", "turbo_lora_ref2va"]) : [])
+  const used = lora || (decided === "ref2va" ? "turbo_lora_ref2va" : decided ? "turbo_lora_fl2va" : null);
+  const absent = (turbo ? (used ? [used] : ["turbo_lora_fl2va", "turbo_lora_ref2va"]) : [])
     .filter((name) => S.values[name] && S.values[name] !== "none" && !(S.options[name] || []).includes(S.values[name])).map((name) => S.values[name]);
   const download = (file) => Object.values(S.models || {}).find((entry) => entry.file === file)?.url;
   const noPatch = !S.controlConnected && S.contexts.some((entry) => entry.media === "video" && entry.usage.includes("control"));

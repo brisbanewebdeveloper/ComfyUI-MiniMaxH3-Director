@@ -1,6 +1,22 @@
 # Changelog
 
-## 1.0.0 (unreleased)
+## 1.0.0-beta.1 (2026-10-25, pre-release)
+
+The H3 Director for videos of any length, with nine example workflows, their input files and an illustrated guide.
+
+- **Nine example workflows** (Templates → "H3 Director"): text to video, characters and voice, music video, shots from
+  pictures, pictures, storyboard, control video, inpaint, custom sampling; each with a thumbnail, its guide chapter and the
+  example files, which are copied into ComfyUI's input folder on start (`h3-example-*`).
+- **H3 Guide** node: the guide inside the graph, chapter by chapter, with pictures (also in `js/guide/en`).
+- **Technical report** in `docs/paper`.
+- **Models:** the Director lists every file it uses with its download (Settings → Models); the workflows carry download
+  links for every model, the turbo LoRAs included; a turbo LoRA that is not installed keeps its name and says so.
+- **Layout:** cards no longer draw ComfyUI's upload preview below themselves in Vue mode (it covered the node below); a
+  node that grows by its content moves the nodes below it. The cards' "In the Studio" line is gone.
+- The Legacy timeline Director stays, documented in `docs/legacy-director.md`.
+
+The work that led here, newest first:
+
 
 **Minute fixes and comparison findings** (2026-10-20): from a comparison with 19 other H3 projects and two one-minute test
 videos. A shot change in a part's last two seconds moves the part edge (Ref2VA cut twice for one shot change). A part that
