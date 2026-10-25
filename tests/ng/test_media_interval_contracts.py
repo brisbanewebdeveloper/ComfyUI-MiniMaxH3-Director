@@ -145,9 +145,15 @@ class MediaIntervalContracts(unittest.TestCase):
         self.assertEqual([(r.trim_start_f, r.length_f) for r in refs if r.trim_start_f], [(72, 48)])
 
     def test_unplaced_primary_voice_has_only_its_subject_slot(self):
-        result = planned((FIGURE, voice()), shots=document(30))
+        # only where its figure speaks: a voice sample sent to a part without a line was spoken anyway (GUI test 2026-10-25)
+        silent = planned((FIGURE, voice()), shots=document(30))
+        for compiled in silent.compiled:
+            self.assertEqual(compiled.of_kind("audio"), ())
+        talking = json.loads(document(30))
+        talking["shots"][0]["spoken"] = [{"schema_version": 1, "text": "Hello.", "speaker_id": "figure"}]
+        result = planned((FIGURE, voice()), shots=json.dumps(talking))
+        self.assertEqual(len(result.compiled[0].of_kind("audio")), 1)
         for compiled in result.compiled:
-            self.assertEqual(len(compiled.of_kind("audio")), 1)
             self.assertNotIn("<Audio 2>", compiled.prompt)
 
     def test_primary_voice_copy_and_lock_keep_absolute_file_offsets(self):

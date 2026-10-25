@@ -4,14 +4,20 @@ Contexts not assigned to any shot retain their legacy global scope. A bound
 context follows every chunk (including its pinned head) intersecting that shot.
 Subject/voice dependencies remain available; no media is loaded here.
 """
+import re
 from dataclasses import replace
 
 from .context import USAGE_BY_MEDIA
 from .issues import Issue
 from .frames import seconds_to_frames
+from . import shot_share
+from .limits import FPS
 from .shot_document import read_audio_clips, read_document
 from .subjects import subject_groups
 from .context_checks import check_context
+
+# a spoken line written into a shot's own text: "@Mage says: ..."
+_INLINE_LINE = re.compile(r"\b(?:says|sings|whispers|shouts|murmurs)\b\s*[,:]", re.IGNORECASE)
 
 
 def _add_roles(roles, identity, values):
@@ -110,3 +116,20 @@ def spoken_text(shot, context):
             issues.append(Issue("shot_speaker_unbound", "Speaker '%s' has no image Subject; narrator voice is used." % item.name, shot.shot_id))
         lines.append("%s [%s] %s: %s" % (speaker, spoken.language or "English", spoken.delivery or "says", spoken.text))
     return "\n".join((shot.text, *lines)), tuple(issues)
+
+
+def voices_heard(voices, context, chunk):
+    """{subject: voice card} for one part: a figure's voice sample goes along where the figure speaks or where its card is
+    placed (on a shot or an audio lane in this part). A sample sent to a part in which its figure said nothing was spoken
+    anyway: H3 took a sentence out of it (GUI test 2026-10-25, Workflow 2: "The red cube moves slowly to the right" over a
+    shot without a line). Timed text without structured shots keeps every voice."""
+    # a line written into the shot text itself ("@Mage says: ...") has no speaker id: every voice stays
+    if read_document(context.shots_text) is None or any(_INLINE_LINE.search(shot.text) for shot in chunk.shots):
+        return voices
+    roots = {image.id: group.root.id for group in subject_groups(context) for image in group.images}
+    heard = {roots.get(line.speaker_id, line.speaker_id) for shot in chunk.shots if shot_share.lines_here(shot, chunk)
+             for line in shot.spoken if line.text.strip()}
+    window = (chunk.story_start_f - chunk.head_frames, chunk.story_end_f)
+    placed = {binding.context_id for shot in chunk.shots for binding in shot.media} | {
+        clip.context_id for clip in read_audio_clips(context.shots_text) if clip.start * FPS < window[1] and clip.end * FPS > window[0]}
+    return {subject: voice for subject, voice in voices.items() if subject in heard or voice.id in placed}

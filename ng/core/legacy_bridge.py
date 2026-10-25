@@ -15,7 +15,7 @@ from .context_options import retention_note
 from .issues import Issue
 from .subjects import subject_groups
 from . import shot_share
-from .shot_bindings import spoken_text
+from .shot_bindings import spoken_text, voices_heard
 from .shot_document import has_shots, read_document, read_look
 from .picture_segments import anchor_segments, storyboard_segments
 from .lyrics import SINGER, sung_lines
@@ -370,6 +370,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
     groups = subject_groups(context)
     subjects = [group.root for group in groups]
     voices, extra_voices = _voices_by_speaker(context)
+    heard = voices_heard(voices, context, chunk)      # the slots; every voice card is kept out of the general audio
     substitute = _tag_substitutor([s.id for s in subjects], context) if mode == "ref2va" else _plain_substitutor(subjects, context)
     segments = [{"type": "text", "start": s.local_start_f, "length": s.local_end_f - s.local_start_f,
                  "prompt": _shot_text(s, substitute, automatic=not has_shots(context.shots_text), context=context, chunk=chunk)}
@@ -381,7 +382,7 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
     if ref_on:
         segments += storyboard_segments(context, chunk, texts)
     tdata = {"reference_mode": "REF2VA" if ref_on else "OFF", "prompt_format": "minimax", "global_prompt": substitute(_global_prompt(context)),
-             "segments": segments, "subjects": [_slot(group.root, voices, group.images) for group in groups] if ref_on else [],
+             "segments": segments, "subjects": [_slot(group.root, heard, group.images) for group in groups] if ref_on else [],
              "subjectSlotCount": max(len(subjects), 1), "audioSegments": _audio_segments(context, chunk, voices),
              "motionSegments": _motion_segments(context) if ref_on else [], "overall_soundscape": context.soundscape, "opening_in_shot": True,
              "summary": shot_share.summary_sentence([s["prompt"] for s in texts], CONTINUE_SCENE, plan.DIALOGUE_RE) if ref_on else "",
@@ -391,6 +392,6 @@ def build_timeline(context: DirectorContext, chunk: Chunk, mode: str, guides):
         if item.media == "text":
             continue
         by_source.setdefault(item.source, item.id)
-    voice_items = {number: voices[s.id].id for number, s in enumerate(subjects, 1) if s.id in voices}
+    voice_items = {number: heard[s.id].id for number, s in enumerate(subjects, 1) if s.id in heard}
     notes = extra_voice_issues(extra_voices, context) + [issue for shot in chunk.shots for issue in spoken_text(shot, context)[1]]
     return tdata, Mapping([s.id for s in subjects], by_source, voice_items), notes

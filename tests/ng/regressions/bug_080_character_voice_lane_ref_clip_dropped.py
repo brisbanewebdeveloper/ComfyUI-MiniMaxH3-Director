@@ -129,9 +129,16 @@ class TestBug080CharacterVoiceLaneRefClipDropped(unittest.TestCase):
 
         subjects = tdata.get("subjects", [])
         self.assertEqual(len(subjects), 1)
-        self.assertIsNotNone(subjects[0].get("voice"))
-        self.assertEqual(subjects[0]["voice"]["fileName"], "AliceVoice")
+        # Alice says nothing in this part, so her voice sample stays out: sent along, H3 spoke a sentence of the sample
+        # (GUI test 2026-10-25). It is not duplicated into audioSegments either.
+        self.assertIsNone(subjects[0].get("voice"))
         self.assertEqual(tdata.get("audioSegments", []), [], "Unplaced bound voice must not be duplicated into audioSegments")
+        speaking = json.loads(doc)
+        speaking["shots"][0]["spoken"] = [{"schema_version": 1, "text": "Hello.", "speaker_id": "img_1"}]
+        ctx = context_mod.DirectorContext(idea="test", project_seconds=10.0, shots_text=json.dumps(speaking), items=(img, voice))
+        tdata, _mapping, _notes = legacy_bridge.build_timeline(ctx, make_chunk(ctx.shots_text), "ref2va", ())
+        self.assertEqual(tdata["subjects"][0]["voice"]["fileName"], "AliceVoice", "a figure that speaks keeps its voice")
+        self.assertEqual(tdata.get("audioSegments", []), [])
 
     def test_control_bound_voice_lane_lock_clip_is_preserved(self):
         """Green Control: A bound voice card placed on an audio lane with mode 'lock' IS kept in audioSegments."""
