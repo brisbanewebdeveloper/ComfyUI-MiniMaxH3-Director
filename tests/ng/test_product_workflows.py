@@ -67,6 +67,14 @@ class ProductWorkflows(unittest.TestCase):
             for picture in re.findall(r"!\[[^\]]*\]\(([^)\s]+)\)", page.read_text(encoding="utf8")):
                 self.assertTrue((page.parent / picture).exists(), "%s: %s" % (chapter["id"], picture))
 
+    def test_guide_md_is_made_from_the_current_chapters(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("make_guide", Path(REPO) / "js" / "guide" / "make_guide.py")
+        make_guide = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(make_guide)
+        self.assertEqual((Path(REPO) / "GUIDE.md").read_text(encoding="utf8"), make_guide.build(),
+                         "GUIDE.md is out of date: run python js/guide/make_guide.py")
+
     def test_the_models_chapter_links_every_model_file(self):
         page = (Path(REPO) / "js" / "guide" / "en" / "02-models.md").read_text(encoding="utf8")
         for purpose, model in json.loads((Path(REPO) / "js" / "ng" / "models.json").read_text(encoding="utf8")).items():

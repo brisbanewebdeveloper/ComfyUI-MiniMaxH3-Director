@@ -57,3 +57,9 @@ Longer videos take longer in proportion; try 15–30 s first, then make the whol
 
 The **H3 Guide** does nothing when the workflow runs. Delete it when you no longer need it, or add it to any workflow
 (*MiniMax H3 → NG → H3 Guide*) and choose a chapter.
+
+## Help from an AI agent
+
+An AI agent (Claude, ChatGPT, …) with access to your computer can install the pack, check your models and find what went
+wrong: point it at `SKILL.md` in the node pack's folder. It lists the installation, the models, the example workflows and
+the usual problems with their fixes.

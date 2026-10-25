@@ -91,7 +91,10 @@ Open them from ComfyUI's **Templates** (search "H3 Director"); each one opens wi
 ## The guide
 
 The whole guide — models, the Studio, cards, modes, sound, every setting, the AI, pictures, storyboard, control videos,
-tips — is in [`js/guide/en`](js/guide/en/01-start.md) and inside ComfyUI in the **H3 Guide** node (*MiniMax H3 → NG*).
+tips — is in **[GUIDE.md](GUIDE.md)** (one file) and inside ComfyUI in the **H3 Guide** node (*MiniMax H3 → NG*).
+
+**Stuck?** An AI agent (Claude, ChatGPT, …) can install the pack and help you: point it at **[SKILL.md](SKILL.md)** —
+installation, models, the example workflows and a checklist of what goes wrong and how to fix it.
 How it works underneath — planning, continuation, the seam-aware collector, the per-part compiler and the measurements
 behind them — is in the [technical report](docs/paper/h3-director-technical-paper.md).
 
