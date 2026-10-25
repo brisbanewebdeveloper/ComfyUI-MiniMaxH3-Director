@@ -65,8 +65,11 @@ export function noteChange() {
 export function applyValues(node, changes) {
   for (const widget of node.widgets || []) {
     if (!(widget.name in changes)) continue;
+    const old = widget.value;
     widget.value = changes[widget.name];
     widget.callback?.(widget.value);
+    // the hook ComfyUI's own widgets call: it drops a "missing model" mark once another file is chosen
+    node.onWidgetChanged?.(widget.name, widget.value, old, widget);
   }
   node.setDirtyCanvas?.(true, true);
   document.dispatchEvent(new CustomEvent("ng-context-changed"));

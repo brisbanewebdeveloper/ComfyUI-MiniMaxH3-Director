@@ -188,11 +188,14 @@ function node(comfyClass, widgets = {}, inputs = [], graph = null) {
   assert.match(newContextId({ getRandomValues: (bytes) => bytes.fill(12) }), /^ctx_[0-9a-f]{32}$/,
     "getRandomValues without randomUUID supports ordinary HTTP pages");
   let calls = 0;
-  const card = { widgets: [{ name: "description", value: "old", callback: () => calls++ }, { name: "usage", value: "lock" }] };
+  const changed = [];
+  const card = { widgets: [{ name: "description", value: "old", callback: () => calls++ }, { name: "usage", value: "lock" }],
+    onWidgetChanged: (name, value, old) => changed.push([name, value, old]) };
   applyValues(card, { description: "new", provider_key: "ignored" });
   assert.equal(card.widgets[0].value, "new");
   assert.equal(card.widgets[1].value, "lock");
   assert.equal(calls, 1);
+  assert.deepEqual(changed, [["description", "new", "old"]], "ComfyUI hears the change and clears a missing-model mark");
 }
 
 // Exercise the real product extension's configure hook with both running backend schemas.
