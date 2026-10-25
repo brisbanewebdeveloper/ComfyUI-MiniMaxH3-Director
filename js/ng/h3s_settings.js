@@ -5,7 +5,7 @@ import { h, icon, field, select, tip } from "./h3s_dom.js";
 import { fmt, turboProfile } from "./h3s_model.js";
 import { ASPECTS, RESIZE, nearestAspect, canvasInfo, isAuto, NATIVE_MP } from "./h3s_canvas.js";
 import { controlSettings } from "./h3s_control.js";
-import { PLACE_MODELS, chosenModels, modelState, modelsMenu } from "./ng_models.js";
+import { PLACE_MODELS, chosenModels, modelState, modelsMenu, modelsList } from "./ng_models.js";
 
 const CONTINUITY = [["video_audio", "Continue picture and sound"], ["video", "Continue picture only"], ["none", "Hard cuts"]];
 // Sampler + scheduler pairs that spoil H3 pictures: res_multistep + beta overexposed and oversharpened (own A/B, 2026-10-20, M16);
@@ -113,14 +113,18 @@ function manualSection(S, actions) {
       style: { width: "100%" }, oninput: (event) => actions.setWidget("prompt_override", event.target.value, false) }));
 }
 
-export const loadPlaceModels = (api) => modelState(api, PLACE_MODELS).catch(() => ({}));
+export const loadModels = (api) => modelState(api, ["all"]).catch(() => ({}));
 
-// The files for "Place: Like Shot N" pictures, kept in the Director's "models" widget (ng/adapters/model_files.py).
+// Every file the pack uses with its download (user 2026-10-25: "one place only for that"), then the files for "Place: Like
+// Shot N" pictures, kept in the Director's "models" widget (ng/adapters/model_files.py).
 function modelsSection(S, actions) {
   const chosen = chosenModels(S.values.models);
-  return section("Models", "Place pictures: SAM3 finds people, Qwen Image 2.1 paints them out or paints another view. Automatic takes "
-    + "the official file names; choose your own file if yours is renamed or another version.",
-  modelsMenu(S.placeModels, chosen, (purpose, file) => actions.setWidget("models", JSON.stringify({ ...chosen, [purpose]: file || undefined })), "h3s"));
+  const place = S.models && Object.fromEntries(PLACE_MODELS.filter((purpose) => S.models[purpose]).map((purpose) => [purpose, S.models[purpose]]));
+  return [...section("Models", "Every file H3 Director uses: found or missing, and where to download it. H3's own files are chosen in the "
+    + "loaders on the left; the extra ones on the card or node that uses them.", modelsList(S.models)),
+  ...section("Models for place pictures", "Place pictures: SAM3 finds people, Qwen Image 2.1 paints them out or paints another view. "
+    + "Automatic takes the official file names; choose your own file if yours is renamed or another version.",
+  modelsMenu(place, chosen, (purpose, file) => actions.setWidget("models", JSON.stringify({ ...chosen, [purpose]: file || undefined })), "h3s"))];
 }
 
 export function settingsView(S, actions) {

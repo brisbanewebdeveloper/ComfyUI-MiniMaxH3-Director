@@ -20,7 +20,7 @@ import { FAMILY } from "./ng_context.js";
 import { assetChoices, assetSubjects, restoreAssetWidget } from "./ng_asset_relations.js";
 import { subjectChoices } from "./ng_subjects.js";
 import { followNoteRenames, knownNames } from "./ng_references.js";
-import { noteGrowth, followDraggedHeight } from "./ng_layout.js";
+import { noteGrowth, followDraggedHeight, pushOnGrowth } from "./ng_layout.js";
 import { dropTarget } from "./ng_drop.js";
 import { controlBox } from "./h3c_control.js";
 import { controlGraph, controlSetup } from "./h3c_control_graph.js";
@@ -340,6 +340,7 @@ function attach(node, media) {
   watcher?.observe(root);
   // dragged taller, the preview (Image, Video), the waveform (Audio) or the note (Text) takes the extra height
   followDraggedHeight(node, (px) => root.style.setProperty("--h3c-grow", `${px}px`), fit);
+  pushOnGrowth(node);
 
   const names = () => (node.widgets || []).filter((widget) => widget !== dom).map((widget) => widget.name);
   const dom = followNodeWidth(node.addDOMWidget("h3c_card", "h3c_card", root, { serialize: false, hideOnZoom: false }));

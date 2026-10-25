@@ -159,8 +159,10 @@ async def media_waveform(request):
 
 @PromptServer.instance.routes.get("/ng/models")
 async def model_choices(request):
-    """For a card's Models menu: per purpose its entry in js/ng/models.json, the files of its folder and the automatic choice."""
-    wanted = [name for name in request.query.get("purposes", "").split(",") if name in model_files.MODELS]
+    """For a card's Models menu: per purpose its entry in js/ng/models.json, the files of its folder and the automatic choice.
+    purposes=all answers for every model (the Director's list of all files with their downloads)."""
+    asked = request.query.get("purposes", "")
+    wanted = list(model_files.MODELS) if asked == "all" else [name for name in asked.split(",") if name in model_files.MODELS]
     return web.json_response({name: {**model_files.MODELS[name], "files": model_files.names(name), "auto": model_files.find(name)}
                               for name in wanted})
 

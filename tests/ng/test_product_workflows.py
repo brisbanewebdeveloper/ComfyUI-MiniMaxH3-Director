@@ -59,6 +59,11 @@ class ProductWorkflows(unittest.TestCase):
             for picture in re.findall(r"!\[[^\]]*\]\(([^)\s]+)\)", page.read_text(encoding="utf8")):
                 self.assertTrue((page.parent / picture).exists(), "%s: %s" % (chapter["id"], picture))
 
+    def test_the_models_chapter_links_every_model_file(self):
+        page = (Path(REPO) / "js" / "guide" / "en" / "02-models.md").read_text(encoding="utf8")
+        for purpose, model in json.loads((Path(REPO) / "js" / "ng" / "models.json").read_text(encoding="utf8")).items():
+            self.assertIn("[%s](%s)" % (model["file"], model["url"]) if model["url"] else model["file"], page, purpose)
+
     def test_models_carry_official_names_and_download_links(self):
         for label, workflow in self.examples():
             for node in workflow["nodes"]:

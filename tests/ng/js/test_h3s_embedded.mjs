@@ -54,6 +54,25 @@ assert.equal(host.children.length, 0, "removing the node removes its Studio");
   assert.deepEqual(image.pos, [-1560, 838], "the lower card moves below the grown upper one");
   assert.ok(text.pos[0] + text.size[0] <= connector.pos[0], "the grown cards end before the Connector");
 }
+// A card that grows by its content (a picture chosen) moves the node below it; a load and a drag by the user move nothing.
+{
+  const { pushOnGrowth } = await import("../../../js/ng/ng_layout.js");
+  const saved = globalThis.comfyAPI;
+  const canvas = { resizing_node: null, pointer: {} };
+  globalThis.comfyAPI = { app: { app: { canvas } } };
+  const below = { pos: [0, 900], size: [660, 400] };
+  const card = { pos: [0, 0], size: [660, 800], setSize(size) { this.size = size; this.onResize?.(size); } };
+  card.graph = { _nodes: [card, below], _groups: [] };
+  pushOnGrowth(card);
+  card.onConfigure();
+  card.setSize([660, 800]);
+  card.setSize([660, 1100]);
+  assert.deepEqual(below.pos, [0, 1200], "moved down by the growth");
+  canvas.resizing_node = card;
+  card.setSize([660, 1400]);
+  assert.deepEqual(below.pos, [0, 1200], "the user's own drag moves nothing");
+  globalThis.comfyAPI = saved;
+}
 // A split sends the user's own dialogue along: inline lines and spoken lines, by the speaker's name.
 {
   const { ownLines } = await import("../../../js/ng/h3s_ai.js");

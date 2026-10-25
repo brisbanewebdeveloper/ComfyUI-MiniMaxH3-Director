@@ -13,7 +13,17 @@ const { qwenSetup } = await import("../../../js/ng/h3b_queue.js");
 for (const [purpose, entry] of Object.entries(TABLE)) {
   assert.ok(entry.label && entry.use && entry.folder && entry.file && entry.size, purpose);
   assert.ok(entry.patterns.some((pattern) => new RegExp(pattern, "i").test(entry.file)), `${purpose}: the patterns find ${entry.file}`);
-  if (purpose !== "da3") assert.match(entry.url, /^https:\/\/(huggingface\.co\/Comfy-Org|openaipublic\.azureedge\.net)\//, purpose);
+  if (purpose !== "da3") assert.match(entry.url, /^https:\/\/(huggingface\.co\/(Comfy-Org|Kijai\/MiniMax-H3-TAE)|openaipublic\.azureedge\.net)\//, purpose);
+  assert.ok(models.MODEL_GROUPS.some(([group]) => group === entry.group), `${purpose}: its group is listed`);
+}
+
+// The Director's list of every file: found ones with their file, missing ones named, each with its download and size.
+{
+  const list = models.modelsList({ h3_fl2va: { ...TABLE.h3_fl2va, auto: TABLE.h3_fl2va.file }, sam3: { ...TABLE.sam3, auto: null } });
+  const text = list.filter(Boolean).map((group) => group.innerText).join(" ");
+  assert.ok(text.includes(`✓ ${TABLE.h3_fl2va.file}`));
+  assert.ok(text.includes(`Missing: ${TABLE.sam3.file} in models/checkpoints`));
+  assert.equal(list.filter(Boolean).flatMap((group) => group.byTag("a")).length, 2, "every file has its download");
 }
 for (const list of [models.STORYBOARD_MODELS, models.PLACE_MODELS, ...Object.values(models.CARD_MODELS)])
   for (const purpose of list) assert.ok(TABLE[purpose], purpose);

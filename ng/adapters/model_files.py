@@ -1,5 +1,6 @@
-"""The extra models our nodes use besides H3 (SAM3, Qwen Image, Whisper, ...): one table, js/ng/models.json, which the cards'
-Models menus read as well. A purpose takes the file the user chose in a node's Models menu when that file is there, else
+"""Every model file the pack uses: H3's own (loaded by ComfyUI's loaders; listed so the Director can show what is there and
+where to download it) and the extra ones our nodes load (SAM3, Qwen Image, Whisper, ...). One table, js/ng/models.json, which
+the cards' Models menus read as well. A purpose takes the file the user chose in a node's Models menu when that file is there, else
 the first file that fits one of its patterns (the official name first), else None: every caller has its own fallback."""
 import json
 import os

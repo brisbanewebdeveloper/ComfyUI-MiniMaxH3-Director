@@ -1,4 +1,5 @@
-// The extra models besides H3 (SAM3, Qwen Image, Whisper, ...): js/ng/models.json, read by adapters/model_files.py too.
+// Every model file the pack uses, H3's own and the extra ones (SAM3, Qwen Image, Whisper, ...): js/ng/models.json, read by
+// adapters/model_files.py too.
 // A card's Models menu stores {purpose: file} in its node (properties.ng_models, the Director in its "models" widget);
 // an empty choice is Automatic: the official name or the first file that fits (the server decides, one place for the patterns).
 import { h } from "./h3s_dom.js";
@@ -24,6 +25,24 @@ export async function findModel(api, purpose, chosen) {
 
 export function missingText(entry) {
   return `${entry.label} needs ${entry.file} in models/${entry.folder}${entry.size ? ` (${entry.size})` : ""}.`;
+}
+
+// The Director's list of every file: grouped, each found (with its file) or missing, always with its download.
+export const MODEL_GROUPS = [["h3", "H3, every workflow"], ["turbo", "Turbo"], ["control", "Control videos and masks"],
+  ["pictures", "Pictures, storyboard and places"], ["sound", "Sound"]];
+
+export function modelsList(state, css = "h3s") {
+  if (!state) return [h("span", { class: `${css}-lbl` }, "Looking for models …")];
+  return MODEL_GROUPS.map(([group, title]) => {
+    const rows = Object.values(state).filter((entry) => entry.group === group).map((entry) => h("div", { class: `${css}-model` },
+      h("span", { class: "h3s-strong" }, entry.label), h("span", { class: `${css}-lbl` }, entry.use),
+      entry.auto ? h("span", { class: `${css}-lbl`, style: { color: "#7FD3A0" } }, `✓ ${entry.auto}`)
+        : h("span", { class: `${css}-warn`, style: { fontSize: "12px" } }, `Missing: ${entry.file} in models/${entry.folder}`),
+      entry.url ? h("a", { href: entry.url, target: "_blank", rel: "noopener", style: { color: "#8CC8FF" } }, `Download (${entry.size})`)
+        : h("span", { class: `${css}-lbl` }, entry.note || "")));
+    return rows.length ? h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } },
+      h("span", { class: `${css}-lbl`, style: { textTransform: "uppercase", letterSpacing: "0.04em" } }, title), ...rows) : null;
+  });
 }
 
 export function chosenModels(text) {

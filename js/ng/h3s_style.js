@@ -116,6 +116,7 @@ textarea.h3s-in{padding:10px;line-height:1.45;resize:vertical;width:100%}
 .h3s .h3s-modal{width:min(880px,100%);display:flex;flex-direction:column;gap:14px;padding:18px 20px;border-radius:12px;background:#121722;border:1px solid #2A3342;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .h3s .h3s-modal h3{margin:0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#9AA6B8}
 .h3s .h3s-modal-sec{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;padding:12px;border-radius:10px;border:1px solid #232B39;background:#161B24}
+.h3s .h3s-model{display:grid;grid-template-columns:minmax(180px,1fr) minmax(200px,2fr);gap:2px 14px;padding:6px 0;border-top:1px solid #232B39;width:100%}
 .h3s .h3s-alert{margin:12px 20px 0;padding:10px 14px;border-radius:8px;background:#33240F;border:1px solid #A9772A;color:#FFE2B0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .h3s-more{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;padding:12px;border-radius:10px;border:1px solid #2A3342;background:#161B24}
 .h3s-drawer{border-top:1px solid #222A37;background:#0F131B}

@@ -41,6 +41,24 @@ export function followDraggedHeight(node, setGrow, fit) {
   }
 }
 
+// A node that grows by its content after it was loaded (a picture chosen on a card, a card connected to the Connector, a shot
+// added in the Studio) moves what lies below it down, as on load (user 2026-10-25: "the nodes below are covered"). A drag by
+// the user and the sizes a workflow is loaded with move nothing.
+export function pushOnGrowth(node) {
+  let last = null;
+  const resized = node.onResize, configured = node.onConfigure;
+  node.onConfigure = function (...args) { const result = configured?.apply(this, args); last = null; return result; };
+  node.onResize = function (...args) {
+    const result = resized?.apply(this, args), before = last;
+    last = [node.size[0], node.size[1]];
+    if (before && node.graph && node.size[1] > before[1] + 2 && !draggedByUser(node)) {
+      makeRoom(node.graph, [[node, before]]);
+      node.graph.setDirtyCanvas?.(true, true);
+    }
+    return result;
+  };
+}
+
 // grown: [[node, [savedWidth, savedHeight]], ...] with each node already at its new size.
 export function makeRoom(graph, grown) {
   const nodes = graph._nodes || graph.nodes || [], groups = graph._groups || graph.groups || [], all = [...nodes, ...groups];
