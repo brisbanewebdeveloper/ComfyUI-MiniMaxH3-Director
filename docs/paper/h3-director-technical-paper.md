@@ -1,7 +1,7 @@
 # Long-form audio-video generation with MiniMax H3: a shot planner, pinned continuation and a seam-aware compiler
 
 **Technical report, draft v0.2 — October 2026.** The MiniMax H3 Director for ComfyUI (`ComfyUI-MiniMaxH3-Director`,
-branch `ng`, version 1.0.0 pre-release), maintained by seesee75. GPL-3.0.
+branch `ng`, version 1.0.0), maintained by seesee75. GPL-3.0.
 
 Measurements were made on one machine (RTX 5060 Ti 16 GB, ComfyUI 0.41, H3 int8 checkpoints) and, unless stated
 otherwise, with **one seed per condition**. They show the direction and size of effects, not distributions.

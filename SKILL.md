@@ -17,9 +17,9 @@ Rules for you:
 
 ## 1 · Install
 
-1. Put the pack into `ComfyUI/custom_nodes/` — download the release zip from
+1. Install it with ComfyUI Manager ("MiniMax H3 Director"), or put the pack into `ComfyUI/custom_nodes/` — download the release zip from
    https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases and unpack it, or
-   `git clone --branch v1.0.0-beta.1 https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director`.
+   `git clone --branch v1.0.0 https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director`.
 2. Install the dependency with **ComfyUI's** Python (portable build: `python_embeded\python.exe`):
    `python -m pip install -r requirements.txt`.
 3. Restart ComfyUI and reload the browser with Ctrl+F5. ComfyUI must be **0.37.0 or newer**.
@@ -77,7 +77,7 @@ in **Prompts per render part**) and which workflow they started from. Then:
 | Visible jump at a join | Settings → Transition *Continue picture and sound*; avoid new actions right after a part edge (the Studio warns) |
 | Control video does nothing | ModelPatchLoader with the ControlNet on the Connector's `model_patch`; the clip on the Director's Control lane |
 | AI buttons grey | Connect an H3 AI Loader to the Connector; for Ollama start the server and pick a vision model (qwen3.5:9b tested) |
-| Nodes overlap after loading a picture | Fixed in 1.0.0-beta.1; update the pack |
+| Nodes overlap after loading a picture | Fixed in 1.0.0; update the pack |
 
 Diagnose a failed run: `GET /history?max_items=1` shows `status.messages`; an `execution_error` names the node and the
 message. Validation errors come back from `POST /prompt` as `node_errors`.

@@ -1,8 +1,9 @@
 # Changelog
 
-## 1.0.0-beta.1 (2026-10-25, pre-release)
+## 1.0.0 (2026-10-26)
 
 The H3 Director for videos of any length, with nine example workflows, their input files and an illustrated guide.
+Tested as 1.0.0-beta.1 (GitHub pre-release of 2026-10-26); 1.0.0 is the same code.
 
 - **Nine example workflows** (Templates → "H3 Director"): text to video, characters and voice, music video, shots from
   pictures, pictures, storyboard, control video, inpaint, custom sampling; each with a thumbnail, its guide chapter and the

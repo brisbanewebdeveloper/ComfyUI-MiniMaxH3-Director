@@ -7,12 +7,12 @@ sound — picture and sound continue across every join.
 
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-%E2%89%A5%200.37.0-1a1a1a)](https://github.com/comfyanonymous/ComfyUI)
-[![version](https://img.shields.io/badge/version-1.0.0--beta.1-orange)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.0.0-orange)](CHANGELOG.md)
 
 ![A complete workflow](js/guide/images/wf2-overview.jpg)
 
-> **Pre-release.** 1.0.0-beta.1 is published on the [Releases](https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases)
-> page. ComfyUI Manager and the Registry still install **0.3.2** (the Legacy timeline Director) until 1.0.0 is final.
+> **Coming from 0.3.x?** Your workflows keep working: the timeline Director is still there as **MiniMax H3 Director
+> (Legacy)**. The new **H3 Director** sits next to it under *MiniMax H3 → NG*.
 
 ## See it
 
@@ -21,19 +21,19 @@ Run pressed. Click a preview for the whole video with sound.
 
 <table>
 <tr>
-<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf1_text_to_video.mp4"><img src="docs/media/wf1.webp" alt="Workflow 1"></a><br><b>1 · Text to video</b> — three shots and a spoken line from text alone</td>
-<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf2_characters_and_voice.mp4"><img src="docs/media/wf2.webp" alt="Workflow 2"></a><br><b>2 · Characters and voice</b> — a character from a picture, a voice from a sound file</td>
-<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf3_music_video.mp4"><img src="docs/media/wf3.webp" alt="Workflow 3"></a><br><b>3 · Music video</b> — a singer to a locked song</td>
+<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf1_text_to_video.mp4"><img src="docs/media/wf1.webp" alt="Workflow 1"></a><br><b>1 · Text to video</b> — three shots and a spoken line from text alone</td>
+<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf2_characters_and_voice.mp4"><img src="docs/media/wf2.webp" alt="Workflow 2"></a><br><b>2 · Characters and voice</b> — a character from a picture, a voice from a sound file</td>
+<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf3_music_video.mp4"><img src="docs/media/wf3.webp" alt="Workflow 3"></a><br><b>3 · Music video</b> — a singer to a locked song</td>
 </tr>
 <tr>
-<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf4_shots_from_pictures.mp4"><img src="docs/media/wf4.webp" alt="Workflow 4"></a><br><b>4 · Shots from pictures</b> — every shot starts on one of your pictures</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf4_shots_from_pictures.mp4"><img src="docs/media/wf4.webp" alt="Workflow 4"></a><br><b>4 · Shots from pictures</b> — every shot starts on one of your pictures</td>
 <td><img src="docs/media/wf5.jpg" alt="Workflow 5"><br><b>5 · Pictures</b> — one picture per shot instead of a video</td>
-<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf6_storyboard.mp4"><img src="docs/media/wf6.webp" alt="Workflow 6"></a><br><b>6 · Storyboard</b> — two characters, planned on a storyboard sheet</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf6_storyboard.mp4"><img src="docs/media/wf6.webp" alt="Workflow 6"></a><br><b>6 · Storyboard</b> — two characters, planned on a storyboard sheet</td>
 </tr>
 <tr>
-<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf7_control_video.mp4"><img src="docs/media/wf7.webp" alt="Workflow 7"></a><br><b>7 · Control video</b> — moves like the person in another video (pose)</td>
-<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf8_inpaint.mp4"><img src="docs/media/wf8.webp" alt="Workflow 8"></a><br><b>8 · Inpaint</b> — a person in footage replaced by your character</td>
-<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf9_custom_sampling.mp4"><img src="docs/media/wf9.webp" alt="Workflow 9"></a><br><b>9 · Custom sampling</b> — the render loop with ComfyUI's own sampler nodes</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf7_control_video.mp4"><img src="docs/media/wf7.webp" alt="Workflow 7"></a><br><b>7 · Control video</b> — moves like the person in another video (pose)</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf8_inpaint.mp4"><img src="docs/media/wf8.webp" alt="Workflow 8"></a><br><b>8 · Inpaint</b> — a person in footage replaced by your character</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0/wf9_custom_sampling.mp4"><img src="docs/media/wf9.webp" alt="Workflow 9"></a><br><b>9 · Custom sampling</b> — the render loop with ComfyUI's own sampler nodes</td>
 </tr>
 </table>
 
@@ -62,13 +62,13 @@ Longer videos made with the Director: [3 minutes, References](https://youtu.be/H
 
 ## Installation
 
-1. Download **Source code (zip)** of
-   [v1.0.0-beta.1](https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases) and unpack it into
+1. **ComfyUI Manager:** search "MiniMax H3 Director" and install, or download **Source code (zip)** of
+   [v1.0.0](https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases) and unpack it into
    `ComfyUI/custom_nodes/ComfyUI-MiniMaxH3-Director` — or clone the tag:
 
    ```bash
    cd ComfyUI/custom_nodes
-   git clone --branch v1.0.0-beta.1 https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director
+   git clone --branch v1.0.0 https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director
    ```
 
 2. Install the one dependency with ComfyUI's Python: `python -m pip install -r requirements.txt` (OpenCV).

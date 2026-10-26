@@ -4,7 +4,7 @@ NG is the second-generation Director in this pack: videos of any length, rendere
 that continue into each other. It separates reusable media (Context nodes), model connections (Context
 Connector), story editing (the **Studio**) and rendering (native ComfyUI sampling).
 The original timeline Director remains available as **Legacy** with its existing node ID and workflows.
-Version 1.0.0 is published as a pre-release (1.0.0-beta.1); the Registry still serves 0.3.2.
+Version 1.0.0 is published (GitHub and the Comfy Registry); 1.0.0-beta.1 was its pre-release.
 
 
 ## Start with a connected workflow

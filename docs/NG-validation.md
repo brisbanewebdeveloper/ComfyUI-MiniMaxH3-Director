@@ -19,7 +19,7 @@ Software: 1,032 NG tests, 1,031 passed and one environment-dependent skip; Legac
 review for voice, melody, lip sync and an invisible picture seam. Evidence is in the local notes:
 `_notes/NG/CODEX-AV-FORTSETZUNG-UMSETZUNG-2026-10-15.md` and `continuation-av-audit-2026-10-15/verified-product-results.json`.
 
-Local product work on branch `ng`, based on the existing NG foundation. Public release remains 0.3.2; local 1.0.0 is unreleased.
+Local product work on branch `ng`, based on the existing NG foundation. Released as 1.0.0 on 2026-10-26.
 No push, tag or publication. New user TXT/PNG references define the Connector/Director/Output and separate AI Loader architecture.
 
 ## Complete Context names and card capacity: E40 (2026-10-03)
