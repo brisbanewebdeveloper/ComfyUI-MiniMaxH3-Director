@@ -1,5 +1,5 @@
 {
- "id": "08ff5463-8986-44c7-abb6-ac87cc1b710e",
+ "id": "fa928db7-81f0-4ae0-bb2e-bce3c9bd20fd",
  "revision": 0,
  "last_node_id": 21,
  "last_link_id": 23,
@@ -293,7 +293,7 @@
    "widgets_values": [
     "Hero moves like the person in the control video.",
     "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 10, \"text\": \"@Hero walks away from the camera down a dark stone hall lit by candles, moving exactly like the person in the control video. Static camera.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_hero\", \"role\": \"context\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Dark fantasy in a cinematic anime style, warm candle light in a stone hall, smooth natural motion.\", \"control\": [{\"schema_version\": 1, \"id\": \"c1\", \"context_id\": \"ctx_motion\", \"start\": 0, \"end\": 10, \"offset\": 0, \"lane\": \"control\"}], \"control_lanes\": [\"control\"]}",
-    15,
+    10,
     0,
     1280,
     704,
@@ -329,7 +329,7 @@
    "widgets_values_named": {
     "idea": "Hero moves like the person in the control video.",
     "shots": "{\"format\": \"h3-director-shots\", \"schema_version\": 1, \"shots\": [{\"id\": \"s1\", \"start\": 0, \"end\": 10, \"text\": \"@Hero walks away from the camera down a dark stone hall lit by candles, moving exactly like the person in the control video. Static camera.\", \"media\": [{\"schema_version\": 1, \"context_id\": \"ctx_hero\", \"role\": \"context\"}], \"spoken\": [], \"locked_fields\": [], \"draft\": null}], \"audio\": [], \"audio_lanes\": [], \"look\": \"Dark fantasy in a cinematic anime style, warm candle light in a stone hall, smooth natural motion.\", \"control\": [{\"schema_version\": 1, \"id\": \"c1\", \"context_id\": \"ctx_motion\", \"start\": 0, \"end\": 10, \"offset\": 0, \"lane\": \"control\"}], \"control_lanes\": [\"control\"]}",
-    "project_seconds": 15,
+    "project_seconds": 10,
     "chunk_seconds": 0,
     "width": 1280,
     "height": 704,

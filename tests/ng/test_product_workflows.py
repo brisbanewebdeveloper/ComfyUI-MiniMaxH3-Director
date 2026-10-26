@@ -26,6 +26,11 @@ class ProductWorkflows(unittest.TestCase):
         self.assertIn(ADVANCED, names)
         self.assertTrue((FOLDER / "MiniMax H3 Director (Legacy).json").exists())
 
+    def test_every_example_has_its_own_id(self):
+        # the frontend finds an open workflow by its id; four examples once shared one
+        ids = [workflow["id"] for _, workflow in self.examples()]
+        self.assertEqual(len(set(ids)), len(ids))
+
     def test_every_link_has_matching_native_slots_and_reciprocal_references(self):
         for label, workflow in self.examples():
             nodes = {node["id"]: node for node in workflow["nodes"]}
