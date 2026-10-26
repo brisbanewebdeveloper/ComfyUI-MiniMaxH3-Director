@@ -105,6 +105,12 @@ class Timing(unittest.TestCase):
         self.assertIn("control_unplaced", {i.code for i in plan([]).issues})
         self.assertIn("control_outside_project", {i.code for i in plan([clip(start=20, end=21)]).issues})
 
+    def test_a_clip_to_the_project_end_covers_the_grid_overhang(self):
+        # workflow 7 (2026-10-26): a 10 s clip in a 10 s project warned, because the part delivers 10.1 s
+        p = plan([clip(end=12)])
+        self.assertGreater(p.plan.chunks[-1].story_end_f, 12 * 24)
+        self.assertNotIn("control_hold", {i.code for i in p.issues})
+
 
 @unittest.skipUnless(HAVE_COMFY, "ComfyUI is not importable")
 class Runtime(unittest.TestCase):

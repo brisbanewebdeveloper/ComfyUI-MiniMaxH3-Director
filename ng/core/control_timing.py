@@ -86,7 +86,8 @@ def issues(context, chunks):
         active = [c for c in entries if seconds_to_frames(c.start) < chunk.story_end_f and seconds_to_frames(c.end) > chunk.story_start_f]
         if not active:
             continue
-        start, end = chunk.story_start_f, chunk.story_end_f
+        # the frames H3's grid adds after the project's end (10 s delivers 10.1 s) are no gap worth a warning
+        start, end = chunk.story_start_f, min(chunk.story_end_f, seconds_to_frames(context.project_seconds))
         covered = start
         for clip in active:
             if seconds_to_frames(clip.start) > covered:
