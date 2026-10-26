@@ -31,6 +31,12 @@ class ProductWorkflows(unittest.TestCase):
         ids = [workflow["id"] for _, workflow in self.examples()]
         self.assertEqual(len(set(ids)), len(ids))
 
+    def test_every_example_saves_under_its_own_name(self):
+        # workflows 7 and 8 once saved as H3/characters_and_voice, copied from workflow 2
+        prefixes = [node["widgets_values"][0] for _, workflow in self.examples() for node in workflow["nodes"]
+                    if node["type"] in ("SaveVideo", "SaveImage")]
+        self.assertEqual(len(set(prefixes)), len(prefixes), prefixes)
+
     def test_every_link_has_matching_native_slots_and_reciprocal_references(self):
         for label, workflow in self.examples():
             nodes = {node["id"]: node for node in workflow["nodes"]}

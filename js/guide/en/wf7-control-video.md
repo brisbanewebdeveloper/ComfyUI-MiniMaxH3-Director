@@ -35,8 +35,8 @@ It is connected to the Connector's **model_patch** input.
 
 - **Use as: Control video**.
 - **Control video**: *Pose* (skeletons of the person), *Canny* (edges) or *Depth*. **Generate Pose / Canny / Depth** runs
-  once through ComfyUI's queue and saves the result in `input/h3-control`; rendering reuses that file. A ready control
-  video can also be chosen directly.
+  once through ComfyUI's queue (Pose took about 5 minutes for the 20 s example walk) and saves the result in
+  `input/h3-control`; rendering reuses that file. A ready control video can also be chosen directly.
 - **Part of the file to use**: drag across the strip to use only a part of the video.
 
 Extra models for the conversion (the gear of the card shows what was found):
