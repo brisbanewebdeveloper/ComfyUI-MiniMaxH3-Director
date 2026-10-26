@@ -13,6 +13,12 @@ The H3 Director for videos of any length, with nine example workflows, their inp
   links for every model, the turbo LoRAs included; a turbo LoRA that is not installed keeps its name and says so.
 - **Layout:** cards no longer draw ComfyUI's upload preview below themselves in Vue mode (it covered the node below); a
   node that grows by its content moves the nodes below it. The cards' "In the Studio" line is gone.
+- **Tested through the interface:** every example was opened from Templates, set up as its guide chapter says and run;
+  this found and fixed: a turbo LoRA chosen in Settings stayed under ComfyUI's *Missing Models*; workflows 7 and 8 ran
+  5 s without control and warned on opening; a control clip to the project end warned about H3's last 0.1 s; warnings
+  said "chunk 2" instead of "Render part 2"; four examples shared one workflow id and two saved under another's name;
+  a voice sample's own words were spoken in parts where its figure had no line; workflow 4 cut its portrait pictures.
+- **SKILL.md** for AI agents (install, models, examples, what goes wrong) and **GUIDE.md**, the guide in one file.
 - The Legacy timeline Director stays, documented in `docs/legacy-director.md`.
 
 The work that led here, newest first:

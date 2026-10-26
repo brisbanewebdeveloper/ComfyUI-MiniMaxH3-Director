@@ -14,6 +14,32 @@ sound — picture and sound continue across every join.
 > **Pre-release.** 1.0.0-beta.1 is published on the [Releases](https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases)
 > page. ComfyUI Manager and the Registry still install **0.3.2** (the Legacy timeline Director) until 1.0.0 is final.
 
+## See it
+
+Each clip was made by the example workflow with the same number — opened from ComfyUI's Templates, models chosen,
+Run pressed. Click a preview for the whole video with sound.
+
+<table>
+<tr>
+<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf1_text_to_video.mp4"><img src="docs/media/wf1.webp" alt="Workflow 1"></a><br><b>1 · Text to video</b> — three shots and a spoken line from text alone</td>
+<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf2_characters_and_voice.mp4"><img src="docs/media/wf2.webp" alt="Workflow 2"></a><br><b>2 · Characters and voice</b> — a character from a picture, a voice from a sound file</td>
+<td width="33%"><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf3_music_video.mp4"><img src="docs/media/wf3.webp" alt="Workflow 3"></a><br><b>3 · Music video</b> — a singer to a locked song</td>
+</tr>
+<tr>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf4_shots_from_pictures.mp4"><img src="docs/media/wf4.webp" alt="Workflow 4"></a><br><b>4 · Shots from pictures</b> — every shot starts on one of your pictures</td>
+<td><img src="docs/media/wf5.jpg" alt="Workflow 5"><br><b>5 · Pictures</b> — one picture per shot instead of a video</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf6_storyboard.mp4"><img src="docs/media/wf6.webp" alt="Workflow 6"></a><br><b>6 · Storyboard</b> — two characters, planned on a storyboard sheet</td>
+</tr>
+<tr>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf7_control_video.mp4"><img src="docs/media/wf7.webp" alt="Workflow 7"></a><br><b>7 · Control video</b> — moves like the person in another video (pose)</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf8_inpaint.mp4"><img src="docs/media/wf8.webp" alt="Workflow 8"></a><br><b>8 · Inpaint</b> — a person in footage replaced by your character</td>
+<td><a href="https://github.com/seesee75-commits/ComfyUI-MiniMaxH3-Director/releases/download/v1.0.0-beta.1/wf9_custom_sampling.mp4"><img src="docs/media/wf9.webp" alt="Workflow 9"></a><br><b>9 · Custom sampling</b> — the render loop with ComfyUI's own sampler nodes</td>
+</tr>
+</table>
+
+Longer videos made with the Director: [3 minutes, References](https://youtu.be/H0nnmKTGhMs) ·
+[1 minute, First / last frame](https://youtu.be/ARaXmSfd9UQ).
+
 ## What it does
 
 - **Any length.** The planner splits the video into H3 render parts on H3's frame grid; each part continues the previous
@@ -119,7 +145,7 @@ The legacy timeline editor is derived from [LTX Director](https://github.com/Wha
 [WhatDreamsCost](https://github.com/WhatDreamsCost) and its CS fork by [CGlide](https://github.com/CGlide). The H3 Director,
 planner, Studio, cards and storyboard are by [seesee75](https://github.com/seesee75-commits). MiniMax H3 by
 [MiniMax](https://huggingface.co/MiniMaxAI), ComfyUI packaging by [Comfy-Org](https://huggingface.co/Comfy-Org); the `taeh3`
-preview decoder by [Kijai](https://huggingface.co/Kijai). The example pictures, song and voice are provided by the author for the examples.
+preview decoder by [Kijai](https://huggingface.co/Kijai). The example pictures, song, voice and walk video are provided by the author for the examples.
 
 ## License
 
