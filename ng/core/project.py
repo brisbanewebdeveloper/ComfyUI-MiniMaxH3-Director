@@ -113,7 +113,7 @@ def jobs(project: ProjectPlan):
     return [ChunkJob(project, n) for n in range(len(project.plan.chunks))]
 
 
-_CHUNK_REF = re.compile(r"chunk (\d+)$")
+_CHUNK_REF = re.compile(r"Render part (\d+)$")
 
 
 def _merge(issues, chunk_count):
@@ -130,7 +130,7 @@ def _merge(issues, chunk_count):
     out = []
     for key in order:
         found = sorted(set(numbers[key]))
-        ref = key[2] if key[2] is not None else ("" if len(found) == chunk_count else "chunk " + ", ".join(map(str, found)))
+        ref = key[2] if key[2] is not None else ("" if len(found) == chunk_count else "Render part " + ", ".join(map(str, found)))
         out.append(Issue(first[key].code, first[key].text, ref))
     return tuple(out)
 

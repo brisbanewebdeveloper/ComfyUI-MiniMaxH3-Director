@@ -94,7 +94,7 @@ def issues(context, chunks):
             covered = max(covered, seconds_to_frames(clip.end))
         if covered < end:
             out.append(Issue("control_hold", "Control covers only part of this render part. H3 holds edge frames across gaps "
-                             "and to the part edges; steering can extend beyond the clip. Shorter render parts reduce this.", "chunk %d" % (chunk.index + 1)))
+                             "and to the part edges; steering can extend beyond the clip. Shorter render parts reduce this.", "Render part %d" % (chunk.index + 1)))
     for clip in entries:
         item = context.item(clip.context_id)
         end = item.options.end_s or item.length_s

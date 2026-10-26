@@ -87,7 +87,7 @@ def _issues(context, chunk, result, continuity):
     # a continued chunk deliberately has no spoken line for a shot that began earlier (see legacy_bridge._shot_text)
     # ... nor a shot that starts too late in it: the next part says its lines (legacy_bridge.lines_here)
     resumed = any(s.carried or not lines_here(s, chunk) for s in chunk.shots)
-    out = [Issue("planner", text, "chunk %d" % (chunk.index + 1)) for text in result["ref_warnings"]
+    out = [Issue("planner", text, "Render part %d" % (chunk.index + 1)) for text in result["ref_warnings"]
            if not (resumed and "has no spoken line" in text)]
     placed = {b.context_id for shot in chunk.shots for b in shot.media}     # a Keyframe on a shot has its time there
     for item in context.items:
@@ -97,7 +97,7 @@ def _issues(context, chunk, result, continuity):
     noted = any(item.media == "text" and item.source.strip() for item in context.items)
     if not context.prompt_override.strip() and not context.idea.strip() and not noted and not any(
             s.text.strip() or any(line.text.strip() for line in s.spoken) for s in chunk.shots):
-        out.append(Issue("no_text", "There is no text for this chunk; the prompt falls back to a bare placeholder.", "chunk %d" % (chunk.index + 1)))
+        out.append(Issue("no_text", "There is no text for this render part; the prompt falls back to a bare placeholder.", "Render part %d" % (chunk.index + 1)))
     if context.prompt_override.strip():
         out.append(Issue("prompt_override", "Manual prompt replaces every chunk prompt; references and timing remain as planned."))
     return out
@@ -152,5 +152,5 @@ def _own_prompt(context, chunk, compiled):
     if key == prompt_key(compiled) and text.strip():
         return keep_effects(compiled, text.strip()), by, ()
     return compiled, "compiled", (Issue("part_prompt_outdated", "The plan changed after this part's own prompt was written, so the "
-                                        "compiled prompt is used. Rewrite or edit it in Prompts per render part.", "chunk %d" % (chunk.index + 1)),)
+                                        "compiled prompt is used. Rewrite or edit it in Prompts per render part.", "Render part %d" % (chunk.index + 1)),)
 

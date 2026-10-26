@@ -70,9 +70,9 @@ class Plan(unittest.TestCase):
         self.assertEqual(soundscape[0].ref, "")                       # it applies to all three chunks
 
     def test_a_problem_in_some_chunks_names_them(self):
-        issues = [project.Issue("planner", "x", "chunk 1"), project.Issue("planner", "x", "chunk 3"), project.Issue("other", "y", "shot 2")]
+        issues = [project.Issue("planner", "x", "Render part 1"), project.Issue("planner", "x", "Render part 3"), project.Issue("other", "y", "shot 2")]
         merged = project._merge(issues, 3)
-        self.assertEqual([(i.text, i.ref) for i in merged], [("x", "chunk 1, 3"), ("y", "shot 2")])
+        self.assertEqual([(i.text, i.ref) for i in merged], [("x", "Render part 1, 3"), ("y", "shot 2")])
 
     def test_describe_lists_every_chunk(self):
         out = project.plan_project(context.DirectorContext(idea="x", project_seconds=30), 10, VIDEO)
