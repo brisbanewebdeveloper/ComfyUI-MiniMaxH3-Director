@@ -39,6 +39,8 @@
 | 15 s text to video | 15–20 minutes |
 | One picture (Pictures output) | 30–45 seconds |
 | Character sheet | 4 minutes |
+| 10 s with a control video (pose or inpaint) | 35–45 minutes |
+| Pose or SAM3 mask of a 20 s video (once) | 5–6 minutes |
 
 Longer videos take longer in proportion; try 15–30 s first, then make the whole length.
 

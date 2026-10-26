@@ -813,7 +813,8 @@ you press *Generate mask*; rendering does not load it.
 
 - **Use as: Control video**, **Control video: Inpaint (mask + source)**. The card's own video is the source.
 - **What to mask**: what SAM3 should find, e.g. `person`, `woman in red`, `dog`. **Generate mask (SAM3)** saves a black
-  and white mask video next to the source. A ready mask video can also be chosen or uploaded.
+  and white mask video next to the source (about 6 minutes for the 20 s example walk). A ready mask video can also be
+  chosen or uploaded.
 - The preview shows the raw mask. The shape for rendering is chosen below it:
   - **Bounding box** (recommended): a box around the figure, so the new figure may be wider, taller or differently dressed.
   - **Silhouette**: only the outline of the found figure; for a very similar figure.
@@ -1639,6 +1640,8 @@ parts, or choose shorter render parts. A part without any clip renders without C
 | 15 s text to video | 15–20 minutes |
 | One picture (Pictures output) | 30–45 seconds |
 | Character sheet | 4 minutes |
+| 10 s with a control video (pose or inpaint) | 35–45 minutes |
+| Pose or SAM3 mask of a 20 s video (once) | 5–6 minutes |
 
 Longer videos take longer in proportion; try 15–30 s first, then make the whole length.
 
